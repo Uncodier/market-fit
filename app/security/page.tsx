@@ -18,50 +18,35 @@ import { ApiKeysList } from "@/app/components/api-keys/api-keys-list"
 import { RobotSessionsList } from "@/app/components/security/robot-sessions-list"
 import { AllowedDomainsList } from "@/app/components/security/allowed-domains-list"
 import { AuthenticationSettings } from "@/app/components/security/authentication-settings"
-
-// Section configurations for quick navigation
-const authenticationSections: QuickNavSection[] = [
-  { id: "change-password", title: "Change Password" },
-  { id: "two-factor-authentication", title: "Two-Factor Authentication" },
-]
-
-const getInitialApiKeysSections = (): QuickNavSection[] => [
-  { 
-    id: "api-keys", 
-    title: "API Keys",
-    children: []
-  },
-]
-
-const robotSessionsSections: QuickNavSection[] = [
-  { id: "robot-sessions", title: "Robot Sessions" },
-]
-
-const getInitialAllowedDomainsSections = (): QuickNavSection[] => [
-  { 
-    id: "allowed-domains", 
-    title: "Allowed Domains",
-    children: []
-  },
-]
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 export default function SecurityPage() {
+  const { t } = useLocalization()
   const [passwordUpdated, setPasswordUpdated] = useState(false);
   const [activeTab, setActiveTab] = useState("authentication");
-  const [apiKeysSections, setApiKeysSections] = useState<QuickNavSection[]>(getInitialApiKeysSections())
-  const [allowedDomainsSections, setAllowedDomainsSections] = useState<QuickNavSection[]>(getInitialAllowedDomainsSections())
+  const [apiKeyItems, setApiKeyItems] = useState<QuickNavSection[]>([])
+  const [allowedDomainItems, setAllowedDomainItems] = useState<QuickNavSection[]>([])
+
+  // Derive navigation labels each render without replacing user-provided names.
+  const authenticationSections: QuickNavSection[] = [
+    { id: "change-password", title: t("operations.security.changePassword") },
+    { id: "two-factor-authentication", title: t("operations.security.twoFactor") },
+  ]
+  const apiKeysSections: QuickNavSection[] = [
+    { id: "api-keys", title: t("operations.security.apiKeys"), children: apiKeyItems },
+  ]
+  const robotSessionsSections: QuickNavSection[] = [
+    { id: "robot-sessions", title: t("operations.security.robotSessions") },
+  ]
+  const allowedDomainsSections: QuickNavSection[] = [
+    { id: "allowed-domains", title: t("operations.security.allowedDomains"), children: allowedDomainItems },
+  ]
 
   // Listen for API keys updates
   useEffect(() => {
     const handleApiKeysUpdate = (event: CustomEvent) => {
       const items = event.detail as { id: string; title: string }[];
-      setApiKeysSections([
-        {
-          id: "api-keys",
-          title: "API Keys",
-          children: items
-        }
-      ]);
+      setApiKeyItems(items);
     };
 
     window.addEventListener('apiKeysUpdated', handleApiKeysUpdate as EventListener);
@@ -74,13 +59,7 @@ export default function SecurityPage() {
   useEffect(() => {
     const handleAllowedDomainsUpdate = (event: CustomEvent) => {
       const items = event.detail as { id: string; title: string }[];
-      setAllowedDomainsSections([
-        {
-          id: "allowed-domains",
-          title: "Allowed Domains",
-          children: items
-        }
-      ]);
+      setAllowedDomainItems(items);
     };
 
     window.addEventListener('allowedDomainsUpdated', handleAllowedDomainsUpdate as EventListener);
@@ -113,26 +92,26 @@ export default function SecurityPage() {
             <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full w-auto">
               <TabsTrigger value="authentication" className="flex items-center gap-2 text-xs rounded-full px-4 whitespace-nowrap">
                 <Shield className="h-4 w-4" />
-                Authentication
+                {t("operations.security.authentication")}
               </TabsTrigger>
               <TabsTrigger value="api_keys" className="flex items-center gap-2 text-xs rounded-full px-4 whitespace-nowrap">
                 <Key className="h-4 w-4" />
-                API Keys
+                {t("operations.security.apiKeys")}
               </TabsTrigger>
               <TabsTrigger value="robot_sessions" className="flex items-center gap-2 text-xs rounded-full px-4 whitespace-nowrap">
                 <Bot className="h-4 w-4" />
-                Robot Sessions
+                {t("operations.security.robotSessions")}
               </TabsTrigger>
               <TabsTrigger value="allowed_domains" className="flex items-center gap-2 text-xs rounded-full px-4 whitespace-nowrap">
                 <Globe className="h-4 w-4" />
-                Allowed Domains
+                {t("operations.security.allowedDomains")}
               </TabsTrigger>
             </TabsList>
             <div className="flex-1 flex justify-end items-center gap-4">
               {passwordUpdated && (
                 <div className="flex items-center text-green-500">
                   <Check className="h-4 w-4 mr-2" />
-                  <span>Password successfully updated</span>
+                  <span>{t("operations.security.passwordUpdated")}</span>
                 </div>
               )}
               <Button
@@ -140,10 +119,11 @@ export default function SecurityPage() {
                 size="sm"
                 className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
                 onClick={() => window.open("https://docs.makinari.com", "_blank")}
-                title="Documentation"
+                title={t("operations.security.documentation")}
+                aria-label={t("operations.security.documentation")}
               >
                 <BookOpen className="h-4 w-4 shrink-0" />
-                <span className="hidden sm:inline">Docs</span>
+                <span className="hidden sm:inline">{t("operations.security.docs")}</span>
               </Button>
             </div>
           </div>
@@ -163,11 +143,11 @@ export default function SecurityPage() {
               <TabsContent value="robot_sessions">
                 <Card id="robot-sessions" className="border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
                   <CardHeader className="px-8 py-6">
-                    <CardTitle className="text-xl font-semibold">Robot Sessions</CardTitle>
+                    <CardTitle className="text-xl font-semibold">{t("operations.security.robotSessions")}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-8 px-8 pb-8 w-full">
                     <div className="text-sm text-muted-foreground">
-                      Manage automation authentication sessions for makinas. These sessions store browser authentication data that can be reused across automation instances.
+                      {t("operations.security.robotSessionsDescription")}
                     </div>
                     <RobotSessionsList />
                   </CardContent>

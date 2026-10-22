@@ -3,6 +3,7 @@ import { useRouter } from "next/navigation"
 import { useOptionalPermissions } from "@/app/context/PermissionContext"
 import { AccountsReceivableList } from "@/app/accounts-receivable/components/AccountsReceivableList"
 import type { ReceivableAccount } from "@/app/accounts-receivable/summary"
+import { LocalizationProvider } from "@/app/context/LocalizationContext"
 
 jest.mock("@/app/context/PermissionContext", () => ({ useOptionalPermissions: jest.fn(() => null) }))
 jest.mock("@/app/components/ui/empty-card", () => ({ EmptyCard: ({ title, description }: { title: string; description: string }) => <div>{title}{description}</div> }))
@@ -22,7 +23,9 @@ const account: ReceivableAccount = {
 }
 const push = jest.fn()
 function setup(accounts = [account], siteId = "site") {
-  return render(<AccountsReceivableList accounts={accounts} siteId={siteId} today="2026-10-14" />)
+  return render(<LocalizationProvider preferredLocale="en">
+    <AccountsReceivableList accounts={accounts} siteId={siteId} today="2026-10-14" />
+  </LocalizationProvider>)
 }
 async function openMenu() {
   fireEvent.keyDown(screen.getByRole("button", { name: "Actions for Avery" }), { key: "ArrowDown" })
@@ -104,7 +107,22 @@ describe("accounts receivable cloned document list", () => {
   it("renders unknown-currency balances safely and shows the cloned empty state", () => {
     const view = setup([{ ...account, balances: [{ currency: "Unknown", amount: 5 }] }])
     expect(screen.getAllByText("5.00 (unknown currency)")).toHaveLength(2)
-    view.rerender(<AccountsReceivableList accounts={[]} siteId="site" today="2026-10-14" />)
+    view.rerender(<LocalizationProvider preferredLocale="en"><AccountsReceivableList accounts={[]} siteId="site" today="2026-10-14" /></LocalizationProvider>)
     expect(screen.getByText(/No accounts receivable found/)).toBeInTheDocument()
+  })
+
+  it("updates derived status, counts, currency fallback and action aria on locale switch", () => {
+    const accounts = [{ ...account, balances: [{ currency: "Unknown", amount: 5 }] }]
+    const view = setup(accounts)
+    view.rerender(<LocalizationProvider preferredLocale="es">
+      <AccountsReceivableList accounts={accounts} siteId="site" today="2026-10-14" />
+    </LocalizationProvider>)
+    expect(screen.getByRole("table", { name: "Cuentas por cobrar" })).toBeInTheDocument()
+    expect(screen.getByRole("columnheader", { name: "Facturas pendientes" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Acciones para Avery" })).toBeInTheDocument()
+    expect(screen.getAllByText("2 facturas")).toHaveLength(2)
+    expect(screen.getAllByText("5,00 (moneda desconocida)")).toHaveLength(2)
+    expect(screen.getByRole("link", { name: /Avery/ })).toHaveAttribute("href", "/leads/lead-1")
+    expect(push).not.toHaveBeenCalled()
   })
 })

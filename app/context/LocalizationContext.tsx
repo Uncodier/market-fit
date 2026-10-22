@@ -142,14 +142,14 @@ export const LocalizationProvider = ({ children, preferenceScope, preferredLocal
     }));
   }, []);
 
-  const t = (key: string, params?: Record<string, string | number>): string => {
+  const t = useCallback((key: string, params?: Record<string, string | number>): string => {
     const raw = messages[key] || translationCache.en?.[key] || key;
     if (!params) return raw;
     return Object.entries(params).reduce(
       (text, [name, value]) => text.replace(new RegExp(`\\{\\{\\s*${name}\\s*\\}\\}`, 'g'), String(value)),
       raw
     );
-  };
+  }, [messages]);
 
   const getAsset = (key: string): string => {
     if (!mounted) return localizedAssets[defaultLocale]?.[key] || key;

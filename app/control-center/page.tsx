@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect } from "react"
 import { TaskSidebar } from "./components/TaskSidebar"
 import { TaskKanban } from "./components/TaskKanban"
 import { TasksTable } from "./components/TasksTable"
@@ -22,6 +23,14 @@ import { useControlCenterPage } from "./hooks/useControlCenterPage"
 
 export default function ControlCenterPage() {
   const { t, categories, leads, users, taskTypes, totalCounts, taskCounts, isLoading, isLayoutCollapsed, isMobile, isSidebarCollapsed, setIsSidebarCollapsed, selectedItem, setSelectedItem, searchQuery, setSearchQuery, viewType, setViewType, currentPage, itemsPerPage, isFilterModalOpen, setIsFilterModalOpen, filters, setFilters, statusFilter, setStatusFilter, sortBy, setSortBy, selectedTasks, setSelectedTasks, isBulkActionLoading, kanbanPagination, sidebarLeft, handleUpdateTaskStatus, handleTaskClick, toggleTaskSelection, handleBulkDelete, handleBulkStatusChange, handleLoadMoreKanban, filteredTasks, handlePageChange, handleItemsPerPageChange, getTotalActiveFilters } = useControlCenterPage()
+  useEffect(() => {
+    const title = t("operations.controlCenter.title")
+    document.title = `${title} | Market Fit`
+    window.dispatchEvent(new CustomEvent("breadcrumb:update", {
+      detail: { title, path: "/control-center", section: "Control Center" },
+    }))
+  }, [t])
+
   if (isLoading) {
     return <ControlCenterSkeleton 
       isLayoutCollapsed={isLayoutCollapsed}
@@ -75,10 +84,10 @@ export default function ControlCenterPage() {
               selectedTasks.size > 0 ? (
                 <div className="flex items-center gap-4 lg:gap-8 overflow-hidden">
                   <Badge variant="outline" className="rounded-full px-2 py-0">
-                    {selectedTasks.size} selected
+                    {t("operations.controlCenter.selected", { count: selectedTasks.size })}
                   </Badge>
                   <span className="text-sm text-muted-foreground hidden sm:inline">
-                    Choose bulk action
+                    {t("operations.controlCenter.chooseBulkAction")}
                   </span>
                   <div className="flex items-center gap-2">
                     <Button
@@ -87,7 +96,7 @@ export default function ControlCenterPage() {
                       onClick={() => setSelectedTasks(new Set())}
                       disabled={isBulkActionLoading}
                     >
-                      Cancel
+                      {t("common.cancel")}
                     </Button>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -98,7 +107,7 @@ export default function ControlCenterPage() {
                           {isBulkActionLoading ? (
                             <Loader className="h-4 w-4 animate-spin" />
                           ) : null}
-                          Bulk actions
+                          {t("operations.controlCenter.bulkActions")}
                           <ChevronDown className="h-3 w-3 opacity-50" />
                         </button>
                       </DropdownMenuTrigger>
@@ -107,19 +116,19 @@ export default function ControlCenterPage() {
                           className="cursor-pointer"
                           onClick={() => handleBulkStatusChange('completed')}
                         >
-                          Complete
+                          {t("complete")}
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="cursor-pointer"
                           onClick={() => handleBulkStatusChange('canceled')}
                         >
-                          Cancel
+                          {t("common.cancel")}
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="cursor-pointer text-destructive focus:text-destructive"
                           onClick={handleBulkDelete}
                         >
-                          Delete
+                          {t("common.delete")}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -134,14 +143,14 @@ export default function ControlCenterPage() {
                 />
                 <div className="flex items-center gap-2">
                   <SearchInput
-                    placeholder={t('controlCenter.search') === 'controlCenter.search' ? 'Search tasks...' : t('controlCenter.search')}
+                    placeholder={t('controlCenter.search')}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
                     alwaysExpanded={false}
                   />
 
-                  <Button variant="secondary" size="icon" className="h-9 w-9 shrink-0 rounded-full" onClick={() => setIsFilterModalOpen(true)}>
+                  <Button variant="secondary" size="icon" className="h-9 w-9 shrink-0 rounded-full" onClick={() => setIsFilterModalOpen(true)} aria-label={t("controlCenter.filter.title")}>
                     <Filter className="h-4 w-4" />
                     {getTotalActiveFilters() > 0 && (
                       <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-[10px] font-medium text-primary-foreground flex items-center justify-center">
@@ -160,24 +169,24 @@ export default function ControlCenterPage() {
                     <Badge variant="outline" className="rounded-full px-2 py-0">
                       {getTotalActiveFilters()}
                     </Badge>
-                    <span className="ml-2">{t('controlCenter.filters.clear') || 'Clear'}</span>
+                    <span className="ml-2">{t('controlCenter.filters.clear')}</span>
                   </Button>
                 )}
                 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button className="inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-secondary text-secondary-foreground hover:bg-secondary/80 h-9 gap-2 rounded-full px-4" title={t('controlCenter.sortBy') === 'controlCenter.sortBy' ? 'Sort by' : t('controlCenter.sortBy')}>
+                    <button className="inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-secondary text-secondary-foreground hover:bg-secondary/80 h-9 gap-2 rounded-full px-4" title={t('controlCenter.sortBy')} aria-label={t('controlCenter.sortBy')}>
                       <ListOrdered className="h-4 w-4" />
                       <span className="hidden sm:inline font-normal">
                         {sortBy === "priority"
-                          ? "Priority"
+                          ? t("priority")
                           : sortBy === "newest"
-                            ? (t('controlCenter.sort.newest') === 'controlCenter.sort.newest' ? 'Newest' : t('controlCenter.sort.newest'))
+                            ? t('controlCenter.sort.newest')
                             : sortBy === "oldest"
-                              ? (t('controlCenter.sort.oldest') === 'controlCenter.sort.oldest' ? 'Oldest' : t('controlCenter.sort.oldest'))
+                              ? t('controlCenter.sort.oldest')
                               : sortBy === "dueDateNearest"
-                                ? "Due Date (Nearest)"
-                                : "Due Date (Oldest)"}
+                                ? t("operations.controlCenter.dueDateNearest")
+                                : t("operations.controlCenter.dueDateOldest")}
                       </span>
                       <ChevronDown className="h-3 w-3 opacity-50" />
                     </button>
@@ -188,35 +197,35 @@ export default function ControlCenterPage() {
                       onClick={() => setSortBy("priority")}
                     >
                       <Check className={cn("mr-2 h-4 w-4", sortBy === "priority" ? "opacity-100" : "opacity-0")} />
-                      Priority
+                      {t("priority")}
                     </DropdownMenuItem>
                     <DropdownMenuItem 
                       className="cursor-pointer"
                       onClick={() => setSortBy("newest")}
                     >
                       <Check className={cn("mr-2 h-4 w-4", sortBy === "newest" ? "opacity-100" : "opacity-0")} />
-                      {t('controlCenter.sort.newest') === 'controlCenter.sort.newest' ? 'Newest' : t('controlCenter.sort.newest')}
+                      {t('controlCenter.sort.newest')}
                     </DropdownMenuItem>
                     <DropdownMenuItem 
                       className="cursor-pointer"
                       onClick={() => setSortBy("oldest")}
                     >
                       <Check className={cn("mr-2 h-4 w-4", sortBy === "oldest" ? "opacity-100" : "opacity-0")} />
-                      {t('controlCenter.sort.oldest') === 'controlCenter.sort.oldest' ? 'Oldest' : t('controlCenter.sort.oldest')}
+                      {t('controlCenter.sort.oldest')}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="cursor-pointer"
                       onClick={() => setSortBy("dueDateNearest")}
                     >
                       <Check className={cn("mr-2 h-4 w-4", sortBy === "dueDateNearest" ? "opacity-100" : "opacity-0")} />
-                      Due Date (Nearest)
+                      {t("operations.controlCenter.dueDateNearest")}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="cursor-pointer"
                       onClick={() => setSortBy("dueDateOldest")}
                     >
                       <Check className={cn("mr-2 h-4 w-4", sortBy === "dueDateOldest" ? "opacity-100" : "opacity-0")} />
-                      Due Date (Oldest)
+                      {t("operations.controlCenter.dueDateOldest")}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -243,8 +252,8 @@ export default function ControlCenterPage() {
               <div className="flex-1 flex items-center justify-center">
                 <EmptyState 
                   icon={<ClipboardList className="h-8 w-8 text-muted-foreground" />}
-                  title={t('controlCenter.empty.title') || "No tasks found"}
-                  description={searchQuery ? (t('controlCenter.empty.searchDesc') || "Try adjusting your search or filters to find what you're looking for.") : (t('controlCenter.empty.desc') || "There are no tasks to display at this time.")}
+                  title={t('controlCenter.empty.title')}
+                  description={searchQuery ? t('operations.controlCenter.emptySearchDescription') : t('controlCenter.empty.desc')}
                   variant="fancy"
                 />
               </div>

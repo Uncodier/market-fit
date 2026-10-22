@@ -48,30 +48,31 @@ function ProfilePreferencesForm({ language, timezone, updateProfile, isUpdating 
   language: SupportedLocale
   timezone: string
 } & Pick<ProfilePreferencesProps, "updateProfile" | "isUpdating">) {
+  const { t } = useLocalization()
   const [formData, setFormData] = useState({ language, timezone })
 
   const handleSavePreferences = async () => {
     try {
       const result = await updateProfile(formData, true)
       if (result === true) {
-        toast.success("Preferences updated successfully")
+        toast.success(t("account.preferences.saved"))
       } else {
-        toast.error(typeof result === "string" ? `Failed: ${result}` : "Failed to update preferences")
+        toast.error(typeof result === "string" ? t("account.profile.failureDetail", { error: result }) : t("account.preferences.failed"))
       }
     } catch (error) {
       console.error(error)
-      toast.error("Error updating preferences")
+      toast.error(t("account.preferences.error"))
     }
   }
 
   return (
     <SectionCard>
       <SectionCardHeader>
-        <SectionCardTitle>Preferences</SectionCardTitle>
+        <SectionCardTitle>{t("account.preferences.title")}</SectionCardTitle>
       </SectionCardHeader>
       <SectionCardContent className="space-y-8">
         <div>
-          <label htmlFor="profile-language" className="block text-sm font-medium mb-2">Language</label>
+          <label htmlFor="profile-language" className="block text-sm font-medium mb-2">{t("language")}</label>
           <div className="relative">
             <Globe className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Select
@@ -82,21 +83,21 @@ function ProfilePreferencesForm({ language, timezone, updateProfile, isUpdating 
               }}
             >
               <SelectTrigger id="profile-language" className="w-full pl-12 h-12 text-base transition-colors duration-200">
-                <SelectValue placeholder="Select your language" />
+                <SelectValue placeholder={t("account.preferences.languagePlaceholder")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="es">Spanish</SelectItem>
-                <SelectItem value="en">English</SelectItem>
-                <SelectItem value="fr">French</SelectItem>
-                <SelectItem value="de">German</SelectItem>
-                <SelectItem value="ja">Japanese</SelectItem>
+                <SelectItem value="es">{t("language.es")}</SelectItem>
+                <SelectItem value="en">{t("language.en")}</SelectItem>
+                <SelectItem value="fr">{t("language.fr")}</SelectItem>
+                <SelectItem value="de">{t("language.de")}</SelectItem>
+                <SelectItem value="ja">{t("language.ja")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </div>
 
         <div>
-          <label htmlFor="profile-timezone" className="block text-sm font-medium mb-2">Timezone</label>
+          <label htmlFor="profile-timezone" className="block text-sm font-medium mb-2">{t("timezone")}</label>
           <div className="relative">
             <Home className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Select
@@ -104,15 +105,15 @@ function ProfilePreferencesForm({ language, timezone, updateProfile, isUpdating 
               onValueChange={(timezone) => setFormData(prev => ({ ...prev, timezone }))}
             >
               <SelectTrigger id="profile-timezone" className="w-full pl-12 h-12 text-base transition-colors duration-200">
-                <SelectValue placeholder="Select your timezone" />
+                <SelectValue placeholder={t("account.preferences.timezonePlaceholder")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="America/Mexico_City">Mexico City (GMT-6)</SelectItem>
-                <SelectItem value="America/Los_Angeles">Los Angeles (GMT-8)</SelectItem>
-                <SelectItem value="America/New_York">New York (GMT-5)</SelectItem>
-                <SelectItem value="Europe/Madrid">Madrid (GMT+1)</SelectItem>
-                <SelectItem value="Europe/London">London (GMT+0)</SelectItem>
-                <SelectItem value="Asia/Tokyo">Tokyo (GMT+9)</SelectItem>
+                <SelectItem value="America/Mexico_City">{t("account.preferences.mexico")}</SelectItem>
+                <SelectItem value="America/Los_Angeles">{t("account.preferences.la")}</SelectItem>
+                <SelectItem value="America/New_York">{t("account.preferences.ny")}</SelectItem>
+                <SelectItem value="Europe/Madrid">{t("account.preferences.madrid")}</SelectItem>
+                <SelectItem value="Europe/London">{t("account.preferences.london")}</SelectItem>
+                <SelectItem value="Asia/Tokyo">{t("account.preferences.tokyo")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -126,7 +127,7 @@ function ProfilePreferencesForm({ language, timezone, updateProfile, isUpdating 
           disabled={isUpdating}
           size="sm"
         >
-          {isUpdating ? "Saving..." : "Save Preferences"}
+          {isUpdating ? t("common.saving") : t("account.preferences.save")}
         </Button>
       </ActionFooter>
     </SectionCard>

@@ -1,16 +1,20 @@
 "use client"
 
-import { useEffect, useState, Suspense } from "react"
+import { useEffect, useRef, useState, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { Button } from "@/app/components/ui/button"
-import { Loader, CheckCircle2, XCircle, Mail, Shield } from "@/app/components/ui/icons"
+import { Loader, CheckCircle2, XCircle, Shield } from "@/app/components/ui/icons"
 import { toast } from "sonner"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 type ConfirmationState = 'loading' | 'success' | 'error'
 
 function ConfirmEmailChangeContent() {
+  const { t } = useLocalization()
+  const translate = useRef(t)
+  useEffect(() => { translate.current = t }, [t])
   const router = useRouter()
   const searchParams = useSearchParams()
   const [state, setState] = useState<ConfirmationState>('loading')
@@ -25,13 +29,13 @@ function ConfirmEmailChangeContent() {
 
         if (!tokenHash) {
           setState('error')
-          setMessage('Missing confirmation token')
+          setMessage('auth.flows.confirm.missingToken')
           return
         }
 
         if (type !== 'email_change') {
           setState('error')
-          setMessage('Invalid confirmation type')
+          setMessage('auth.flows.emailChange.invalidType')
           return
         }
 
@@ -46,13 +50,13 @@ function ConfirmEmailChangeContent() {
         if (error) {
           console.error('Email change confirmation error:', error)
           setState('error')
-          setMessage(error.message || 'Failed to confirm email change')
+          setMessage('auth.flows.emailChange.failed')
           return
         }
 
         if (!data.user) {
           setState('error')
-          setMessage('User not found after confirmation')
+          setMessage('auth.flows.emailChange.missingUser')
           return
         }
 
@@ -60,7 +64,7 @@ function ConfirmEmailChangeContent() {
 
         if (!updatedEmail) {
           setState('error')
-          setMessage('Email not found after confirmation')
+          setMessage('auth.flows.emailChange.missingEmail')
           return
         }
 
@@ -79,8 +83,8 @@ function ConfirmEmailChangeContent() {
         }
 
         setState('success')
-        setMessage('Email changed successfully!')
-        toast.success('Email changed successfully')
+        setMessage('auth.flows.emailChange.success')
+        toast.success(translate.current('auth.flows.emailChange.success'))
 
         // Redirect to profile page after 2 seconds
         setTimeout(() => {
@@ -90,7 +94,7 @@ function ConfirmEmailChangeContent() {
       } catch (error) {
         console.error('Email change confirmation error:', error)
         setState('error')
-        setMessage('An unexpected error occurred during email change confirmation')
+        setMessage('auth.flows.emailChange.unexpectedError')
       }
     }
 
@@ -116,16 +120,16 @@ function ConfirmEmailChangeContent() {
           </div>
           <CardTitle className="flex items-center justify-center gap-2">
             <Shield className="h-5 w-5" />
-            {state === 'loading' && 'Confirming Email Change'}
-            {state === 'success' && 'Email Changed Successfully'}
-            {state === 'error' && 'Confirmation Failed'}
+            {state === 'loading' && t('auth.flows.emailChange.title')}
+            {state === 'success' && t('auth.flows.emailChange.successTitle')}
+            {state === 'error' && t('auth.flows.emailChange.failedTitle')}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {state === 'loading' && (
             <div className="text-center space-y-2">
               <p className="text-muted-foreground">
-                Verifying your email change...
+                {t('auth.flows.emailChange.verifying')}
               </p>
             </div>
           )}
@@ -134,17 +138,17 @@ function ConfirmEmailChangeContent() {
             <div className="text-center space-y-4">
               <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
                 <p className="text-sm text-green-800 dark:text-green-200">
-                  Your email has been successfully changed to:
+                  {t('auth.flows.emailChange.changedTo')}
                 </p>
                 <p className="text-base font-medium text-green-900 dark:text-green-100 mt-2">
                   {newEmail}
                 </p>
               </div>
               <p className="text-sm text-muted-foreground">
-                Redirecting to your profile...
+                {t('auth.flows.emailChange.redirecting')}
               </p>
               <Button onClick={handleGoToProfile} className="w-full">
-                Go to Profile
+                {t('auth.flows.emailChange.goToProfile')}
               </Button>
             </div>
           )}
@@ -153,15 +157,15 @@ function ConfirmEmailChangeContent() {
             <div className="text-center space-y-4">
               <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
                 <p className="text-sm text-destructive">
-                  {message}
+                  {message ? t(message) : ''}
                 </p>
               </div>
               <div className="flex gap-2">
                 <Button onClick={handleRetry} variant="outline" className="flex-1">
-                  Retry
+                  {t('auth.flows.retry')}
                 </Button>
                 <Button onClick={handleGoToProfile} className="flex-1">
-                  Go to Profile
+                  {t('auth.flows.emailChange.goToProfile')}
                 </Button>
               </div>
             </div>
@@ -173,9 +177,10 @@ function ConfirmEmailChangeContent() {
 }
 
 export default function ConfirmEmailChangePage() {
+  const { t } = useLocalization()
   return (
     <Suspense fallback={
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen" role="status" aria-label={t('common.loading')}>
         <Loader className="h-8 w-8 text-primary" />
       </div>
     }>

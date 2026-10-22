@@ -17,6 +17,8 @@ import {
 import { Button } from "@/app/components/ui/button"
 import { CheckCircle, XCircle, Loader } from "@/app/components/ui/icons"
 import { Checkbox } from "@/app/components/ui/checkbox"
+import { useLocalization } from "@/app/context/LocalizationContext"
+import { OAuthDiagnostics, OAUTH_TECHNICAL_VALUES, oauthErrorMessage, type OAuthMessage } from "./oauth-localization"
 
 interface AvailablePage {
   id: string
@@ -27,12 +29,14 @@ interface AvailablePage {
 }
 
 export default function SocialNetworkCallbackPage() {
+  const { t } = useLocalization()
   const searchParams = useSearchParams()
   const router = useRouter()
   const { currentSite } = useSite()
   const { showBillingLimit, showBillingLimitFromError } = useBillingLimit()
   const [status, setStatus] = useState<"loading" | "selecting" | "success" | "error">("loading")
-  const [message, setMessage] = useState<string>("")
+  const [messageSource, setMessage] = useState<OAuthMessage>({ raw: "" })
+  const message = "raw" in messageSource ? messageSource.raw : t(messageSource.key, messageSource.params)
   const [availablePages, setAvailablePages] = useState<AvailablePage[]>([])
   const [selectedPages, setSelectedPages] = useState<string[]>([])
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({})
@@ -76,24 +80,13 @@ export default function SocialNetworkCallbackPage() {
         setStatus("error")
         
         if (error === "Missing code or state parameter") {
-          setMessage(
-            "OAuth callback failed: Outstand.so received the callback from Facebook but could not process it. " +
-            "The redirect_uri is being used correctly, but outstand.so is failing to process the Facebook callback.\n\n" +
-            "Possible causes:\n" +
-            "1. Your redirect_uri needs to be whitelisted in outstand.so's system (they validate before processing)\n" +
-            "2. There's an internal issue with outstand.so's Facebook OAuth callback handler\n" +
-            "3. Configuration issue with outstand.so's Facebook app settings\n\n" +
-            "Please contact outstand.so support (contact@outstand.so) and provide:\n" +
-            "- Your redirect_uri pattern: https://app.makinari.com/settings/social_network*\n" +
-            "- The error: Missing code or state parameter\n" +
-            "- That Facebook successfully redirects to outstand.so, but outstand.so fails to process it"
-          )
+          setMessage({ key: "public.oauth.callbackFailed", params: OAUTH_TECHNICAL_VALUES })
         } else if (error === "access_denied") {
-          setMessage("Authentication was cancelled. Please try again and authorize the connection.")
+          setMessage({ key: "public.oauth.cancelled" })
         } else if (error === "oauth_failed") {
-          setMessage(searchParams.get("error_description") || "OAuth failed.")
+          setMessage(oauthErrorMessage(searchParams.get("error_description") || "", "public.oauth.failed"))
         } else {
-          setMessage(`Authentication failed: ${error}`)
+          setMessage({ key: "public.oauth.authenticationFailed", params: { error } })
         }
         return
       }
@@ -102,14 +95,14 @@ export default function SocialNetworkCallbackPage() {
       const errorDescription = searchParams.get("error_description")
       if (errorDescription) {
         setStatus("error")
-        setMessage(`Authentication failed: ${errorDescription}`)
+        setMessage({ key: "public.oauth.authenticationFailed", params: { error: errorDescription } })
         return
       }
 
       // No session token - might be initial load or incomplete callback
       console.warn('[Social Network Callback] No session token and no error - this should not happen in normal flow')
       setStatus("loading")
-      setMessage("Waiting for authentication response...")
+      setMessage({ key: "public.oauth.waiting" })
       
       setTimeout(() => {
         const redirectUrl = returnTo 
@@ -125,7 +118,7 @@ export default function SocialNetworkCallbackPage() {
     const fetchAvailablePages = async () => {
       try {
         setStatus("loading")
-        setMessage("Loading available pages...")
+        setMessage({ key: "public.oauth.loadingPages" })
         
         const response = await fetch(`/api/social/accounts/pending/${encodeURIComponent(session)}`)
         const result = await response.json()
@@ -136,10 +129,10 @@ export default function SocialNetworkCallbackPage() {
           
           if (pages.length === 0) {
             setStatus("error")
-            setMessage("No pages available to connect. Please make sure you have authorized the necessary permissions.")
+            setMessage({ key: "public.oauth.noPages" })
           } else {
             setStatus("selecting")
-            setMessage(`Select the ${network} pages you want to connect:`)
+            setMessage({ key: "public.oauth.selectPages", params: { network: network || "" } })
             // Pre-select all pages by default
             setSelectedPages(pages.map((p: AvailablePage) => p.id))
           }
@@ -149,7 +142,7 @@ export default function SocialNetworkCallbackPage() {
       } catch (error) {
         console.error("Error fetching available pages:", error)
         setStatus("error")
-        setMessage(error instanceof Error ? error.message : "Failed to load available pages")
+        setMessage(oauthErrorMessage(error instanceof Error ? error.message : "", "public.oauth.loadFailed"))
       }
     }
 
@@ -166,7 +159,7 @@ export default function SocialNetworkCallbackPage() {
 
   const handleFinalize = async () => {
     if (selectedPages.length === 0) {
-      setMessage("Please select at least one page to connect.")
+      setMessage({ key: "public.oauth.selectAtLeastOne" })
       return
     }
 
@@ -184,7 +177,7 @@ export default function SocialNetworkCallbackPage() {
 
     try {
       setIsFinalizing(true)
-      setMessage("Connecting selected pages...")
+      setMessage({ key: "public.oauth.connectingPages" })
       
       const response = await fetch(`/api/social/accounts/pending/${encodeURIComponent(session || "")}/finalize`, {
         method: "POST",
@@ -203,7 +196,7 @@ export default function SocialNetworkCallbackPage() {
       
       if (result.success) {
         setStatus("success")
-        setMessage(`Successfully connected ${selectedPages.length} page(s)!`)
+        setMessage({ key: "public.oauth.connected", params: { count: selectedPages.length } })
         
         // Full navigation so SiteContext reloads social_media from the DB.
         // router.push keeps the in-memory site, and refreshSites is a no-op on /settings.
@@ -230,7 +223,7 @@ export default function SocialNetworkCallbackPage() {
         return
       }
       setStatus("error")
-      setMessage(error instanceof Error ? error.message : "Failed to finalize connection")
+      setMessage(oauthErrorMessage(error instanceof Error ? error.message : "", "public.oauth.finalizeFailed"))
     } finally {
       setIsFinalizing(false)
     }
@@ -244,8 +237,8 @@ export default function SocialNetworkCallbackPage() {
   }
 
   const title = network
-    ? `${network.charAt(0).toUpperCase() + network.slice(1)} Authentication`
-    : "Social Network Authentication"
+    ? t("public.oauth.networkTitle", { network: network.charAt(0).toUpperCase() + network.slice(1) })
+    : t("public.oauth.title")
 
   return (
     <div className="flex-1">
@@ -264,7 +257,7 @@ export default function SocialNetworkCallbackPage() {
                   <div className="flex flex-col items-center gap-4 py-8">
                     <Loader className="h-8 w-8 text-primary" />
                     <p className="text-sm text-muted-foreground text-center">
-                      {message || "Processing authentication..."}
+                      {message || t("public.oauth.processing")}
                     </p>
                   </div>
                 )}
@@ -278,6 +271,7 @@ export default function SocialNetworkCallbackPage() {
                         onClick={() => handleTogglePage(page.id)}
                       >
                   <Checkbox
+                    aria-label={t("public.oauth.selectPage", { name: page.name })}
                     checked={selectedPages.includes(page.id)}
                     onCheckedChange={() => handleTogglePage(page.id)}
                   />
@@ -310,7 +304,7 @@ export default function SocialNetworkCallbackPage() {
               <CheckCircle className="h-12 w-12 text-green-500" />
               <p className="text-sm font-medium text-center">{message}</p>
               <p className="text-xs text-muted-foreground text-center">
-                Redirecting to settings...
+                {t("public.oauth.redirecting")}
               </p>
             </div>
           )}
@@ -322,47 +316,15 @@ export default function SocialNetworkCallbackPage() {
                 {message}
               </div>
               {(ourRedirectUri || outstandError || error === "Missing code or state parameter") && (
-                <div className="w-full text-left space-y-2">
-                  <p className="text-xs font-semibold text-muted-foreground">Copy and send to Outstand (contact@outstand.so):</p>
-                  <pre className="text-xs p-3 bg-muted rounded overflow-x-auto whitespace-pre-wrap font-inter">
-                    {`Subject: Facebook OAuth "Missing code or state parameter" — whitelist redirect_uri and check your callback
-
-We use the white-label flow. Our redirect_uri (where you should send the user with ?session= or ?error=) is:
-${ourRedirectUri || "https://[your-domain]/api/social/callback/facebook"}
-
-We pass it in the auth-url body; it appears in the Outstand URL you return. Facebook redirects to your callback; you redirect to us. We get: error=Missing code or state parameter.
-
-Please:
-1. Confirm our redirect_uri is whitelisted for our account/API key.
-2. When you receive the callback from Facebook at .../facebook/callback, do you get code and state? If not, we will recheck Facebook Valid OAuth Redirect URIs (https://www.outstand.so/app/api/socials/facebook/callback) and App Domains. If you do get them, what fails on your side?
-3. Do you have an exchange API (e.g. we receive code+state from Facebook, POST to you to get session) to bypass this?`}
-                  </pre>
-                  <p className="text-xs text-muted-foreground">
-                    If our redirect_uri is a tunnel: try from production (app.makinari.com) and ask Outstand to whitelist <code className="text-[10px]">https://app.makinari.com/api/social/callback/facebook</code>. Or set <code className="text-[10px]">NEXT_PUBLIC_FORCE_PRODUCTION_OAUTH_REDIRECT=true</code> to use it from localhost.
-                  </p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={async () => {
-                      const t = `Subject: Facebook OAuth "Missing code or state parameter" — whitelist redirect_uri and check your callback
-
-We use the white-label flow. Our redirect_uri (where you should send the user with ?session= or ?error=) is:
-${ourRedirectUri || "https://[your-domain]/api/social/callback/facebook"}
-
-We pass it in the auth-url body; it appears in the Outstand URL you return. Facebook redirects to your callback; you redirect to us. We get: error=Missing code or state parameter.
-
-Please:
-1. Confirm our redirect_uri is whitelisted for our account/API key.
-2. When you receive the callback from Facebook at .../facebook/callback, do you get code and state? If not, we will recheck Facebook Valid OAuth Redirect URIs (https://www.outstand.so/app/api/socials/facebook/callback) and App Domains. If you do get them, what fails on your side?
-3. Do you have an exchange API (e.g. we receive code+state from Facebook, POST to you to get session) to bypass this?`
-                      await navigator.clipboard.writeText(t)
-                      setCopied(true)
-                      setTimeout(() => setCopied(false), 2000)
-                    }}
-                  >
-                    {copied ? "Copied" : "Copy"}
-                  </Button>
-                </div>
+                <OAuthDiagnostics
+                  ourRedirectUri={ourRedirectUri}
+                  copied={copied}
+                  onCopy={async (text) => {
+                    await navigator.clipboard.writeText(text)
+                    setCopied(true)
+                    setTimeout(() => setCopied(false), 2000)
+                  }}
+                />
               )}
             </div>
           )}
@@ -370,21 +332,21 @@ Please:
             {status === "selecting" && (
               <SectionCardFooter>
                 <Button variant="outline" size="sm" onClick={handleBackToSettings}>
-                  Cancel
+                  {t("public.oauth.cancel")}
                 </Button>
                 <Button
                   size="sm"
                   onClick={handleFinalize}
                   disabled={selectedPages.length === 0 || isFinalizing}
                 >
-                  {isFinalizing ? "Connecting..." : `Connect ${selectedPages.length} Page(s)`}
+                  {isFinalizing ? t("public.oauth.connecting") : t("public.oauth.connectCount", { count: selectedPages.length })}
                 </Button>
               </SectionCardFooter>
             )}
             {status === "error" && (
               <SectionCardFooter>
                 <Button variant="outline" size="sm" onClick={handleBackToSettings}>
-                  Back to Settings
+                  {t("public.oauth.back")}
                 </Button>
               </SectionCardFooter>
             )}

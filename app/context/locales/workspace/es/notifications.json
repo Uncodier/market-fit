@@ -1,0 +1,11 @@
+{
+  "notifications.tabs.all": "Todas",
+  "notifications.tabs.unread": "Sin leer",
+  "notifications.searchPlaceholder": "Buscar notificaciones...",
+  "notifications.markAllRead": "Marcar todas como leídas",
+  "notifications.deleteAll": "Eliminar todas",
+  "notifications.empty.title": "No hay notificaciones",
+  "notifications.empty.search": "No se encontraron notificaciones que coincidan con tu búsqueda",
+  "notifications.empty.unread": "Sin leer",
+  "notifications.empty.none": "Ninguna"
+}

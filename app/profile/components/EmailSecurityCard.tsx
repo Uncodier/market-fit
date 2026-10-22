@@ -1,5 +1,7 @@
 "use client"
 
+import { useLocalization } from "@/app/context/LocalizationContext"
+
 import React, { useState } from "react"
 import {
   SectionCard,
@@ -30,6 +32,7 @@ export function EmailSecurityCard({
   onRequestEmailChange,
   isUpdating = false
 }: EmailSecurityCardProps) {
+  const { t } = useLocalization()
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   return (
@@ -38,23 +41,24 @@ export function EmailSecurityCard({
         <SectionCardHeader>
           <SectionCardTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5" />
-            Email & Security
+            {t("account.email.title")}
           </SectionCardTitle>
         </SectionCardHeader>
         <SectionCardContent className="space-y-4">
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-2">Email Address</label>
+              <label className="block text-sm font-medium mb-2">{t("checkout.emailAddress")}</label>
               <div className="relative">
                 <MessageSquare className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input 
                   className="pl-12 h-12 text-base transition-colors duration-200" 
+                  aria-label={t("checkout.emailAddress")}
                   value={emailChangeStatus.currentEmail || email}
                   disabled 
                 />
               </div>
               <p className="text-xs mt-2 text-muted-foreground">
-                Your email address is used for account verification and notifications.
+                {t("account.email.addressHelp")}
               </p>
             </div>
 
@@ -64,14 +68,13 @@ export function EmailSecurityCard({
                   <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
                   <div className="flex-1">
                     <p className="text-sm font-medium text-yellow-900 dark:text-yellow-100">
-                      Email Change Pending
+                      {t("account.email.pending")}
                     </p>
                     <p className="text-sm text-yellow-800 dark:text-yellow-200 mt-1">
-                      A verification email has been sent to <strong>{emailChangeStatus.pendingEmail}</strong>. 
-                      Please check your inbox and click the confirmation link to complete the change.
+                      {t("account.email.sentTo")} <strong>{emailChangeStatus.pendingEmail}</strong>{t("account.email.pendingInstructions")}
                     </p>
                     <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-2">
-                      Your current email ({emailChangeStatus.currentEmail || email}) will remain active until you confirm the new one.
+                      {t("account.email.currentActive", { email: emailChangeStatus.currentEmail || email })}
                     </p>
                   </div>
                 </div>
@@ -86,7 +89,7 @@ export function EmailSecurityCard({
             disabled={isUpdating}
           >
             <Link href="/security">
-              Change Password
+              {t("account.email.changePassword")}
             </Link>
           </Button>
           <Button
@@ -94,7 +97,7 @@ export function EmailSecurityCard({
             variant="outline"
             disabled={isUpdating}
           >
-            Change Email
+            {t("account.email.change")}
           </Button>
         </ActionFooter>
       </SectionCard>

@@ -1,5 +1,7 @@
 "use client"
 
+import { useLocalization } from "@/app/context/LocalizationContext"
+
 import React, { useState } from "react"
 import {
   Dialog,
@@ -31,6 +33,7 @@ export function ChangeEmailModal({
   onRequestEmailChange,
   isUpdating = false
 }: ChangeEmailModalProps) {
+  const { t } = useLocalization()
   const [step, setStep] = useState<Step>(1)
   const [password, setPassword] = useState("")
   const [newEmail, setNewEmail] = useState("")
@@ -51,7 +54,7 @@ export function ChangeEmailModal({
 
   const handlePasswordVerification = async () => {
     if (!password.trim()) {
-      setError("Password is required")
+      setError("account.email.passwordRequired")
       return
     }
 
@@ -69,7 +72,7 @@ export function ChangeEmailModal({
       })
 
       if (signInError) {
-        setError("Invalid password. Please try again.")
+        setError("account.email.passwordInvalid")
         setIsVerifying(false)
         return
       }
@@ -78,7 +81,7 @@ export function ChangeEmailModal({
       setStep(2)
       setError(null)
     } catch (err) {
-      setError("An error occurred. Please try again.")
+      setError("account.email.unexpected")
       console.error("Error verifying password:", err)
     } finally {
       setIsVerifying(false)
@@ -89,17 +92,17 @@ export function ChangeEmailModal({
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!newEmail.trim()) {
-      setError("Email is required")
+      setError("account.email.emailRequired")
       return
     }
 
     if (!emailRegex.test(newEmail)) {
-      setError("Please enter a valid email address")
+      setError("checkout.identity.invalidEmail")
       return
     }
 
     if (newEmail.toLowerCase() === currentEmail.toLowerCase()) {
-      setError("New email must be different from current email")
+      setError("account.email.different")
       return
     }
 
@@ -120,11 +123,11 @@ export function ChangeEmailModal({
           handleClose()
         }, 1500)
       } else {
-        setError("Failed to request email change. Please try again.")
+        setError("account.email.requestFailed")
         setIsSubmitting(false)
       }
     } catch (err) {
-      setError("An error occurred. Please try again.")
+      setError("account.email.unexpected")
       console.error("Error requesting email change:", err)
       setIsSubmitting(false)
     }
@@ -145,24 +148,25 @@ export function ChangeEmailModal({
             <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg">
               <Shield className="h-5 w-5 text-primary" />
               <div>
-                <p className="text-sm font-medium">Security Verification</p>
+                <p className="text-sm font-medium">{t("account.email.securityVerification")}</p>
                 <p className="text-xs text-muted-foreground">
-                  Please confirm your password to continue
+                  {t("account.email.passwordHelp")}
                 </p>
               </div>
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Current Password</label>
+              <label className="text-sm font-medium">{t("account.email.currentPassword")}</label>
               <div className="relative">
                 <Input
                   type={showPassword ? "text" : "password"}
+                  aria-label={t("account.email.currentPassword")}
                   value={password}
                   onChange={(e) => {
                     setPassword(e.target.value)
                     setError(null)
                   }}
-                  placeholder="Enter your password"
+                  placeholder={t("account.email.passwordPlaceholder")}
                   className="pr-10"
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
@@ -172,6 +176,7 @@ export function ChangeEmailModal({
                 />
                 <button
                   type="button"
+                  aria-label={t(showPassword ? "account.email.hidePassword" : "account.email.showPassword")}
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
@@ -192,16 +197,17 @@ export function ChangeEmailModal({
             <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg">
               <MessageSquare className="h-5 w-5 text-primary" />
               <div>
-                <p className="text-sm font-medium">New Email Address</p>
+                <p className="text-sm font-medium">{t("account.email.newAddress")}</p>
                 <p className="text-xs text-muted-foreground">
-                  Enter your new email address
+                  {t("account.email.newHelp")}
                 </p>
               </div>
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Current Email</label>
+              <label className="text-sm font-medium">{t("account.email.currentEmail")}</label>
               <Input
+                aria-label={t("account.email.currentEmail")}
                 value={currentEmail}
                 disabled
                 className="bg-muted"
@@ -209,15 +215,16 @@ export function ChangeEmailModal({
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">New Email</label>
+              <label className="text-sm font-medium">{t("account.email.newEmail")}</label>
               <Input
                 type="email"
+                aria-label={t("account.email.newEmail")}
                 value={newEmail}
                 onChange={(e) => {
                   setNewEmail(e.target.value)
                   setError(null)
                 }}
-                placeholder="newemail@example.com"
+                placeholder={t("account.email.emailPlaceholder")}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     handleEmailSubmit()
@@ -235,31 +242,29 @@ export function ChangeEmailModal({
               <CheckCircle2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               <div>
                 <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                  Confirm Email Change
+                  {t("account.email.confirmTitle")}
                 </p>
                 <p className="text-xs text-blue-700 dark:text-blue-300">
-                  Please review the email addresses below
+                  {t("account.email.review")}
                 </p>
               </div>
             </div>
 
             <div className="space-y-3">
               <div>
-                <label className="text-sm font-medium text-muted-foreground">Current Email</label>
+                <label className="text-sm font-medium text-muted-foreground">{t("account.email.currentEmail")}</label>
                 <p className="text-base mt-1">{currentEmail}</p>
               </div>
 
               <div>
-                <label className="text-sm font-medium text-muted-foreground">New Email</label>
+                <label className="text-sm font-medium text-muted-foreground">{t("account.email.newEmail")}</label>
                 <p className="text-base mt-1">{newEmail}</p>
               </div>
             </div>
 
             <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
               <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                <strong>Important:</strong> A verification email will be sent to {newEmail}. 
-                You must click the link in that email to confirm the change. 
-                Your current email will remain active until you confirm the new one.
+                <strong>{t("account.email.important")}</strong> {t("account.email.confirmationHelp", { email: newEmail })}
               </p>
             </div>
           </div>
@@ -276,12 +281,10 @@ export function ChangeEmailModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5" />
-            Change Email Address
+            {t("account.email.changeAddress")}
           </DialogTitle>
           <DialogDescription>
-            Step {step} of 3: {step === 1 && "Verify Password"}
-            {step === 2 && "Enter New Email"}
-            {step === 3 && "Confirm Change"}
+            {t("account.email.step", { step, title: t(step === 1 ? "account.email.verifyPassword" : step === 2 ? "account.email.enterNew" : "account.email.confirmChange") })}
           </DialogDescription>
         </DialogHeader>
 
@@ -301,9 +304,9 @@ export function ChangeEmailModal({
                     {step > s ? <CheckCircle2 className="h-4 w-4" /> : s}
                   </div>
                   <span className="text-xs mt-1 text-muted-foreground">
-                    {s === 1 && "Password"}
-                    {s === 2 && "New Email"}
-                    {s === 3 && "Confirm"}
+                    {s === 1 && t("account.email.password")}
+                    {s === 2 && t("account.email.newEmail")}
+                    {s === 3 && t("account.email.confirm")}
                   </span>
                 </div>
                 {s < 3 && (
@@ -321,7 +324,7 @@ export function ChangeEmailModal({
 
           {error && (
             <div className="mt-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-              <p className="text-sm text-destructive">{error}</p>
+              <p className="text-sm text-destructive">{t(error)}</p>
             </div>
           )}
         </div>
@@ -333,7 +336,7 @@ export function ChangeEmailModal({
               onClick={step === 1 ? handleClose : handleBack}
               disabled={isVerifying || isSubmitting}
             >
-              {step === 1 ? "Cancel" : "Back"}
+              {step === 1 ? t("common.cancel") : t("pdp.back")}
             </Button>
 
             <div className="flex gap-2">
@@ -342,7 +345,7 @@ export function ChangeEmailModal({
                   onClick={handlePasswordVerification}
                   disabled={isVerifying || !password.trim()}
                 >
-                  {isVerifying ? "Verifying..." : "Continue"}
+                  {isVerifying ? t("account.email.verifying") : t("account.email.continue")}
                 </Button>
               )}
 
@@ -351,7 +354,7 @@ export function ChangeEmailModal({
                   onClick={handleEmailSubmit}
                   disabled={!newEmail.trim()}
                 >
-                  Continue
+                  {t("account.email.continue")}
                 </Button>
               )}
 
@@ -360,7 +363,7 @@ export function ChangeEmailModal({
                   onClick={handleConfirm}
                   disabled={isSubmitting || isUpdating}
                 >
-                  {isSubmitting || isUpdating ? "Sending..." : "Confirm & Send Verification Email"}
+                  {isSubmitting || isUpdating ? t("account.email.sending") : t("account.email.sendConfirmation")}
                 </Button>
               )}
             </div>

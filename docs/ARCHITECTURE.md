@@ -90,8 +90,10 @@ nor overwrite that public cookie. Regional codes such as `es-MX` are normalized
 to supported languages. Locale and messages are derived together so there is no
 render with a newly selected language and the previous language's translations.
 
-`app/context/locale-catalog.ts` combines the legacy dictionaries with feature
-overlays under `app/context/locales/commerce/`. Commerce overlays cover English,
+`app/context/locale-catalog.ts` combines the legacy dictionaries with Spanish
+workspace overlays under `app/context/locales/workspace/`, screen overlays under
+`app/context/locales/screens/`, and feature overlays under
+`app/context/locales/commerce/`. Commerce overlays cover English,
 Spanish, French, German and Japanese and take precedence over legacy copy without
 changing the workspace fallback policy. The document translator reuses this
 catalog while retaining its English/Spanish public contract. Both marketplace
@@ -103,6 +105,12 @@ not change the selected country, prices, dates or checkout currency.
 each language's own dictionaries, without English fallback, including dynamic
 category/sort maps and retail/service checkout labels. Feature key sets and
 interpolation parameters must remain identical across all five languages.
+
+`rawLocaleMessages` exposes own-language coverage without fallback. Workspace
+regressions check English/Spanish references and explicit overlay registration.
+See [Localization coverage and repair](LOCALIZATION_AUDIT.md) for the reproducible
+audit, translated surfaces, and remaining hardcoded legacy UI. Zero missing
+dictionary entries does not imply that all UI text is connected to the catalog.
 
 ## Password recovery navigation
 

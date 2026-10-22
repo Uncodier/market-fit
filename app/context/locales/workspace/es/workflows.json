@@ -1,0 +1,8 @@
+{
+  "workflows.trigger": "Disparador",
+  "workflows.step": "Paso",
+  "workflows.sandboxBadge": "Este flujo de trabajo puede iniciar una máquina virtual de pago cuando se activen los disparadores correspondientes.",
+  "workflows.pickInstance": "Selecciona o crea una instancia para diseñar un flujo de trabajo.",
+  "workflows.runStarted": "Se ha iniciado la ejecución del flujo de trabajo. Abre Agentes para ver los registros.",
+  "workflows.running": "En ejecución…"
+}

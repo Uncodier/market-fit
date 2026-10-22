@@ -1,10 +1,9 @@
 
 "use client"
 
-import React, { useEffect, useState, Suspense, useCallback, useMemo } from "react"
+import React, { useEffect, useRef, useState, Suspense, useCallback, useMemo } from "react"
 import "@/app/styles/chat-optimizations.css"
 import { useSearchParams, useRouter } from "next/navigation"
-import { Breadcrumb } from "@/app/components/navigation/Breadcrumb"
 import { useAuthContext } from "@/app/components/auth/auth-provider"
 import { markUINavigation } from "@/lib/navigation/navigation-helpers"
 import { useSite } from "@/app/context/SiteContext"
@@ -13,7 +12,8 @@ import { createClient } from "@/lib/supabase/client"
 import { ChatList } from "@/app/components/chat/chat-list"
 import { useCommandK } from "@/app/hooks/use-command-k"
 // Chat service functions are imported dynamically where used to avoid client bundling issues
-import * as Icons from "@/app/components/ui/icons"
+import { useLocalization } from "@/app/context/LocalizationContext"
+import { LocalizedChatBreadcrumb } from "./localized-chat-breadcrumb"
 
 // New imports for refactored components
 import { ChatHeader } from "@/app/components/chat/ChatHeader"
@@ -35,18 +35,27 @@ import { useLayout } from "@/app/context/LayoutContext"
 import { useAutoCollapseSidebar } from "@/app/hooks/use-auto-collapse-sidebar"
 
 export default function ChatPage() {
+  const { t } = useLocalization()
   return (
-    <Suspense fallback={<div className="flex justify-center items-center min-h-screen">Loading chat...</div>}>
+    <Suspense fallback={<div className="flex justify-center items-center min-h-screen">{t("details.chat.loading")}</div>}>
       <ChatPageContent />
     </Suspense>
   )
 }
 
 function ChatPageContent() {
+  const { t } = useLocalization()
+  const translateRef = useRef(t)
+  useEffect(() => {
+    translateRef.current = t
+  }, [t])
+
   const searchParams = useSearchParams()
   const router = useRouter()
   const agentId = searchParams.get("agentId") || ""
   const agentName = searchParams.get("agentName") || "Agent"
+  // Translate the display fallback without changing names used by chat data hooks.
+  const displayAgentName = searchParams.get("agentName") || t("details.chat.agent")
   const conversationId = searchParams.get("conversationId") || ""
   
   // Optimized message state management - debounced re-renders
@@ -231,7 +240,7 @@ function ChatPageContent() {
     return Boolean(conversationId && conversationId !== "" && !conversationId.startsWith("new-"))
   }, [conversationId])
 
-  // Sobrescribe el estado de isAgentResponding desde el tracker de API
+  // Override agent response state using the API request tracker.
   useEffect(() => {
     // Synchronize the loading animation with requests for this conversation.
     const hasActiveRequest = hasActiveChatRequest(conversationId)
@@ -313,7 +322,7 @@ function ChatPageContent() {
       router.push("/chat")
     } catch (error) {
       console.error("Error deleting conversation:", error)
-      alert("Failed to delete conversation. Please try again.")
+      alert(translateRef.current("details.chat.deleteFailed"))
       setIsDeletingConversation(false)
     }
   }, [conversationId, router])
@@ -375,7 +384,7 @@ function ChatPageContent() {
                 {/* Header with agent and lead info */}
                 <ChatHeader 
             agentId={agentId}
-            agentName={agentName}
+            agentName={displayAgentName}
             currentAgent={currentAgent}
             isAgentOnlyConversation={isAgentOnlyConversation}
             isLoadingLead={isLoadingLead}
@@ -405,7 +414,7 @@ function ChatPageContent() {
               messagesEndRef={messagesEndRef}
               containerRef={messagesContainerRef}
               agentId={agentId}
-              agentName={agentName}
+              agentName={displayAgentName}
               isAgentOnlyConversation={isAgentOnlyConversation}
               isLead={Boolean(leadData?.id)}
               leadData={leadData}
@@ -444,27 +453,5 @@ function ChatPageContent() {
   )
 }
 
-// Static initial breadcrumb (will be updated with useEffect)
-ChatPageContent.breadcrumb = (
-  <div className="flex justify-between items-center w-full pr-8">
-    <Breadcrumb
-      items={[
-        {
-          href: "/",
-          label: "Home",
-          icon: <Icons.Home className="h-3.5 w-3.5" />
-        },
-        {
-          href: "/agents",
-          label: "Agents",
-          icon: <Icons.Users className="h-3.5 w-3.5" />
-        },
-        {
-          href: "#",
-          label: "Chat",
-          icon: <Icons.MessageSquare className="h-3.5 w-3.5" />
-        }
-      ]}
-    />
-  </div>
-); 
+// The component reads the active locale even when rendered from static metadata.
+ChatPageContent.breadcrumb = <LocalizedChatBreadcrumb />

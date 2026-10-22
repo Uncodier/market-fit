@@ -1,0 +1,18 @@
+{
+  "from": "De",
+  "billTo": "Facturar a",
+  "signIn": "Iniciar sesión",
+  "personalInformation": "Información personal",
+  "view": "Ver",
+  "go": "Ir",
+  "signOut": "Cerrar sesión",
+  "searchTables": "Buscar mesas",
+  "cancel": "Cancelar",
+  "remove": "Eliminar",
+  "saving": "Guardando",
+  "save": "Guardar",
+  "invoice": "Factura",
+  "clear": "Limpiar",
+  "consumeHere": "Consumir aquí",
+  "saleNotFound": "Venta no encontrada"
+}

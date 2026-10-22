@@ -3,6 +3,7 @@
 import { use, Suspense } from "react"
 import { CodeExplorer } from "@/app/components/applications/CodeExplorer"
 import { useSearchParams } from "next/navigation"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 function RequirementCodeContent({ requirementId }: { requirementId: string }) {
   const searchParams = useSearchParams()
@@ -17,9 +18,10 @@ function RequirementCodeContent({ requirementId }: { requirementId: string }) {
 
 export default function RequirementCodePage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params)
+  const { t } = useLocalization()
 
   return (
-    <Suspense fallback={<div className="flex items-center justify-center h-[calc(100dvh-64px)]">Loading...</div>}>
+    <Suspense fallback={<div className="flex items-center justify-center h-[calc(100dvh-64px)]">{t("details.loading")}</div>}>
       <RequirementCodeContent requirementId={resolvedParams.id} />
     </Suspense>
   )

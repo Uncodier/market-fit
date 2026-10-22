@@ -1,5 +1,7 @@
 "use client"
 
+import { useLocalization } from "@/app/context/LocalizationContext"
+
 import { useState, useEffect, useRef, Suspense } from "react"
 import { toast } from "sonner"
 import { useOptionalSite } from "@/app/context/SiteContext"
@@ -15,9 +17,14 @@ import { reloadForNewBuild } from "../components/ChunkErrorGuard"
 import { isDemoSiteId } from "@/lib/demo-utils"
 import { prepareSiteBilling } from "@/app/services/initialize-site-billing"
 import { BillingSetupWarning } from "@/app/components/billing/billing-setup-warning"
+import { localizeSetupText } from "./localized-feedback"
 import type { SiteOnboardingValues } from "../components/onboarding/schemas/onboarding-schema"
 
 function CreateSitePageContent() {
+  const { t } = useLocalization()
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('breadcrumb:update', { detail: { title: t('account.setup.title') } }))
+  }, [t])
   const [isSaving, setIsSaving] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
   const [createdSiteId, setCreatedSiteId] = useState<string>("")
@@ -56,13 +63,13 @@ function CreateSitePageContent() {
       <div className="min-h-screen bg-gradient-to-b from-background/40 to-background flex items-center justify-center">
         <div className="text-center space-y-4">
           <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="text-muted-foreground">Refreshing project setup...</p>
+          <p className="text-muted-foreground">{t("account.setup.refreshing")}</p>
           <button
             type="button"
             className="text-sm underline text-muted-foreground hover:text-foreground"
             onClick={() => window.location.reload()}
           >
-            Refresh page
+            {t("account.setup.refreshPage")}
           </button>
         </div>
       </div>
@@ -129,7 +136,7 @@ function CreateSitePageContent() {
       // The insert has succeeded. Billing failures must never return to project creation.
       const warning = await prepareSiteBilling(newSite.id, refreshSiteBilling)
       setBillingWarning(warning)
-      if (warning) toast.warning(warning)
+      if (warning) toast.warning(localizeSetupText(warning, t))
       setIsSuccess(true)
       setIsSaving(false)
 
@@ -139,7 +146,7 @@ function CreateSitePageContent() {
     } catch (error) {
       submissionStarted.current = false
       console.error(error)
-      toast.error(getCreateSiteErrorMessage(error))
+      toast.error(localizeSetupText(getCreateSiteErrorMessage(error), t))
     } finally {
       setIsSaving(false)
     }
@@ -152,7 +159,7 @@ function CreateSitePageContent() {
     const warning = await prepareSiteBilling(createdSiteId, refreshSiteBilling)
     setBillingWarning(warning)
     if (warning) toast.warning(warning)
-    else toast.success("Billing setup confirmed. Credits refreshed.")
+    else toast.success(t("account.setup.billingConfirmed"))
     setIsRetryingBilling(false)
     billingRetryStarted.current = false
   }
@@ -206,7 +213,7 @@ function CreateSitePageContent() {
   return (
     <div className="relative z-[9999]">
       {billingWarning && <div className="max-w-3xl mx-auto px-4">
-        <BillingSetupWarning message={billingWarning} isLoading={isRetryingBilling} onRetry={() => void retryBilling()} />
+        <BillingSetupWarning message={localizeSetupText(billingWarning, t)} isLoading={isRetryingBilling} onRetry={() => void retryBilling()} />
       </div>}
       {createdSiteId && <div className="max-w-3xl mx-auto px-4">
         <SiteSetupTracking siteId={createdSiteId} />

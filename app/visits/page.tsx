@@ -3,6 +3,7 @@
 import { Suspense, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
 import { useSite } from "@/app/context/SiteContext"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import { VisitRegistrationForm } from "./components/VisitRegistrationForm"
 import { VisitFormSkeleton } from "./components/VisitFormSkeleton"
 
@@ -17,6 +18,7 @@ function VisitsPageShell({ children }: { children: React.ReactNode }) {
 }
 
 function VisitsPageContent() {
+  const { t } = useLocalization()
   const { currentSite, isLoading } = useSite()
   const searchParams = useSearchParams()
   const reservationId = searchParams.get("reservationId") || undefined
@@ -24,10 +26,10 @@ function VisitsPageContent() {
   useEffect(() => {
     window.dispatchEvent(
       new CustomEvent("breadcrumb:update", {
-        detail: { title: "Visits", parent: null },
+        detail: { title: t("layout.sidebar.visits"), parent: null },
       })
     )
-  }, [])
+  }, [t])
 
   if (isLoading) {
     return (
@@ -40,7 +42,7 @@ function VisitsPageContent() {
   if (!currentSite) {
     return (
       <VisitsPageShell>
-        <div className="text-sm text-muted-foreground">Select a site first.</div>
+        <div className="text-sm text-muted-foreground">{t("operations.visits.selectSite")}</div>
       </VisitsPageShell>
     )
   }

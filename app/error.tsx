@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { Button } from './components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './components/ui/card'
 import { isStaleClientBundleError, reloadForNewBuild } from './components/ChunkErrorGuard'
+import { useSystemLocalization } from './context/use-system-localization'
 
 export default function Error({
   error,
@@ -12,6 +13,7 @@ export default function Error({
   error: Error & { digest?: string }
   reset: () => void
 }) {
+  const { t } = useSystemLocalization()
   const isStale = isStaleClientBundleError(error)
 
   // If the error is caused by stale chunks from a previous build, force a hard
@@ -23,11 +25,11 @@ export default function Error({
       return
     }
 
-    console.error('Error en la aplicación:', error)
+    console.error('Application error:', error)
 
-    // Log detallado para problemas de autenticación
+    // Additional diagnostics for authentication problems.
     if (error.message.includes('token') || error.message.includes('auth')) {
-      console.error('Posible problema de autenticación. Intenta cerrar sesión y volver a iniciar sesión.')
+      console.error('Possible authentication problem. Try signing out and signing in again.')
     }
   }, [error, isStale])
 
@@ -39,31 +41,31 @@ export default function Error({
     <div className="flex items-center justify-center min-h-screen p-6 bg-gray-50">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle className="text-red-600">Se ha producido un error</CardTitle>
+          <CardTitle className="text-red-600">{t('system.error.title')}</CardTitle>
           <CardDescription>
-            Ha ocurrido un problema inesperado en la aplicación.
+            {t('system.error.description')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="p-4 bg-red-50 border border-red-100 rounded-md mb-4">
-            <p className="text-sm font-medium text-red-800">Detalles del error:</p>
+            <p className="text-sm font-medium text-red-800">{t('system.error.details')}</p>
             <p className="text-sm text-red-700 mt-1 break-words">
-              {error.message || "Error desconocido"}
+              {error.message || t('system.error.unknown')}
             </p>
             {error.digest && (
               <p className="text-xs text-red-500 mt-2">
-                ID del error: {error.digest}
+                {t('system.error.id')} {error.digest}
               </p>
             )}
           </div>
           <p className="text-sm text-gray-500">
-            Puedes intentar:
+            {t('system.error.suggestions')}
           </p>
           <ul className="list-disc list-inside text-sm text-gray-500 mt-2 space-y-1">
-            <li>Recargar la página</li>
-            <li>Limpiar la caché del navegador</li>
-            <li>Cerrar sesión y volver a iniciar sesión</li>
-            <li>Volver a la página de inicio</li>
+            <li>{t('system.error.reload')}</li>
+            <li>{t('system.error.clearCache')}</li>
+            <li>{t('system.error.signOut')}</li>
+            <li>{t('system.error.home')}</li>
           </ul>
         </CardContent>
         <CardFooter className="flex justify-between">
@@ -71,10 +73,10 @@ export default function Error({
             variant="outline" 
             onClick={() => window.location.href = '/auth/login'}
           >
-            Ir al inicio de sesión
+            {t('system.error.signIn')}
           </Button>
           <Button onClick={reset}>
-            Intentar de nuevo
+            {t('system.error.retry')}
           </Button>
         </CardFooter>
       </Card>

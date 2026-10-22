@@ -3,6 +3,7 @@
 import { use, Suspense } from "react"
 import { TenantTablesExplorer } from "@/app/components/applications/TenantTablesExplorer"
 import { useSearchParams } from "next/navigation"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 function TenantDatabaseContent({ tenantId }: { tenantId: string }) {
   const searchParams = useSearchParams()
@@ -17,9 +18,10 @@ function TenantDatabaseContent({ tenantId }: { tenantId: string }) {
 
 export default function TenantDatabasePage({ params }: { params: Promise<{ tenantId: string }> }) {
   const resolvedParams = use(params)
+  const { t } = useLocalization()
 
   return (
-    <Suspense fallback={<div className="flex items-center justify-center h-full">Loading...</div>}>
+    <Suspense fallback={<div className="flex items-center justify-center h-full">{t("details.loading")}</div>}>
       <TenantDatabaseContent tenantId={resolvedParams.tenantId} />
     </Suspense>
   )

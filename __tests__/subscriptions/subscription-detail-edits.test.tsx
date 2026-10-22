@@ -4,11 +4,17 @@ import SubscriptionDetailPage from "@/app/subscriptions/[id]/page"
 import { getSubscriptionDetail, type SubscriptionDetail } from "@/app/subscriptions/actions"
 import { updateSubscriptionAmount, updateSubscriptionEndDate } from "@/app/subscriptions/update-details"
 import { toast } from "sonner"
-import messages from "@/app/context/locales/en.json"
+import { localeMessages } from "@/app/context/locale-catalog"
+
+let mockLocale: "en" | "es" = "en"
+const mockTranslators = {
+  en: (key: string) => localeMessages.en[key] || key,
+  es: (key: string) => localeMessages.es[key] || key,
+}
 
 jest.mock("@/app/context/SiteContext", () => ({ useSite: () => ({ currentSite: { id: "11111111-1111-4111-8111-111111111111" } }) }))
 jest.mock("@/app/context/PermissionContext", () => ({ useOptionalPermissions: () => null }))
-jest.mock("@/app/context/LocalizationContext", () => ({ useLocalization: () => ({ locale: "en", t: (key: string) => messages[key as keyof typeof messages] || key }) }))
+jest.mock("@/app/context/LocalizationContext", () => ({ useLocalization: () => ({ locale: mockLocale, t: mockTranslators[mockLocale] }) }))
 jest.mock("@/app/hooks/use-mobile-view", () => ({ useIsMobile: () => false }))
 jest.mock("@/app/subscriptions/actions", () => ({ getSubscriptionDetail: jest.fn(), updateSubscriptionStatus: jest.fn(), updateSubscriptionDueDate: jest.fn(), updateSubscriptionNextBillingDate: jest.fn() }))
 jest.mock("@/app/subscriptions/update-details", () => ({ updateSubscriptionAmount: jest.fn(), updateSubscriptionEndDate: jest.fn() }))
@@ -40,6 +46,7 @@ async function open() {
 }
 
 beforeEach(() => {
+  mockLocale = "en"
   jest.clearAllMocks()
   jest.spyOn(React, "use").mockReturnValue({ id: subscription.id })
   jest.mocked(getSubscriptionDetail).mockResolvedValue({ subscription, invoices: [] })
@@ -86,4 +93,25 @@ it("retains the prior amount and editor if the server rejects an update", async 
   expect(screen.getByTestId("invoice-default")).toHaveTextContent("125")
   expect(screen.getByLabelText("Amount")).toHaveValue(250)
   expect(toast.success).not.toHaveBeenCalled()
+})
+
+it("translates headings and document title on locale switch without refetching the subscription", async () => {
+  const view = render(<SubscriptionDetailPage params={Promise.resolve({ id: subscription.id })} />)
+  await screen.findByTestId("subscription-header")
+  expect(getSubscriptionDetail).toHaveBeenCalledTimes(1)
+  mockLocale = "es"
+  view.rerender(<SubscriptionDetailPage params={Promise.resolve({ id: subscription.id })} />)
+  expect(screen.getByRole("heading", { name: "Facturas" })).toBeInTheDocument()
+  expect(screen.getByText("Historial de facturación de esta suscripción.")).toBeInTheDocument()
+  expect(document.title).toBe(`Growth plan | ${localeMessages.es["layout.sidebar.subscriptions"]}`)
+  expect(getSubscriptionDetail).toHaveBeenCalledTimes(1)
+})
+
+it("translates a known load error and the missing subscription recovery action", async () => {
+  mockLocale = "es"
+  jest.mocked(getSubscriptionDetail).mockResolvedValueOnce({ subscription: null, invoices: [], error: "Subscription not found" })
+  render(<SubscriptionDetailPage params={Promise.resolve({ id: subscription.id })} />)
+  expect(await screen.findByRole("heading", { name: "Suscripción no encontrada" })).toBeInTheDocument()
+  expect(screen.getByRole("button", { name: "Volver a suscripciones" })).toBeInTheDocument()
+  expect(toast.error).toHaveBeenCalledWith("Suscripción no encontrada")
 })

@@ -1,0 +1,7 @@
+{
+  "commercePages.booking.marketplace": "Place de marché",
+  "commercePages.booking.title": "Réserver {{item}} | {{site}}",
+  "commercePages.booking.loading": "Chargement...",
+  "commercePages.booking.itemNotFound": "Article introuvable",
+  "commercePages.booking.addedToCart": "{{item}} ajouté au panier"
+}

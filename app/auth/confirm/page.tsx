@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { Button } from "@/app/components/ui/button"
 import { CheckCircle2, XCircle } from "@/app/components/ui/icons"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import {
   authReturnToFromSearchParams,
   resolvePostAuthRedirect,
@@ -14,6 +15,7 @@ import {
 type ConfirmationState = 'needs_click' | 'loading' | 'success' | 'error' | 'redirect' | 'otp_channel_block'
 
 function ConfirmContent() {
+  const { t } = useLocalization()
   const router = useRouter()
   const searchParams = useSearchParams()
   const [confirmationState, setState] = useState<ConfirmationState>('needs_click')
@@ -24,7 +26,7 @@ function ConfirmContent() {
     (searchParams.get('redirect_to') || '').includes('auth_channel=otp')
   const hasToken = Boolean(searchParams.get('token_hash'))
   const state = isOtpChannel ? 'otp_channel_block' : !hasToken ? 'error' : confirmationState
-  const message = !hasToken ? 'Missing confirmation token' : confirmationMessage
+  const message = !hasToken ? t('auth.flows.confirm.missingToken') : confirmationMessage ? t(confirmationMessage) : ''
 
   const handleConfirmation = async () => {
     setState('loading')
@@ -64,7 +66,7 @@ function ConfirmContent() {
           if (error) {
             console.error('❌ Invitation confirmation error:', error)
             setState('error')
-            setMessage(error.message || 'Failed to confirm invitation')
+            setMessage('auth.flows.confirm.failedInvitation')
             return
           }
 
@@ -78,7 +80,7 @@ function ConfirmContent() {
           if (!hasPasswordSet) {
             console.log('🔐 User needs to set password, redirecting to password setup')
             setState('redirect')
-            setMessage('Invitation confirmed! Setting up your account...')
+            setMessage('auth.flows.confirm.invitationSetup')
             
             setTimeout(() => {
               router.push(
@@ -90,13 +92,13 @@ function ConfirmContent() {
           } else if (redirectTo) {
             console.log('🔄 Redirecting to:', redirectTo)
             setState('redirect')
-            setMessage('Invitation confirmed! Redirecting...')
+            setMessage('auth.flows.confirm.invitationRedirect')
             setTimeout(() => {
               window.location.href = decodeURIComponent(redirectTo)
             }, 1500)
           } else {
             setState('success')
-            setMessage('Invitation confirmed successfully!')
+            setMessage('auth.flows.confirm.invitationSuccess')
             setRedirectUrl(postAuthPath)
           }
         } else {
@@ -111,7 +113,7 @@ function ConfirmContent() {
           if (error) {
             console.error('❌ Email confirmation error:', error)
             setState('error')
-            setMessage(error.message || 'Failed to confirm email')
+            setMessage('auth.flows.confirm.failedEmail')
             return
           }
 
@@ -124,7 +126,7 @@ function ConfirmContent() {
             const { data: refreshedSession } = await supabase.auth.getSession()
             if (!refreshedSession.session) {
               setState('error')
-              setMessage('Email confirmed but failed to establish session. Please try signing in manually.')
+              setMessage('auth.flows.confirm.noSession')
               return
             }
             console.log('✅ Session refreshed successfully after confirmation')
@@ -133,7 +135,7 @@ function ConfirmContent() {
           // Recovery must reset an existing password, not follow normal sign-in routing.
           if (type === 'recovery') {
             setState('redirect')
-            setMessage('Recovery link verified! Redirecting to reset your password...')
+            setMessage('auth.flows.confirm.recoveryRedirect')
             router.replace(setPasswordUrl)
             return
           }
@@ -170,14 +172,14 @@ function ConfirmContent() {
           if (!hasPasswordSet) {
             console.log('🔐 User needs to set password, redirecting to password setup')
             setState('redirect')
-            setMessage('Email confirmed! Setting up your account...')
+            setMessage('auth.flows.confirm.emailSetup')
             
             setTimeout(() => {
               router.push(setPasswordUrl)
             }, 1500)
           } else {
             setState('redirect')
-            setMessage('Email confirmed! Redirecting...')
+            setMessage('auth.flows.confirm.emailRedirect')
             setTimeout(() => {
               window.location.href = postAuthPath
             }, 2000)
@@ -187,7 +189,7 @@ function ConfirmContent() {
       } catch (error) {
         console.error('❌ Confirmation process error:', error)
         setState('error')
-        setMessage('An unexpected error occurred during confirmation')
+        setMessage('auth.flows.confirm.unexpectedError')
       }
   }
 
@@ -207,7 +209,7 @@ function ConfirmContent() {
         <Card className="bg-card border-border">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl font-bold text-foreground">
-              {isRecovery ? 'Reset Password' : 'Email Confirmation'}
+              {t(isRecovery ? 'auth.flows.reset.title' : 'auth.flows.confirm.title')}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -215,9 +217,9 @@ function ConfirmContent() {
               {state === 'otp_channel_block' && (
                 <>
                   <XCircle className="h-12 w-12 text-muted-foreground mb-4" />
-                  <p className="text-foreground font-medium mb-2">Checkout code required</p>
+                  <p className="text-foreground font-medium mb-2">{t('auth.flows.confirm.checkoutCodeTitle')}</p>
                   <p className="text-muted-foreground text-sm">
-                    This link is not meant to be clicked. Please go back to the checkout page and enter the 6-digit code we sent you.
+                    {t('auth.flows.confirm.checkoutCodeDescription')}
                   </p>
                 </>
               )}
@@ -226,12 +228,10 @@ function ConfirmContent() {
                 <>
                   <CheckCircle2 className="h-12 w-12 text-primary mb-4" />
                   <p className="text-muted-foreground mb-4">
-                    {isRecovery
-                      ? 'Click below to securely reset your password.'
-                      : 'Click below to securely confirm your sign in.'}
+                    {t(isRecovery ? 'auth.flows.confirm.recoveryPrompt' : 'auth.flows.confirm.signInPrompt')}
                   </p>
                   <Button onClick={handleConfirmation} className="w-full">
-                    {isRecovery ? 'Reset Password' : 'Confirm Sign In'}
+                    {t(isRecovery ? 'auth.flows.reset.title' : 'auth.flows.confirm.signIn')}
                   </Button>
                 </>
               )}
@@ -240,7 +240,7 @@ function ConfirmContent() {
                 <>
                   <div className="h-12 w-12 mb-4 animate-pulse bg-primary/20 rounded-full" />
                   <p className="text-muted-foreground">
-                    {isRecovery ? 'Verifying your recovery link...' : 'Confirming your email...'}
+                    {t(isRecovery ? 'auth.flows.confirm.verifyingRecovery' : 'auth.flows.confirm.verifyingEmail')}
                   </p>
                 </>
               )}
@@ -251,7 +251,7 @@ function ConfirmContent() {
                   <p className="text-muted-foreground mb-4">{message}</p>
                   {redirectUrl && (
                     <Button onClick={handleManualRedirect} className="w-full">
-                      Continue to Dashboard
+                      {t('auth.flows.continueDashboard')}
                     </Button>
                   )}
                 </>
@@ -271,14 +271,14 @@ function ConfirmContent() {
                   <p className="text-destructive mb-4">{message}</p>
                   <div className="space-y-2 w-full">
                     <Button onClick={handleRetry} variant="outline" className="w-full">
-                      Try Again
+                      {t('auth.flows.tryAgain')}
                     </Button>
                     <Button 
                       onClick={() => router.push('/auth/login')} 
                       variant="ghost" 
                       className="w-full"
                     >
-                      Go to Login
+                      {t('auth.flows.goToLogin')}
                     </Button>
                   </div>
                 </>
@@ -287,7 +287,7 @@ function ConfirmContent() {
 
             <div className="text-center">
               <p className="text-xs text-muted-foreground">
-                Having trouble? Contact support for assistance.
+                {t('auth.flows.confirm.support')}
               </p>
             </div>
           </CardContent>
@@ -298,6 +298,7 @@ function ConfirmContent() {
 }
 
 export default function ConfirmPage() {
+  const { t } = useLocalization()
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center bg-background py-12 px-4 sm:px-6 lg:px-8">
@@ -305,7 +306,7 @@ export default function ConfirmPage() {
           <Card className="bg-card border-border">
             <CardContent className="flex flex-col items-center text-center py-8">
               <div className="h-12 w-12 mb-4 animate-pulse bg-primary/20 rounded-full" />
-              <p className="text-muted-foreground">Loading...</p>
+              <p className="text-muted-foreground">{t('common.loading')}</p>
             </CardContent>
           </Card>
         </div>

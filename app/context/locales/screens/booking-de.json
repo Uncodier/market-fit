@@ -1,0 +1,7 @@
+{
+  "commercePages.booking.marketplace": "Marktplatz",
+  "commercePages.booking.title": "{{item}} buchen | {{site}}",
+  "commercePages.booking.loading": "Wird geladen...",
+  "commercePages.booking.itemNotFound": "Artikel nicht gefunden",
+  "commercePages.booking.addedToCart": "{{item}} zum Warenkorb hinzugefügt"
+}

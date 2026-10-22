@@ -1,5 +1,7 @@
 "use client"
 
+import { useLocalization } from "@/app/context/LocalizationContext"
+
 import React, { useState } from "react"
 import {
   SectionCard,
@@ -44,24 +46,27 @@ function EventTypeFields({
   sites?: Site[]
   enabledId: string
 }) {
+  const { t } = useLocalization()
   return (
     <>
       <div className="grid gap-5 md:grid-cols-2">
         <div className="grid gap-2">
-          <Label className="text-xs font-semibold text-muted-foreground">Title</Label>
+          <Label className="text-xs font-semibold text-muted-foreground">{t("buyer.library.redeem.title")}</Label>
           <Input
             className="bg-background h-12 text-base"
+            aria-label={t("buyer.library.redeem.title")}
             value={value.title || ""}
             onChange={(e) => onChange({ ...value, title: e.target.value })}
-            placeholder="30 Minute Meeting"
+            placeholder={t("account.events.meetingPlaceholder")}
           />
         </div>
         <div className="grid gap-2">
-          <Label className="text-xs font-semibold text-muted-foreground">URL Slug</Label>
+          <Label className="text-xs font-semibold text-muted-foreground">{t("account.events.slug")}</Label>
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground whitespace-nowrap">/book/.../</span>
             <Input
               className="bg-background h-12 text-base"
+              aria-label={t("account.events.slug")}
               value={value.slug || ""}
               onChange={(e) =>
                 onChange({ ...value, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-") })
@@ -74,19 +79,21 @@ function EventTypeFields({
 
       <div className="grid gap-5 md:grid-cols-2">
         <div className="grid gap-2">
-          <Label className="text-xs font-semibold text-muted-foreground">Duration (min)</Label>
+          <Label className="text-xs font-semibold text-muted-foreground">{t("account.events.duration")}</Label>
           <Input
             className="bg-background h-12 text-base"
             type="number"
+            aria-label={t("account.events.duration")}
             value={value.duration || 30}
             onChange={(e) => onChange({ ...value, duration: parseInt(e.target.value) || 30 })}
           />
         </div>
         <div className="grid gap-2">
-          <Label className="text-xs font-semibold text-muted-foreground">Buffer (min)</Label>
+          <Label className="text-xs font-semibold text-muted-foreground">{t("account.events.buffer")}</Label>
           <Input
             className="bg-background h-12 text-base"
             type="number"
+            aria-label={t("account.events.buffer")}
             value={value.buffer || 0}
             onChange={(e) => onChange({ ...value, buffer: parseInt(e.target.value) || 0 })}
           />
@@ -94,20 +101,21 @@ function EventTypeFields({
       </div>
 
       <div className="grid gap-2">
-        <Label className="text-xs font-semibold text-muted-foreground">Meeting Room / Location URL</Label>
+        <Label className="text-xs font-semibold text-muted-foreground">{t("account.events.location")}</Label>
         <Input
           className="bg-background h-12 text-base"
+          aria-label={t("account.events.location")}
           value={value.location || ""}
           onChange={(e) => onChange({ ...value, location: e.target.value })}
-          placeholder="https://meet.google.com/xxx-xxxx-xxx or physical location"
+          placeholder={t("account.events.locationPlaceholder")}
         />
       </div>
 
       <div className="grid gap-2">
-        <Label className="text-xs font-semibold text-muted-foreground">Site Dependency</Label>
+        <Label className="text-xs font-semibold text-muted-foreground">{t("account.events.site")}</Label>
         <Select value={value.site_id} onValueChange={(v) => onChange({ ...value, site_id: v })}>
-          <SelectTrigger className="bg-background h-12 text-base">
-            <SelectValue placeholder="Select a site" />
+          <SelectTrigger aria-label={t("account.events.site")} className="bg-background h-12 text-base">
+            <SelectValue placeholder={t("account.events.selectSite")} />
           </SelectTrigger>
           <SelectContent>
             {sites?.map((site) => (
@@ -126,7 +134,7 @@ function EventTypeFields({
           onCheckedChange={(v) => onChange({ ...value, enabled: v })}
         />
         <Label htmlFor={enabledId} className="text-sm cursor-pointer">
-          Enabled
+          {t("account.events.enabled")}
         </Label>
       </div>
     </>
@@ -140,6 +148,7 @@ export function EventTypesSection({
   isUpdating,
   onSaveEventTypes,
 }: EventTypesSectionProps) {
+  const { t } = useLocalization()
   const defaultSlug = userEmail
     ? userEmail.split("@")[0].toLowerCase().replace(/[^a-z0-9-]/g, "-")
     : ""
@@ -159,7 +168,7 @@ export function EventTypesSection({
 
   const handleSaveEventType = async () => {
     if (!editingEventType?.title || !editingEventType?.slug) {
-      toast.error("Title and slug are required")
+      toast.error(t("account.events.required"))
       return
     }
 
@@ -189,7 +198,7 @@ export function EventTypesSection({
 
   const handleCopyUrl = (url: string) => {
     navigator.clipboard.writeText(url)
-    toast.success("URL copied to clipboard")
+    toast.success(t("account.events.copied"))
   }
 
   const groupedEventTypes = eventTypes.reduce((acc, et) => {
@@ -208,16 +217,16 @@ export function EventTypesSection({
         <div>
           <h2 className="text-2xl font-semibold flex items-center gap-2">
             <Clock className="h-6 w-6 text-foreground" />
-            Event Types
+            {t("account.events.titlePlural")}
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Manage your booking links and meeting types
+            {t("account.events.help")}
           </p>
         </div>
         {!editingEventType && (
           <Button onClick={handleAddEventType} size="sm" variant="outline" className="gap-2">
             <PlusCircle className="h-4 w-4" />
-            Add Event Type
+            {t("account.events.add")}
           </Button>
         )}
       </div>
@@ -226,7 +235,7 @@ export function EventTypesSection({
         {isCreatingNew && editingEventType && (
           <SectionCard className="border dark:border-white/5 border-black/5 shadow-none overflow-hidden mb-4">
             <SectionCardHeader>
-              <SectionCardTitle className="text-lg font-semibold">New Event Type</SectionCardTitle>
+              <SectionCardTitle className="text-lg font-semibold">{t("account.events.new")}</SectionCardTitle>
             </SectionCardHeader>
             <SectionCardContent className="space-y-4 border-t border-border">
               <EventTypeFields
@@ -239,10 +248,10 @@ export function EventTypesSection({
             <ActionFooter>
               <div className="flex items-center gap-2">
                 <Button variant="ghost" onClick={() => setEditingEventType(null)}>
-                  Cancel
+                  {t("common.cancel")}
                 </Button>
                 <Button variant="outline" onClick={handleSaveEventType} disabled={isUpdating} size="sm">
-                  {isUpdating ? "Saving..." : "Create Event Type"}
+                  {isUpdating ? t("common.saving") : t("account.events.create")}
                 </Button>
               </div>
             </ActionFooter>
@@ -253,8 +262,8 @@ export function EventTypesSection({
           <div className="py-6">
             <EmptyCard
               icon={<Clock />}
-              title="No event types configured yet"
-              description="Create event types to manage your booking links and meeting availability."
+              title={t("account.events.empty")}
+              description={t("account.events.emptyHelp")}
             />
           </div>
         ) : (
@@ -265,7 +274,7 @@ export function EventTypesSection({
                 <div key={siteId} className="space-y-4">
                   <div className="flex items-center gap-2 px-1">
                     <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
-                      {site?.name || "No Site Assigned"}
+                      {site?.name || t("account.events.noSite")}
                     </span>
                   </div>
                   <div className="space-y-4">
@@ -294,13 +303,13 @@ export function EventTypesSection({
                                     </SectionCardTitle>
                                     {!et.enabled && (
                                       <span className="text-[10px] bg-muted px-2 py-0.5 rounded-full text-muted-foreground uppercase font-bold tracking-tighter">
-                                        Disabled
+                                        {t("account.events.disabled")}
                                       </span>
                                     )}
                                   </div>
                                   <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
                                     <span className="flex items-center gap-1.5 shrink-0">
-                                      {et.duration} min
+                                      {et.duration} {t("account.events.minutes")}
                                     </span>
                                     <div
                                       className="flex items-center gap-1.5 min-w-0"
@@ -314,6 +323,7 @@ export function EventTypesSection({
                                         variant="ghost"
                                         size="icon"
                                         className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity ml-1"
+                                        aria-label={t("account.events.copyAria")}
                                         onClick={() => handleCopyUrl(bookingUrl)}
                                       >
                                         <Copy className="h-3.5 w-3.5" />
@@ -351,7 +361,7 @@ export function EventTypesSection({
                                     onClick={() => handleDeleteEventType(et.id)}
                                   >
                                     <Trash2 className="h-4 w-4 mr-2" />
-                                    Remove Event
+                                    {t("account.events.remove")}
                                   </Button>
                                   <Button
                                     variant="outline"
@@ -360,7 +370,7 @@ export function EventTypesSection({
                                     onClick={() => handleSaveEventType()}
                                     disabled={isUpdating}
                                   >
-                                    {isUpdating ? "Saving..." : "Save Event Type"}
+                                    {isUpdating ? t("common.saving") : t("account.events.save")}
                                   </Button>
                                 </div>
                               </ActionFooter>

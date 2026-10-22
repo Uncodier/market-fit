@@ -4,6 +4,7 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { isPayoutResolverRole } from "@/lib/auth/platform-access"
 import { PayoutAdminClient } from "./components/PayoutAdminClient"
+import { PayoutsTitle } from "./PayoutsTitle"
 
 export const dynamic = 'force-dynamic'
 
@@ -37,10 +38,7 @@ export default async function AdminPayoutsPage() {
   return (
     <div className="p-8 max-w-7xl mx-auto">
       <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold">Platform Payouts</h1>
-          <p className="text-muted-foreground mt-2">Manage and resolve pending payout requests from all sites.</p>
-        </div>
+        <PayoutsTitle />
       </div>
       
       <PayoutAdminClient initialPayouts={payouts || []} />

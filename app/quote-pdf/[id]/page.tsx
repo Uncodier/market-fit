@@ -7,10 +7,13 @@ import { buildPublicQuoteUrl } from "@/app/quotations/public-token"
 import { PublicDocumentShopNav } from "@/app/documents/components/PublicDocumentShopNav"
 import { PublicDocumentViewSkeleton } from "@/app/documents/components/PublicDocumentViewSkeleton"
 import { PrintableQuotation } from "@/app/quotations/components/PrintableQuotation"
+import { useLocalization } from "@/app/context/LocalizationContext"
+import { documentT } from "@/app/lib/i18n/document-t"
 
 export default function QuotePdfPage(props: { params: Promise<{ id: string }> }) {
+  const { t } = useLocalization()
   const unwrappedParams = React.use(props.params)
-  const [quotation, setQuotation] = useState<any>(null)
+  const [quotation, setQuotation] = useState<Awaited<ReturnType<typeof getQuotation>>["data"] | null>(null)
   const [buyerLink, setBuyerLink] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -43,12 +46,12 @@ export default function QuotePdfPage(props: { params: Promise<{ id: string }> })
 
   useEffect(() => {
     if (quotation) {
-      document.title = `Quote - ${quotation.id.substring(0, 8)}`
+      document.title = documentT(quotation.site?.settings?.default_locale || "en", "commercePages.quote.title", { reference: quotation.id.substring(0, 8) })
     }
     return () => {
-      document.title = "Quotations | Market Fit"
+      document.title = t("commercePages.quote.returnTitle")
     }
-  }, [quotation])
+  }, [quotation, t])
 
   const siteId = quotation?.site?.id || quotation?.site_id || null
   const siteName = quotation?.site?.name || ""
@@ -82,7 +85,7 @@ export default function QuotePdfPage(props: { params: Promise<{ id: string }> })
           />
         ) : (
           <div className="flex items-center justify-center h-64">
-            <p className="text-gray-500">Quote not found</p>
+            <p className="text-gray-500">{t("commercePages.quote.notFound")}</p>
           </div>
         )}
       </div>

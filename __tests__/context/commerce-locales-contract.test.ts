@@ -2,8 +2,7 @@
 import { readFileSync, readdirSync } from "fs"
 import { join } from "path"
 import ts from "typescript"
-import { commerceMessages } from "@/app/context/locale-catalog"
-import { flattenMessages } from "@/app/context/locale-messages"
+import { commerceMessages, rawLocaleMessages } from "@/app/context/locale-catalog"
 import type { SupportedLocale } from "@/app/context/locale-preferences"
 
 const root = join(__dirname, "../..")
@@ -39,8 +38,7 @@ for (const key of checkoutKeys) {
 
 describe("commerce locale coverage without English fallback", () => {
   it.each(locales)("provides every referenced commerce key in %s", (locale) => {
-    const legacy = flattenMessages(JSON.parse(readFileSync(join(root, `app/context/locales/${locale}.json`), "utf8")))
-    const raw = { ...legacy, ...commerceMessages[locale] }
+    const raw = rawLocaleMessages[locale]
     expect([...keys].filter((key) => typeof raw[key] !== "string" || !raw[key].trim())).toEqual([])
   })
 

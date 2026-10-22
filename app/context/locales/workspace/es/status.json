@@ -1,0 +1,17 @@
+{
+  "status.unknown": "Desconocido",
+  "status.active": "Activo",
+  "status.archived": "Archivado",
+  "status.draft": "Borrador",
+  "status.accepted": "Aceptado",
+  "status.all": "Todos",
+  "status.inactive": "Inactivo",
+  "status.published": "Publicado",
+  "status.cancelled": "Cancelado",
+  "status.completed": "Completado",
+  "status.expired": "Caducado",
+  "status.in_progress": "En curso",
+  "status.pending": "Pendiente",
+  "status.rejected": "Rechazado",
+  "status.sent": "Enviado"
+}

@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useCallback, useEffect, useState } from "react"
+import React, { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Button } from "@/app/components/ui/button"
@@ -12,6 +12,7 @@ import {
   type TabItem,
 } from "@/app/components/ui/responsive-tabs-list"
 import { useSite } from "@/app/context/SiteContext"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import {
   getSubscriptionDetail,
   updateSubscriptionDueDate,
@@ -28,14 +29,42 @@ import { SubscriptionPaymentsTable } from "../components/SubscriptionPaymentsTab
 import { SubscriptionStatusBar } from "../components/SubscriptionStatusBar"
 import { updateSubscriptionAmount, updateSubscriptionEndDate } from "../update-details"
 
-const SUBSCRIPTION_TABS: TabItem[] = [
-  { value: "invoices", label: "Invoices" },
-  { value: "payments", label: "Payments" },
-]
+// Translate known application errors at the display boundary; preserve provider details.
+const ERROR_KEYS: Record<string, string> = {
+  "Subscription not found": "operations.subscriptions.notFound",
+  "Invalid subscription request": "operations.subscriptions.errors.invalidRequest",
+  "Not authenticated": "operations.subscriptions.errors.notAuthenticated",
+  "Failed to load subscription": "operations.subscriptions.errors.loadFailed",
+  "Failed to update subscription": "operations.subscriptions.errors.updateFailed",
+  "Unable to save subscription date": "operations.subscriptions.errors.saveDateFailed",
+  "Unable to save subscription amount": "operations.subscriptions.errors.saveAmountFailed",
+  "Unable to save subscription details": "operations.subscriptions.errors.saveDetailsFailed",
+  "Enter a valid end date (YYYY-MM-DD)": "operations.subscriptions.errors.invalidEndDate",
+  "Enter a valid next billing date (YYYY-MM-DD)": "operations.subscriptions.errors.invalidBillingDate",
+  "Enter a valid due date (YYYY-MM-DD)": "operations.subscriptions.errors.invalidDueDate",
+  "Invalid subscription billing date": "operations.subscriptions.errors.invalidSubscriptionBillingDate",
+  "A next billing date is required to configure a due date": "operations.subscriptions.errors.billingDateRequired",
+  "Not authorized to edit subscriptions in this site": "operations.subscriptions.errors.notAuthorized",
+  "Unable to verify the subscription. Reload and retry.": "operations.subscriptions.errors.verifyFailed",
+  "Subscription changed while editing. Reload and retry.": "operations.subscriptions.errors.changed",
+  "Enter a valid amount of zero or more": "operations.subscriptions.errors.invalidAmount",
+  "Use no more than two decimal places": "operations.subscriptions.errors.amountPrecision",
+  "Unable to verify the subscription start date": "operations.subscriptions.errors.verifyStartDateFailed",
+  "End date cannot be before start date": "operations.subscriptions.errors.endBeforeStart",
+}
 
 export default function SubscriptionDetailPage(props: {
   params: Promise<{ id: string }>
 }) {
+  const { t } = useLocalization()
+  // Data loading depends on identity, not display language.
+  const translateRef = useRef(t)
+  useEffect(() => { translateRef.current = t }, [t])
+  const errorLabel = (message: string) => ERROR_KEYS[message] ? t(ERROR_KEYS[message]) : message
+  const subscriptionTabs: TabItem[] = [
+    { value: "invoices", label: t("operations.subscriptions.invoices") },
+    { value: "payments", label: t("bills.field.payments") },
+  ]
   const { id } = React.use(props.params)
   const router = useRouter()
   const { currentSite } = useSite()
@@ -53,7 +82,8 @@ export default function SubscriptionDetailPage(props: {
     try {
       const result = await getSubscriptionDetail(currentSite.id, id)
       if (result.error || !result.subscription) {
-        toast.error(result.error || "Subscription not found")
+        const message = result.error || "Subscription not found"
+        toast.error(ERROR_KEYS[message] ? translateRef.current(ERROR_KEYS[message]) : message)
         setSubscription(null)
         setInvoices([])
         return
@@ -71,8 +101,8 @@ export default function SubscriptionDetailPage(props: {
   }, [loadSubscription])
 
   useEffect(() => {
-    const title = subscription?.catalog_item?.name || "Subscription details"
-    document.title = `${title} | Subscriptions`
+    const title = subscription?.catalog_item?.name || t("operations.subscriptions.details")
+    document.title = `${title} | ${t("layout.sidebar.subscriptions")}`
     window.dispatchEvent(
       new CustomEvent("breadcrumb:update", {
         detail: {
@@ -84,14 +114,14 @@ export default function SubscriptionDetailPage(props: {
     )
 
     return () => {
-      document.title = "Subscriptions | Market Fit"
+      document.title = `${t("layout.sidebar.subscriptions")} | Market Fit`
       window.dispatchEvent(
         new CustomEvent("breadcrumb:update", {
           detail: { title: null, path: null, section: "subscriptions" },
         })
       )
     }
-  }, [id, subscription?.catalog_item?.name])
+  }, [id, subscription?.catalog_item?.name, t])
 
   const handleStatusChange = async (status: SubscriptionDetail["status"]) => {
     if (!currentSite?.id || !subscription) return
@@ -100,37 +130,37 @@ export default function SubscriptionDetailPage(props: {
     try {
       const result = await updateSubscriptionStatus(currentSite.id, subscription.id, status)
       if (result.error) {
-        toast.error(result.error)
+        toast.error(errorLabel(result.error))
         return
       }
 
       setSubscription((current) => current ? { ...current, status } : current)
-      toast.success(`Subscription marked as ${status}`)
+      toast.success(t("operations.subscriptions.statusChanged", { status: t(`subscriptions.status.${status}`) }))
     } finally {
       setUpdatingStatus(false)
     }
   }
 
   const handleDateChange = async (field: "next_billing_date" | "due_date" | "end_date", value: string) => {
-    if (!currentSite?.id || !subscription) throw new Error("Subscription not found")
+    if (!currentSite?.id || !subscription) throw new Error(t("operations.subscriptions.notFound"))
 
     const result = field === "next_billing_date"
       ? await updateSubscriptionNextBillingDate(currentSite.id, subscription.id, value)
       : field === "end_date"
         ? await updateSubscriptionEndDate(currentSite.id, subscription.id, value || null)
         : await updateSubscriptionDueDate(currentSite.id, subscription.id, value || null)
-    if (result.error || !result.data) throw new Error(result.error || "Unable to save subscription date")
+    if (result.error || !result.data) throw new Error(errorLabel(result.error || "Unable to save subscription date"))
 
     setSubscription((current) => current ? { ...current, ...result.data } : current)
-    toast.success(field === "next_billing_date" ? "Next billing date saved" : field === "end_date" ? "Subscription end date saved" : "Subscription due date saved")
+    toast.success(t(field === "next_billing_date" ? "operations.subscriptions.billingDateSaved" : field === "end_date" ? "operations.subscriptions.endDateSaved" : "operations.subscriptions.dueDateSaved"))
   }
 
   const handleAmountChange = async (value: number) => {
-    if (!currentSite?.id || !subscription) throw new Error("Subscription not found")
+    if (!currentSite?.id || !subscription) throw new Error(t("operations.subscriptions.notFound"))
     const result = await updateSubscriptionAmount(currentSite.id, subscription.id, value)
-    if (result.error || !result.data) throw new Error(result.error || "Unable to save subscription amount")
+    if (result.error || !result.data) throw new Error(errorLabel(result.error || "Unable to save subscription amount"))
     setSubscription((current) => current ? { ...current, ...result.data } : current)
-    toast.success("Subscription amount saved")
+    toast.success(t("operations.subscriptions.amountSaved"))
   }
 
   if (loading) {
@@ -151,9 +181,9 @@ export default function SubscriptionDetailPage(props: {
     return (
       <div className="flex flex-1 items-center justify-center p-8">
         <div className="space-y-4 text-center">
-          <h2 className="text-2xl font-semibold">Subscription not found</h2>
+          <h2 className="text-2xl font-semibold">{t("operations.subscriptions.notFound")}</h2>
           <Button onClick={() => router.push("/subscriptions")}>
-            Back to subscriptions
+            {t("operations.subscriptions.back")}
           </Button>
         </div>
       </div>
@@ -169,7 +199,7 @@ export default function SubscriptionDetailPage(props: {
           <div className="w-full min-w-0 flex-1 pt-0">
             <div className="flex w-full items-center justify-between gap-4">
               <ResponsiveTabsList
-                tabs={SUBSCRIPTION_TABS}
+                tabs={subscriptionTabs}
                 activeTab={activeTab}
                 onTabChange={setActiveTab}
                 className="w-auto max-w-full flex-1"
@@ -197,9 +227,9 @@ export default function SubscriptionDetailPage(props: {
             <div className="w-full pt-5 lg:min-w-0 lg:flex-1 lg:pr-8">
               <TabsContent value="invoices" className="mt-0 pt-0">
                 <div className="mb-4">
-                  <h2 className="text-lg font-semibold">Invoices</h2>
+                  <h2 className="text-lg font-semibold">{t("operations.subscriptions.invoices")}</h2>
                   <p className="text-sm text-muted-foreground">
-                    Billing history for this subscription.
+                    {t("operations.subscriptions.billingHistory")}
                   </p>
                 </div>
                 <SubscriptionInvoicesTable invoices={invoices} />
@@ -207,9 +237,9 @@ export default function SubscriptionDetailPage(props: {
 
               <TabsContent value="payments" className="mt-0 pt-0">
                 <div className="mb-4">
-                  <h2 className="text-lg font-semibold">Payments</h2>
+                  <h2 className="text-lg font-semibold">{t("bills.field.payments")}</h2>
                   <p className="text-sm text-muted-foreground">
-                    Payments registered against this subscription&apos;s invoices.
+                    {t("operations.subscriptions.paymentsDescription")}
                   </p>
                 </div>
                 <SubscriptionPaymentsTable invoices={invoices} />

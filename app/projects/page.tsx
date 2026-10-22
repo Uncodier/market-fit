@@ -1,5 +1,7 @@
 "use client"
 
+import { useLocalization } from "@/app/context/LocalizationContext"
+
 import { useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useSite } from "../context/SiteContext"
@@ -43,6 +45,10 @@ function clearCookieEverywhere(name: string) {
 }
 
 export default function ProjectsPage() {
+  const { t } = useLocalization()
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('breadcrumb:update', { detail: { title: t('layout.nav.projects.title') } }))
+  }, [t])
   const { sites, currentSite, isLoading, setCurrentSite, error } = useSite()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -124,7 +130,7 @@ export default function ProjectsPage() {
           {error ? (
             <Card className="border-destructive/40 bg-destructive/5">
               <CardContent className="p-4 text-sm text-destructive">
-                Could not load projects: {error.message}
+                {t("account.projects.loadError", { error: error.message })}
               </CardContent>
             </Card>
           ) : null}
@@ -135,10 +141,10 @@ export default function ProjectsPage() {
                   <span className="text-lg">+</span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold truncate">Create new project</h3>
-                  <p className="text-sm text-muted-foreground truncate">Set up a new project and start working</p>
+                  <h3 className="font-semibold truncate">{t("account.projects.createProject")}</h3>
+                  <p className="text-sm text-muted-foreground truncate">{t("account.projects.createHelp")}</p>
                 </div>
-                <Button variant="secondary" onClick={(e) => { e.stopPropagation(); router.push("/create-site") }}>Create</Button>
+                <Button variant="secondary" onClick={(e) => { e.stopPropagation(); router.push("/create-site") }}>{t("common.create")}</Button>
               </div>
             </CardContent>
           </Card>
@@ -166,20 +172,20 @@ export default function ProjectsPage() {
                   <div className="flex items-center gap-2">
                     <h3 className="font-semibold truncate">{site.name}</h3>
                     {currentSite?.id === site.id && (
-                      <Badge variant="secondary" className="h-5 px-2 text-xs bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 border-0">Current</Badge>
+                      <Badge variant="secondary" className="h-5 px-2 text-xs bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 border-0">{t("billing.plan.currentBadge")}</Badge>
                     )}
                   </div>
-                  <p className="text-sm text-muted-foreground truncate">{site.description || site.url || "No description"}</p>
+                  <p className="text-sm text-muted-foreground truncate">{site.description || site.url || t("account.projects.noDescription")}</p>
                 </div>
                 <Button
                   variant="secondary"
-                  aria-label={`Select ${site.name}`}
+                  aria-label={t("account.projects.selectAria", { name: site.name })}
                   onClick={(e) => {
                     e.stopPropagation()
                     handleSelectSite(site.id)
                   }}
                 >
-                  Select
+                  {t("select")}
                 </Button>
               </div>
             </CardContent>
@@ -193,10 +199,10 @@ export default function ProjectsPage() {
                 <span className="text-lg">+</span>
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="font-semibold truncate">Create new project</h3>
-                <p className="text-sm text-muted-foreground truncate">Set up a new project and start working</p>
+                <h3 className="font-semibold truncate">{t("account.projects.createProject")}</h3>
+                <p className="text-sm text-muted-foreground truncate">{t("account.projects.createHelp")}</p>
               </div>
-              <Button variant="secondary" onClick={(e) => { e.stopPropagation(); router.push("/create-site") }}>Create</Button>
+              <Button variant="secondary" onClick={(e) => { e.stopPropagation(); router.push("/create-site") }}>{t("common.create")}</Button>
             </div>
           </CardContent>
         </Card>
@@ -215,8 +221,8 @@ export default function ProjectsPage() {
                   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-amber-900 truncate">Exit Demo Mode</h3>
-                  <p className="text-sm text-amber-700/80 truncate">Return to your real projects and data</p>
+                  <h3 className="font-semibold text-amber-900 truncate">{t("account.projects.exitMode")}</h3>
+                  <p className="text-sm text-amber-700/80 truncate">{t("account.projects.exitHelp")}</p>
                 </div>
                 <Button variant="outline" className="border-amber-300 text-amber-700 hover:bg-amber-100" onClick={(e) => { 
                   e.stopPropagation(); 
@@ -225,7 +231,7 @@ export default function ProjectsPage() {
                   localStorage.removeItem('market_fit_manual_demo');
                   const baseUrl = window.location.hostname.startsWith('www.') ? window.location.origin.replace('www.', 'app.') : '';
                   window.location.href = `${baseUrl}/projects`;
-                }}>Exit Demo</Button>
+                }}>{t("account.projects.exit")}</Button>
               </div>
             </CardContent>
           </Card>
@@ -239,10 +245,10 @@ export default function ProjectsPage() {
                   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold truncate">View demo accounts</h3>
-                  <p className="text-sm text-muted-foreground truncate">Explore platform features with sample data</p>
+                  <h3 className="font-semibold truncate">{t("account.projects.viewAccounts")}</h3>
+                  <p className="text-sm text-muted-foreground truncate">{t("account.projects.demoHelp")}</p>
                 </div>
-                <Button variant="outline" onClick={(e) => { e.stopPropagation(); router.push("/demo") }}>View Demos</Button>
+                <Button variant="outline" onClick={(e) => { e.stopPropagation(); router.push("/demo") }}>{t("account.projects.viewDemos")}</Button>
               </div>
             </CardContent>
           </Card>
@@ -258,7 +264,7 @@ export default function ProjectsPage() {
           <div className="p-3 rounded-full bg-primary/10">
             <Image 
               src="/images/logo.png"
-              alt="Market Fit Logo"
+              alt={t("account.projects.logoAlt")}
               width={48}
               height={48}
               className="h-12 w-12 object-contain"

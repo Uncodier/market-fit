@@ -8,10 +8,12 @@ import { usePdpCart } from "@/app/components/commerce/pdp/usePdpCart"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 export default function MarketplaceBookingPage(props: { params: Promise<{ itemId: string }>; searchParams: Promise<{ modifiers?: string }> | { modifiers?: string } }) {
+  const { t } = useLocalization()
   const params = use(props.params)
-  const searchParams = use(props.searchParams as any) as { modifiers?: string };
+  const searchParams = use(props.searchParams as Promise<{ modifiers?: string }>);
   const router = useRouter()
   
   const { data: itemData, isLoading } = useSWR(
@@ -28,17 +30,17 @@ export default function MarketplaceBookingPage(props: { params: Promise<{ itemId
     if (item) {
       // In marketplace booking, we might not have the site name loaded with the item,
       // fallback to Marketplace if not available on the item.
-      const siteName = (item as any).site?.name || "Marketplace"
-      document.title = `Book ${item.name} | ${siteName}`
+      const siteName = (item as { site?: { name?: string } }).site?.name || t("commercePages.booking.marketplace")
+      document.title = t("commercePages.booking.title", { item: item.name, site: siteName })
     }
-  }, [item])
+  }, [item, t])
 
   if (isLoading) {
-    return <main className="min-h-screen flex items-center justify-center bg-muted/20">Loading...</main>
+    return <main className="min-h-screen flex items-center justify-center bg-muted/20">{t("commercePages.booking.loading")}</main>
   }
 
   if (!item) {
-    return <main className="min-h-screen flex items-center justify-center bg-muted/20">Item not found</main>
+    return <main className="min-h-screen flex items-center justify-center bg-muted/20">{t("commercePages.booking.itemNotFound")}</main>
   }
 
   const handleCartAdd = (startIso: string, endIso: string, available?: number) => {
@@ -51,7 +53,7 @@ export default function MarketplaceBookingPage(props: { params: Promise<{ itemId
       }
     }
     addToCartStorage(item, 1, startIso, endIso, parsedModifiers, available)
-    toast.success(`${item.name} added to cart`)
+    toast.success(t("commercePages.booking.addedToCart", { item: item.name }))
     router.push(`/marketplace?cart=1`)
   }
 

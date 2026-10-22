@@ -1,5 +1,7 @@
 "use client"
 
+import { useLocalization } from "@/app/context/LocalizationContext"
+
 import React, { useState, useEffect } from "react"
 import { toast } from "sonner"
 import { Button } from "@/app/components/ui/button"
@@ -45,6 +47,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/ta
 type UserRole = "Product Manager" | "Designer" | "Developer" | "Marketing" | "Sales" | "CEO" | "Other"
 
 export default function ProfilePage() {
+  const { t } = useLocalization()
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('breadcrumb:update', { detail: { title: t('layout.nav.profile.title') } }))
+  }, [t])
   const { 
     profile, 
     isLoading, 
@@ -96,13 +102,13 @@ export default function ProfilePage() {
       if (!file) return
       
       if (file.size > 3 * 1024 * 1024) {
-        toast.error("Image is too large. Maximum 3MB")
+        toast.error(t("account.profile.imageTooLarge"))
         return
       }
       
       try {
         const supabase = createClient()
-        toast.loading("Uploading image...")
+        toast.loading(t("account.profile.uploading"))
         
         const fileExt = file.name.split('.').pop()
         const fileName = `${Date.now()}.${fileExt}`
@@ -140,7 +146,7 @@ export default function ProfilePage() {
         }
         
         if (!uploadResult) {
-          throw new Error("Could not upload image");
+          throw new Error(t("account.profile.uploadFailed"));
         }
         
         const { data: urlData } = supabase
@@ -149,17 +155,17 @@ export default function ProfilePage() {
           .getPublicUrl(filePath);
         
         if (!urlData?.publicUrl) {
-          throw new Error("Could not get image URL");
+          throw new Error(t("account.profile.imageUrlFailed"));
         }
         
         setImageUrl(urlData.publicUrl);
         await updateProfile({ avatar_url: urlData.publicUrl }, true);
         
         toast.dismiss();
-        toast.success("Image uploaded successfully");
+        toast.success(t("account.profile.imageUploaded"));
       } catch (error) {
         toast.dismiss()
-        toast.error(error instanceof Error ? error.message : "Error uploading image")
+        toast.error(error instanceof Error ? error.message : t("account.profile.uploadError"))
         console.error("Error uploading image:", error)
       }
     },
@@ -172,7 +178,7 @@ export default function ProfilePage() {
 
   const handleSavePersonalInfo = async () => {
     if (!formData.phone || formData.phone.length < 8) {
-      toast.error("Please enter a valid phone number")
+      toast.error(t("account.profile.phoneInvalid"))
       return
     }
 
@@ -188,14 +194,14 @@ export default function ProfilePage() {
       const result = await updateProfile(profileData, true)
       
       if (result === true) {
-        toast.success("Personal information updated successfully")
+        toast.success(t("account.profile.personalSaved"))
         setFormData(prev => ({ ...prev, phone: profileData.phone }))
       } else {
-        toast.error(typeof result === 'string' ? `Failed: ${result}` : "Failed to update personal information")
+        toast.error(typeof result === 'string' ? t("account.profile.failureDetail", { error: result }) : t("account.profile.personalFailed"))
       }
     } catch (error) {
       console.error("Error in handleSavePersonalInfo:", error)
-      toast.error("Error updating personal information")
+      toast.error(t("account.profile.personalError"))
     }
   }
 
@@ -206,20 +212,20 @@ export default function ProfilePage() {
         calendar: calendarSettings
       }, true)
       if (success) {
-        toast.success("Calendar settings updated successfully")
+        toast.success(t("account.profile.calendarSaved"))
       } else {
-        toast.error("Failed to update calendar settings")
+        toast.error(t("account.profile.calendarFailed"))
       }
     } catch (error) {
       console.error(error)
-      toast.error("Error updating calendar settings")
+      toast.error(t("account.profile.calendarError"))
     }
   }
 
   const handleRemoveImage = async () => {
     setImageUrl(null)
     await updateProfile({ avatar_url: undefined }, true)
-    toast.success("Profile picture removed")
+    toast.success(t("account.profile.imageRemoved"))
   }
 
   if (isLoading) {
@@ -231,9 +237,9 @@ export default function ProfilePage() {
       <Tabs defaultValue="profile" className="w-full">
         <StickyHeader>
           <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
-            <TabsTrigger value="profile" className="text-xs rounded-full px-4">Profile</TabsTrigger>
-            <TabsTrigger value="notifications" className="text-xs rounded-full px-4">Notifications</TabsTrigger>
-            <TabsTrigger value="calendar" className="text-xs rounded-full px-4">Calendar</TabsTrigger>
+            <TabsTrigger value="profile" className="text-xs rounded-full px-4">{t("layout.nav.profile.title")}</TabsTrigger>
+            <TabsTrigger value="notifications" className="text-xs rounded-full px-4">{t("account.profile.notifications")}</TabsTrigger>
+            <TabsTrigger value="calendar" className="text-xs rounded-full px-4">{t("calendar")}</TabsTrigger>
           </TabsList>
         </StickyHeader>
         
@@ -241,23 +247,24 @@ export default function ProfilePage() {
           <TabsContent value="profile" className="space-y-12 mt-0 border-0 p-0 focus-visible:ring-0">
             <SectionCard>
               <SectionCardHeader>
-                <SectionCardTitle>Personal Information</SectionCardTitle>
+                <SectionCardTitle>{t("account.profile.personalInfo")}</SectionCardTitle>
               </SectionCardHeader>
               <SectionCardContent className="space-y-8">
                 <div className="flex flex-col space-y-4 sm:flex-row sm:space-x-4 sm:space-y-0">
                   <div className="min-w-[240px] flex-shrink-0">
-                    <label className="block text-sm font-medium mb-2">Profile Picture</label>
+                    <label className="block text-sm font-medium mb-2">{t("account.profile.profilePicture")}</label>
                     <div className="w-[240px] h-[240px] relative">
                       {imageUrl ? (
                         <div className="w-full h-full relative group">
                           <Image
                             src={imageUrl}
-                            alt="Profile picture"
+                            alt={t("account.profile.pictureAlt")}
                             fill
                             className="object-cover rounded-full"
                           />
                           <button
                             type="button"
+                            aria-label={t("account.profile.removePicture")}
                             onClick={handleRemoveImage}
                             className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-full"
                           >
@@ -266,19 +273,19 @@ export default function ProfilePage() {
                         </div>
                       ) : (
                         <div
-                          {...getRootProps()}
+                          {...getRootProps({ "aria-label": t("account.profile.uploadPicture") })}
                           className={cn(
                             "w-full h-full rounded-full border-2 border-dashed border-border flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-border/60 transition-colors",
                             isDarkMode ? "bg-muted/40" : "bg-muted/50"
                           )}
                         >
-                          <input {...getInputProps()} />
+                          <input {...getInputProps({ "aria-label": t("account.profile.uploadPicture") })} />
                           <div className="flex flex-col items-center justify-center">
                             <UploadCloud className="h-8 w-8 text-muted-foreground flex-shrink-0 mb-2" />
                             <div className="text-sm text-center flex flex-col items-center">
-                              <p className="font-medium">Click to upload</p>
-                              <p className="text-muted-foreground">or drag and drop</p>
-                              <p className="text-xs text-muted-foreground/80 mt-1">Max. 3MB</p>
+                              <p className="font-medium">{t("account.profile.upload")}</p>
+                              <p className="text-muted-foreground">{t("account.profile.drop")}</p>
+                              <p className="text-xs text-muted-foreground/80 mt-1">{t("account.profile.maxSize")}</p>
                             </div>
                           </div>
                         </div>
@@ -288,12 +295,13 @@ export default function ProfilePage() {
                   
                   <div className="flex-1 space-y-4">
                     <div>
-                      <label className="block text-sm font-medium mb-2">Name</label>
+                      <label className="block text-sm font-medium mb-2">{t("name")}</label>
                       <div className="relative">
                         <User className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input 
                           className="pl-12 h-12 text-base transition-colors duration-200" 
-                          placeholder="Your name" 
+                          placeholder={t("account.profile.namePlaceholder")}
+                          aria-label={t("name")}
                           value={formData.name}
                           onChange={(e) => handleInputChange('name', e.target.value)}
                         />
@@ -301,13 +309,14 @@ export default function ProfilePage() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium mb-2">Phone</label>
+                      <label className="block text-sm font-medium mb-2">{t("phone")}</label>
                       <div className="relative">
                         <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input 
                           className="pl-12 h-12 text-base transition-colors duration-200" 
-                          placeholder="Your phone number" 
+                          placeholder={t("account.profile.phonePlaceholder")}
                           type="tel"
+                          aria-label={t("phone")}
                           value={formData.phone}
                           onChange={(e) => handleInputChange('phone', e.target.value)}
                         />
@@ -315,24 +324,24 @@ export default function ProfilePage() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium mb-2">Role</label>
+                      <label className="block text-sm font-medium mb-2">{t("role")}</label>
                       <div className="relative">
                         <Settings className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
                         <Select
                           value={formData.role}
                           onValueChange={(value) => handleInputChange('role', value)}
                         >
-                          <SelectTrigger className="w-full pl-11 h-11 text-base transition-colors duration-200">
-                            <SelectValue placeholder="Select your role" />
+                          <SelectTrigger aria-label={t("role")} className="w-full pl-11 h-11 text-base transition-colors duration-200">
+                            <SelectValue placeholder={t("account.profile.rolePlaceholder")} />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="Product Manager">Product Manager</SelectItem>
-                            <SelectItem value="Designer">Designer</SelectItem>
-                            <SelectItem value="Developer">Developer</SelectItem>
-                            <SelectItem value="Marketing">Marketing</SelectItem>
-                            <SelectItem value="Sales">Sales</SelectItem>
-                            <SelectItem value="CEO">CEO</SelectItem>
-                            <SelectItem value="Other">Other</SelectItem>
+                            <SelectItem value="Product Manager">{t("account.profile.productManager")}</SelectItem>
+                            <SelectItem value="Designer">{t("account.profile.designer")}</SelectItem>
+                            <SelectItem value="Developer">{t("account.profile.developer")}</SelectItem>
+                            <SelectItem value="Marketing">{t("account.profile.marketing")}</SelectItem>
+                            <SelectItem value="Sales">{t("account.profile.sales")}</SelectItem>
+                            <SelectItem value="CEO">{t("account.profile.ceo")}</SelectItem>
+                            <SelectItem value="Other">{t("shop.other")}</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -341,12 +350,13 @@ export default function ProfilePage() {
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium mb-2">Bio</label>
+                  <label className="block text-sm font-medium mb-2">{t("bio")}</label>
                   <div className="relative">
                     <FileText className="absolute left-4 top-3 h-4 w-4 text-muted-foreground" />
                     <Textarea 
                       className="pl-12 resize-none min-h-[72px] text-base transition-colors duration-200"
-                      placeholder="Tell us about yourself..."
+                      placeholder={t("account.profile.bioPlaceholder")}
+                      aria-label={t("bio")}
                       value={formData.bio}
                       onChange={(e) => handleInputChange('bio', e.target.value)}
                     />
@@ -358,7 +368,7 @@ export default function ProfilePage() {
                   type="button"
                   onClick={handleSavePersonalInfo}
                   disabled={isUpdating} size="sm">
-                  {isUpdating ? "Saving..." : "Save Personal Information"}
+                  {isUpdating ? t("common.saving") : t("account.profile.savePersonal")}
                 </Button>
               </ActionFooter>
             </SectionCard>

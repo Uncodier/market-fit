@@ -17,7 +17,7 @@ jest.mock("next/navigation", () => ({
   useSearchParams: () => searchParams,
 }))
 
-jest.mock("../../lib/supabase/client", () => ({
+jest.mock("@/lib/supabase/client", () => ({
   createClient: () => ({
     auth: {
       verifyOtp: (...args: unknown[]) => verifyOtpMock(...args),
@@ -25,6 +25,18 @@ jest.mock("../../lib/supabase/client", () => ({
     },
   }),
 }))
+
+jest.mock("@/app/context/LocalizationContext", () => {
+  const { localeMessages } = jest.requireActual<typeof import("@/app/context/locale-catalog")>("@/app/context/locale-catalog")
+  const t = (key: string, params?: Record<string, string | number>) => {
+    const raw = localeMessages.en[key] || key
+    return Object.entries(params || {}).reduce(
+      (text, [name, value]) => text.replace(new RegExp(`\\{\\{\\s*${name}\\s*\\}\\}`, 'g'), String(value)),
+      raw
+    )
+  }
+  return { useLocalization: () => ({ t, locale: "en" }) }
+})
 
 describe("auth confirm page", () => {
   beforeEach(() => {

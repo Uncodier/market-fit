@@ -10,7 +10,17 @@ const params = new URLSearchParams({ siteId: '11111111-1111-4111-8111-1111111111
 jest.mock('next/navigation', () => ({ useRouter: () => ({ push }), useSearchParams: () => params }))
 jest.mock('@/app/services/magic-link-invitation-service', () => ({ processTeamInvitation: jest.fn() }))
 jest.mock('sonner', () => ({ toast: { error: jest.fn(), success: jest.fn() } }))
-jest.mock('@/app/context/LocalizationContext', () => ({ useLocalization: () => ({ t: () => '' }) }))
+jest.mock('@/app/context/LocalizationContext', () => {
+  const { localeMessages } = jest.requireActual<typeof import('@/app/context/locale-catalog')>('@/app/context/locale-catalog')
+  const t = (key: string, params?: Record<string, string | number>) => {
+    const raw = localeMessages.en[key] || key
+    return Object.entries(params || {}).reduce(
+      (text, [name, value]) => text.replace(new RegExp(`\\{\\{\\s*${name}\\s*\\}\\}`, 'g'), String(value)),
+      raw
+    )
+  }
+  return { useLocalization: () => ({ t, locale: 'en' }) }
+})
 const process = jest.mocked(processTeamInvitation)
 const payload: BillingLimitPayload = { kind: 'members', siteId: params.get('siteId')!, current: 5, limit: 5, requiredPlan: 'foundry', canUpgrade: false }
 

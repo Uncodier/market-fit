@@ -10,8 +10,34 @@ import { toast } from 'sonner'
 import { BillingLimitDialog } from '@/app/components/billing/billing-limit-dialog'
 import { isBillingUpgradeRequired, type BillingLimitPayload } from '@/lib/billing-limit-errors'
 import { licensePlanLabel } from '@/lib/license-entitlements'
+import { useLocalization } from '@/app/context/LocalizationContext'
+
+const invitationErrorKeys: Record<string, string> = {
+  'Please authenticate before accepting the invitation': 'auth.flows.invitation.authRequired',
+  'Invalid invitation link': 'auth.flows.invitation.invalidLink',
+  'Failed to verify the invitation': 'auth.flows.invitation.verifyFailed',
+  'This invitation was not issued to your account': 'auth.flows.invitation.wrongAccount',
+  'This invitation is no longer active': 'auth.flows.invitation.inactive',
+  'Site not found or access denied': 'auth.flows.invitation.siteUnavailable',
+  'The invitation could not be activated': 'auth.flows.invitation.activationFailed',
+}
+
+const invitationRoleKeys: Record<string, string> = {
+  owner: 'auth.flows.invitation.role.owner',
+  admin: 'auth.flows.invitation.role.admin',
+  manager: 'auth.flows.invitation.role.manager',
+  marketing: 'auth.flows.invitation.role.marketing',
+  collaborator: 'auth.flows.invitation.role.collaborator',
+  viewer: 'auth.flows.invitation.role.viewer',
+  view: 'auth.flows.invitation.role.view',
+  create: 'auth.flows.invitation.role.create',
+  delete: 'auth.flows.invitation.role.delete',
+}
 
 function TeamInvitationContent() {
+  const { t } = useLocalization()
+  const translate = useRef(t)
+  useEffect(() => { translate.current = t }, [t])
   const router = useRouter()
   const searchParams = useSearchParams()
   const [isProcessing, setIsProcessing] = useState(false)
@@ -21,6 +47,7 @@ function TeamInvitationContent() {
   const [processingResult, setProcessingResult] = useState<{
     success: boolean
     error?: string
+    errorKey?: string
     redirectTo?: string
     upgradeRequired?: BillingLimitPayload
   } | null>(null)
@@ -38,7 +65,7 @@ function TeamInvitationContent() {
       if (!siteId || !siteName || !role) {
         setProcessingResult({
           success: false,
-          error: 'Invalid invitation link. Missing required parameters.'
+          errorKey: 'auth.flows.invitation.missingParameters'
         })
         return
       }
@@ -60,18 +87,21 @@ function TeamInvitationContent() {
           userEmail: userEmail || '' // This is optional now
         })
 
-        setProcessingResult(result)
+        const errorKey = result.error
+          ? invitationErrorKeys[result.error] || 'auth.flows.invitation.failed'
+          : undefined
+        setProcessingResult({ ...result, errorKey })
 
         if (result.upgradeRequired) {
           setUpgradeOpen(true)
         } else if (result.success && result.redirectTo) {
-          toast.success(`Welcome to ${siteName}! You've been added to the team.`)
+          toast.success(translate.current('auth.flows.invitation.successToast', { siteName }))
           // Redirect after a short delay to show the success message
           setTimeout(() => {
             router.push(result.redirectTo!)
           }, 2000)
         } else if (result.error) {
-          toast.error(result.error)
+          toast.error(translate.current(errorKey!))
         }
 
       } catch (error) {
@@ -83,9 +113,9 @@ function TeamInvitationContent() {
         console.error('Error processing invitation:', error)
         setProcessingResult({
           success: false,
-          error: 'An unexpected error occurred while processing your invitation.'
+          errorKey: 'auth.flows.invitation.unexpectedError'
         })
-        toast.error('Failed to process invitation')
+        toast.error(translate.current('auth.flows.invitation.failedToast'))
       } finally {
         processing.current = false
         setIsProcessing(false)
@@ -114,10 +144,10 @@ function TeamInvitationContent() {
           <div className="mx-auto mb-4 w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
             <Users className="w-6 h-6 text-primary" />
           </div>
-          <CardTitle className="text-xl">Team Invitation</CardTitle>
+          <CardTitle className="text-xl">{t('auth.flows.invitation.title')}</CardTitle>
           {siteName && (
             <p className="text-sm text-muted-foreground">
-              You&apos;ve been invited to join <span className="font-medium">{siteName}</span>
+              {t('auth.flows.invitation.invitedTo')}{' '}<span className="font-medium">{siteName}</span>
             </p>
           )}
         </CardHeader>
@@ -128,7 +158,7 @@ function TeamInvitationContent() {
               <div className="text-center space-y-3">
                 <div className="w-8 h-8 mx-auto animate-pulse bg-primary/20 rounded-full" />
                 <p className="text-sm text-muted-foreground">
-                  Processing your invitation...
+                  {t('auth.flows.invitation.processing')}
                 </p>
               </div>
             </div>
@@ -142,35 +172,37 @@ function TeamInvitationContent() {
                     <CheckCircle2 className="w-6 h-6 text-green-500" />
                   </div>
                   <div className="space-y-2">
-                    <h3 className="font-medium text-foreground">Welcome to the team!</h3>
+                    <h3 className="font-medium text-foreground">{t('auth.flows.invitation.welcome')}</h3>
                     <p className="text-sm text-muted-foreground">
-                      You&apos;ve been successfully added to {siteName}.
+                      {t('auth.flows.invitation.addedTo', { siteName: siteName || '' })}
                     </p>
                     {processingResult.redirectTo && (
                       <p className="text-xs text-muted-foreground">
-                        Redirecting you to the site dashboard...
+                        {t('auth.flows.invitation.redirecting')}
                       </p>
                     )}
                   </div>
                   {!processingResult.redirectTo && (
                     <Button onClick={handleGoToDashboard} className="w-full">
-                      Go to Dashboard
+                      {t('auth.flows.goToDashboard')}
                     </Button>
                   )}
                 </>
               ) : processingResult.upgradeRequired ? (
                 <>
                   <div className="space-y-2">
-                    <h3 className="font-medium text-foreground">More member seats needed</h3>
+                    <h3 className="font-medium text-foreground">{t('auth.flows.invitation.moreSeats')}</h3>
                     <p className="text-sm text-muted-foreground">
                       {processingResult.upgradeRequired.canUpgrade
-                        ? 'Upgrade this site’s license, then retry this invitation.'
-                        : `Ask the site owner to upgrade${processingResult.upgradeRequired.requiredPlan ? ` to ${licensePlanLabel(processingResult.upgradeRequired.requiredPlan)}` : ''}, then retry this invitation.`}
-                      {' '}Your invitation has not been accepted yet.
+                        ? t('auth.flows.invitation.upgradeSite')
+                        : processingResult.upgradeRequired.requiredPlan
+                          ? t('auth.flows.invitation.askOwnerPlan', { plan: licensePlanLabel(processingResult.upgradeRequired.requiredPlan) })
+                          : t('auth.flows.invitation.askOwner')}
+                      {' '}{t('auth.flows.invitation.notAccepted')}
                     </p>
                   </div>
-                  <Button onClick={() => setUpgradeOpen(true)} variant="outline" className="w-full">View member license</Button>
-                  <Button onClick={handleRetry} className="w-full">Retry after upgrade</Button>
+                  <Button onClick={() => setUpgradeOpen(true)} variant="outline" className="w-full">{t('auth.flows.invitation.viewLicense')}</Button>
+                  <Button onClick={handleRetry} className="w-full">{t('auth.flows.invitation.retryUpgrade')}</Button>
                 </>
               ) : (
                 <>
@@ -178,17 +210,17 @@ function TeamInvitationContent() {
                     <AlertCircle className="w-6 h-6 text-destructive" />
                   </div>
                   <div className="space-y-2">
-                    <h3 className="font-medium text-foreground">Invitation Error</h3>
+                    <h3 className="font-medium text-foreground">{t('auth.flows.invitation.errorTitle')}</h3>
                     <p className="text-sm text-muted-foreground">
-                      {processingResult.error || 'Failed to process your invitation'}
+                      {t(processingResult.errorKey || 'auth.flows.invitation.failed')}
                     </p>
                   </div>
                   <div className="space-y-2">
                     <Button onClick={handleRetry} variant="outline" className="w-full">
-                      Try Again
+                      {t('auth.flows.tryAgain')}
                     </Button>
                     <Button onClick={handleGoToDashboard} variant="ghost" className="w-full">
-                      Go to Dashboard
+                      {t('auth.flows.goToDashboard')}
                     </Button>
                   </div>
                 </>
@@ -202,19 +234,19 @@ function TeamInvitationContent() {
               <div className="space-y-1">
                 {role && (
                   <p className="text-sm">
-                    <span className="text-muted-foreground">Role:</span>{' '}
-                    <span className="font-medium capitalize">{role}</span>
+                    <span className="text-muted-foreground">{t('auth.flows.invitation.roleLabel')}</span>{' '}
+                    <span className="font-medium capitalize">{invitationRoleKeys[role] ? t(invitationRoleKeys[role]) : role}</span>
                   </p>
                 )}
                 {name && (
                   <p className="text-sm">
-                    <span className="text-muted-foreground">Name:</span>{' '}
+                    <span className="text-muted-foreground">{t('auth.flows.invitation.nameLabel')}</span>{' '}
                     <span className="font-medium">{name}</span>
                   </p>
                 )}
                 {position && (
                   <p className="text-sm">
-                    <span className="text-muted-foreground">Position:</span>{' '}
+                    <span className="text-muted-foreground">{t('auth.flows.invitation.positionLabel')}</span>{' '}
                     <span className="font-medium">{position}</span>
                   </p>
                 )}
@@ -230,6 +262,7 @@ function TeamInvitationContent() {
 
 // Loading fallback component
 function TeamInvitationLoading() {
+  const { t } = useLocalization()
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
@@ -237,14 +270,14 @@ function TeamInvitationLoading() {
           <div className="mx-auto mb-4 w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
             <Users className="w-6 h-6 text-primary" />
           </div>
-          <CardTitle className="text-xl">Team Invitation</CardTitle>
+          <CardTitle className="text-xl">{t('auth.flows.invitation.title')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-center py-8">
             <div className="text-center space-y-3">
               <div className="w-8 h-8 mx-auto animate-pulse bg-primary/20 rounded-full" />
               <p className="text-sm text-muted-foreground">
-                Loading invitation...
+                {t('auth.flows.invitation.loading')}
               </p>
             </div>
           </div>

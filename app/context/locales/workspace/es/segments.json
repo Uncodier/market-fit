@@ -1,0 +1,23 @@
+{
+  "segments.table.noResults": "No hay segmentos coincidentes",
+  "segments.empty.title": "Aún no hay segmentos",
+  "segments.table.noResultsDesc": "Prueba con otro término de búsqueda.",
+  "segments.empty.description": "Los segmentos te ayudan a organizar y dirigirte a grupos específicos de tu público según su comportamiento e interacción.",
+  "segments.table.segment": "Segmento",
+  "segments.labels.status": "Estado",
+  "segments.labels.language": "Idioma",
+  "segments.labels.size": "Tamaño",
+  "segments.table.actions": "Acciones",
+  "segments.tabs.active": "Activos",
+  "segments.tabs.draft": "Borrador",
+  "segments.table.copied": "Copiado",
+  "segments.table.copyUrl": "Copiar URL",
+  "segments.dialog.configureUrl": "Configurar URL del segmento",
+  "segments.table.segments": "segmentos",
+  "segments.dialog.saveError": "No se pudo guardar la URL del segmento",
+  "segments.tabs.all": "Todos los segmentos",
+  "segments.searchPlaceholder": "Buscar segmentos...",
+  "segments.table.loadError": "No se pudieron cargar los segmentos.",
+  "segments.table.noSite": "No hay ningún sitio seleccionado",
+  "segments.dialog.configureUrlDesc": "Introduce la URL donde se puede previsualizar el contenido de este segmento."
+}

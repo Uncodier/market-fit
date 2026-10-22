@@ -7,10 +7,12 @@ import { Card, CardContent } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
 import { Badge } from "@/app/components/ui/badge";
 import { useSearchParams } from "next/navigation";
+import { useLocalization } from "@/app/context/LocalizationContext";
 
 function DemoSelectorContent() {
+  const { t } = useLocalization();
   const searchParams = useSearchParams();
-  // Evaluamos en SSR y cliente si hay parámetros que causan redirección
+  // Check redirect parameters during both SSR and client rendering.
   const isRedirectingParam = searchParams.has('client') || searchParams.has('lang') || searchParams.has('theme') || searchParams.has('page') || searchParams.has('accountId');
   
   const [currentDemo, setCurrentDemo] = useState<string | null>(null);
@@ -47,7 +49,7 @@ function DemoSelectorContent() {
 
     if (urlTheme) {
       localStorage.setItem('theme', urlTheme);
-      // Disparamos un evento para que los listeners (como ThemeProvider) se actualicen
+      // Notify listeners such as ThemeProvider of the stored preference.
       window.dispatchEvent(new Event('storage'));
       shouldRedirect = true;
     }
@@ -71,8 +73,7 @@ function DemoSelectorContent() {
 
     // Redirect to specified page or robots if requested
     if ((urlClient || urlLang || urlTheme || urlPage) && (shouldRedirect || urlPage)) {
-      // Usar href para forzar recarga completa, ya que los cookies cambiaron y el contexto 
-      // de supabase debe recargarse con el mock.
+      // Reload after cookie changes so the Supabase context uses the existing demo mock.
       window.location.href = urlPage || "/robots";
     } else if (urlClient || urlLang || urlTheme || urlPage) {
       setIsAutoRedirecting(false);
@@ -92,7 +93,7 @@ function DemoSelectorContent() {
     localStorage.setItem('lang', 'es');
     localStorage.setItem('makinari-locale', 'es');
     
-    // Almacenamos un flag en sessionStorage para que el middleware/contextos no redireccionen en la recarga
+    // Prevent middleware/contexts from redirecting during the reload.
     sessionStorage.setItem('preventAutoRefresh', 'true');
     
     // Force reload to apply changes everywhere (Supabase client will re-initialize)
@@ -118,7 +119,7 @@ function DemoSelectorContent() {
         <div className="p-3 rounded-full bg-primary/10">
           <Image 
             src="/images/logo.png"
-            alt="Market Fit Logo"
+            alt={t("public.demo.logoAlt")}
             width={48}
             height={48}
             className="h-12 w-12 object-contain"
@@ -131,8 +132,8 @@ function DemoSelectorContent() {
         <div>
           <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <h2 className="text-2xl font-bold tracking-tight">Demo Accounts</h2>
-              <p className="text-muted-foreground text-sm mt-1">Explore platform features with sample data. No changes are saved permanently.</p>
+              <h2 className="text-2xl font-bold tracking-tight">{t("public.demo.title")}</h2>
+              <p className="text-muted-foreground text-sm mt-1">{t("public.demo.description")}</p>
             </div>
           </div>
 
@@ -147,13 +148,13 @@ function DemoSelectorContent() {
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-amber-900 truncate">Exit Demo Mode</h3>
-                    <p className="text-sm text-amber-700/80 truncate">Return to your real projects and data</p>
+                    <h3 className="font-semibold text-amber-900 truncate">{t("public.demo.exitTitle")}</h3>
+                    <p className="text-sm text-amber-700/80 truncate">{t("public.demo.exitDescription")}</p>
                   </div>
                   <Button variant="outline" className="border-amber-300 text-amber-700 hover:bg-amber-100" onClick={(e) => { 
                     e.stopPropagation(); 
                     disableDemo();
-                  }}>Exit Demo</Button>
+                  }}>{t("public.demo.exit")}</Button>
                 </div>
               </CardContent>
             </Card>
@@ -180,10 +181,10 @@ function DemoSelectorContent() {
                         <div className="flex items-center gap-2">
                           <h3 className="font-semibold truncate">{demo.name}</h3>
                           {isSelected && (
-                            <Badge variant="secondary" className="h-5 px-2 text-xs bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 border-0">Current</Badge>
+                            <Badge variant="secondary" className="h-5 px-2 text-xs bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 border-0">{t("public.demo.current")}</Badge>
                           )}
                         </div>
-                        <p className="text-sm text-muted-foreground truncate">{demo.description || "Demo Account"}</p>
+                        <p className="text-sm text-muted-foreground truncate">{demo.description || t("public.demo.account")}</p>
                       </div>
                       <Button 
                         variant={isSelected ? "default" : "secondary"} 
@@ -192,7 +193,7 @@ function DemoSelectorContent() {
                           selectDemo(demo.id); 
                         }}
                       >
-                        {isSelected ? 'Selected' : 'Load Demo'}
+                        {isSelected ? t("public.demo.selected") : t("public.demo.load")}
                       </Button>
                     </div>
                   </CardContent>

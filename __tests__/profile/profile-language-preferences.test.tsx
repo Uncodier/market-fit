@@ -3,6 +3,7 @@ import { toast } from "sonner"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import type { SupportedLocale } from "@/app/context/LocalizationContext"
 import { ProfilePreferences } from "@/app/profile/components/ProfilePreferences"
+import { localeMessages } from "@/app/context/locale-catalog"
 
 jest.mock("@/app/context/LocalizationContext", () => ({
   ...jest.requireActual("@/app/context/LocalizationContext"),
@@ -15,13 +16,13 @@ jest.mock("sonner", () => ({
 
 const setLocale = jest.fn()
 
-function mockLocale(locale: SupportedLocale) {
+function mockLocale(locale: SupportedLocale, messages = localeMessages.en) {
   jest.mocked(useLocalization).mockReturnValue({
     locale,
     isReady: true,
     setLocale,
     applyUnresolvedLocale: jest.fn(),
-    t: key => key,
+    t: key => messages[key] || key,
     getAsset: key => key,
   })
 }
@@ -130,5 +131,20 @@ describe("profile language preferences", () => {
     fireEvent.click(screen.getByRole("button", { name: "Saving..." }))
     expect(screen.getByRole("button", { name: "Saving..." })).toBeDisabled()
     expect(updateProfile).not.toHaveBeenCalled()
+  })
+
+  it("updates derived text on display-language changes without saving preferences", () => {
+    const updateProfile = jest.fn()
+    const profile = { language: "en", timezone: "Europe/London" }
+    const { rerender } = render(<ProfilePreferences profile={profile} updateProfile={updateProfile} isUpdating={false} />)
+    expect(screen.getByRole("combobox", { name: "Language" })).toHaveTextContent("English")
+
+    mockLocale("es", localeMessages.es)
+    rerender(<ProfilePreferences profile={profile} updateProfile={updateProfile} isUpdating={false} />)
+    expect(screen.getByRole("combobox", { name: "Idioma" })).toHaveTextContent("Inglés")
+    expect(screen.getByRole("combobox", { name: "Zona horaria" })).toHaveTextContent("Londres (GMT+0)")
+    expect(screen.getByRole("button", { name: "Guardar preferencias" })).toBeInTheDocument()
+    expect(updateProfile).not.toHaveBeenCalled()
+    expect(setLocale).not.toHaveBeenCalled()
   })
 })

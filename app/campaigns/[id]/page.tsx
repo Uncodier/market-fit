@@ -15,18 +15,20 @@ import { CampaignIdentityHeader } from "@/app/components/campaign-detail/campaig
 import { CampaignAboutPanel } from "@/app/components/campaign-detail/campaign-about-panel"
 import { useCampaignDetail } from "@/app/components/campaign-detail/use-campaign-detail"
 import { CampaignStatus } from "@/app/types"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 export default function CampaignDetailPage(props: { params: Promise<{ id: string }> }) {
   const unwrappedParams = React.use(props.params)
   const router = useRouter()
+  const { t } = useLocalization()
   const id = unwrappedParams.id as string
   const detail = useCampaignDetail(id)
   const [activeTab, setActiveTab] = useState("overview")
 
   const campaignTabs: TabItem[] = [
-    { value: "overview", label: "Overview" },
-    { value: "financials", label: "Finances" },
-    { value: "promotions", label: "Promotions" },
+    { value: "overview", label: t("details.campaign.overview") },
+    { value: "financials", label: t("details.campaign.finances") },
+    { value: "promotions", label: t("details.campaign.promotions") },
   ]
 
   if (detail.loading) {
@@ -37,8 +39,8 @@ export default function CampaignDetailPage(props: { params: Promise<{ id: string
     return (
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="text-center space-y-4">
-          <h2 className="text-2xl font-bold">Campaign not found</h2>
-          <Button onClick={() => router.push("/campaigns")}>Back to Campaigns</Button>
+          <h2 className="text-2xl font-bold">{t("details.campaign.notFound")}</h2>
+          <Button onClick={() => router.push("/campaigns")}>{t("details.campaign.back")}</Button>
         </div>
       </div>
     )

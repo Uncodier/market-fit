@@ -5,10 +5,17 @@ import { useIsMobile } from "@/app/hooks/use-mobile-view"
 import AccountsReceivablePage from "@/app/accounts-receivable/page"
 import { getAccountsReceivable } from "@/app/accounts-receivable/actions"
 import { consolidateReceivables, receivableTotals, type ReceivableAccount, type ReceivableInvoice } from "@/app/accounts-receivable/summary"
+import { localeMessages } from "@/app/context/locale-catalog"
+
+let mockLocale: "en" | "es" = "en"
+const mockTranslators = {
+  en: (key: string) => localeMessages.en[key] || key,
+  es: (key: string) => localeMessages.es[key] || key,
+}
 
 jest.mock("swr", () => ({ __esModule: true, default: jest.fn() }))
 jest.mock("@/app/context/SiteContext", () => ({ useSite: jest.fn(() => ({ currentSite: { id: "site" } })) }))
-jest.mock("@/app/context/LocalizationContext", () => ({ useLocalization: () => ({ t: () => "" }) }))
+jest.mock("@/app/context/LocalizationContext", () => ({ useLocalization: () => ({ locale: mockLocale, t: mockTranslators[mockLocale] }) }))
 jest.mock("@/app/context/LayoutContext", () => ({ useLayout: () => ({ isLayoutCollapsed: false }) }))
 jest.mock("@/app/hooks/use-mobile-view", () => ({ useIsMobile: jest.fn(() => false) }))
 jest.mock("@/app/accounts-receivable/actions", () => ({ getAccountsReceivable: jest.fn() }))
@@ -30,6 +37,7 @@ const account: ReceivableAccount = {
 
 describe("accounts receivable page", () => {
   beforeEach(() => {
+    mockLocale = "en"
     jest.clearAllMocks()
     jest.mocked(useIsMobile).mockReturnValue(false)
     jest.mocked(useSite).mockReturnValue({ currentSite: { id: "site" } } as never)
@@ -125,5 +133,28 @@ describe("accounts receivable page", () => {
     jest.mocked(useSWR).mockReturnValue({ mutate, isLoading: true } as never)
     render(<AccountsReceivablePage />)
     expect(screen.getByRole("status")).toHaveTextContent("Loading accounts")
+  })
+
+  it("updates status labels, search and breadcrumbs in Spanish without mutating the data cache", () => {
+    const dispatch = jest.spyOn(window, "dispatchEvent")
+    const view = render(<AccountsReceivablePage />)
+    mockLocale = "es"
+    view.rerender(<AccountsReceivablePage />)
+    expect(screen.getByRole("tab", { name: "Pedidos cancelados" })).toBeInTheDocument()
+    expect(screen.getByRole("tab", { name: "Sin fecha de vencimiento" })).toBeInTheDocument()
+    expect(screen.getAllByPlaceholderText("Buscar cuentas por cobrar...")).toHaveLength(2)
+    expect(jest.mocked(useSWR).mock.calls.at(-1)![0]).toEqual(["accounts-receivable", "site", "active"])
+    expect(mutate).not.toHaveBeenCalled()
+    expect(dispatch).toHaveBeenLastCalledWith(expect.objectContaining({ detail: { title: "Cuentas por cobrar", parent: null } }))
+    dispatch.mockRestore()
+  })
+
+  it("translates a known server error and keeps retry behavior", () => {
+    mockLocale = "es"
+    jest.mocked(useSWR).mockReturnValue({ mutate, data: { data: [], error: "Unable to access accounts receivable" }, isLoading: false } as never)
+    render(<AccountsReceivablePage />)
+    expect(screen.getByRole("alert")).toHaveTextContent("No se pudo acceder a las cuentas por cobrar")
+    fireEvent.click(screen.getByRole("button", { name: localeMessages.es["common.retry"] }))
+    expect(mutate).toHaveBeenCalledTimes(1)
   })
 })

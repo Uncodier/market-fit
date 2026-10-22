@@ -1,5 +1,7 @@
 "use client"
 
+import { useLocalization } from "@/app/context/LocalizationContext"
+
 import React, { useState, useEffect } from "react"
 import {
   SectionCard,
@@ -22,6 +24,7 @@ interface CalendarPreferencesProps {
 }
 
 export function CalendarPreferences({ settings, onSave, isUpdating, userEmail }: CalendarPreferencesProps) {
+  const { t } = useLocalization()
   const { sites } = useSite()
 
   const [formData, setFormData] = useState<CalendarSettings>({
@@ -61,10 +64,11 @@ export function CalendarPreferences({ settings, onSave, isUpdating, userEmail }:
         <SectionCardContent className="p-6">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label className="text-base font-medium">Global Calendar Enabled</Label>
-              <p className="text-sm text-muted-foreground">Master switch for all your booking links</p>
+              <Label className="text-base font-medium">{t("account.calendar.enabled")}</Label>
+              <p className="text-sm text-muted-foreground">{t("account.calendar.masterHelp")}</p>
             </div>
             <Switch
+              aria-label={t("account.calendar.enabled")}
               checked={formData.enabled}
               onCheckedChange={(checked) => setFormData(prev => ({ ...prev, enabled: checked }))}
             />
@@ -77,7 +81,7 @@ export function CalendarPreferences({ settings, onSave, isUpdating, userEmail }:
               onClick={handleSave}
               disabled={isUpdating}
               className="rounded-full px-6 border-foreground/20 font-medium" size="sm">
-              {isUpdating ? "Saving..." : "Save Preferences"}
+              {isUpdating ? t("common.saving") : t("account.preferences.save")}
             </Button>
           </div>
         </ActionFooter>

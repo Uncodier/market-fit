@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Deal } from "@/app/deals/types"
@@ -16,6 +16,7 @@ import { DealSalesOrder } from "@/app/deals/components/DealSalesOrder"
 import { DealQualifyTab } from "@/app/deals/components/DealQualifyTab"
 import { DealDetailSkeleton } from "@/app/deals/components/DealDetailSkeleton"
 import { DEAL_STAGE_TO_JOURNEY } from "@/app/deals/components/deal-format"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 function mergeDeal(previous: Deal | null, next: Deal): Deal {
   if (!previous) return next
@@ -32,6 +33,8 @@ function mergeDeal(previous: Deal | null, next: Deal): Deal {
 export default function DealPage(props: { params: Promise<{ id: string }> }) {
   const unwrappedParams = React.use(props.params)
   const router = useRouter()
+  const { t } = useLocalization()
+  const translateRef = useRef(t)
   const [deal, setDeal] = useState<Deal | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -40,6 +43,11 @@ export default function DealPage(props: { params: Promise<{ id: string }> }) {
   const handleUpdate = (updated: Deal) => {
     setDeal((previous) => mergeDeal(previous, updated))
   }
+
+  // Keep asynchronous feedback current without refetching data on language changes.
+  useEffect(() => {
+    translateRef.current = t
+  }, [t])
 
   useEffect(() => {
     async function loadDeal() {
@@ -68,7 +76,7 @@ export default function DealPage(props: { params: Promise<{ id: string }> }) {
         }
       } catch (error) {
         console.error("Error loading deal:", error)
-        toast.error("Error loading deal")
+        toast.error(translateRef.current("details.deal.loadFailed"))
       } finally {
         setLoading(false)
       }
@@ -98,11 +106,12 @@ export default function DealPage(props: { params: Promise<{ id: string }> }) {
         return
       }
       if (result.deal) {
-        toast.success(`Stage updated to ${stage.replace(/_/g, " ")}`)
+        const translate = translateRef.current
+        toast.success(translate("details.deal.stageUpdated", { stage: translate(`details.deal.stage.${stage}`) }))
         handleUpdate(result.deal)
       }
     } catch {
-      toast.error("Failed to update stage")
+      toast.error(translateRef.current("details.deal.updateStageFailed"))
     }
   }
 
@@ -114,8 +123,8 @@ export default function DealPage(props: { params: Promise<{ id: string }> }) {
     return (
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="text-center space-y-4">
-          <h2 className="text-2xl font-bold">Deal not found</h2>
-          <Button onClick={() => router.push("/deals")}>Back to Deals</Button>
+          <h2 className="text-2xl font-bold">{t("details.deal.notFound")}</h2>
+          <Button onClick={() => router.push("/deals")}>{t("details.deal.back")}</Button>
         </div>
       </div>
     )
@@ -128,9 +137,9 @@ export default function DealPage(props: { params: Promise<{ id: string }> }) {
           <div className="pt-0 flex-1 w-full">
             <div className="flex items-center justify-between w-full gap-4">
               <TabsList>
-                <TabsTrigger value="activity">Activity</TabsTrigger>
-                <TabsTrigger value="sales">Sales</TabsTrigger>
-                <TabsTrigger value="qualify">Qualify</TabsTrigger>
+                <TabsTrigger value="activity">{t("details.deal.activity")}</TabsTrigger>
+                <TabsTrigger value="sales">{t("details.deal.sales")}</TabsTrigger>
+                <TabsTrigger value="qualify">{t("details.deal.qualify")}</TabsTrigger>
               </TabsList>
               <div className="flex items-center overflow-x-auto shrink-0">
                 <DealStageBar currentStage={deal.stage} onStageChange={(stage) => void handleStageChange(stage)} />

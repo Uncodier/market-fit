@@ -1,0 +1,16 @@
+{
+  "catalog.kind.label": "Item type",
+  "bills.detail.statusUpdated": "Status updated to",
+  "bills.detail.errorStatus": "Error updating status",
+  "buyer.orders.detail.item": "Item",
+  "buyer.orders.detail.qty": "Quantity",
+  "buyer.orders.detail.price": "Price",
+  "buyer.orders.detail.modifiers": "Extras",
+  "catalog.availability.updating": "Updating availability...",
+  "catalog.availability.updated": "Availability updated",
+  "catalog.availability.error": "Error updating availability",
+  "catalog.variants.variantOf": "Variant of",
+  "catalog.orderUpdateError": "Error saving order",
+  "pos.reservable": "Reservable",
+  "sales.order.modifiers": "Extras"
+}

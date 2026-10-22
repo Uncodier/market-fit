@@ -1,16 +1,14 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import { Button } from "@/app/components/ui/button"
-import { Card, CardContent } from "@/app/components/ui/card"
 import { Input } from "@/app/components/ui/input"
 import { Badge } from "@/app/components/ui/badge"
 import { 
   Search, 
   Calendar,
   Globe,
-  Filter,
-  Clock,
   Settings,
   Microscope,
   ChevronDown,
@@ -19,24 +17,32 @@ import {
 } from "@/app/components/ui/icons"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { CalendarDateRangePicker } from "@/app/components/ui/date-range-picker"
-import { useRouter } from "next/navigation"
-import { Checkbox } from "@/app/components/ui/checkbox"
 import { Popover, PopoverContent, PopoverTrigger } from "@/app/components/ui/popover"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { addDays, format } from "date-fns"
+import { getDateFnsLocale } from "@/app/lib/date-fns-locale"
 import { toast } from "sonner"
-
-// Time range presets for search filtering
 
 // Time range presets
 const TIME_RANGES = [
-  { id: 'last24h', name: 'Last 24 hours', days: 1 },
-  { id: 'lastWeek', name: 'Last week', days: 7 },
-  { id: 'lastMonth', name: 'Last month', days: 30 },
-  { id: 'last3Months', name: 'Last 3 months', days: 90 },
-  { id: 'lastYear', name: 'Last year', days: 365 },
-  { id: 'custom', name: 'Custom range', days: null },
+  { id: 'last24h', labelKey: 'content.deepResearch.timeRanges.last24h', days: 1 },
+  { id: 'lastWeek', labelKey: 'content.deepResearch.timeRanges.lastWeek', days: 7 },
+  { id: 'lastMonth', labelKey: 'content.deepResearch.timeRanges.lastMonth', days: 30 },
+  { id: 'last3Months', labelKey: 'content.deepResearch.timeRanges.last3Months', days: 90 },
+  { id: 'lastYear', labelKey: 'content.deepResearch.timeRanges.lastYear', days: 365 },
+  { id: 'custom', labelKey: 'content.deepResearch.timeRanges.custom', days: null },
 ]
+
+interface ResearchResult {
+  id: number
+  title: string
+  description: string
+  source: string
+  url: string
+  date: Date
+  relevance: number
+  isSample?: boolean
+}
 
 interface SearchFilters {
   sources: string[] // Array of URLs only
@@ -47,10 +53,10 @@ interface SearchFilters {
 }
 
 export default function DeepResearchPage() {
-  const router = useRouter()
+  const { t, locale } = useLocalization()
   const [searchQuery, setSearchQuery] = useState("")
   const [isSearching, setIsSearching] = useState(false)
-  const [searchResults, setSearchResults] = useState<any[]>([])
+  const [searchResults, setSearchResults] = useState<ResearchResult[]>([])
   const [filters, setFilters] = useState<SearchFilters>({
     sources: [], // Start with empty array of URLs
     dateRange: undefined,
@@ -61,31 +67,32 @@ export default function DeepResearchPage() {
   
   const [newSourceUrl, setNewSourceUrl] = useState("")
 
-  // Set the page title when component mounts
+  // Keep the browser title and breadcrumb in sync with the display language.
   useEffect(() => {
     // Update the page title for the browser tab
-    document.title = 'Deep Research | Market Fit'
+    document.title = t('content.deepResearch.browserTitle')
     
     // Emit a custom event to update the breadcrumb
     const event = new CustomEvent('breadcrumb:update', {
       detail: {
-        title: 'Deep Research',
+        title: t('content.deepResearch.title'),
         path: '/content/deepResearch',
         section: 'content'
       }
     })
     
     // Ensure event is dispatched after DOM is updated
-    setTimeout(() => {
+    const timeout = setTimeout(() => {
       window.dispatchEvent(event)
       console.log('Breadcrumb update event dispatched for Deep Research')
     }, 0)
     
     // Cleanup when component unmounts
     return () => {
-      document.title = 'Content | Market Fit'
+      clearTimeout(timeout)
+      document.title = t('content.deepResearch.contentBrowserTitle')
     }
-  }, [])
+  }, [t])
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return
@@ -107,7 +114,8 @@ export default function DeepResearchPage() {
           source: "web",
           url: "https://example.com",
           date: new Date(),
-          relevance: 95
+          relevance: 95,
+          isSample: true
         }
       ])
     } catch (error) {
@@ -163,10 +171,10 @@ export default function DeepResearchPage() {
           sources: [...prev.sources, urlToAdd]
         }))
         setNewSourceUrl("")
-        toast.success("Source added successfully")
-      } catch (error) {
+        toast.success(t("content.deepResearch.sourceAdded"))
+      } catch {
         // Show user-friendly error message
-        toast.error("Please enter a valid URL (e.g., example.com or https://example.com)")
+        toast.error(t("content.deepResearch.invalidSourceUrl"))
       }
     }
   }
@@ -194,16 +202,16 @@ export default function DeepResearchPage() {
                 <div className="p-3 rounded-full bg-primary/10">
                   <Microscope className="h-8 w-8 text-primary" />
                 </div>
-                <h1 className="text-4xl font-light text-foreground">Deep Research</h1>
+                <h1 className="text-4xl font-light text-foreground">{t("content.deepResearch.title")}</h1>
               </div>
-              <p className="text-muted-foreground">Advanced search across multiple sources</p>
+              <p className="text-muted-foreground">{t("content.deepResearch.description")}</p>
             </div>
 
             {/* Main Search Bar */}
             <div className="space-y-4">
               <div className="relative">
                 <Input
-                  placeholder="What would you like to research?"
+                  placeholder={t("content.deepResearch.searchPlaceholder")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
@@ -223,10 +231,10 @@ export default function DeepResearchPage() {
                   {isSearching ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Searching...
+                      {t("content.deepResearch.searching")}
                     </>
                   ) : (
-                    'Search'
+                    t('content.deepResearch.search')
                   )}
                 </Button>
               </div>
@@ -240,23 +248,23 @@ export default function DeepResearchPage() {
                   <PopoverTrigger asChild>
                     <Button variant="outline" size="default" className="rounded-full gap-2 px-6 py-3">
                       <Settings className="h-5 w-5" />
-                      Sources ({filters.sources.length})
+                      {t("content.deepResearch.sourcesCount", { count: filters.sources.length })}
                       <ChevronDown className="h-4 w-4" />
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-96" align="center">
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
-                        <h4 className="font-medium">Website Sources</h4>
+                        <h4 className="font-medium">{t("content.deepResearch.websiteSources")}</h4>
                         <Button variant="ghost" size="sm" onClick={clearFilters}>
-                          Clear all
+                          {t("content.deepResearch.clearAll")}
                         </Button>
                       </div>
                       
                       {/* Add new source */}
                       <div className="space-y-3">
                         <Input
-                          placeholder="Enter website URL (e.g., example.com or reddit.com)"
+                          placeholder={t("content.deepResearch.sourceUrlPlaceholder")}
                           value={newSourceUrl}
                           onChange={(e) => setNewSourceUrl(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && addCustomSource()}
@@ -269,14 +277,14 @@ export default function DeepResearchPage() {
                           className="w-full gap-2"
                         >
                           <Plus className="h-4 w-4" />
-                          Add Source
+                          {t("content.deepResearch.addSource")}
                         </Button>
                       </div>
 
                       {/* Sources list */}
                       {filters.sources.length > 0 && (
                         <div className="space-y-2 max-h-40 overflow-y-auto">
-                          <h5 className="text-sm font-medium text-muted-foreground">Active Sources:</h5>
+                          <h5 className="text-sm font-medium text-muted-foreground">{t("content.deepResearch.activeSources")}</h5>
                           {filters.sources.map((url, index) => (
                             <div key={index} className="flex items-center justify-between p-3 bg-muted rounded-lg">
                               <span className="text-sm truncate flex-1 mr-2">{url}</span>
@@ -284,6 +292,7 @@ export default function DeepResearchPage() {
                                 size="sm" 
                                 variant="ghost" 
                                 onClick={() => removeCustomSource(url)}
+                                aria-label={t("content.deepResearch.removeSource", { url })}
                                 className="h-8 w-8 p-0"
                               >
                                 <X className="h-4 w-4" />
@@ -295,8 +304,8 @@ export default function DeepResearchPage() {
                       
                       {filters.sources.length === 0 && (
                         <div className="text-center py-6">
-                          <p className="text-sm text-muted-foreground">No sources added yet</p>
-                          <p className="text-xs text-muted-foreground mt-1">Add website URLs to search specific sources</p>
+                          <p className="text-sm text-muted-foreground">{t("content.deepResearch.noSources")}</p>
+                          <p className="text-xs text-muted-foreground mt-1">{t("content.deepResearch.noSourcesDescription")}</p>
                         </div>
                       )}
                     </div>
@@ -305,7 +314,7 @@ export default function DeepResearchPage() {
 
                 {/* Time Range Filter */}
                 <Select value={filters.timeRange} onValueChange={handleTimeRangeChange}>
-                  <SelectTrigger className="w-44 rounded-full px-5 py-2.5 h-11">
+                  <SelectTrigger className="w-44 rounded-full px-5 py-2.5 h-11" aria-label={t("content.deepResearch.timeRange")}>
                     <div className="flex items-center gap-2">
                       <Calendar className="h-5 w-5" />
                       <SelectValue />
@@ -314,7 +323,7 @@ export default function DeepResearchPage() {
                   <SelectContent>
                     {TIME_RANGES.map((range) => (
                       <SelectItem key={range.id} value={range.id}>
-                        {range.name}
+                        {t(range.labelKey)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -322,18 +331,18 @@ export default function DeepResearchPage() {
 
                 {/* Region Filter */}
                 <Select value={filters.region} onValueChange={(region) => setFilters(prev => ({ ...prev, region }))}>
-                  <SelectTrigger className="w-40 rounded-full px-6 py-3 h-12">
+                  <SelectTrigger className="w-40 rounded-full px-6 py-3 h-12" aria-label={t("content.deepResearch.region")}>
                     <div className="flex items-center gap-2">
                       <Globe className="h-5 w-5" />
                       <SelectValue />
                     </div>
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="global">Global</SelectItem>
-                    <SelectItem value="us">United States</SelectItem>
-                    <SelectItem value="eu">Europe</SelectItem>
-                    <SelectItem value="asia">Asia</SelectItem>
-                    <SelectItem value="latam">Latin America</SelectItem>
+                    <SelectItem value="global">{t("content.deepResearch.regions.global")}</SelectItem>
+                    <SelectItem value="us">{t("content.deepResearch.regions.us")}</SelectItem>
+                    <SelectItem value="eu">{t("content.deepResearch.regions.eu")}</SelectItem>
+                    <SelectItem value="asia">{t("content.deepResearch.regions.asia")}</SelectItem>
+                    <SelectItem value="latam">{t("content.deepResearch.regions.latam")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -362,7 +371,7 @@ export default function DeepResearchPage() {
               {isSearching && (
                 <div className="text-center py-12">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                  <p className="text-muted-foreground mt-4">Searching across selected sources...</p>
+                  <p className="text-muted-foreground mt-4">{t("content.deepResearch.searchingSources")}</p>
                 </div>
               )}
 
@@ -370,9 +379,9 @@ export default function DeepResearchPage() {
               {searchResults.length > 0 && !isSearching && (
                 <div className="space-y-6">
                   <div className="flex items-center justify-between border-b pb-4">
-                    <h2 className="text-lg font-medium">Research Results</h2>
+                    <h2 className="text-lg font-medium">{t("content.deepResearch.resultsTitle")}</h2>
                     <Badge variant="outline">
-                      {searchResults.length} results found
+                      {t("content.deepResearch.resultsCount", { count: searchResults.length })}
                     </Badge>
                   </div>
                   
@@ -383,21 +392,21 @@ export default function DeepResearchPage() {
                           <div className="flex items-start justify-between">
                             <h3 className="text-lg font-medium line-clamp-2 text-primary hover:underline">
                               <a href={result.url} target="_blank" rel="noopener noreferrer">
-                                {result.title}
+                                {result.isSample ? t("content.deepResearch.sampleTitle") : result.title}
                               </a>
                             </h3>
                             <Badge variant="outline" className="ml-4 flex-shrink-0">
-                              {result.relevance}% match
+                              {t("content.deepResearch.relevance", { relevance: result.relevance })}
                             </Badge>
                           </div>
-                          <p className="text-muted-foreground line-clamp-3">{result.description}</p>
+                          <p className="text-muted-foreground line-clamp-3">{result.isSample ? t("content.deepResearch.sampleDescription") : result.description}</p>
                           <div className="flex items-center gap-4 text-sm text-muted-foreground">
                             <div className="flex items-center gap-1">
                               <Globe className="h-4 w-4" />
-                              {result.source}
+                              {result.source === "web" ? t("content.deepResearch.webSource") : result.source}
                             </div>
                             <span>•</span>
-                            <span>{format(result.date, 'MMM dd, yyyy')}</span>
+                            <span>{format(result.date, 'MMM dd, yyyy', { locale: getDateFnsLocale(locale) })}</span>
                             <span>•</span>
                             <a 
                               href={result.url} 
@@ -405,7 +414,7 @@ export default function DeepResearchPage() {
                               rel="noopener noreferrer"
                               className="text-primary hover:underline"
                             >
-                              View source
+                              {t("content.deepResearch.viewSource")}
                             </a>
                           </div>
                         </div>

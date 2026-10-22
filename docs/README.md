@@ -7,6 +7,8 @@ Use the guides below before relying on older implementation notes.
 
 - [Development](DEVELOPMENT.md) — local setup, scripts, tests, and validation.
 - [Architecture](ARCHITECTURE.md) — runtime boundaries and repository layout.
+- [Localization coverage and repair](LOCALIZATION_AUDIT.md) — dictionary checks,
+  translated surfaces, and remaining hardcoded legacy UI.
 - [Security](SECURITY.md) — mandatory controls for auth, data access, payments,
   public links, webhooks, and outbound requests.
 - [Database migrations](DATABASE_MIGRATIONS.md) — safe Supabase migration workflow.

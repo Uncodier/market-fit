@@ -1,19 +1,24 @@
 "use client"
 
-import { useState, useEffect, Suspense } from "react"
+import { useState, useEffect, useRef, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
-import { Loader, Eye, EyeOff, CheckCircle2, Lock, AlertCircle } from "@/app/components/ui/icons"
+import { Eye, EyeOff, Lock, AlertCircle } from "@/app/components/ui/icons"
 import { toast } from "sonner"
 import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
 import { Alert, AlertDescription } from "@/app/components/ui/alert"
 import { resolveSetPasswordRedirect } from "@/lib/auth/post-auth-redirect"
+import { useLocalization } from "@/app/context/LocalizationContext"
+import { PasswordRequirements, passwordUpdateErrorKey, validatePassword, type PasswordError } from "./password-requirements"
 
 function SetPasswordContent() {
+  const { t } = useLocalization()
+  const translate = useRef(t)
+  useEffect(() => { translate.current = t }, [t])
   const router = useRouter()
   const searchParams = useSearchParams()
   const [password, setPassword] = useState('')
@@ -42,25 +47,25 @@ function SetPasswordContent() {
 
         if (error) {
           console.error('[Set Password] Session error:', error)
-          setSessionError(`Session error: ${error.message}`)
+          setSessionError('auth.flows.password.sessionFailed')
           return
         }
 
         if (!session || !session.user) {
           console.error('[Set Password] No active session found')
-          setSessionError('No active session found. Please request a new password reset link.')
+          setSessionError('auth.flows.password.noSession')
           
           // Redirect to auth page after a delay
           setTimeout(() => {
-            router.push('/auth?error=' + encodeURIComponent('Session expired. Please request a new password reset.'))
+            router.push('/auth?error=' + encodeURIComponent(translate.current('auth.flows.password.sessionExpiredRedirect')))
           }, 3000)
           return
         }
 
         console.log('[Set Password] Valid session found for:', session.user.email)
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('[Set Password] Session check error:', error)
-        setSessionError('Failed to verify session. Please try again.')
+        setSessionError('auth.flows.password.verifySessionFailed')
       } finally {
         setIsCheckingSession(false)
       }
@@ -69,14 +74,6 @@ function SetPasswordContent() {
     checkSession()
   }, [router])
 
-  const validatePassword = (pwd: string) => {
-    if (pwd.length < 8) return "Password must be at least 8 characters long"
-    if (!/(?=.*[a-z])/.test(pwd)) return "Password must contain at least one lowercase letter"
-    if (!/(?=.*[A-Z])/.test(pwd)) return "Password must contain at least one uppercase letter"
-    if (!/(?=.*\d)/.test(pwd)) return "Password must contain at least one number"
-    return null
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -84,18 +81,18 @@ function SetPasswordContent() {
     setApiError(null)
     
     if (!password || !confirmPassword) {
-      toast.error("Please fill in all fields")
+      toast.error(t('auth.flows.password.allFieldsRequired'))
       return
     }
 
     const passwordError = validatePassword(password)
     if (passwordError) {
-      toast.error(passwordError)
+      toast.error(t(passwordError))
       return
     }
 
     if (password !== confirmPassword) {
-      toast.error("Passwords do not match")
+      toast.error(t('auth.flows.password.mismatch'))
       return
     }
 
@@ -120,7 +117,7 @@ function SetPasswordContent() {
         // Check for session errors FIRST, before parsing
         // This ensures session expiration UX is handled correctly
         const errorMessage = error.message || ''
-        const errorCode = (error as any)?.code || ''
+        const errorCode = (error as PasswordError)?.code || ''
         const isSessionError = 
           errorMessage.toLowerCase().includes('session') || 
           errorMessage.toLowerCase().includes('jwt') ||
@@ -130,9 +127,9 @@ function SetPasswordContent() {
           errorCode.toLowerCase().includes('token')
         
         if (isSessionError) {
-          toast.error("Your session has expired. Please request a new password reset link.")
+          toast.error(translate.current('auth.flows.password.sessionExpired'))
           setTimeout(() => {
-            window.location.href = '/auth?error=' + encodeURIComponent('Session expired. Please request a new password reset.')
+            window.location.href = '/auth?error=' + encodeURIComponent(translate.current('auth.flows.password.sessionExpiredRedirect'))
           }, 2000)
           setIsLoading(false)
           return
@@ -149,18 +146,18 @@ function SetPasswordContent() {
               parsedError = JSON.parse(jsonMatch[0])
             }
           }
-        } catch (parseError) {
+        } catch {
           // If parsing fails, continue with regular error handling
         }
 
         if (!parsedError && error && typeof error === 'object') {
           if ('code' in error && 'message' in error) {
             parsedError = {
-              code: (error as any).code,
-              message: (error as any).message
+              code: (error as PasswordError).code,
+              message: (error as PasswordError).message
             }
-          } else if ('details' in error && (error as any).details) {
-            const details = (error as any).details
+          } else if ('details' in error && (error as PasswordError).details) {
+            const details = (error as PasswordError).details!
             if (typeof details === 'object' && 'code' in details && 'message' in details) {
               parsedError = {
                 code: details.code,
@@ -169,7 +166,7 @@ function SetPasswordContent() {
             } else if (typeof details === 'string' && details.startsWith('{')) {
               try {
                 parsedError = JSON.parse(details)
-              } catch (e) {
+              } catch {
                 // Ignore parse errors
               }
             }
@@ -195,13 +192,13 @@ function SetPasswordContent() {
       console.log('✅ Password set successfully')
       
       // Send success toast right away so the user knows it worked!
-      toast.success("Password set successfully!")
+      toast.success(translate.current('auth.flows.password.success'))
       setApiError(null)
       isRedirecting = true
       
       // Refresh session to ensure it's valid before redirecting
       console.log('🔄 Refreshing session after password update...')
-      const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.getSession()
+      const { data: { session: refreshedSession } } = await supabase.auth.getSession()
       
       if (!refreshedSession || !refreshedSession.user) {
         console.error('[Set Password] No session after password update, attempting to get user...')
@@ -211,10 +208,10 @@ function SetPasswordContent() {
           console.error('[Set Password] Failed to get user after password update')
           
           // Instead of throwing an error here, treat it as a success but request re-login.
-          toast.info("Please sign in with your new password.")
+          toast.info(translate.current('auth.flows.password.signIn'))
           
           setTimeout(() => {
-            window.location.href = '/auth?message=' + encodeURIComponent('Password updated successfully. Please sign in with your new password.')
+            window.location.href = '/auth?message=' + encodeURIComponent(translate.current('auth.flows.password.signInRedirect'))
           }, 2000)
           return
         }
@@ -230,7 +227,8 @@ function SetPasswordContent() {
       // Use window.location.href directly to force full reload and ensure server cookies are applied
       window.location.href = targetUrl
 
-    } catch (error: any) {
+    } catch (caughtError: unknown) {
+      const error = caughtError as PasswordError | null
       console.error('❌ Password setup error:', error)
       
       const errorMessage = error?.message || ''
@@ -244,9 +242,9 @@ function SetPasswordContent() {
         errorCode.toLowerCase().includes('token')
       
       if (isSessionError) {
-        toast.error("Your session has expired. Please request a new password reset link.")
+        toast.error(translate.current('auth.flows.password.sessionExpired'))
         setTimeout(() => {
-          window.location.href = '/auth?error=' + encodeURIComponent('Session expired. Please request a new password reset.')
+          window.location.href = '/auth?error=' + encodeURIComponent(translate.current('auth.flows.password.sessionExpiredRedirect'))
         }, 2000)
         setIsLoading(false)
         return
@@ -267,11 +265,11 @@ function SetPasswordContent() {
         
         if (!parsedError && error && typeof error === 'object' && 'code' in error && 'message' in error) {
           parsedError = {
-            code: (error as any).code,
-            message: (error as any).message
+            code: error.code,
+            message: error.message
           }
         }
-      } catch (parseError) {}
+      } catch {}
 
       if (parsedError && parsedError.message) {
         setApiError({
@@ -292,7 +290,7 @@ function SetPasswordContent() {
   }
 
   const passwordError = password ? validatePassword(password) : null
-  const confirmError = confirmPassword && password !== confirmPassword ? "Passwords do not match" : null
+  const confirmError = confirmPassword && password !== confirmPassword ? 'auth.flows.password.mismatch' : null
 
   // Show loading state while checking session
   if (isCheckingSession) {
@@ -302,7 +300,7 @@ function SetPasswordContent() {
           <Card className="bg-card border-border">
             <CardContent className="flex flex-col items-center text-center py-8">
               <LoadingSkeleton variant="fullscreen" size="lg" />
-              <p className="text-muted-foreground mt-4">Verifying your session...</p>
+              <p className="text-muted-foreground mt-4">{t('auth.flows.password.verifyingSession')}</p>
             </CardContent>
           </Card>
         </div>
@@ -322,9 +320,9 @@ function SetPasswordContent() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.98-.833-2.75 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
                 </svg>
               </div>
-              <h3 className="text-lg font-medium text-foreground mb-2">Session Error</h3>
-              <p className="text-muted-foreground mb-4">{sessionError}</p>
-              <p className="text-sm text-muted-foreground">Redirecting you back to the login page...</p>
+              <h3 className="text-lg font-medium text-foreground mb-2">{t('auth.flows.password.sessionErrorTitle')}</h3>
+              <p className="text-muted-foreground mb-4">{t(sessionError)}</p>
+              <p className="text-sm text-muted-foreground">{t('auth.flows.redirectingLogin')}</p>
             </CardContent>
           </Card>
         </div>
@@ -343,10 +341,10 @@ function SetPasswordContent() {
               </div>
             </div>
             <CardTitle className="text-2xl font-bold text-foreground">
-              Set Your Password
+              {t('auth.flows.password.title')}
             </CardTitle>
             <p className="text-muted-foreground mt-2">
-              Complete your account setup by creating a secure password
+              {t('auth.flows.password.description')}
             </p>
           </CardHeader>
           <CardContent>
@@ -355,14 +353,14 @@ function SetPasswordContent() {
                 <Alert variant="destructive">
                   <div className="flex items-center gap-2">
                     <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                    <AlertDescription className="m-0">{apiError.message}</AlertDescription>
+                    <AlertDescription className="m-0">{t(passwordUpdateErrorKey(apiError))}</AlertDescription>
                   </div>
                 </Alert>
               )}
               <div className="space-y-4">
                 <div>
                   <Label htmlFor="password" className="text-sm font-medium">
-                    Password
+                    {t('auth.password')}
                   </Label>
                   <div className="relative mt-1">
                     <Input
@@ -376,7 +374,7 @@ function SetPasswordContent() {
                           setApiError(null)
                         }
                       }}
-                      placeholder="Enter your password"
+                      placeholder={t('auth.passwordPlaceholder')}
                       className={`pr-10 ${passwordError ? 'border-red-300' : ''}`}
                       disabled={isLoading}
                     />
@@ -384,6 +382,7 @@ function SetPasswordContent() {
                       type="button"
                       className="absolute inset-y-0 right-0 pr-3 flex items-center"
                       onClick={() => setShowPassword(!showPassword)}
+                      aria-label={t(showPassword ? 'auth.flows.password.hide' : 'auth.flows.password.show')}
                     >
                       {showPassword ? (
                         <EyeOff className="h-4 w-4 text-gray-400" />
@@ -393,13 +392,13 @@ function SetPasswordContent() {
                     </button>
                   </div>
                   {passwordError && (
-                    <p className="text-red-600 text-xs mt-1">{passwordError}</p>
+                    <p className="text-red-600 text-xs mt-1">{t(passwordError)}</p>
                   )}
                 </div>
 
                 <div>
                   <Label htmlFor="confirmPassword" className="text-sm font-medium">
-                    Confirm Password
+                    {t('auth.flows.password.confirmLabel')}
                   </Label>
                   <div className="relative mt-1">
                     <Input
@@ -413,7 +412,7 @@ function SetPasswordContent() {
                           setApiError(null)
                         }
                       }}
-                      placeholder="Confirm your password"
+                      placeholder={t('auth.flows.password.confirmPlaceholder')}
                       className={`pr-10 ${confirmError ? 'border-red-300' : ''}`}
                       disabled={isLoading}
                     />
@@ -421,6 +420,7 @@ function SetPasswordContent() {
                       type="button"
                       className="absolute inset-y-0 right-0 pr-3 flex items-center"
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      aria-label={t(showConfirmPassword ? 'auth.flows.password.hideConfirm' : 'auth.flows.password.showConfirm')}
                     >
                       {showConfirmPassword ? (
                         <EyeOff className="h-4 w-4 text-gray-400" />
@@ -430,32 +430,12 @@ function SetPasswordContent() {
                     </button>
                   </div>
                   {confirmError && (
-                    <p className="text-red-600 text-xs mt-1">{confirmError}</p>
+                    <p className="text-red-600 text-xs mt-1">{t(confirmError)}</p>
                   )}
                 </div>
               </div>
 
-              <div className="bg-muted rounded-lg p-4">
-                <h4 className="text-sm font-medium text-foreground mb-2">Password requirements:</h4>
-                <ul className="text-xs text-muted-foreground space-y-1">
-                  <li className="flex items-center">
-                    <CheckCircle2 className={`h-3 w-3 mr-2 ${password.length >= 8 ? 'text-green-500' : 'text-muted-foreground'}`} />
-                    At least 8 characters
-                  </li>
-                  <li className="flex items-center">
-                    <CheckCircle2 className={`h-3 w-3 mr-2 ${/(?=.*[a-z])/.test(password) ? 'text-green-500' : 'text-muted-foreground'}`} />
-                    One lowercase letter
-                  </li>
-                  <li className="flex items-center">
-                    <CheckCircle2 className={`h-3 w-3 mr-2 ${/(?=.*[A-Z])/.test(password) ? 'text-green-500' : 'text-muted-foreground'}`} />
-                    One uppercase letter
-                  </li>
-                  <li className="flex items-center">
-                    <CheckCircle2 className={`h-3 w-3 mr-2 ${/(?=.*\d)/.test(password) ? 'text-green-500' : 'text-muted-foreground'}`} />
-                    One number
-                  </li>
-                </ul>
-              </div>
+              <PasswordRequirements password={password} />
 
               <Button
                 type="submit"
@@ -465,17 +445,17 @@ function SetPasswordContent() {
                 {isLoading ? (
                   <>
                     <LoadingSkeleton variant="button" size="sm" />
-                    Setting Password...
+                    {t('auth.flows.password.setting')}
                   </>
                 ) : (
-                  'Set Password & Continue'
+                  t('auth.flows.password.submit')
                 )}
               </Button>
             </form>
 
             <div className="text-center mt-6">
               <p className="text-xs text-gray-500">
-                Your password will be encrypted and stored securely.
+                {t('auth.flows.password.security')}
               </p>
             </div>
           </CardContent>
@@ -486,6 +466,7 @@ function SetPasswordContent() {
 }
 
 export default function SetPasswordPage() {
+  const { t } = useLocalization()
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center bg-background py-12 px-4 sm:px-6 lg:px-8">
@@ -493,7 +474,7 @@ export default function SetPasswordPage() {
           <Card className="bg-card border-border">
             <CardContent className="flex flex-col items-center text-center py-8">
               <LoadingSkeleton variant="fullscreen" size="lg" />
-              <p className="text-muted-foreground mt-4">Loading...</p>
+              <p className="text-muted-foreground mt-4">{t('common.loading')}</p>
             </CardContent>
           </Card>
         </div>

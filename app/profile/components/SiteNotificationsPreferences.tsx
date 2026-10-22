@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import { toast } from "sonner"
 import {
   SectionCard,
@@ -32,7 +32,7 @@ import {
 import { ActionFooter } from "@/app/components/ui/card-footer"
 import { Button } from "@/app/components/ui/button"
 
-const getTranslatedCategories = (t: any) => [
+const getTranslatedCategories = (t: ReturnType<typeof useLocalization>["t"]) => [
   {
     id: NotificationCategory.LEAD_MANAGEMENT,
     label: t("profile.notifications.categories.leadManagement"),
@@ -75,6 +75,8 @@ function emptyPreferences(): Partial<UserSiteNotification> {
 
 function SiteNotificationCard({ site }: { site: { id: string; name: string } }) {
   const { t } = useLocalization()
+  const translationRef = useRef(t)
+  useEffect(() => { translationRef.current = t }, [t])
   const [isExpanded, setIsExpanded] = useState(false)
   const [preferences, setPreferences] = useState<Partial<UserSiteNotification> | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -105,7 +107,7 @@ function SiteNotificationCard({ site }: { site: { id: string; name: string } }) 
         )
       } catch (err) {
         console.error("Error fetching preferences:", err)
-        toast.error("Failed to load notification preferences")
+        toast.error(translationRef.current("account.notifications.loadFailed"))
       } finally {
         if (!cancelled) setIsLoading(false)
       }
@@ -126,10 +128,10 @@ function SiteNotificationCard({ site }: { site: { id: string; name: string } }) 
 
     try {
       await notificationPreferencesService.updatePreferences(site.id, { [key]: checked })
-      toast.success("Preferences updated")
+      toast.success(t("account.notifications.updated"))
     } catch (err) {
       setPreferences(previous)
-      toast.error("Failed to update preferences")
+      toast.error(t("account.notifications.failed"))
     } finally {
       setIsUpdating(false)
     }
@@ -147,10 +149,10 @@ function SiteNotificationCard({ site }: { site: { id: string; name: string } }) 
       await notificationPreferencesService.updatePreferences(site.id, {
         categories: newCategories,
       })
-      toast.success("Preferences updated")
+      toast.success(t("account.notifications.updated"))
     } catch (err) {
       setPreferences(previous)
-      toast.error("Failed to update category")
+      toast.error(t("account.notifications.categoryFailed"))
     } finally {
       setIsUpdating(false)
     }
@@ -212,6 +214,7 @@ function SiteNotificationCard({ site }: { site: { id: string; name: string } }) 
                       </div>
                     </div>
                     <Switch
+                      aria-label={t("profile.notifications.siteEmail.label")}
                       checked={preferences.email_enabled ?? true}
                       onCheckedChange={(checked) => handleUpdateGlobal("email_enabled", checked)}
                       disabled={isUpdating}
@@ -231,6 +234,7 @@ function SiteNotificationCard({ site }: { site: { id: string; name: string } }) 
                       </div>
                     </div>
                     <Switch
+                      aria-label={t("profile.notifications.sitePush.label")}
                       checked={preferences.push_enabled ?? true}
                       onCheckedChange={(checked) => handleUpdateGlobal("push_enabled", checked)}
                       disabled={isUpdating}
@@ -266,6 +270,7 @@ function SiteNotificationCard({ site }: { site: { id: string; name: string } }) 
                             </div>
                           </div>
                           <Switch
+                            aria-label={category.label}
                             checked={isChecked}
                             onCheckedChange={(checked) => handleUpdateCategory(category.id, checked)}
                             disabled={isUpdating || isGlobalDisabled}
@@ -288,7 +293,7 @@ function SiteNotificationCard({ site }: { site: { id: string; name: string } }) 
                   className="rounded-full px-6 border-foreground/20 font-medium" 
                   size="sm"
                 >
-                  {isUpdating ? "Saving..." : "Saved"}
+                  {isUpdating ? t("profile.notifications.saving") : t("profile.notifications.saved")}
                 </Button>
               </div>
             </ActionFooter>
@@ -327,8 +332,8 @@ export function SiteNotificationsPreferences() {
   }
 
   const disabledChannels = []
-  if (!notifications.email) disabledChannels.push("email")
-  if (!notifications.push) disabledChannels.push("push")
+  if (!notifications.email) disabledChannels.push(t("account.notifications.emailChannel"))
+  if (!notifications.push) disabledChannels.push(t("account.notifications.pushChannel"))
   
   const hasAnyMasterSwitchDisabled = disabledChannels.length > 0
   const hasAllMasterSwitchesDisabled = disabledChannels.length === 2
@@ -365,6 +370,7 @@ export function SiteNotificationsPreferences() {
               </div>
             </div>
             <Switch
+              aria-label={t("profile.notifications.globalEmail.label")}
               checked={notifications.email}
               onCheckedChange={(checked) => handleGlobalChange("email", checked)}
               disabled={isProfileUpdating}
@@ -384,6 +390,7 @@ export function SiteNotificationsPreferences() {
               </div>
             </div>
             <Switch
+              aria-label={t("profile.notifications.globalPush.label")}
               checked={notifications.push}
               onCheckedChange={(checked) => handleGlobalChange("push", checked)}
               disabled={isProfileUpdating}
@@ -409,7 +416,7 @@ export function SiteNotificationsPreferences() {
         <h3 className="text-lg font-semibold text-foreground mb-4">{t("profile.notifications.perSite.title")}</h3>
         {hasAnyMasterSwitchDisabled && (
           <p className="text-sm text-amber-600 dark:text-amber-400 mb-4 bg-amber-50 dark:bg-amber-950/30 p-3 rounded-md border border-amber-200 dark:border-amber-900/50">
-            {t("profile.notifications.overrideWarning", { channels: disabledChannels.join(" and ") })}
+            {t("profile.notifications.overrideWarning", { channels: disabledChannels.join(t("account.notifications.and")) })}
           </p>
         )}
         <div className={hasAllMasterSwitchesDisabled ? "opacity-75 transition-opacity" : "transition-opacity"}>

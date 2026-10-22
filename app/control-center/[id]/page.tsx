@@ -3,18 +3,16 @@
 import { normalizeControlTask } from "../task-data"
 
 import { useState, useEffect, useRef, MutableRefObject, use } from "react"
-import { useRouter } from "next/navigation"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
-import { Button } from "@/app/components/ui/button"
-import { SaveIcon } from "@/app/components/ui/icons"
 import { createClient } from "@/utils/supabase/client"
 import { useSite } from "@/app/context/SiteContext"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import { Task } from "@/app/types"
 import dynamic from "next/dynamic"
 import { TaskStatusBar } from "../components/TaskStatusBar"
 import { toast } from "sonner"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/app/components/ui/card"
+import { Card, CardContent, CardHeader } from "@/app/components/ui/card"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { Suspense } from "react"
 
@@ -207,7 +205,7 @@ const DetailsSkeleton = () => (
 
 // Main component
 export default function TaskDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const router = useRouter()
+  const { t } = useLocalization()
   const { currentSite } = useSite()
   const [task, setTask] = useState<Task | null>(null)
   const [activeTab, setActiveTab] = useState("updates")
@@ -258,13 +256,13 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
       ? `${task.serial_id} - ${task.title} | Market Fit` 
       : task?.title 
         ? `${task.title} | Market Fit` 
-        : "Task | Market Fit"
+        : `${t("details.task.title")} | Market Fit`
     document.title = pageTitle
     
     // Emit a custom event to update the breadcrumb
     const breadcrumbTitle = task?.serial_id && task?.title 
       ? `${task.serial_id} - ${task.title}` 
-      : task?.title || "Task"
+      : task?.title || t("details.task.title")
       
     const event = new CustomEvent('breadcrumb:update', {
       detail: {
@@ -272,7 +270,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
         path: `/control-center/${taskId}`,
         section: 'Control Center',
         parent: {
-          title: 'Control Center',
+          title: t("details.task.controlCenter"),
           path: '/control-center'
         }
       }
@@ -284,7 +282,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
     return () => {
       document.title = "Market Fit"
     }
-  }, [task, taskId])
+  }, [task, taskId, t])
 
   // Handle status change
   const handleStatusChange = async (newStatus: Task['status']) => {
@@ -303,10 +301,10 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
       if (error) throw error
 
       setTask(normalizeControlTask(data))
-      toast.success(`Status updated to ${newStatus}`)
+      toast.success(t("details.task.statusUpdated", { status: t(`details.task.status.${newStatus}`) }))
     } catch (error) {
       console.error('Error updating task status:', error)
-      toast.error("Failed to update task status")
+      toast.error(t("details.task.updateStatusFailed"))
     }
   }
 
@@ -318,8 +316,8 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
             <div className="px-4 md:px-16 pt-0 w-full">
               <div className="flex items-center justify-between w-full">
                 <TabsList>
-                  <TabsTrigger value="updates">Timeline</TabsTrigger>
-                  <TabsTrigger value="details">Details</TabsTrigger>
+                  <TabsTrigger value="updates">{t("details.task.timeline")}</TabsTrigger>
+                  <TabsTrigger value="details">{t("details.task.details")}</TabsTrigger>
                 </TabsList>
                 <div className="flex items-center gap-4">
                   <div className="h-10 w-[200px] bg-muted animate-pulse rounded-md" />
@@ -344,8 +342,8 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
           <div className="px-4 md:px-16 pt-0 w-full">
             <div className="flex items-center justify-between w-full">
               <TabsList>
-                <TabsTrigger value="updates">Timeline</TabsTrigger>
-                <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="updates">{t("details.task.timeline")}</TabsTrigger>
+                <TabsTrigger value="details">{t("details.task.details")}</TabsTrigger>
               </TabsList>
               <div className="flex items-center gap-8">
                 {task && activeTab === "updates" && (

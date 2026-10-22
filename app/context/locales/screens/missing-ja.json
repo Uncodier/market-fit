@@ -1,0 +1,16 @@
+{
+  "catalog.kind.label": "商品タイプ",
+  "bills.detail.statusUpdated": "更新後のステータス：",
+  "bills.detail.errorStatus": "ステータスの更新に失敗しました",
+  "buyer.orders.detail.item": "商品",
+  "buyer.orders.detail.qty": "数量",
+  "buyer.orders.detail.price": "価格",
+  "buyer.orders.detail.modifiers": "追加オプション",
+  "catalog.availability.updating": "販売状況を更新中...",
+  "catalog.availability.updated": "販売状況を更新しました",
+  "catalog.availability.error": "販売状況の更新に失敗しました",
+  "catalog.variants.variantOf": "バリエーション元：",
+  "catalog.orderUpdateError": "並び順の保存に失敗しました",
+  "pos.reservable": "予約可能",
+  "sales.order.modifiers": "追加オプション"
+}

@@ -1,6 +1,8 @@
 "use client"
 
-import { Suspense, useEffect, useMemo, useState } from "react"
+import { useLocalization } from "@/app/context/LocalizationContext"
+
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useSite } from "@/app/context/SiteContext"
 import { isDemoSiteId } from "@/lib/demo-utils"
@@ -12,6 +14,10 @@ import { toast } from "sonner"
 import { Loader } from "@/app/components/ui/icons"
 
 function SelectSiteContent() {
+  const { t } = useLocalization()
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent('breadcrumb:update', { detail: { title: t('account.license.title') } }))
+  }, [t])
   const { sites, isLoading, setCurrentSite, error } = useSite()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -28,7 +34,7 @@ function SelectSiteContent() {
 
   const realSites = (sites || []).filter((site) => !isDemoSiteId(site.id))
 
-  const handleApplyLicense = async (siteId: string) => {
+  const handleApplyLicense = useCallback(async (siteId: string) => {
     if (!licenseKey) return
     
     setIsApplying(true)
@@ -45,7 +51,7 @@ function SelectSiteContent() {
       const data = await response.json()
 
       if (response.ok && data.success) {
-        toast.success(`Lifetime plan successfully applied to project!`)
+        toast.success(t("account.license.applied"))
         
         // Select the site and go to robots
         const site = sites.find(s => s.id === siteId)
@@ -57,20 +63,20 @@ function SelectSiteContent() {
           router.push("/robots")
         }
       } else {
-        toast.error(data.error || "Failed to apply license")
+        toast.error(data.error || t("account.license.failed"))
         setIsApplying(false)
       }
     } catch (err) {
       console.error(err)
-      toast.error("An unexpected error occurred. Please try again.")
+      toast.error(t("account.license.unexpectedError"))
       setIsApplying(false)
     }
-  }
+  }, [licenseKey, router, setCurrentSite, sites, t])
 
-  const handleCreateNew = () => {
+  const handleCreateNew = useCallback(() => {
     // Pass the license along so the create-site process knows to apply it later
     router.push(`/create-site?applyLicense=${licenseKey}`)
-  }
+  }, [licenseKey, router])
 
   const Content = useMemo(() => {
     if (isLoading) {
@@ -98,7 +104,7 @@ function SelectSiteContent() {
       return (
         <Card className="border-destructive/40 bg-destructive/5 mt-6 max-w-2xl mx-auto">
           <CardContent className="p-4 text-sm text-destructive">
-            Could not load projects: {error.message}
+            {t("account.projects.loadError", { error: error.message })}
           </CardContent>
         </Card>
       )
@@ -108,15 +114,15 @@ function SelectSiteContent() {
       <div className="w-full max-w-2xl mx-auto space-y-4 mt-8">
         
         <div className="text-center mb-8">
-          <h2 className="text-2xl font-bold tracking-tight">Select a Project</h2>
+          <h2 className="text-2xl font-bold tracking-tight">{t("account.license.title")}</h2>
           <p className="text-muted-foreground mt-2">
-            Where do you want to apply your Lifetime License?
+            {t("account.license.where")}
           </p>
         </div>
 
         {realSites.length > 0 ? (
           <div className="space-y-3">
-            <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-2">Your Projects</h3>
+            <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-2">{t("account.license.projects")}</h3>
             {realSites.map(site => (
               <Card key={site.id} className="border border-border hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer" onClick={() => !isApplying && handleApplyLicense(site.id)}>
                 <CardContent className="p-4">
@@ -131,10 +137,10 @@ function SelectSiteContent() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="font-semibold truncate">{site.name}</h3>
-                      <p className="text-sm text-muted-foreground truncate">{site.description || site.url || "No description"}</p>
+                      <p className="text-sm text-muted-foreground truncate">{site.description || site.url || t("account.projects.noDescription")}</p>
                     </div>
-                    <Button disabled={isApplying} onClick={(e) => { e.stopPropagation(); handleApplyLicense(site.id) }}>
-                      {isApplying ? <Loader className="h-4 w-4 animate-spin" /> : "Apply Here"}
+                    <Button aria-label={t(isApplying ? "account.license.applyingAria" : "account.license.applyAria", { name: site.name })} disabled={isApplying} onClick={(e) => { e.stopPropagation(); handleApplyLicense(site.id) }}>
+                      {isApplying ? <Loader className="h-4 w-4 animate-spin" /> : t("account.license.apply")}
                     </Button>
                   </div>
                 </CardContent>
@@ -151,11 +157,11 @@ function SelectSiteContent() {
                   <span className="text-lg">+</span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold truncate">Create new project</h3>
-                  <p className="text-sm text-muted-foreground truncate">Set up a new project to apply the license</p>
+                  <h3 className="font-semibold truncate">{t("account.projects.createProject")}</h3>
+                  <p className="text-sm text-muted-foreground truncate">{t("account.license.createHelp")}</p>
                 </div>
                 <Button variant="secondary" disabled={isApplying} onClick={(e) => { e.stopPropagation(); handleCreateNew() }}>
-                  Create
+                  {t("common.create")}
                 </Button>
               </div>
             </CardContent>
@@ -163,7 +169,7 @@ function SelectSiteContent() {
         </div>
       </div>
     )
-  }, [isLoading, realSites, error, isApplying, handleApplyLicense])
+  }, [isLoading, realSites, error, isApplying, handleApplyLicense, handleCreateNew, t])
 
   if (!licenseKey && !isLoading) return null
 
@@ -174,7 +180,7 @@ function SelectSiteContent() {
           <div className="p-3 rounded-full bg-primary/10">
             <Image 
               src="/images/logo.png"
-              alt="Market Fit Logo"
+              alt={t("account.projects.logoAlt")}
               width={48}
               height={48}
               className="h-12 w-12 object-contain"
@@ -184,8 +190,8 @@ function SelectSiteContent() {
         </div>
         
         <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 rounded-lg p-4 text-center">
-          <h3 className="text-emerald-800 dark:text-emerald-400 font-medium">✨ License Verified Successfully</h3>
-          <p className="text-sm text-emerald-600 dark:text-emerald-500 mt-1">Your AppSumo lifetime license is ready to be applied.</p>
+          <h3 className="text-emerald-800 dark:text-emerald-400 font-medium">{t("account.license.verified")}</h3>
+          <p className="text-sm text-emerald-600 dark:text-emerald-500 mt-1">{t("account.license.verifiedHelp")}</p>
         </div>
 
         {Content}

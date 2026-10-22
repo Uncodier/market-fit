@@ -10,6 +10,8 @@ import deCommerce from './locales/commerce/de.json';
 import jaCommerce from './locales/commerce/ja.json';
 import { flattenMessages, type MessageTree } from './locale-messages';
 import type { SupportedLocale } from './locale-preferences';
+import { spanishWorkspaceMessages } from './locales/workspace/es';
+import { screenMessages } from './locales/screens';
 
 /** Raw feature messages, without legacy or English fallback. */
 export const commerceMessages: Record<SupportedLocale, Record<string, string>> = {
@@ -20,17 +22,29 @@ export const commerceMessages: Record<SupportedLocale, Record<string, string>> =
   ja: flattenMessages(jaCommerce),
 };
 
-const legacyEnglish = flattenMessages(enLegacy);
-
-function mergeLocale(locale: SupportedLocale, legacy: MessageTree): Record<string, string> {
-  return { ...legacyEnglish, ...flattenMessages(legacy), ...commerceMessages[locale] };
+function ownMessages(locale: SupportedLocale, legacy: MessageTree): Record<string, string> {
+  return {
+    ...flattenMessages(legacy),
+    ...(locale === 'es' ? spanishWorkspaceMessages : {}),
+    ...screenMessages[locale],
+    ...commerceMessages[locale],
+  };
 }
 
-/** Shared client/document catalog; feature messages take precedence over legacy copy. */
+/** Each language's own entries, without fallback, for coverage checks. */
+export const rawLocaleMessages: Record<SupportedLocale, Record<string, string>> = {
+  en: ownMessages('en', enLegacy),
+  es: ownMessages('es', esLegacy),
+  fr: ownMessages('fr', frLegacy),
+  de: ownMessages('de', deLegacy),
+  ja: ownMessages('ja', jaLegacy),
+};
+
+/** Shared client/document catalog; preserve English fallback for incomplete languages. */
 export const localeMessages: Record<SupportedLocale, Record<string, string>> = {
-  en: mergeLocale('en', enLegacy),
-  es: mergeLocale('es', esLegacy),
-  fr: mergeLocale('fr', frLegacy),
-  de: mergeLocale('de', deLegacy),
-  ja: mergeLocale('ja', jaLegacy),
+  en: rawLocaleMessages.en,
+  es: { ...rawLocaleMessages.en, ...rawLocaleMessages.es },
+  fr: { ...rawLocaleMessages.en, ...rawLocaleMessages.fr },
+  de: { ...rawLocaleMessages.en, ...rawLocaleMessages.de },
+  ja: { ...rawLocaleMessages.en, ...rawLocaleMessages.ja },
 };

@@ -9,7 +9,7 @@ import { Sale, SaleOrder, SaleOrderItem } from "@/app/types"
 import { Badge } from "@/app/components/ui/badge"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { formatCurrency } from "@/app/components/dashboard/campaign-revenue-donut"
-import { format } from "date-fns"
+import { formatInvoiceDate, formatInvoicePaymentMethod, useInvoiceLocalization } from "./invoice-localization"
 import { Table, TableHeader, TableBody, TableCell, TableRow, TableHead } from "@/app/components/ui/table"
 
 // Status colors for sales
@@ -54,64 +54,33 @@ function PrintInvoiceSkeleton() {
 }
 
 // Print-optimized invoice component
-function PrintableInvoice({ sale, saleOrder, segments, campaigns, siteName, siteUrl }: { 
+function PrintableInvoice({ sale, saleOrder, segments, campaigns, siteName, siteUrl, siteLocale }: {
   sale: Sale, 
   saleOrder: SaleOrder | null, 
   segments: Array<{id: string, name: string}>,
   campaigns: Array<{id: string, title: string}>,
   siteName: string,
-  siteUrl: string
+  siteUrl: string,
+  siteLocale?: string | null
 }) {
+  const { locale, t } = useInvoiceLocalization(siteLocale)
   const getSegmentName = (segmentId: string | null) => {
-    if (!segmentId) return "No Segment";
+    if (!segmentId) return t("public.invoice.noSegment");
     const segment = segments.find(s => s.id === segmentId);
-    return segment?.name || "Unknown Segment";
+    return segment?.name || t("public.invoice.unknownSegment");
   };
 
   const getCampaignName = (campaignId: string | null) => {
-    if (!campaignId) return "No Campaign";
+    if (!campaignId) return t("public.invoice.noCampaign");
     const campaign = campaigns.find(c => c.id === campaignId);
-    return campaign?.title || "Unknown Campaign";
+    return campaign?.title || t("public.invoice.unknownCampaign");
   };
   
-  // Format payment method for display
-  const formatPaymentMethod = (method: string) => {
-    if (!method) return "Not specified";
-    
-    const methodMap: Record<string, string> = {
-      "credit_card": "Credit Card",
-      "debit_card": "Debit Card",
-      "paypal": "PayPal",
-      "bank_transfer": "Bank Transfer",
-      "cash": "Cash",
-      "check": "Check",
-      "crypto": "Cryptocurrency",
-      "wire_transfer": "Wire Transfer",
-      "stripe": "Stripe",
-      "apple_pay": "Apple Pay",
-      "google_pay": "Google Pay",
-      "venmo": "Venmo",
-      "zelle": "Zelle"
-    };
-    
-    return methodMap[method.toLowerCase()] || method.replace(/_/g, ' ')
-      .split(' ')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
-  };
-
-  // Format date
-  const formatDate = (dateString: string) => {
-    try {
-      const date = new Date(dateString);
-      return format(date, 'MMM d, yyyy');
-    } catch {
-      return dateString;
-    }
-  };
+  const formatPaymentMethod = (method: string) => formatInvoicePaymentMethod(method, t);
+  const formatDate = (dateString: string) => formatInvoiceDate(dateString, locale);
 
   return (
-    <div className="max-w-4xl mx-auto bg-white print:shadow-none">
+    <div lang={locale} className="max-w-4xl mx-auto bg-white print:shadow-none">
       <style jsx global>{`
         @media print {
           body { margin: 0; }
@@ -135,13 +104,13 @@ function PrintableInvoice({ sale, saleOrder, segments, campaigns, siteName, site
         <div className="border-b border-gray-200 pb-6 print:break-inside-avoid">
           <div className="flex justify-between items-start">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">INVOICE</h1>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">{t("public.invoice.heading")}</h1>
               {sale.invoiceNumber && (
                 <p className="text-lg text-gray-600">#{sale.invoiceNumber}</p>
               )}
             </div>
             <div className="text-right">
-              <div className="text-sm text-gray-600 mb-1">Invoice Date</div>
+              <div className="text-sm text-gray-600 mb-1">{t("public.invoice.invoiceDate")}</div>
               <div className="text-lg font-semibold">{formatDate(sale.saleDate)}</div>
             </div>
           </div>
@@ -150,19 +119,19 @@ function PrintableInvoice({ sale, saleOrder, segments, campaigns, siteName, site
         {/* Company & Customer Info */}
         <div className="grid grid-cols-2 gap-8 print:break-inside-avoid">
           <div>
-            <h3 className="text-sm font-semibold uppercase text-gray-500 mb-3">From</h3>
+            <h3 className="text-sm font-semibold uppercase text-gray-500 mb-3">{t("public.invoice.from")}</h3>
             <div className="space-y-1">
-              <div className="text-lg font-semibold text-gray-900">{siteName || "Your Company"}</div>
+              <div className="text-lg font-semibold text-gray-900">{siteName || t("public.invoice.yourCompany")}</div>
               <div className="text-sm text-gray-600">{siteUrl || "www.yourcompany.com"}</div>
             </div>
           </div>
           
           <div>
-            <h3 className="text-sm font-semibold uppercase text-gray-500 mb-3">Bill To</h3>
+            <h3 className="text-sm font-semibold uppercase text-gray-500 mb-3">{t("public.invoice.billTo")}</h3>
             <div className="space-y-1">
-              <div className="text-lg font-semibold text-gray-900">{sale.leadName || "Anonymous Customer"}</div>
-              <div className="text-sm text-gray-600">Segment: {getSegmentName(sale.segmentId)}</div>
-              {sale.campaignId && <div className="text-sm text-gray-600">Campaign: {getCampaignName(sale.campaignId)}</div>}
+              <div className="text-lg font-semibold text-gray-900">{sale.leadName || t("public.invoice.anonymousCustomer")}</div>
+              <div className="text-sm text-gray-600">{t("public.invoice.segment")}: {getSegmentName(sale.segmentId)}</div>
+              {sale.campaignId && <div className="text-sm text-gray-600">{t("public.invoice.campaign")}: {getCampaignName(sale.campaignId)}</div>}
             </div>
           </div>
         </div>
@@ -171,12 +140,12 @@ function PrintableInvoice({ sale, saleOrder, segments, campaigns, siteName, site
         <div className="bg-gray-50 p-6 rounded-lg print:bg-gray-100 print:break-inside-avoid">
           <div className="grid grid-cols-3 gap-6 text-center">
             <div>
-              <div className="text-sm text-gray-600 mb-1">Total Amount</div>
+              <div className="text-sm text-gray-600 mb-1">{t("public.invoice.totalAmount")}</div>
               <div className="text-2xl font-bold text-gray-900">{formatCurrency(sale.amount)}</div>
               {sale.currency && <div className="text-xs text-gray-500">{sale.currency}</div>}
             </div>
             <div>
-              <div className="text-sm text-gray-600 mb-1">Status</div>
+              <div className="text-sm text-gray-600 mb-1">{t("public.invoice.status")}</div>
               <div>
                 <Badge className={`${STATUS_STYLES[sale.status]} print:border print:bg-gray-100`}>
                   {sale.status}
@@ -184,7 +153,7 @@ function PrintableInvoice({ sale, saleOrder, segments, campaigns, siteName, site
               </div>
             </div>
             <div>
-              <div className="text-sm text-gray-600 mb-1">Amount Due</div>
+              <div className="text-sm text-gray-600 mb-1">{t("public.invoice.amountDue")}</div>
               <div className="text-2xl font-bold text-red-600">{formatCurrency(sale.amount_due)}</div>
               {sale.currency && <div className="text-xs text-gray-500">{sale.currency}</div>}
             </div>
@@ -194,32 +163,32 @@ function PrintableInvoice({ sale, saleOrder, segments, campaigns, siteName, site
         {/* Product & Payment Information */}
         <div className="grid grid-cols-2 gap-8 print:break-inside-avoid">
           <div>
-            <h4 className="text-lg font-semibold text-gray-900 mb-4">Product Information</h4>
+            <h4 className="text-lg font-semibold text-gray-900 mb-4">{t("public.invoice.productInformation")}</h4>
             <div className="border border-gray-200 rounded-lg overflow-hidden">
               <table className="w-full text-sm">
                 <tbody>
                   <tr className="border-b border-gray-200">
-                    <td className="py-3 px-4 bg-gray-50 font-medium text-gray-700">Product</td>
-                    <td className="py-3 px-4 text-gray-900">{sale.productName || "N/A"}</td>
+                    <td className="py-3 px-4 bg-gray-50 font-medium text-gray-700">{t("public.invoice.product")}</td>
+                    <td className="py-3 px-4 text-gray-900">{sale.productName || t("public.invoice.notApplicable")}</td>
                   </tr>
                   <tr className="border-b border-gray-200">
-                    <td className="py-3 px-4 bg-gray-50 font-medium text-gray-700">Title</td>
+                    <td className="py-3 px-4 bg-gray-50 font-medium text-gray-700">{t("public.invoice.title")}</td>
                     <td className="py-3 px-4 text-gray-900">{sale.title}</td>
                   </tr>
                   {sale.productType && (
                     <tr className="border-b border-gray-200">
-                      <td className="py-3 px-4 bg-gray-50 font-medium text-gray-700">Type</td>
+                      <td className="py-3 px-4 bg-gray-50 font-medium text-gray-700">{t("public.invoice.type")}</td>
                       <td className="py-3 px-4 text-gray-900">{sale.productType}</td>
                     </tr>
                   )}
                   {sale.referenceCode && (
                     <tr className="border-b border-gray-200">
-                      <td className="py-3 px-4 bg-gray-50 font-medium text-gray-700">Reference</td>
+                      <td className="py-3 px-4 bg-gray-50 font-medium text-gray-700">{t("public.invoice.reference")}</td>
                       <td className="py-3 px-4 text-gray-900">{sale.referenceCode}</td>
                     </tr>
                   )}
                   <tr>
-                    <td className="py-3 px-4 bg-gray-50 font-medium text-gray-700">Source</td>
+                    <td className="py-3 px-4 bg-gray-50 font-medium text-gray-700">{t("public.invoice.source")}</td>
                     <td className="py-3 px-4 text-gray-900">
                       <Badge className={`${SOURCE_STYLES[sale.source]} print:border print:bg-gray-100`}>
                         {sale.source}
@@ -232,24 +201,24 @@ function PrintableInvoice({ sale, saleOrder, segments, campaigns, siteName, site
           </div>
           
           <div>
-            <h4 className="text-lg font-semibold text-gray-900 mb-4">Payment Information</h4>
+            <h4 className="text-lg font-semibold text-gray-900 mb-4">{t("public.invoice.paymentInformation")}</h4>
             <div className="border border-gray-200 rounded-lg overflow-hidden">
               <table className="w-full text-sm">
                 <tbody>
                   <tr className="border-b border-gray-200">
-                    <td className="py-3 px-4 bg-gray-50 font-medium text-gray-700">Method</td>
+                    <td className="py-3 px-4 bg-gray-50 font-medium text-gray-700">{t("public.invoice.method")}</td>
                     <td className="py-3 px-4 text-gray-900">{formatPaymentMethod(sale.paymentMethod)}</td>
                   </tr>
                   <tr className="border-b border-gray-200">
-                    <td className="py-3 px-4 bg-gray-50 font-medium text-gray-700">Date</td>
+                    <td className="py-3 px-4 bg-gray-50 font-medium text-gray-700">{t("public.invoice.date")}</td>
                     <td className="py-3 px-4 text-gray-900">{formatDate(sale.saleDate)}</td>
                   </tr>
                   <tr className="border-b border-gray-200">
-                    <td className="py-3 px-4 bg-gray-50 font-medium text-gray-700">Total</td>
+                    <td className="py-3 px-4 bg-gray-50 font-medium text-gray-700">{t("public.invoice.total")}</td>
                     <td className="py-3 px-4 text-gray-900 font-semibold">{formatCurrency(sale.amount)} {sale.currency}</td>
                   </tr>
                   <tr>
-                    <td className="py-3 px-4 bg-gray-50 font-medium text-gray-700">Amount Due</td>
+                    <td className="py-3 px-4 bg-gray-50 font-medium text-gray-700">{t("public.invoice.amountDue")}</td>
                     <td className="py-3 px-4 text-red-600 font-semibold">{formatCurrency(sale.amount_due)} {sale.currency}</td>
                   </tr>
                 </tbody>
@@ -261,14 +230,14 @@ function PrintableInvoice({ sale, saleOrder, segments, campaigns, siteName, site
         {/* Payment History */}
         {sale.payments && sale.payments.length > 0 && (
           <div className="print:break-inside-avoid">
-            <h4 className="text-lg font-semibold text-gray-900 mb-4">Payment History</h4>
+            <h4 className="text-lg font-semibold text-gray-900 mb-4">{t("public.invoice.paymentHistory")}</h4>
             <div className="border border-gray-200 rounded-lg overflow-hidden">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="py-3 px-4 text-left font-semibold text-gray-700">Date</th>
-                    <th className="py-3 px-4 text-right font-semibold text-gray-700">Amount</th>
-                    <th className="py-3 px-4 text-left font-semibold text-gray-700">Method</th>
+                    <th className="py-3 px-4 text-left font-semibold text-gray-700">{t("public.invoice.date")}</th>
+                    <th className="py-3 px-4 text-right font-semibold text-gray-700">{t("public.invoice.amount")}</th>
+                    <th className="py-3 px-4 text-left font-semibold text-gray-700">{t("public.invoice.method")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -290,21 +259,21 @@ function PrintableInvoice({ sale, saleOrder, segments, campaigns, siteName, site
         {/* Order Details Section */}
         {saleOrder && (
           <div className="print:break-inside-avoid">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Order Details</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">{t("public.invoice.orderDetails")}</h3>
             
             <div className="mb-4 flex justify-between items-center">
-              <div className="text-base font-medium text-gray-900">Order #{saleOrder.orderNumber}</div>
-              <div className="text-sm text-gray-600">Created: {formatDate(saleOrder.createdAt)}</div>
+              <div className="text-base font-medium text-gray-900">{t("public.invoice.orderNumber", { number: saleOrder.orderNumber })}</div>
+              <div className="text-sm text-gray-600">{t("public.invoice.created")}: {formatDate(saleOrder.createdAt)}</div>
             </div>
             
             <div className="border border-gray-200 rounded-lg overflow-hidden mb-6">
               <Table>
                 <TableHeader className="bg-gray-50">
                   <TableRow>
-                    <TableHead className="text-sm font-semibold text-gray-700">Item</TableHead>
-                    <TableHead className="text-sm font-semibold text-gray-700 text-right">Qty</TableHead>
-                    <TableHead className="text-sm font-semibold text-gray-700 text-right">Price</TableHead>
-                    <TableHead className="text-sm font-semibold text-gray-700 text-right">Total</TableHead>
+                    <TableHead className="text-sm font-semibold text-gray-700">{t("public.invoice.item")}</TableHead>
+                    <TableHead className="text-sm font-semibold text-gray-700 text-right">{t("public.invoice.quantity")}</TableHead>
+                    <TableHead className="text-sm font-semibold text-gray-700 text-right">{t("public.invoice.price")}</TableHead>
+                    <TableHead className="text-sm font-semibold text-gray-700 text-right">{t("public.invoice.total")}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -327,7 +296,7 @@ function PrintableInvoice({ sale, saleOrder, segments, campaigns, siteName, site
                   ) : (
                     <TableRow>
                       <TableCell colSpan={4} className="text-center py-6 text-gray-500">
-                        No items in this order
+                        {t("public.invoice.noItems")}
                       </TableCell>
                     </TableRow>
                   )}
@@ -338,26 +307,26 @@ function PrintableInvoice({ sale, saleOrder, segments, campaigns, siteName, site
             <div className="flex justify-end">
               <div className="w-64 space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Subtotal:</span>
+                  <span className="text-gray-600">{t("public.invoice.subtotal")}:</span>
                   <span className="text-gray-900">{formatCurrency(saleOrder.subtotal)}</span>
                 </div>
                 
                 {saleOrder.taxTotal > 0 && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Tax:</span>
+                    <span className="text-gray-600">{t("public.invoice.tax")}:</span>
                     <span className="text-gray-900">{formatCurrency(saleOrder.taxTotal)}</span>
                   </div>
                 )}
                 
                 {saleOrder.discountTotal > 0 && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Discount:</span>
+                    <span className="text-gray-600">{t("public.invoice.discount")}:</span>
                     <span className="text-green-600">-{formatCurrency(saleOrder.discountTotal)}</span>
                   </div>
                 )}
                 
                 <div className="flex justify-between font-semibold text-lg pt-3 mt-2 border-t border-gray-200">
-                  <span className="text-gray-900">Total:</span>
+                  <span className="text-gray-900">{t("public.invoice.total")}:</span>
                   <span className="text-gray-900">{formatCurrency(saleOrder.total)}</span>
                 </div>
               </div>
@@ -365,7 +334,7 @@ function PrintableInvoice({ sale, saleOrder, segments, campaigns, siteName, site
             
             {saleOrder.notes && (
               <div className="mt-6 pt-4 border-t border-gray-200">
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Order Notes:</h4>
+                <h4 className="text-sm font-medium text-gray-700 mb-2">{t("public.invoice.orderNotes")}:</h4>
                 <p className="text-sm text-gray-600 p-3 bg-gray-50 rounded-md italic">{saleOrder.notes}</p>
               </div>
             )}
@@ -375,14 +344,14 @@ function PrintableInvoice({ sale, saleOrder, segments, campaigns, siteName, site
         {/* Additional Information */}
         {sale.notes && (
           <div className="print:break-inside-avoid">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">Notes</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">{t("public.invoice.notes")}</h3>
             <p className="text-sm text-gray-600 p-4 bg-gray-50 rounded-md italic">{sale.notes}</p>
           </div>
         )}
         
         {sale.tags && sale.tags.length > 0 && (
           <div className="print:break-inside-avoid">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">Tags</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">{t("public.invoice.tags")}</h3>
             <div className="flex flex-wrap gap-2">
               {sale.tags.map((tag, index) => (
                 <Badge key={index} variant="outline" className="print:border print:bg-gray-100">{tag}</Badge>
@@ -394,9 +363,9 @@ function PrintableInvoice({ sale, saleOrder, segments, campaigns, siteName, site
         {/* Footer */}
         <div className="pt-6 border-t border-gray-200 text-xs text-gray-500 print:break-inside-avoid">
           <div className="flex justify-between">
-            <div>Sale ID: {sale.id}</div>
-            <div>Created: {formatDate(sale.createdAt || '')}</div>
-            <div>Last Updated: {formatDate(sale.updatedAt || '')}</div>
+            <div>{t("public.invoice.saleId")}: {sale.id}</div>
+            <div>{t("public.invoice.created")}: {formatDate(sale.createdAt || '')}</div>
+            <div>{t("public.invoice.updated")}: {formatDate(sale.updatedAt || '')}</div>
           </div>
         </div>
       </div>
@@ -407,6 +376,7 @@ function PrintableInvoice({ sale, saleOrder, segments, campaigns, siteName, site
 export default function InvoicePdfPage(props: { params: Promise<{ id: string }> }) {
   const unwrappedParams = React.use(props.params);
   const { currentSite } = useSite();
+  const { t } = useInvoiceLocalization(currentSite?.settings?.default_locale);
   const [sale, setSale] = useState<Sale | null>(null);
   const [saleOrder, setSaleOrder] = useState<SaleOrder | null>(null);
   const [segments, setSegments] = useState<Array<{ id: string; name: string }>>([]);
@@ -458,13 +428,13 @@ export default function InvoicePdfPage(props: { params: Promise<{ id: string }> 
   // Update page title for printing
   useEffect(() => {
     if (sale) {
-      document.title = `Invoice - ${sale.title}`;
+      document.title = t("public.invoice.pageTitle", { title: sale.title });
     }
     
     return () => {
-      document.title = 'Sales | Market Fit';
+      document.title = t("public.invoice.salesTitle");
     };
-  }, [sale]);
+  }, [sale, t]);
   
   return (
     <div className="min-h-screen bg-gray-100 print:bg-white">
@@ -478,10 +448,11 @@ export default function InvoicePdfPage(props: { params: Promise<{ id: string }> 
           campaigns={campaigns} 
           siteName={currentSite?.name || ""} 
           siteUrl={currentSite?.url || ""} 
+          siteLocale={currentSite?.settings?.default_locale}
         />
       ) : (
         <div className="flex items-center justify-center h-64">
-          <p className="text-gray-500">Invoice not found</p>
+          <p className="text-gray-500">{t("public.invoice.notFound")}</p>
         </div>
       )}
     </div>

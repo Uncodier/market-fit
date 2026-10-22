@@ -1,21 +1,24 @@
 "use client"
 
-import { useEffect, useState, Suspense } from "react"
+import { useEffect, useRef, useState, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent } from "@/app/components/ui/card"
-import { Loader } from "@/app/components/ui/icons"
 import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
-import { toast } from "sonner"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 function ResetPasswordContent() {
+  const { t } = useLocalization()
+  const translate = useRef(t)
+  useEffect(() => { translate.current = t }, [t])
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [isProcessing, setIsProcessing] = useState(true)
+  const [, setIsProcessing] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const processResetToken = async () => {
+      let failureKey = 'auth.flows.reset.unexpectedError'
       try {
         const supabase = createClient()
         
@@ -26,6 +29,7 @@ function ResetPasswordContent() {
         const urlErrorDescription = searchParams.get('error_description') || hashParams.get('error_description')
         
         if (urlError) {
+          failureKey = 'auth.flows.reset.invalidExpiredLink'
           console.error('[Reset Password] URL error detected:', { error: urlError, description: urlErrorDescription })
           // Convert "+" to spaces and decode URI component
           const decodedDescription = urlErrorDescription ? decodeURIComponent(urlErrorDescription.replace(/\+/g, ' ')) : 'Invalid or expired password reset link.'
@@ -87,11 +91,13 @@ function ResetPasswordContent() {
           const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
           
           if (exchangeError) {
+            failureKey = 'auth.flows.reset.failedCode'
             console.error('[Reset Password] Code exchange error:', exchangeError)
             throw new Error(`Failed to verify reset code: ${exchangeError.message}`)
           }
           
           if (!data.session || !data.session.user) {
+            failureKey = 'auth.flows.reset.noSessionAfterVerification'
             throw new Error('Failed to establish session after verification. Please try again.')
           }
           
@@ -125,11 +131,13 @@ function ResetPasswordContent() {
           })
 
           if (verifyError) {
+            failureKey = 'auth.flows.reset.failedToken'
             console.error('[Reset Password] OTP verification error:', verifyError)
             throw new Error(`Failed to verify reset token: ${verifyError.message}`)
           }
 
           if (!data.session || !data.session.user) {
+            failureKey = 'auth.flows.reset.noSessionAfterVerification'
             throw new Error('Failed to establish session after verification. Please try again.')
           }
 
@@ -165,11 +173,13 @@ function ResetPasswordContent() {
           })
 
           if (sessionError) {
+            failureKey = 'auth.flows.reset.failedSession'
             console.error('[Reset Password] Session error:', sessionError)
             throw new Error(`Failed to establish session: ${sessionError.message}`)
           }
 
           if (!session || !session.user) {
+            failureKey = 'auth.flows.reset.noSession'
             throw new Error('Failed to establish session. Please try again.')
           }
 
@@ -195,16 +205,17 @@ function ResetPasswordContent() {
         }
 
         // No valid tokens found
+        failureKey = 'auth.flows.reset.invalidLink'
         throw new Error('Invalid reset password link. Please request a new password reset.')
 
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('[Reset Password] Error:', error)
-        setError(error.message || 'An unexpected error occurred')
+        setError(failureKey)
         setIsProcessing(false)
         
         // Redirect to auth page with error after a delay
         setTimeout(() => {
-          router.push(`/auth?error=${encodeURIComponent(error.message || 'Reset password failed')}`)
+          router.push(`/auth?error=${encodeURIComponent(translate.current(failureKey))}`)
         }, 3000)
       }
     }
@@ -226,9 +237,9 @@ function ResetPasswordContent() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.98-.833-2.75 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
               </svg>
             </div>
-            <h3 className="text-lg font-medium text-foreground mb-2">Reset Password Failed</h3>
-            <p className="text-muted-foreground mb-4">{error}</p>
-            <p className="text-sm text-muted-foreground">Redirecting you back to the login page...</p>
+            <h3 className="text-lg font-medium text-foreground mb-2">{t('auth.flows.reset.failedTitle')}</h3>
+            <p className="text-muted-foreground mb-4">{t(error)}</p>
+            <p className="text-sm text-muted-foreground">{t('auth.flows.redirectingLogin')}</p>
           </CardContent>
         </Card>
       </div>
@@ -242,8 +253,8 @@ function ResetPasswordContent() {
         <Card className="bg-card border-border">
           <CardContent className="flex flex-col items-center text-center py-8">
             <LoadingSkeleton variant="fullscreen" size="lg" />
-            <h3 className="text-lg font-medium text-foreground mb-2">Processing Reset Link</h3>
-            <p className="text-muted-foreground">Please wait while we verify your reset password link...</p>
+            <h3 className="text-lg font-medium text-foreground mb-2">{t('auth.flows.reset.processingTitle')}</h3>
+            <p className="text-muted-foreground">{t('auth.flows.reset.processingDescription')}</p>
           </CardContent>
         </Card>
       </div>
@@ -252,6 +263,7 @@ function ResetPasswordContent() {
 }
 
 export default function ResetPasswordPage() {
+  const { t } = useLocalization()
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center bg-background py-12 px-4 sm:px-6 lg:px-8">
@@ -259,8 +271,8 @@ export default function ResetPasswordPage() {
           <Card className="bg-card border-border">
             <CardContent className="flex flex-col items-center text-center py-8">
               <LoadingSkeleton variant="fullscreen" size="lg" />
-              <h3 className="text-lg font-medium text-foreground mb-2">Loading</h3>
-              <p className="text-muted-foreground">Please wait...</p>
+              <h3 className="text-lg font-medium text-foreground mb-2">{t('auth.flows.loadingTitle')}</h3>
+              <p className="text-muted-foreground">{t('auth.pleaseWait')}</p>
             </CardContent>
           </Card>
         </div>

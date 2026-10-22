@@ -11,10 +11,12 @@ import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import { ShopSlugNotFound } from "../../ShopSlugNotFound"
 import BookLoading from "./loading"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 export default function ShopBookingPage(props: { params: Promise<{ siteSlug: string; itemId: string }>; searchParams: Promise<{ modifiers?: string }> | { modifiers?: string } }) {
-  const params = use(props.params as any) as { siteSlug: string; itemId: string };
-  const searchParams = use(props.searchParams as any) as { modifiers?: string };
+  const { t } = useLocalization()
+  const params = use(props.params);
+  const searchParams = use(props.searchParams as Promise<{ modifiers?: string }>);
   const router = useRouter()
 
   const { data: site, isLoading: siteLoading } = useSWR(
@@ -32,9 +34,9 @@ export default function ShopBookingPage(props: { params: Promise<{ siteSlug: str
 
   useEffect(() => {
     if (item && site) {
-      document.title = `Book ${item.name} | ${site.name}`
+      document.title = t("commercePages.booking.title", { item: item.name, site: site.name })
     }
-  }, [item, site])
+  }, [item, site, t])
 
   if (siteLoading || itemLoading) {
     return <BookLoading />
@@ -45,7 +47,7 @@ export default function ShopBookingPage(props: { params: Promise<{ siteSlug: str
   }
 
   if (!item) {
-    return <div className="min-h-screen flex items-center justify-center bg-muted/20">Item not found</div>
+    return <div className="min-h-screen flex items-center justify-center bg-muted/20">{t("commercePages.booking.itemNotFound")}</div>
   }
 
   const handleCartAdd = (startIso: string, endIso: string, available?: number) => {
@@ -58,7 +60,7 @@ export default function ShopBookingPage(props: { params: Promise<{ siteSlug: str
       }
     }
     addToCartStorage(item, 1, startIso, endIso, parsedModifiers, available)
-    toast.success(`${item.name} added to cart`)
+    toast.success(t("commercePages.booking.addedToCart", { item: item.name }))
     router.push(`/shop/${params.siteSlug}?cart=1`)
   }
 

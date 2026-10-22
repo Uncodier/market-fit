@@ -1,5 +1,7 @@
 "use client"
 
+import { useLocalization } from "@/app/context/LocalizationContext"
+
 import React, { useState } from "react"
 import {
   SectionCard,
@@ -45,6 +47,7 @@ export function BusinessHoursScheduleCard({
   onSave,
   isUpdating,
 }: BusinessHoursScheduleCardProps) {
+  const { t } = useLocalization()
   const [isExpanded, setIsExpanded] = useState(false)
 
   const handleToggleDay = (dayId: string) => {
@@ -71,14 +74,14 @@ export function BusinessHoursScheduleCard({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-semibold text-foreground">Business Hours</h2>
+          <h2 className="text-2xl font-semibold text-foreground">{t("account.calendar.hours")}</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Define your business hours for different regions and locations
+            {t("account.calendar.hoursHelp")}
           </p>
         </div>
         <Button variant="outline" className="gap-2 rounded-full">
           <Plus className="h-4 w-4" />
-          Add Schedule
+          {t("account.calendar.addSchedule")}
         </Button>
       </div>
 
@@ -91,7 +94,8 @@ export function BusinessHoursScheduleCard({
             <Input
               value={formData.schedule_name || ""}
               onChange={(e) => onChange((prev) => ({ ...prev, schedule_name: e.target.value }))}
-              placeholder="Schedule Name"
+              aria-label={t("account.calendar.scheduleName")}
+              placeholder={t("account.calendar.scheduleName")}
             />
           </div>
           <div onClick={(e) => e.stopPropagation()}>
@@ -99,13 +103,13 @@ export function BusinessHoursScheduleCard({
               value={formData.timezone || "America/Mexico_City"}
               onValueChange={(v) => onChange((prev) => ({ ...prev, timezone: v }))}
             >
-              <SelectTrigger className="w-[280px]">
-                <SelectValue placeholder="Select timezone" />
+              <SelectTrigger aria-label={t("timezone")} className="w-[280px]">
+                <SelectValue placeholder={t("booking.timezone.select")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="America/Mexico_City">Mexico City (GMT-6)</SelectItem>
-                <SelectItem value="America/New_York">New York (GMT-5)</SelectItem>
-                <SelectItem value="Europe/Madrid">Madrid (GMT+1)</SelectItem>
+                <SelectItem value="America/Mexico_City">{t("account.preferences.mexico")}</SelectItem>
+                <SelectItem value="America/New_York">{t("account.preferences.ny")}</SelectItem>
+                <SelectItem value="Europe/Madrid">{t("account.preferences.madrid")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -121,12 +125,13 @@ export function BusinessHoursScheduleCard({
             <SectionCardContent className="space-y-8 p-8 border-t border-border">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label className="text-base font-semibold">Respect Holidays</Label>
+                  <Label className="text-base font-semibold">{t("account.calendar.holidays")}</Label>
                   <p className="text-sm text-muted-foreground">
-                    Agents will not work on regional holidays when enabled
+                    {t("account.calendar.holidayHelp")}
                   </p>
                 </div>
                 <Switch
+                  aria-label={t("account.calendar.holidays")}
                   checked={formData.respect_holidays || false}
                   onCheckedChange={(checked) =>
                     onChange((prev) => ({ ...prev, respect_holidays: checked }))
@@ -139,11 +144,12 @@ export function BusinessHoursScheduleCard({
                   <div key={day.id} className="flex items-center p-3 rounded-lg border border-border gap-8">
                     <div className="flex items-center gap-4 w-32">
                       <Switch
+                        aria-label={t("account.calendar.dayEnabled", { day: t("account.calendar." + day.id) })}
                         checked={formData.availability[day.id]?.enabled}
                         onCheckedChange={() => handleToggleDay(day.id)}
                       />
                       <span className="min-w-[80px] font-medium text-foreground">
-                        {day.label}
+                        {t("account.calendar." + day.id)}
                       </span>
                     </div>
 
@@ -156,7 +162,7 @@ export function BusinessHoursScheduleCard({
                         triggerClassName="h-10 bg-background shadow-none"
                       />
                     ) : (
-                      <span className="text-sm text-muted-foreground italic">Unavailable</span>
+                      <span className="text-sm text-muted-foreground italic">{t("booking.unavailable")}</span>
                     )}
                   </div>
                 ))}
@@ -170,7 +176,7 @@ export function BusinessHoursScheduleCard({
                   className="text-destructive border-destructive/20 hover:text-destructive hover:bg-destructive/10 rounded-full px-6"
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
-                  Remove Schedule
+                  {t("account.calendar.removeSchedule")}
                 </Button>
                 <Button
                   variant="outline"
@@ -180,7 +186,7 @@ export function BusinessHoursScheduleCard({
                   className="rounded-full px-6 border-foreground/20 font-medium"
                   size="sm"
                 >
-                  {isUpdating ? "Saving..." : "Save Schedule"}
+                  {isUpdating ? t("common.saving") : t("account.calendar.saveSchedule")}
                 </Button>
               </div>
             </ActionFooter>
