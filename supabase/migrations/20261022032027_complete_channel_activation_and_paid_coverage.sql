@@ -8,23 +8,32 @@ SET LOCAL search_path = pg_catalog;
 -- Serialize inspected bodies and trigger dependencies with application writers.
 LOCK TABLE public.settings, public.billing, public.sites, public.site_members,
   public.site_ownership IN SHARE ROW EXCLUSIVE MODE;
+-- Capture the complete trusted function identities/ACLs, then verify replacement
+-- preserves them. A body comparison alone is not a permission-boundary proof.
+CREATE TEMP TABLE channel_coverage_original_contract ON COMMIT DROP AS
+  SELECT oid,proname,proowner,proacl,prosecdef,provolatile,proisstrict,proconfig
+  FROM pg_proc WHERE oid IN ('public.enforce_settings_license()'::regprocedure,
+    'public.get_site_licensed_resources(uuid)'::regprocedure,
+    'public.billing_license_changed()'::regprocedure);
 DO $preflight$
-DECLARE expected record; observed record;
+DECLARE expected_function record; observed record;
 BEGIN
   IF current_user <> 'postgres' OR to_regclass('public.agent_channel_activation_context') IS NOT NULL
     OR to_regprocedure('public.set_site_agent_channel_enabled(uuid,text,boolean,uuid)') IS NOT NULL THEN
     RAISE EXCEPTION 'Channel activation correction requires the verified initial state';
   END IF;
-  FOR expected IN SELECT * FROM (VALUES
+  FOR expected_function IN SELECT * FROM (VALUES
     ('public.enforce_settings_license()', '092236c56cac29a104553a5dff3f90c8'),
     ('public.get_site_licensed_resources(uuid)', 'deca30b77cdaf40095b9217c4a776be1'),
     ('public.billing_license_changed()', 'f4a566dc8c65edbbe847aad7b43ace54')
   ) AS definitions(signature, body_md5) LOOP
-    SELECT p.* INTO observed FROM pg_proc p WHERE p.oid=to_regprocedure(expected.signature);
-    IF NOT FOUND OR md5(observed.prosrc) <> expected.body_md5
+    SELECT p.* INTO observed FROM pg_proc p WHERE p.oid=to_regprocedure(expected_function.signature);
+    IF NOT FOUND OR md5(observed.prosrc) <> expected_function.body_md5
       OR observed.proowner <> 'postgres'::regrole OR NOT observed.prosecdef
+      OR observed.proisstrict
+      OR observed.provolatile <> (CASE WHEN observed.proname='get_site_licensed_resources' THEN 's' ELSE 'v' END)
       OR observed.proconfig IS DISTINCT FROM ARRAY['search_path=public, pg_temp'] THEN
-      RAISE EXCEPTION 'License function changed since audit: %', expected.signature;
+      RAISE EXCEPTION 'License function changed since audit: %', expected_function.signature;
     END IF;
   END LOOP;
   IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid='public.settings'::regclass
@@ -35,6 +44,32 @@ BEGIN
     OR to_regprocedure('public.site_member_has_effective_license(uuid)') IS NULL
     OR to_regprocedure('public.reconcile_site_member_license(uuid)') IS NULL THEN
     RAISE EXCEPTION 'Missing installed license dependencies or trigger bindings';
+  END IF;
+  IF EXISTS (SELECT 1 FROM (VALUES
+    ('public.lock_site_license(uuid)','41eb721ab66a4c702aab935dff1f98cb','postgres',true,'v',ARRAY['search_path=public, pg_temp']::text[],'{postgres=X/postgres}'),
+    ('public.site_member_has_effective_license(uuid)','bfb9988c716dd8146b99f02c99a6046e','postgres',true,'s',ARRAY['search_path=public, pg_temp','row_security=off']::text[],'{postgres=X/postgres}'),
+    ('public.reconcile_site_member_license(uuid)','d8e28a2e2bb063f1bf0b322aa2330a6f','postgres',true,'v',ARRAY['search_path=public, pg_temp']::text[],'{postgres=X/postgres}'),
+    ('public.protect_settings_license()','9c0e6b50bd313c37d3e3c8c62d6937d0','postgres',false,'v',ARRAY['search_path=public, pg_temp']::text[],'{postgres=X/postgres}'),
+    ('public.effective_site_plan(uuid)','daaddbfb9e5367b3f9f4b228284f9488','postgres',true,'s',ARRAY['search_path=public, pg_temp','row_security=off']::text[],'{postgres=X/postgres,service_role=X/postgres}')) expected(signature,body_md5,owner,definer,volatility,config,acl)
+    LEFT JOIN pg_proc p ON p.oid=to_regprocedure(expected.signature)
+    WHERE p.oid IS NULL OR md5(p.prosrc)<>expected.body_md5 OR pg_get_userbyid(p.proowner)<>expected.owner
+      OR p.prosecdef<>expected.definer OR p.provolatile::text<>expected.volatility
+      OR p.proconfig IS DISTINCT FROM expected.config OR p.proacl::text IS DISTINCT FROM expected.acl) THEN
+    RAISE EXCEPTION 'License dependency contract changed since audit';
+  END IF;
+  IF (SELECT proacl::text FROM pg_proc WHERE oid='public.enforce_settings_license()'::regprocedure)<>'{postgres=X/postgres}'
+    OR (SELECT proacl::text FROM pg_proc WHERE oid='public.billing_license_changed()'::regprocedure)<>'{postgres=X/postgres}'
+    OR (SELECT proacl::text FROM pg_proc WHERE oid='public.get_site_licensed_resources(uuid)'::regprocedure)<>'{postgres=X/postgres,service_role=X/postgres}' THEN
+    RAISE EXCEPTION 'Unexpected baseline license function ACL';
+  END IF;
+  IF (SELECT count(*) FROM pg_trigger WHERE NOT tgisinternal AND tgenabled='O' AND
+    ((tgname='license_99_enforce_settings' AND tgrelid='public.settings'::regclass
+      AND tgfoid='public.enforce_settings_license()'::regprocedure AND tgtype=23)
+      OR (tgname='license_10_billing_lock' AND tgrelid='public.billing'::regclass
+      AND tgfoid='public.billing_license_changed()'::regprocedure AND tgtype=31)
+      OR (tgname='license_20_billing_changed' AND tgrelid='public.billing'::regclass
+      AND tgfoid='public.billing_license_changed()'::regprocedure AND tgtype=29)))<>3 THEN
+    RAISE EXCEPTION 'Unexpected license trigger binding';
   END IF;
 END;
 $preflight$;
@@ -297,6 +332,20 @@ $$;
 
 DO $postflight$
 BEGIN
+  IF EXISTS (SELECT 1 FROM (VALUES
+    ('public.enforce_settings_license()','a43a21cd35675dea1ba74e745fbe7ace'),
+    ('public.get_site_licensed_resources(uuid)','592e0becf0934913d1445f384e27b515'),
+    ('public.billing_license_changed()','3ba6bd6920fcb208d9542dbf310ff7e0')) expected(signature,body_md5)
+    LEFT JOIN pg_proc p ON p.oid=to_regprocedure(expected.signature)
+    WHERE p.oid IS NULL OR md5(p.prosrc)<>expected.body_md5) THEN
+    RAISE EXCEPTION 'Final license function body differs from reviewed correction';
+  END IF;
+  IF EXISTS (SELECT 1 FROM channel_coverage_original_contract saved JOIN pg_proc current ON current.oid=saved.oid
+    WHERE ROW(current.proowner,current.proacl,current.prosecdef,current.provolatile,current.proisstrict,current.proconfig)
+      IS DISTINCT FROM ROW(saved.proowner,saved.proacl,saved.prosecdef,saved.provolatile,saved.proisstrict,saved.proconfig))
+    OR (SELECT count(*) FROM channel_coverage_original_contract saved JOIN pg_proc current ON current.oid=saved.oid)<>3 THEN
+    RAISE EXCEPTION 'License correction changed trusted identities or privileges';
+  END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_class WHERE oid='public.agent_channel_activation_context'::regclass
     AND relowner='postgres'::regrole AND relrowsecurity AND relkind='r')
     OR EXISTS (SELECT 1 FROM unnest(ARRAY['anon','authenticated','service_role']) actor

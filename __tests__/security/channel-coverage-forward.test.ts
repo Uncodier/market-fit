@@ -5,7 +5,7 @@ import { licensePostgresAvailable } from './site-license-postgres'
 import { startupTrialPostgres, startupTrialPrerequisitesAvailable } from './startup-trial-postgres'
 
 const source = readFileSync(path.resolve(__dirname,
-  '../../supabase/migrations/20261022031500_complete_channel_activation_and_paid_coverage.sql'), 'utf8')
+  '../../supabase/migrations/20261022032027_complete_channel_activation_and_paid_coverage.sql'), 'utf8')
 const hashes = [
   ['enforce_settings_license()', '092236c56cac29a104553a5dff3f90c8'],
   ['get_site_licensed_resources(uuid)', 'deca30b77cdaf40095b9217c4a776be1'],
@@ -17,7 +17,7 @@ describe('channel and coverage forward migration contract', () => {
     for (const [signature, hash] of hashes) {
       expect(source).toContain(`('public.${signature}', '${hash}')`)
     }
-    expect(source).toContain("md5(observed.prosrc) <> expected.body_md5")
+    expect(source).toContain("md5(observed.prosrc) <> expected_function.body_md5")
     expect(source).toContain('SHARE ROW EXCLUSIVE MODE')
     expect(source).not.toContain('CREATE TABLE IF NOT EXISTS public.agent_channel_activation_context')
     expect(source).toContain('NEW.paid_subscription_period_end')
@@ -28,9 +28,9 @@ const live = licensePostgresAvailable && startupTrialPrerequisitesAvailable ? de
 live('guarded forward correction: isolated PostgreSQL', () => {
   const pg = startupTrialPostgres()
   let fixtureSource: string
-  beforeAll(() => pg.start())
-  afterAll(() => pg.stop())
+  afterEach(() => pg.stop())
   beforeEach(() => {
+    pg.start()
     pg.install()
     // The synthetic installer is semantically identical but formats patched
     // bodies differently. Bind the unchanged preflight to this fixture's exact
@@ -39,6 +39,23 @@ live('guarded forward correction: isolated PostgreSQL', () => {
     for (const [signature, hash] of hashes) {
       const fixtureHash = pg.db(`SELECT md5(prosrc) FROM pg_proc WHERE oid='public.${signature}'::regprocedure`)
       fixtureSource = fixtureSource.replace(hash, fixtureHash)
+    }
+    const dependencies = [...source.matchAll(/\('public\.([^']+)','([a-f0-9]{32})','postgres',/g)]
+    for (const [, signature, hash] of dependencies) {
+      const fixtureHash = pg.db(`SELECT md5(prosrc) FROM pg_proc WHERE oid='public.${signature}'::regprocedure`)
+      fixtureSource = fixtureSource.replace(hash, fixtureHash)
+    }
+    const inner = (name: string) => readFileSync(path.resolve(__dirname, '../../supabase/migrations', name), 'utf8')
+      .replace(/^BEGIN;/, '').replace(/COMMIT;\s*$/, '')
+    const finalHashes = JSON.parse(pg.db(`BEGIN;
+      ${inner('20261020002000_manual_agent_channel_activation.sql')}
+      ${inner('20261021001000_reconcile_paid_coverage_licenses.sql')}
+      SELECT jsonb_object_agg(oid::regprocedure::text,md5(prosrc)) FROM pg_proc
+        WHERE oid IN ('public.enforce_settings_license()'::regprocedure,
+          'public.get_site_licensed_resources(uuid)'::regprocedure,'public.billing_license_changed()'::regprocedure);
+      ROLLBACK;`)) as Record<string, string>
+    for (const [, signature, hash] of source.matchAll(/\('public\.([^']+)','([a-f0-9]{32})'\)/g)) {
+      fixtureSource = fixtureSource.replace(hash, finalHashes[signature])
     }
   })
 
