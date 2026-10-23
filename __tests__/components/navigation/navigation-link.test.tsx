@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from "@testing-library/react"
 import { AppRouterContext } from "next/dist/shared/lib/app-router-context.shared-runtime"
-import { dispatchNavigateAction } from "next/dist/client/components/app-router-instance"
+import { navigate } from "next/dist/client/components/navigator"
 import { useRouter, useSearchParams } from "next/navigation"
 import { NavigationLink } from "@/app/components/navigation/NavigationLink"
 import { useArtifactRouterPatch } from "@/app/hooks/use-artifact-router-patch"
@@ -8,7 +8,7 @@ import { cancelNavigationWatchdog, getNavigationFeedback, NAVIGATION_SLOW_MS } f
 
 // Use the installed Next Link click behavior; isolate its browser RSC transport.
 jest.mock("next/link", () => jest.requireActual("next/dist/client/app-dir/link"))
-jest.mock("next/dist/client/components/app-router-instance", () => ({ dispatchNavigateAction: jest.fn() }))
+jest.mock("next/dist/client/components/navigator", () => ({ navigate: jest.fn() }))
 jest.mock("next/dist/client/components/links", () => ({
   mountLinkInstance: jest.fn(), unmountLinkForCurrentNavigation: jest.fn(),
   unmountPrefetchableInstance: jest.fn(), onNavigationIntent: jest.fn(),
@@ -30,7 +30,7 @@ describe("NavigationLink", () => {
 
   it("keeps Next client routing and reports a slow navigation without reloading", () => {
     fireEvent.click(link())
-    expect(dispatchNavigateAction).toHaveBeenCalledWith("/leads", "push", 0, undefined, undefined, "none")
+    expect(navigate).toHaveBeenCalledWith("/leads", "push", 0, undefined, undefined, "none")
     act(() => { jest.advanceTimersByTime(NAVIGATION_SLOW_MS) })
     expect(getNavigationFeedback()?.status).toBe("slow")
   })
@@ -38,7 +38,7 @@ describe("NavigationLink", () => {
   it.each(["onClick", "onNavigate"] as const)("respects a navigation cancelled by %s", (handler) => {
     fireEvent.click(link({ [handler]: (event: { preventDefault: () => void }) => event.preventDefault() }))
     act(() => { jest.advanceTimersByTime(NAVIGATION_SLOW_MS) })
-    expect(dispatchNavigateAction).not.toHaveBeenCalled()
+    expect(navigate).not.toHaveBeenCalled()
     expect(getNavigationFeedback()).toBeNull()
   })
 
@@ -54,18 +54,18 @@ describe("NavigationLink", () => {
     document.addEventListener("click", (click) => click.preventDefault(), { once: true })
     fireEvent.click(anchor, event)
     act(() => { jest.advanceTimersByTime(NAVIGATION_SLOW_MS) })
-    expect(dispatchNavigateAction).not.toHaveBeenCalled()
+    expect(navigate).not.toHaveBeenCalled()
     expect(getNavigationFeedback()).toBeNull()
   })
 
   it("preserves replace and scroll options", () => {
     fireEvent.click(link({ replace: true, scroll: false }))
-    expect(dispatchNavigateAction).toHaveBeenCalledWith("/leads", "replace", 1, undefined, undefined, "none")
+    expect(navigate).toHaveBeenCalledWith("/leads", "replace", 1, undefined, undefined, "none")
   })
 
   it("tracks the effective as destination instead of the internal href", () => {
     fireEvent.click(link({ href: "/internal", as: "/", replace: true }))
-    expect(dispatchNavigateAction).toHaveBeenCalledWith("/", "replace", 0, undefined, undefined, "none")
+    expect(navigate).toHaveBeenCalledWith("/", "replace", 0, undefined, undefined, "none")
     act(() => { jest.advanceTimersByTime(NAVIGATION_SLOW_MS) })
     // Already on the displayed URL: no false pending indicator for /internal.
     expect(getNavigationFeedback()).toBeNull()
@@ -83,9 +83,9 @@ describe("NavigationLink", () => {
     fireEvent.click(link(props))
     expect(originalPush).not.toHaveBeenCalled()
     if (mode === "replace") {
-      expect(dispatchNavigateAction).toHaveBeenCalledWith("/leads?artifact=true", "replace", 0, undefined, undefined, "none")
+      expect(navigate).toHaveBeenCalledWith("/leads?artifact=true", "replace", 0, undefined, undefined, "none")
     } else {
-      expect(dispatchNavigateAction).not.toHaveBeenCalled()
+      expect(navigate).not.toHaveBeenCalled()
       expect(getNavigationFeedback()).toBeNull()
     }
   })
