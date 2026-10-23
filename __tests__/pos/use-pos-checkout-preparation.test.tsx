@@ -1,12 +1,13 @@
 import { act, renderHook } from "@testing-library/react";
 import { usePosCheckout } from "@/app/pos/hooks/use-pos-checkout";
-import { getPosOrder } from "@/app/pos/actions/get-order";
+import { fetchPosOrder as getPosOrder } from "@/app/pos/operation-client";
 import { posOrderVersion } from "@/app/pos/order-version";
 import { enqueueCheckout } from "@/app/pos/local/outbox";
 import { enqueueRegisteredCheckout } from "@/app/pos/register/prepare-payment";
 import { toast } from "sonner";
 import { resetCheckoutCartSession } from "@/app/pos/local/checkout-attempt-storage";
-import { drainPosOutbox } from "@/app/pos/local/sync-engine";
+import { syncPosCheckout } from "@/app/pos/local/sync-engine";
+import { PaymentRegisterRequiredError } from "@/app/pos/register/payment-register-required";
 
 let permissionCurrent = true;
 const pendingDelete = jest.fn();
@@ -18,11 +19,11 @@ jest.mock("@/app/pos/local/location-permission-state", () => ({
   isPosPermissionCurrent: () => permissionCurrent,
 }));
 
-jest.mock("@/app/pos/actions/get-order", () => ({ getPosOrder: jest.fn() }));
+jest.mock("@/app/pos/operation-client", () => ({ fetchPosOrder: jest.fn() }));
 jest.mock("@/app/context/SiteContext", () => ({ useSite: () => ({ currentSite: null }) }));
 jest.mock("@/app/pos/local/outbox", () => ({ enqueueCheckout: jest.fn(), enqueueCreateLead: jest.fn() }));
 jest.mock("@/app/pos/register/prepare-payment", () => ({ enqueueRegisteredCheckout: jest.fn() }));
-jest.mock("@/app/pos/local/sync-engine", () => ({ drainPosOutbox: jest.fn(), refreshPosSyncCounts: jest.fn() }));
+jest.mock("@/app/pos/local/sync-engine", () => ({ syncPosCheckout: jest.fn(), refreshPosSyncCounts: jest.fn() }));
 jest.mock("@/app/pos/local/db", () => ({ getPosDb: () => ({
   pendingOrders: { delete: pendingDelete, put: pendingPut },
   outbox: { where: () => ({ equals: () => ({ first: outboxFirst }) }) },
@@ -79,6 +80,58 @@ describe("POS payment preparation", () => {
     const { result } = renderHook(() => usePosCheckout({ ...args(), activeOrderId: "new", cart: [] }));
     act(() => result.current.initiateCheckout());
     expect(result.current.isPaymentDialogOpen).toBe(false);
+  });
+
+  it("uses the only location even before the cart default has been restored", async () => {
+    const input = { ...args(), originLocationId: "", locations: [{ id: "store" }] };
+    const { result } = renderHook(usePosCheckout, { initialProps: input });
+    act(() => result.current.initiateCheckout());
+    expect(result.current.isPaymentDialogOpen).toBe(true);
+    await act(async () => { await result.current.handleCheckout(payments); });
+    expect(enqueueCheckout).toHaveBeenCalledWith("site", expect.objectContaining({ originLocationId: "store" }));
+  });
+
+  it("overlays register setup without closing payment, clearing the cart or automatically retrying", async () => {
+    jest.mocked(enqueueRegisteredCheckout).mockRejectedValueOnce(new PaymentRegisterRequiredError("Open a register"));
+    const input = args();
+    const { result } = renderHook(usePosCheckout, { initialProps: input });
+    act(() => result.current.initiateCheckout());
+    await act(async () => { await result.current.handleCheckout(payments); });
+    expect(result.current.isRegisterDialogOpen).toBe(true);
+    expect(result.current.isPaymentDialogOpen).toBe(true);
+    expect(result.current.checkoutLoading).toBe(false);
+    expect(toast.error).not.toHaveBeenCalled();
+    expect(enqueueCheckout).not.toHaveBeenCalled();
+    expect(input.onCleared).not.toHaveBeenCalled();
+    act(() => result.current.setIsRegisterDialogOpen(false));
+    expect(enqueueRegisteredCheckout).toHaveBeenCalledTimes(1);
+    expect(result.current.isPaymentDialogOpen).toBe(true);
+    await act(async () => { await result.current.handleCheckout(payments); });
+    expect(getPosOrder).toHaveBeenCalledTimes(2);
+    expect(enqueueCheckout).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps other register errors as errors rather than opening setup", async () => {
+    jest.mocked(enqueueRegisteredCheckout).mockRejectedValueOnce(new Error("This shift belongs to another cashier"));
+    const { result } = renderHook(usePosCheckout, { initialProps: args() });
+    await act(async () => { await result.current.handleCheckout(payments); });
+    expect(result.current.isRegisterDialogOpen).toBe(false);
+    expect(toast.error).toHaveBeenCalledWith("This shift belongs to another cashier");
+  });
+
+  it.each(["site", "actor", "order", "cart", "session", "close"])("does not carry register setup across a changed %s", async (change) => {
+    jest.mocked(enqueueRegisteredCheckout).mockRejectedValueOnce(new PaymentRegisterRequiredError("Open a register"));
+    const input = args();
+    const { result, rerender } = renderHook(usePosCheckout, { initialProps: input });
+    act(() => result.current.initiateCheckout());
+    await act(async () => { await result.current.handleCheckout(payments); });
+    if (change === "session") { resetCheckoutCartSession("site"); rerender(input); }
+    if (change === "site") rerender({ ...input, siteId: "other-site" });
+    if (change === "actor") rerender({ ...input, userId: "other-cashier" });
+    if (change === "order") rerender({ ...input, activeOrderId: "new" });
+    if (change === "cart") rerender({ ...input, cart: [{ ...input.cart[0], cartQty: 2 }] });
+    if (change === "close") act(() => result.current.setIsPaymentDialogOpen(false));
+    expect(result.current.isRegisterDialogOpen).toBe(false);
   });
 
   it("refuses an old balance and requests a forced order refresh", async () => {
@@ -155,6 +208,25 @@ describe("POS payment preparation", () => {
     expect(result.current.isPaymentDialogOpen).toBe(false);
   });
 
+  it("allows a new customer while old confirmation hangs, and ignores the old completion", async () => {
+    let finish!: (value: never) => void;
+    const input = { ...args(), activeOrderId: "new" };
+    jest.mocked(enqueueRegisteredCheckout).mockReturnValueOnce(new Promise((resolve) => { finish = resolve; }));
+    const { result, rerender } = renderHook(usePosCheckout, { initialProps: input });
+    let old!: Promise<void>;
+    await act(async () => { old = result.current.handleCheckout(payments); });
+    expect(result.current.checkoutLoading).toBe(true);
+    act(() => resetCheckoutCartSession("site"));
+    rerender({ ...input, cart: [{ ...input.cart[0], cartQty: 2 }], total: 200 });
+    expect(result.current.checkoutLoading).toBe(false);
+    await act(async () => { await result.current.handleCheckout([{ ...payments[0], amount: 200 }]); });
+    expect(enqueueRegisteredCheckout).toHaveBeenCalledTimes(2);
+    expect(input.onCleared).toHaveBeenCalledTimes(1);
+    await act(async () => { finish({ clientMutationId: "old" } as never); await old; });
+    expect(input.onCleared).toHaveBeenCalledTimes(1);
+    expect(result.current.checkoutLoading).toBe(false);
+  });
+
   it("does not force an old order back into selection when verification fails late", async () => {
     let finish!: (value: never) => void;
     jest.mocked(getPosOrder).mockReturnValue(new Promise((resolve) => { finish = resolve; }));
@@ -219,7 +291,7 @@ describe("POS payment preparation", () => {
   it("does not show stale sync callbacks over a new cart", async () => {
     Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
     let finish!: () => void;
-    jest.mocked(drainPosOutbox).mockReturnValueOnce(new Promise<void>((resolve) => { finish = resolve; }));
+    jest.mocked(syncPosCheckout).mockReturnValueOnce(new Promise<void>((resolve) => { finish = resolve; }));
     const input = { ...args(), activeOrderId: "new" };
     const { result, rerender } = renderHook(usePosCheckout, { initialProps: input });
     await act(async () => { await result.current.handleCheckout(payments); });
@@ -234,7 +306,7 @@ describe("POS payment preparation", () => {
 
   it("rechecks after deferred receipt lookup before showing an old failure", async () => {
     Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
-    jest.mocked(drainPosOutbox).mockResolvedValueOnce(undefined);
+    jest.mocked(syncPosCheckout).mockResolvedValueOnce(undefined);
     let finish!: (value: { status: string; lastError: string }) => void;
     outboxFirst.mockReturnValueOnce(new Promise((resolve) => { finish = resolve; }));
     const input = { ...args(), activeOrderId: "new" };

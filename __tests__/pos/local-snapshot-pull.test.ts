@@ -75,4 +75,33 @@ describe("local inventory snapshots", () => {
     expect(db.meta.put).not.toHaveBeenCalled();
     jest.mocked(isPosPermissionCurrent).mockReturnValue(true);
   });
+
+  it("bypasses the remote cache while retaining the observed revision after recovery", async () => {
+    localDb();
+    jest.mocked(pullPosCatalogSnapshot).mockResolvedValue({ data: snapshot });
+    expect(await pullAndStorePosCatalogSnapshot("site-1", "revision-2", true)).toEqual({ ok: true, pulledAt: snapshot.pulledAt });
+    expect(pullPosCatalogSnapshot).toHaveBeenCalledWith("site-1", "revision-2", true);
+    expect(await readLocalCatalog("site-1")).toMatchObject({ lastCatalogRevision: "revision-2" });
+  });
+
+  it("announces saving only after an authorized download succeeds", async () => {
+    const db = localDb();
+    const onSaving = jest.fn(() => expect(db.meta.put).not.toHaveBeenCalled());
+    jest.mocked(pullPosCatalogSnapshot).mockResolvedValueOnce({ error: "Unavailable" });
+    await pullAndStorePosCatalogSnapshot("site-1", "revision", true, onSaving);
+    expect(onSaving).not.toHaveBeenCalled();
+    jest.mocked(pullPosCatalogSnapshot).mockResolvedValueOnce({ data: snapshot });
+    await pullAndStorePosCatalogSnapshot("site-1", "revision", true, onSaving);
+    expect(onSaving).toHaveBeenCalledTimes(1);
+    expect(db.meta.put).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not replace a valid local snapshot after an uncached fallback fails", async () => {
+    const db = localDb();
+    await applyPosCatalogSnapshot("site-1", snapshot, "revision-1");
+    jest.mocked(pullPosCatalogSnapshot).mockResolvedValue({ error: "Catalog unavailable" });
+    expect(await pullAndStorePosCatalogSnapshot("site-1", "revision-2", true)).toEqual({ ok: false, error: "Catalog unavailable" });
+    expect(db.meta.put).toHaveBeenCalledTimes(1);
+    expect(await readLocalCatalog("site-1")).toMatchObject({ inventorySnapshot, lastCatalogRevision: "revision-1" });
+  });
 });

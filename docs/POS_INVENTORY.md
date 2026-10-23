@@ -57,6 +57,50 @@ the selected reservable item, using the existing slot cache and in-flight reques
 deduplication; it is not a reservation or permission to skip server validation.
 
 The authorized POS snapshot includes site-scoped inventory and policy in IndexedDB.
+The visible POS loop checks every 30 seconds and performs a full background
+refresh once the last successful snapshot is five minutes old, even if the catalog
+revision is unchanged. Lightweight revision checks do not reset that deadline.
+Missing/invalid snapshot timestamps also require a full pull. These recovery
+reads bypass the Redis snapshot cache, retain the observed revision locally, and
+still load products, services, prices, variants, modifiers, taxes and inventory
+through the existing authorized readers. A returned or thrown revision failure
+does not prevent the full snapshot fallback.
+The revision optimization uses the authenticated, same-origin, no-store
+`GET /api/pos/catalog-revision` reader rather than the browser's Server Action
+queue. Its complete client wait, including JSON parsing, is capped at eight
+seconds. Timeout aborts that read and proceeds with the authorized snapshot
+fallback; late revision responses cannot update local data. Read deduplication
+is per site. Aborting the HTTP wait is not proof that server-side work stopped.
+If recovery could not observe a revision, the next successful revision check also
+bypasses the snapshot cache before persisting that revision, preventing stale
+cached data from replacing the freshly recovered snapshot.
+
+Reconnection triggers a full sync; focus/visibility return checks freshness.
+The reconnect refresh remains pending across permission suspension and workspace
+unmount, and is consumed only by a successful full download after verified access
+returns. A failed download or another disconnect does not clear that intent.
+Catalog requests have per-site admission slots so an old site's outstanding
+request cannot suppress the selected site's pull. Failed downloads do not replace
+the last successful local snapshot or advance its freshness; the next eligible
+background tick retries. This is nonblocking synchronization while the POS is
+open and visible, not a service worker or permission to read data after access
+expires. Existing online permission leases and server checkout checks still apply.
+
+Catalog status is part of the existing top-bar sync widget, not a separate strip.
+The badge shows revision checks, download or local saving with elapsed time, then
+retains the last successful duration. Clicking it opens catalog details with the
+completion timestamp, duration, and whether the read bypassed the snapshot cache.
+It includes catalog refresh and the existing queued-operations entry point.
+Catalog failures show retry information separately from order/outbox failures.
+Historical local snapshots show their stored timestamp, not an invented duration.
+Timing is session-local, measured with a monotonic clock, and cleared with permission
+state; widget subscriptions and displayed details are isolated by site.
+Permission invalidation immediately notifies widget subscribers with a sanitized
+unverified state: no previous completion timestamp, duration or queue counts, and
+catalog refresh is disabled until online access is verified again. Outstanding
+snapshot/queue operations retain their actual admission slots until they settle;
+invalidated operations cannot publish a late success.
+
 Stock is read outside the catalog Redis cache. The existing catalog revision now
 includes stock quantities, locations and commerce settings, including writes that
 do not advance inventory timestamps. A checkout sync attempt triggers a forced

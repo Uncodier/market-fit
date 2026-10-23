@@ -15,7 +15,7 @@ import {
   enqueueCreateLead,
 } from "@/app/pos/local/outbox";
 import { enqueueRegisteredCheckout } from "@/app/pos/register/prepare-payment";
-import { drainPosOutbox, refreshPosSyncCounts } from "@/app/pos/local/sync-engine";
+import { syncPosCheckout, refreshPosSyncCounts } from "@/app/pos/local/sync-engine";
 import { getPosDb } from "@/app/pos/local/db";
 import { useSite } from "@/app/context/SiteContext";
 import { normalizePrintersSettings, ticketBrandFromSite } from "@/lib/printer";
@@ -23,6 +23,9 @@ import { printAfterPosCheckout, receiptFromPosCart } from "@/app/pos/print-after
 import { createPendingSplitOrders as enqueuePendingSplitOrders } from "@/app/pos/create-pending-split-orders";
 import { planPosLeadSync } from "@/app/pos/lead-utils";
 import { checkOrderBeforePayment, PosOrderChangedError } from "@/app/pos/check-order-before-payment";
+import { PaymentRegisterRequiredError } from "../register/payment-register-required";
+import { usePaymentRegisterPrompt } from "./use-payment-register-prompt";
+import { usePosSubmission } from "./use-pos-submission";
 
 export function usePosCheckout({
   validateInventory,
@@ -35,7 +38,8 @@ export function usePosCheckout({
   leadValue,
   leadRelationValue,
   fulfillment,
-  originLocationId,
+  originLocationId: selectedOriginLocationId,
+  locations = [],
   priceListId,
   promoCode,
   appliedPromo = null,
@@ -56,14 +60,15 @@ export function usePosCheckout({
   currency,
 }: UsePosCheckoutArgs) {
   const { currentSite } = useSite();
+  const originLocationId = selectedOriginLocationId || (locations.length === 1 ? locations[0].id : "");
   const permission = getPosPermissionLease(siteId);
-  const [checkoutLoading, setCheckoutLoading] = useState(false);
   const checkoutAttempt = useCheckoutAttempt(siteId, userId);
   const [paymentOrder, setPaymentOrder] = useState<{ siteId?: string; id: string } | null>(null);
   const isPaymentDialogOpen = paymentOrder?.siteId === siteId && paymentOrder?.id === activeOrderId;
-  const setIsPaymentDialogOpen = (open: boolean) => setPaymentOrder(open ? { siteId, id: activeOrderId } : null);
-  const submitting = useRef(false);
+  const setIsPaymentDialogOpen = (open: boolean) => { if (!open) registerPrompt.setOpen(false); setPaymentOrder(open ? { siteId, id: activeOrderId } : null); };
   const cartKey = JSON.stringify(posCheckoutLines(cart));
+  const submission = usePosSubmission(JSON.stringify([siteId, userId, activeOrderId]), checkoutAttempt.session);
+  const registerPrompt = usePaymentRegisterPrompt(siteId, userId, activeOrderId, cartKey);
   const selection = useRef({ siteId, userId, activeOrderId, cartKey });
   useLayoutEffect(() => {
     selection.current = { siteId, userId, activeOrderId, cartKey };
@@ -204,7 +209,7 @@ export function usePosCheckout({
       intent: params.intent,
       notes: orderNotes.trim(),
       clientMutationId,
-    }, (id) => { if (isCurrent()) checkoutAttempt.adopt(id); });
+    }, (id) => { if (isCurrent()) checkoutAttempt.adopt(id); }, isCurrent);
     if (!isCurrent()) return;
     clientMutationId = queuedCheckout.clientMutationId;
     refreshPosSyncCounts(siteId);
@@ -279,7 +284,7 @@ export function usePosCheckout({
     const printersSettings = normalizePrintersSettings(currentSite?.settings?.printers);
 
     if (typeof navigator !== "undefined" && navigator.onLine) {
-      void drainPosOutbox(siteId).then(async () => {
+      void syncPosCheckout(siteId, clientMutationId).then(async () => {
         if (!receiptCurrent()) return;
         const row = await getPosDb()
           .outbox.where("clientMutationId")
@@ -327,7 +332,7 @@ export function usePosCheckout({
     checkoutPromoCode?: string,
     intent?: "complete" | "pay" | "send",
   ) => {
-    if (!siteId || !userId || orderPreparing || submitting.current || !isPosPermissionCurrent(permission)) return;
+    if (!siteId || !userId || orderPreparing || submission.busy() || !isPosPermissionCurrent(permission)) return;
     const isCurrent = checkoutGuard();
     if (!isCurrent()) return;
 
@@ -351,8 +356,7 @@ export function usePosCheckout({
       return;
     }
 
-    submitting.current = true;
-    setCheckoutLoading(true);
+    const finishSubmission = submission.begin();
     try {
       await checkOrderBeforePayment(siteId, activeOrderId, expectedOrderVersion);
       if (!isCurrent()) return;
@@ -378,6 +382,7 @@ export function usePosCheckout({
       }, isCurrent);
     } catch (err) {
       if (!isCurrent()) return;
+      if (err instanceof PaymentRegisterRequiredError) { registerPrompt.setOpen(true); return; }
       if (err instanceof PosOrderChangedError) {
         setIsPaymentDialogOpen(false);
         onOrderChanged?.(activeOrderId);
@@ -386,8 +391,7 @@ export function usePosCheckout({
         err instanceof Error ? err.message : t("pos.errorCheckingOut") || "Error checking out",
       );
     } finally {
-      submitting.current = false;
-      setCheckoutLoading(false);
+      finishSubmission();
     }
   };
 
@@ -395,7 +399,7 @@ export function usePosCheckout({
     customerConfirmed?: boolean;
     leadOverride?: RelationSelectValue;
   }) => {
-    if (orderPreparing || submitting.current) return;
+    if (orderPreparing || submission.busy()) return;
     const activeItems = cart.filter((c) => c.cartQty > 0);
     if (activeItems.length === 0) {
       toast.error(t("pos.errorCartEmpty") || "Cart is empty");
@@ -407,8 +411,7 @@ export function usePosCheckout({
     const isCurrent = checkoutGuard();
     if (!isCurrent()) return;
 
-    submitting.current = true;
-    setCheckoutLoading(true);
+    const finishSubmission = submission.begin();
     try {
       const { resolvedLeadId, localLeadId } =
         await prepareLeadForSync(effectiveLeadRelation);
@@ -426,8 +429,7 @@ export function usePosCheckout({
         err instanceof Error ? err.message : t("pos.errorSendingOrder") || "Error sending order",
       );
     } finally {
-      submitting.current = false;
-      setCheckoutLoading(false);
+      finishSubmission();
     }
     // enqueueAndFinishCheckout closes over latest cart/session fields via render
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -476,10 +478,12 @@ export function usePosCheckout({
   };
 
   return {
-    checkoutLoading,
+    checkoutLoading: submission.loading,
     amountDue,
     isPaymentDialogOpen,
     setIsPaymentDialogOpen,
+    isRegisterDialogOpen: registerPrompt.open && isPosPermissionCurrent(permission),
+    setIsRegisterDialogOpen: registerPrompt.setOpen,
     initiateCheckout,
     handleCheckout,
     handleSendOrder,

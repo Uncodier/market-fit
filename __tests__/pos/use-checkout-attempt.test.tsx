@@ -3,12 +3,12 @@ import { useCheckoutAttempt } from "@/app/pos/hooks/use-checkout-attempt";
 import { clearCartSession } from "@/app/pos/local/cart-session";
 import { enqueueRegisteredCheckout } from "@/app/pos/register/prepare-payment";
 import { enqueueCheckout, listOutbox } from "@/app/pos/local/outbox";
-import { getActiveRegisterForPayment } from "@/app/pos/register/actions";
+import { fetchActivePaymentRegister as getActiveRegisterForPayment } from "@/app/pos/operation-client";
 import { syncPosCheckout } from "@/app/pos/local/sync-engine";
 import { checkoutAttemptKey } from "@/app/pos/local/checkout-attempt-storage";
 import type { CheckoutOutboxPayload, PosOutboxRow } from "@/app/pos/local/types";
 
-jest.mock("@/app/pos/register/actions", () => ({ getActiveRegisterForPayment: jest.fn() }));
+jest.mock("@/app/pos/operation-client", () => ({ fetchActivePaymentRegister: jest.fn() }));
 jest.mock("@/app/pos/local/location-permission-state", () => ({ requirePosPermission: () => ({}), isPosPermissionCurrent: () => true }));
 jest.mock("@/app/pos/local/outbox", () => ({ enqueueCheckout: jest.fn(), listOutbox: jest.fn() }));
 jest.mock("@/app/pos/local/sync-engine", () => ({ syncPosCheckout: jest.fn() }));

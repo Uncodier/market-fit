@@ -2,10 +2,10 @@ import { v4 as uuidv4 } from "uuid"
 import type { RelationSelectValue } from "@/app/components/ui/relation-select"
 import type { PosCartItem } from "@/app/pos/components/CartPanel"
 import type { CheckoutFulfillmentMethod } from "@/app/commerce/delivery-options"
-import { resolveRelationId } from "@/app/commerce/resolve-relation"
+import { planPosLeadSync } from "./lead-utils"
 import { roundMoney } from "@/app/commerce/taxes"
-import { enqueueCheckout } from "@/app/pos/local/outbox"
-import { drainPosOutbox, refreshPosSyncCounts } from "@/app/pos/local/sync-engine"
+import { enqueueCheckout, enqueueCreateLead } from "@/app/pos/local/outbox"
+import { syncPosCheckout, refreshPosSyncCounts } from "@/app/pos/local/sync-engine"
 import { getPosDb } from "@/app/pos/local/db"
 import type { PosShippingAddress } from "@/app/pos/shipping-address"
 import { requirePosPermission, isPosPermissionCurrent } from "./local/location-permission-state"
@@ -32,29 +32,9 @@ async function resolveSplitLead(
   leadRelationValue: RelationSelectValue,
   siteId: string,
 ) {
-  if (!leadRelationValue) {
-    return { resolvedLeadId: null, localLeadId: null }
-  }
-  if (
-    leadRelationValue.mode === "existing" &&
-    leadRelationValue.id?.startsWith("local_")
-  ) {
-    return { resolvedLeadId: null, localLeadId: leadRelationValue.id }
-  }
-  if (typeof navigator !== "undefined" && !navigator.onLine) {
-    return {
-      resolvedLeadId:
-        leadRelationValue.mode === "existing" ? leadRelationValue.id : null,
-      localLeadId: null,
-    }
-  }
-  const { id, error } = await resolveRelationId(
-    "lead",
-    leadRelationValue,
-    siteId,
-  )
-  if (error) return { resolvedLeadId: null, localLeadId: null }
-  return { resolvedLeadId: id, localLeadId: null }
+  const plan = planPosLeadSync(leadRelationValue, uuidv4)
+  if (plan.createLead) await enqueueCreateLead(siteId, { siteId, ...plan.createLead })
+  return { resolvedLeadId: plan.resolvedLeadId, localLeadId: plan.localLeadId }
 }
 
 export async function createPendingSplitOrders(
@@ -154,9 +134,8 @@ export async function createPendingSplitOrders(
         pending_sync: true,
       },
     })
-  }
-
-  if (typeof navigator !== "undefined" && navigator.onLine) {
-    void drainPosOutbox(params.siteId)
+    if (typeof navigator !== "undefined" && navigator.onLine) {
+      void syncPosCheckout(params.siteId, clientMutationId).catch(() => undefined)
+    }
   }
 }

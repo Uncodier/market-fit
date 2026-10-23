@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { getPosOrder } from "../actions/get-order";
+import { fetchPosOrder } from "../operation-client";
 import { isPosOpenOrder, isPosOrderPaid, posOrderAmountDue } from "../open-orders";
 import { hasPosOrderCartSnapshot } from "../order-session";
 import { listOutbox } from "../local/outbox";
@@ -36,7 +36,7 @@ async function readReview(siteId: string, rowId?: string, orderId?: string, isCu
   const id = row ? checkoutReviewOrderId(row) : orderId;
   if (!id || id.startsWith("local_")) return { row, order: null, error: null };
   try {
-    const result = await getPosOrder(siteId, id);
+    const result = await fetchPosOrder(siteId, id);
     const order = result.data;
     if (result.error || !order) return { row, order: null, error: result.error || "Unable to load POS order." };
     if (order.id !== id || order.site_id !== siteId) return { row, order: null, error: "This order is not available for this review." };

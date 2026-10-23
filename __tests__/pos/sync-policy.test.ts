@@ -1,5 +1,6 @@
 import {
   shouldRunCatalogPull,
+  shouldRefreshCatalogSnapshot,
   shouldRunOrdersPull,
   shouldDrainOutbox,
   CATALOG_INTERVAL_MS,
@@ -8,6 +9,17 @@ import {
 } from "@/app/pos/local/sync-policy";
 
 describe("sync-policy", () => {
+  describe("shouldRefreshCatalogSnapshot", () => {
+    const now = Date.parse("2026-10-23T12:00:00Z");
+    it.each([null, "invalid", "2026-10-24T12:00:00Z"])("repairs missing or invalid snapshot timestamps (%s)", (timestamp) => {
+      expect(shouldRefreshCatalogSnapshot(now, timestamp)).toBe(true);
+    });
+    it("refreshes at five minutes but not before", () => {
+      expect(shouldRefreshCatalogSnapshot(now, new Date(now - CATALOG_INTERVAL_MS).toISOString())).toBe(true);
+      expect(shouldRefreshCatalogSnapshot(now, new Date(now - CATALOG_INTERVAL_MS + 1).toISOString())).toBe(false);
+    });
+  });
+
   describe("shouldRunCatalogPull", () => {
     it("returns true if force is true", () => {
       expect(shouldRunCatalogPull({ now: 1000, lastCatalogAt: 1000, visible: false, force: true })).toBe(true);

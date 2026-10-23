@@ -9,8 +9,9 @@ export interface CashRegisterOptionsProps {
   siteId?: string;
   locationId: string;
   onLocationChange?: (id: string) => void;
-  locations: { id: string; name?: string }[];
+  locations: { id: string; name?: string | null }[];
   currency: string;
+  onOpened?: () => void;
 }
 
 const RegisterDashboard = lazy(() => import("./RegisterDashboard"));
@@ -34,19 +35,32 @@ export function CashRegisterOptions(props: CashRegisterOptionsProps) {
           <Banknote className="mr-2 h-4 w-4" />Cash Register
         </Button>
       </DialogTrigger>
-      {open && (
-        <DialogContent size="lg">
-          <DialogHeader>
-            <DialogTitle>Cash Register</DialogTitle>
-            <DialogDescription>Open, reconcile and review the register for a location. Register writes require an internet connection.</DialogDescription>
-          </DialogHeader>
-          <RegisterLoadBoundary>
-            <Suspense fallback={<DialogBody><p role="status">Loading cash register…</p></DialogBody>}>
-              <RegisterDashboard key={`${props.siteId}:${props.locationId}`} {...props} />
-            </Suspense>
-          </RegisterLoadBoundary>
-        </DialogContent>
-      )}
+      {open && <CashRegisterContent {...props} />}
     </Dialog>
+  );
+}
+
+/** Mounted within the payment dialog so Radix owns nested focus and dismissal. */
+export function PaymentCashRegisterDialog({ open, onOpenChange, ...props }: CashRegisterOptionsProps & { open: boolean; onOpenChange: (open: boolean) => void }) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      {open && <CashRegisterContent {...props} onOpened={() => onOpenChange(false)} />}
+    </Dialog>
+  );
+}
+
+function CashRegisterContent(props: CashRegisterOptionsProps) {
+  return (
+    <DialogContent size="lg">
+      <DialogHeader>
+        <DialogTitle>Cash Register</DialogTitle>
+        <DialogDescription>{props.onOpened ? "Open a register to continue. Your payment details will be preserved; confirm the payment after opening." : "Open, reconcile and review the register for a location. Register writes require an internet connection."}</DialogDescription>
+      </DialogHeader>
+      <RegisterLoadBoundary>
+        <Suspense fallback={<DialogBody><p role="status">Loading cash register…</p></DialogBody>}>
+          <RegisterDashboard key={`${props.siteId}:${props.locationId}`} {...props} />
+        </Suspense>
+      </RegisterLoadBoundary>
+    </DialogContent>
   );
 }

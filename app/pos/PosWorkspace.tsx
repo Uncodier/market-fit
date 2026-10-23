@@ -150,6 +150,7 @@ export default function PosWorkspace() {
     leadRelationValue: leadApi.leadRelationValue,
     fulfillment: cartApi.fulfillment,
     originLocationId: cartApi.originLocationId,
+    locations: catalog.locations,
     priceListId: cartApi.priceListId,
     promoCode: cartApi.promoCode,
     appliedPromo: cartApi.appliedPromo,

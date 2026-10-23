@@ -1,8 +1,8 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { CartPanel } from "@/app/pos/components/CartPanel";
-import { getRegisterDashboard } from "@/app/pos/register/actions";
+import { fetchRegisterDashboard } from "@/app/pos/operation-client";
 
-jest.mock("@/app/pos/register/actions", () => ({ getRegisterDashboard: jest.fn(), getRegisterSummary: jest.fn(), openRegister: jest.fn(), moveRegisterCash: jest.fn(), closeRegister: jest.fn() }));
+jest.mock("@/app/pos/operation-client", () => ({ fetchRegisterDashboard: jest.fn(), fetchRegisterSummary: jest.fn(), openPosRegister: jest.fn(), movePosRegisterCash: jest.fn(), closePosRegister: jest.fn() }));
 jest.mock("@/app/pos/register/queue-guard", () => ({ withRegisterCloseLock: jest.fn() }));
 
 jest.mock("@/app/context/DisplayCurrencyContext", () => ({
@@ -48,7 +48,7 @@ describe("POS payment button readiness", () => {
   });
 
   it("always offers a lazy cash register in Options with an empty carryout cart", async () => {
-    jest.mocked(getRegisterDashboard).mockResolvedValue({ data: { active: null, history: [], hasMore: false, role: "owner", userId: "cashier" } });
+    jest.mocked(fetchRegisterDashboard).mockResolvedValue({ data: { active: null, history: [], hasMore: false, role: "owner", userId: "cashier" } });
     const input = props();
     input.siteId = "site-1";
     input.locations = [{ id: "store", name: "Store" }];
@@ -57,12 +57,12 @@ describe("POS payment button readiness", () => {
     fireEvent.mouseDown(options, { button: 0 });
     fireEvent.click(options);
     await waitFor(() => expect(screen.getByRole("tab", { name: "Options" })).toHaveAttribute("aria-selected", "true"));
-    expect(getRegisterDashboard).not.toHaveBeenCalled();
+    expect(fetchRegisterDashboard).not.toHaveBeenCalled();
     const register = screen.getByRole("button", { name: "Cash Register" });
     expect(register).toBeEnabled();
     fireEvent.click(register);
     expect(await screen.findByRole("dialog", { name: "Cash Register" })).toBeInTheDocument();
     expect(await screen.findByLabelText("Register location")).toBeInTheDocument();
-    await waitFor(() => expect(getRegisterDashboard).toHaveBeenCalledWith(expect.objectContaining({ siteId: "site-1", locationId: "store", page: 0 })));
+    await waitFor(() => expect(fetchRegisterDashboard).toHaveBeenCalledWith(expect.objectContaining({ siteId: "site-1", locationId: "store", page: 0 })));
   });
 });

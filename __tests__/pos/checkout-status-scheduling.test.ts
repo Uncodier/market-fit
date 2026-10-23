@@ -1,6 +1,6 @@
 import type { PosOutboxRow } from "@/app/pos/local/types";
 import { drainPosOutbox, syncPosCheckout } from "@/app/pos/local/sync-engine";
-import { checkoutCart } from "@/app/commerce/checkout";
+import { checkoutPosCart as checkoutCart } from "@/app/pos/operation-client";
 import { reconcilePosCheckoutStatus } from "@/app/pos/actions/reconcile-checkout";
 import { getPosDb } from "@/app/pos/local/db";
 import { listOutbox, updateOutboxRow } from "@/app/pos/local/outbox";
@@ -11,10 +11,9 @@ jest.mock("@/app/pos/local/location-permission-state", () => {
   return { getPosPermissionLease: permission, requirePosPermission: permission,
     isPosPermissionCurrent: () => true, subscribePosPermission: () => () => {} };
 });
-jest.mock("@/app/commerce/checkout", () => ({ checkoutCart: jest.fn() }));
+jest.mock("@/app/pos/operation-client", () => ({ checkoutPosCart: jest.fn(), createPosLead: jest.fn() }));
 jest.mock("@/app/commerce/ticket-check-in", () => ({ checkInTicket: jest.fn() }));
-jest.mock("@/app/pos/actions/create-lead-sync", () => ({ createLeadWithIdempotency: jest.fn() }));
-jest.mock("@/app/pos/actions/sync-revision", () => ({ getPosCatalogRevision: async () => ({ data: "revision" }) }));
+jest.mock("@/app/pos/catalog-revision-client", () => ({ fetchPosCatalogRevision: async () => ({ data: "revision" }) }));
 jest.mock("@/app/pos/actions/list-open-orders", () => ({ listPosOpenOrders: jest.fn() }));
 jest.mock("@/app/orders/actions", () => ({ updateOrderNotes: jest.fn() }));
 jest.mock("@/app/pos/actions/report-sync-error", () => ({ reportPosSyncError: async () => ({ ok: true }) }));

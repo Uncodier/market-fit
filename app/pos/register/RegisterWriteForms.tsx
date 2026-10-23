@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/ca
 import { Input } from "@/app/components/ui/input";
 import { Label } from "@/app/components/ui/label";
 import { Textarea } from "@/app/components/ui/textarea";
-import { closeRegister, moveRegisterCash } from "./actions";
+import { closePosRegister as closeRegister, movePosRegisterCash as moveRegisterCash } from "../operation-client";
 import { withRegisterCloseLock } from "./queue-guard";
 import type { RegisterMovementKind, RegisterSession, RegisterSummary } from "./types";
 import { registerAmount, registerMoney, requireRegisterOnline } from "./register-ui-utils";
@@ -91,7 +91,7 @@ export function RegisterWriteForms({ siteId, session, summary, disabled, action,
               <dt>Preview difference</dt><dd className="text-right">{difference === null ? "Enter counted cash" : registerMoney(difference, session.currency)}</dd>
             </dl>
             <div className="space-y-1"><Label htmlFor={`${id}-notes`}>Closing notes</Label><Textarea id={`${id}-notes`} value={notes} onChange={(event) => setNotes(event.target.value)} disabled={busy} maxLength={2000} /></div>
-            <p className="text-xs text-muted-foreground">Closing settles pending payments first and is blocked if any payment remains unresolved. The final expected cash and difference are calculated by the server.</p>
+            <p className="text-xs text-muted-foreground">Closing is blocked if any payment remains unresolved. Check payment status before closing. The final expected cash and difference are calculated by the server.</p>
           </CardContent>
           <RegisterActions>
             <Button type="button" variant="outline" disabled={mutation.pending} onClick={cancel}>Cancel</Button>

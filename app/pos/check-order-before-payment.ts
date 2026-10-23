@@ -1,4 +1,4 @@
-import { getPosOrder } from "@/app/pos/actions/get-order";
+import { fetchPosOrder } from "./operation-client";
 import { isPosOpenOrder } from "@/app/pos/open-orders";
 import { posOrderMatchesVersion } from "@/app/pos/order-version";
 
@@ -19,7 +19,7 @@ export async function checkOrderBeforePayment(
   if (!expectedVersion) {
     throw new Error("Please select the order again to refresh it before payment.");
   }
-  const result = await getPosOrder(siteId, orderId);
+  const result = await fetchPosOrder(siteId, orderId);
   if (result.error || !result.data) throw new Error("Unable to verify the order. No payment was queued. Please try again.");
   if (!isPosOpenOrder(result.data) || !posOrderMatchesVersion(result.data, expectedVersion)) {
     throw new PosOrderChangedError();

@@ -4,7 +4,7 @@ jest.mock("@/app/pos/local/location-permission-state", () => ({
   getPosPermissionLease: jest.fn(), isPosPermissionCurrent: jest.fn(), subscribePosPermission: jest.fn(),
 }));
 jest.mock("@/app/pos/local/sync-outbox-item", () => ({ applyOutboxItem: jest.fn() }));
-jest.mock("@/app/pos/actions/sync-revision", () => ({ getPosCatalogRevision: jest.fn() }));
+jest.mock("@/app/pos/catalog-revision-client", () => ({ fetchPosCatalogRevision: jest.fn() }));
 jest.mock("@/app/pos/actions/list-open-orders", () => ({ listPosOpenOrders: jest.fn() }));
 jest.mock("@/app/pos/actions/report-sync-error", () => ({ reportPosSyncError: jest.fn() }));
 jest.mock("@/app/pos/local/db", () => ({ getPosDb: jest.fn() }));
@@ -54,7 +54,7 @@ beforeEach(async () => {
   apply.mockResolvedValue(undefined);
   catalog = jest.mocked(snapshot.pullAndStorePosCatalogSnapshot);
   catalog.mockResolvedValue({ ok: true });
-  jest.mocked((await import("@/app/pos/actions/sync-revision")).getPosCatalogRevision).mockResolvedValue({ data: "revision" });
+  jest.mocked((await import("@/app/pos/catalog-revision-client")).fetchPosCatalogRevision).mockResolvedValue({ data: "revision" });
   jest.mocked((await import("@/app/pos/actions/report-sync-error")).reportPosSyncError).mockResolvedValue({ ok: true });
   jest.mocked((await import("@/app/pos/local/db")).getPosDb).mockReturnValue({
     meta: { get: jest.fn(async () => undefined) },

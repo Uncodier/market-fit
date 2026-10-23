@@ -23,15 +23,17 @@ const EMPTY: SyncStatus = {
 };
 
 export function usePosSyncStatus(siteId: string | undefined) {
-  const [status, setStatus] = useState<SyncStatus>(EMPTY);
+  const [snapshot, setSnapshot] = useState<{ siteId?: string; status: SyncStatus }>({ status: EMPTY });
 
   useEffect(() => {
     if (!siteId) return;
     let active = true;
     queueMicrotask(() => {
-      if (active) setStatus(getPosSyncStatus(siteId));
+      if (active) setSnapshot({ siteId, status: getPosSyncStatus(siteId) });
     });
-    const unsub = subscribePosSync((next) => setStatus({ ...next }), siteId);
+    const unsub = subscribePosSync((next) => {
+      if (active) setSnapshot({ siteId, status: { ...next } });
+    }, siteId);
     startPosSyncLoop(siteId);
     return () => {
       active = false;
@@ -41,7 +43,7 @@ export function usePosSyncStatus(siteId: string | undefined) {
   }, [siteId]);
 
   return {
-    status,
+    status: snapshot.siteId === siteId ? snapshot.status : EMPTY,
     retrySync: () => {
       if (siteId) void runPosSyncCycle(siteId, true);
     },

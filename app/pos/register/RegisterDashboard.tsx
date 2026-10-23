@@ -7,7 +7,7 @@ import { Input } from "@/app/components/ui/input";
 import { Label } from "@/app/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs";
 import type { CashRegisterOptionsProps } from "./CashRegisterOptions";
-import { getRegisterDashboard, openRegister } from "./actions";
+import { fetchRegisterDashboard as getRegisterDashboard, openPosRegister as openRegister } from "../operation-client";
 import type { RegisterDashboard as Dashboard, RegisterSession } from "./types";
 import { registerAmount } from "./register-ui-utils";
 import { useRegisterMutation } from "./use-register-mutation";
@@ -15,8 +15,11 @@ import { RegisterSessionPanel } from "./RegisterSessionPanel";
 import { RegisterActionScope, RegisterActions, RegisterLayout } from "./RegisterLayout";
 import { RegisterHistoryTable } from "./RegisterHistoryTable";
 
-export default function RegisterDashboard({ siteId, locationId, onLocationChange, locations, currency }: CashRegisterOptionsProps) {
-  const [selectedLocation, setSelectedLocation] = useState(locations.some((location) => location.id === locationId) ? locationId : "");
+export default function RegisterDashboard({ siteId, locationId, onLocationChange, locations, currency, onOpened }: CashRegisterOptionsProps) {
+  const [selectedLocation, setSelectedLocation] = useState(locations.some((location) => location.id === locationId) ? locationId : locations.length === 1 ? locations[0].id : "");
+  useEffect(() => {
+    if (!locationId && locations.length === 1) onLocationChange?.(locations[0].id);
+  }, [locationId, locations, onLocationChange]);
   return (
     <RegisterLayout>
       <div className="space-y-4">
@@ -30,13 +33,13 @@ export default function RegisterDashboard({ siteId, locationId, onLocationChange
         </div>
         {!siteId ? <p role="alert">Select a site to use the cash register.</p>
           : !selectedLocation ? <p>Select a register location to continue.</p>
-          : <LocationDashboard key={`${siteId}:${selectedLocation}`} siteId={siteId} locationId={selectedLocation} currency={currency} locationName={locations.find((location) => location.id === selectedLocation)?.name || selectedLocation} />}
+          : <LocationDashboard key={`${siteId}:${selectedLocation}`} siteId={siteId} locationId={selectedLocation} currency={currency} onOpened={onOpened} locationName={locations.find((location) => location.id === selectedLocation)?.name || selectedLocation} />}
       </div>
     </RegisterLayout>
   );
 }
 
-function LocationDashboard({ siteId, locationId, currency, locationName }: { siteId: string; locationId: string; currency: string; locationName: string }) {
+function LocationDashboard({ siteId, locationId, currency, locationName, onOpened }: { siteId: string; locationId: string; currency: string; locationName: string; onOpened?: () => void }) {
   const [dashboard, setDashboard] = useState<Dashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -94,7 +97,7 @@ function LocationDashboard({ siteId, locationId, currency, locationName }: { sit
           {dashboard ? (active ? (
             <RegisterSessionPanel key={active.id} siteId={siteId} session={active} locationName={locationName} revision={revision} writable={fresh && canManage} onChanged={(closed) => { if (closed) { setDetail(closed); setView("history"); } refresh(); }} />
           ) : (
-            <OpenRegisterForm siteId={siteId} locationId={locationId} currency={currency} disabled={!fresh} onOpened={refresh} />
+            <OpenRegisterForm siteId={siteId} locationId={locationId} currency={currency} disabled={!fresh} onOpened={() => { refresh(); onOpened?.(); }} />
           )) : (
             <Card className="overflow-hidden">
               <CardHeader><CardTitle className="text-base">Current register</CardTitle></CardHeader>

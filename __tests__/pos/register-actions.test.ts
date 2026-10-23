@@ -95,4 +95,23 @@ describe("Cash register server authorization and validation", () => {
     from.mockReturnValue(query({ data: [{ id: sessionId, opened_by: "other" }], error: null }))
     expect(await getActiveRegisterForPayment({ siteId, locationId })).toHaveProperty("error")
   })
+
+  it("distinguishes missing and ambiguous shifts from authorization or database failures", async () => {
+    from.mockReturnValue(query({ data: [], error: null }))
+    expect(await getActiveRegisterForPayment({ siteId, locationId })).toMatchObject({ code: "register_required" })
+    from.mockReturnValue(query({ data: [{ id: sessionId }, { id: requestId }], error: null }))
+    expect(await getActiveRegisterForPayment({ siteId })).toMatchObject({ code: "register_location_required" })
+    from.mockReturnValue(query({ data: null, error: { code: "42P01" } }))
+    expect(await getActiveRegisterForPayment({ siteId, locationId })).not.toHaveProperty("code")
+    jest.mocked(requirePosSiteAccess).mockResolvedValue({ error: "Not authenticated" } as never)
+    expect(await getActiveRegisterForPayment({ siteId, locationId })).not.toHaveProperty("code")
+  })
+
+  it("allows a manager to use the sole selected location's shift without owning it", async () => {
+    const builder = query({ data: [{ id: sessionId, opened_by: "another-cashier" }], error: null })
+    from.mockReturnValue(builder)
+    expect((await getActiveRegisterForPayment({ siteId, locationId })).data?.id).toBe(sessionId)
+    expect(builder.eq).toHaveBeenCalledWith("location_id", locationId)
+    expect(builder.eq).not.toHaveBeenCalledWith("opened_by", "actor")
+  })
 })

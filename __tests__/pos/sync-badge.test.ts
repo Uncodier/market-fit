@@ -7,7 +7,7 @@ const baseStatus: SyncStatus = {
   syncing: false,
   pendingCount: 0,
   failedCount: 0,
-  lastPulledAt: null,
+  lastPulledAt: "2026-10-23T12:00:00Z",
   lastOrdersPulledAt: null,
   lastError: null,
 };

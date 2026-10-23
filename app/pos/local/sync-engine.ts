@@ -3,16 +3,18 @@ import { getPosPermissionLease, isPosPermissionCurrent, subscribePosPermission }
 import { getPosDb } from "./db";
 import { listOutbox } from "./outbox";
 import { pullAndStorePosCatalogSnapshot, applyPosOpenOrders } from "./snapshot-pull";
-import { getPosCatalogRevision } from "@/app/pos/actions/sync-revision";
+import { fetchPosCatalogRevision } from "@/app/pos/catalog-revision-client";
 import { listPosOpenOrders } from "@/app/pos/actions/list-open-orders";
 import {
   shouldRunCatalogPull,
+  shouldRefreshCatalogSnapshot,
   shouldRunOrdersPull,
   shouldDrainOutbox,
   ORDERS_INTERVAL_MS,
   ORDERS_RETRY_MAX_MS,
 } from "./sync-policy";
 import { clearAllPosSyncErrors, clearPosSyncError, getPosSyncError, recordPosSyncError, reconcilePosOutboxErrors } from "./sync-errors";
+import { beginCatalogSync, clearCatalogSyncProgress, finishCatalogSync, getCatalogSyncProgress, setCatalogSyncPhase, type CatalogSyncProgress } from "./catalog-sync-progress";
 
 export type SyncStatus = {
   online: boolean;
@@ -23,6 +25,8 @@ export type SyncStatus = {
   lastPulledAt: string | null;
   lastOrdersPulledAt: string | null;
   lastError: string | null;
+  catalogSync?: CatalogSyncProgress;
+  accessVerified?: boolean;
 };
 
 type SiteSyncState = {
@@ -41,7 +45,11 @@ type SyncListener = (status: SyncStatus) => void;
 const listeners = new Map<SyncListener, string | undefined>();
 const drainingSites = new Set<string>();
 const rerunSites = new Set<string>();
-let pulling = false;
+const pullingSites = new Set<string>();
+const knownSites = new Set<string>();
+// Keep recovery intent across permission suspension and workspace unmounts.
+const catalogRecovery = new Map<string, number>();
+let recoverySequence = 0;
 const EMPTY_SITE_STATE: SiteSyncState = {
   lastPulledAt: null,
   lastCatalogCheckAt: null,
@@ -56,7 +64,11 @@ const siteState = new Map<string, SiteSyncState>();
 // Permission changes reset scheduling, but cannot cancel an outstanding Server Action.
 // Retain its slot until the real request and local application have settled.
 const ordersInFlight = new Map<string, Promise<void>>();
-subscribePosPermission(() => { siteState.clear(); clearAllPosSyncErrors(); });
+subscribePosPermission(() => {
+  siteState.clear(); clearAllPosSyncErrors(); clearCatalogSyncProgress();
+  const sites = new Set([...knownSites, ...Array.from(listeners.values()).filter((id): id is string => !!id)]);
+  sites.forEach((siteId) => emit(siteId));
+});
 
 function isBrowserOnline() {
   return typeof navigator === "undefined" ? true : navigator.onLine;
@@ -101,17 +113,7 @@ export function refreshPosSyncCounts(siteId: string) {
 }
 
 function emit(siteId: string) {
-  const state = siteState.get(siteId) || { ...EMPTY_SITE_STATE };
-  const status: SyncStatus = {
-    online: isBrowserOnline(),
-    pulling,
-    syncing: drainingSites.has(siteId) || hasPosOutboxWork(siteId),
-    pendingCount: state.pendingCount,
-    failedCount: state.failedCount,
-    lastPulledAt: state.lastPulledAt,
-    lastOrdersPulledAt: state.lastOrdersPulledAt,
-    lastError: getPosSyncError(siteId),
-  };
+  const status = getPosSyncStatus(siteId);
   listeners.forEach((listenerSiteId, listener) => {
     if (!listenerSiteId || listenerSiteId === siteId) listener(status);
   });
@@ -123,16 +125,22 @@ export function subscribePosSync(listener: SyncListener, siteId?: string): () =>
 }
 
 export function getPosSyncStatus(siteId: string): SyncStatus {
+  if (!getPosPermissionLease(siteId)) return {
+    online: isBrowserOnline(), accessVerified: false, pulling: false, syncing: false,
+    pendingCount: 0, failedCount: 0, lastPulledAt: null, lastOrdersPulledAt: null, lastError: null,
+  };
   const state = siteState.get(siteId) || { ...EMPTY_SITE_STATE };
   return {
     online: isBrowserOnline(),
-    pulling,
+    accessVerified: true,
+    pulling: pullingSites.has(siteId),
     syncing: drainingSites.has(siteId) || hasPosOutboxWork(siteId),
     pendingCount: state.pendingCount,
     failedCount: state.failedCount,
     lastPulledAt: state.lastPulledAt,
     lastOrdersPulledAt: state.lastOrdersPulledAt,
     lastError: getPosSyncError(siteId),
+    catalogSync: getCatalogSyncProgress(siteId),
   };
 }
 
@@ -227,32 +235,47 @@ export async function pullPosCatalogInBackground(
   const permission = getPosPermissionLease(siteId);
   if (!permission) return;
   if (!isBrowserOnline()) return;
-  if (pulling) return;
-  pulling = true;
+  if (pullingSites.has(siteId)) return;
+  pullingSites.add(siteId);
+  beginCatalogSync(siteId);
   emit(siteId);
 
   try {
     const meta = await getPosDb().meta.get(siteId);
+    if (!isPosPermissionCurrent(permission)) return;
+    const recovery = catalogRecovery.get(siteId);
+    const refreshSnapshot = force || recovery !== undefined || !meta?.lastCatalogRevision ||
+      shouldRefreshCatalogSnapshot(Date.now(), meta?.lastPulledAt ?? null);
     let revisionToUse: string | null = null;
 
-    const revRes = await getPosCatalogRevision(siteId);
+    // Revision lookup is an optimization, not a prerequisite for a full pull.
+    const revRes = await fetchPosCatalogRevision(siteId).catch((error: unknown) => ({
+      error: error instanceof Error ? error.message : "Catalog revision failed",
+    }));
     if (!isPosPermissionCurrent(permission)) return;
     if ("error" in revRes) {
       recordPosSyncError("catalog", { siteId, operation: "catalog", error: revRes.error || "Catalog revision failed" });
     }
     if (!("error" in revRes) && revRes.data) {
-      if (!force && meta?.lastCatalogRevision === revRes.data) {
+      if (!refreshSnapshot && meta?.lastCatalogRevision === revRes.data) {
         markCatalogChecked(siteId);
         clearPosSyncError(siteId, "catalog");
+        finishCatalogSync(siteId, "checked");
         return;
       }
       revisionToUse = revRes.data;
     }
 
-    const res = await pullAndStorePosCatalogSnapshot(siteId, revisionToUse);
+    setCatalogSyncPhase(siteId, "downloading");
+    emit(siteId);
+    const res = await pullAndStorePosCatalogSnapshot(siteId, revisionToUse, refreshSnapshot, () => {
+      setCatalogSyncPhase(siteId, "saving");
+      emit(siteId);
+    });
     if (!isPosPermissionCurrent(permission)) return;
     if (!res.ok) {
       recordPosSyncError("catalog", { siteId, operation: "catalog", error: res.error || "Catalog pull failed" });
+      finishCatalogSync(siteId, "error");
     } else {
       const prev = siteState.get(siteId) || { ...EMPTY_SITE_STATE };
       siteState.set(siteId, {
@@ -261,12 +284,15 @@ export async function pullPosCatalogInBackground(
         lastCatalogCheckAt: Date.now(),
       });
       clearPosSyncError(siteId, "catalog");
+      finishCatalogSync(siteId, "success", refreshSnapshot || revisionToUse === null);
+      if (recovery !== undefined && catalogRecovery.get(siteId) === recovery) catalogRecovery.delete(siteId);
     }
   } catch (error) {
     if (!isPosPermissionCurrent(permission)) return;
     recordPosSyncError("catalog", { siteId, operation: "catalog", error: error instanceof Error ? error.message : "Catalog pull failed" });
+    finishCatalogSync(siteId, "error");
   } finally {
-    pulling = false;
+    pullingSites.delete(siteId);
     await refreshCounts(siteId);
   }
 }
@@ -330,7 +356,8 @@ export async function runPosSyncCycle(
     state.lastCatalogCheckAt ??
     (state.lastPulledAt ? new Date(state.lastPulledAt).getTime() : null);
 
-  const doCatalog = shouldRunCatalogPull({
+  const refreshSnapshot = catalogRecovery.has(siteId) || shouldRefreshCatalogSnapshot(now, state.lastPulledAt);
+  const doCatalog = refreshSnapshot || shouldRunCatalogPull({
     now,
     lastCatalogAt,
     visible: true,
@@ -362,6 +389,7 @@ const intervals = new Map<string, number>();
 
 export function startPosSyncLoop(siteId: string) {
   if (typeof window === "undefined") return;
+  knownSites.add(siteId);
 
   void runPosSyncCycle(siteId, false);
 
@@ -375,10 +403,16 @@ export function startPosSyncLoop(siteId: string) {
   if (!wired) {
     wired = true;
     window.addEventListener("online", () => {
-      intervals.forEach((_, sid) => void drainPosOutbox(sid));
+      intervals.forEach((_, sid) => void runPosSyncCycle(sid, true));
+    });
+    window.addEventListener("focus", () => {
+      intervals.forEach((_, sid) => void runPosSyncCycle(sid, false, true));
     });
     window.addEventListener("offline", () => {
-      intervals.forEach((_, sid) => emit(sid));
+      knownSites.forEach((sid) => {
+        catalogRecovery.set(sid, ++recoverySequence);
+        emit(sid);
+      });
     });
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") {

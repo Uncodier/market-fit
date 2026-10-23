@@ -1,12 +1,13 @@
 import { enqueueRegisteredCheckout } from "@/app/pos/register/prepare-payment"
-import { getActiveRegisterForPayment } from "@/app/pos/register/actions"
+import { fetchActivePaymentRegister as getActiveRegisterForPayment } from "@/app/pos/operation-client"
 import { enqueueCheckout, listOutbox } from "@/app/pos/local/outbox"
 import { drainPosOutbox, syncPosCheckout } from "@/app/pos/local/sync-engine"
 import { resetCheckoutCartSession } from "@/app/pos/local/checkout-attempt-storage"
 import { assertRegisterQueueSettled, withRegisterCloseLock } from "@/app/pos/register/queue-guard"
 import type { CheckoutOutboxPayload, PosOutboxRow } from "@/app/pos/local/types"
+import { PaymentRegisterRequiredError } from "@/app/pos/register/payment-register-required"
 
-jest.mock("@/app/pos/register/actions", () => ({ getActiveRegisterForPayment: jest.fn() }))
+jest.mock("@/app/pos/operation-client", () => ({ fetchActivePaymentRegister: jest.fn() }))
 jest.mock("@/app/pos/local/location-permission-state", () => ({
   requirePosPermission: () => ({ generation: 1 }),
   isPosPermissionCurrent: () => true,
@@ -37,14 +38,14 @@ describe("Register payment queue and closing lock", () => {
   })
   afterEach(() => { Object.defineProperty(navigator, "onLine", { configurable: true, value: true }) })
 
-  it("tags and confirms collected payments before releasing the lock", async () => {
+  it("tags payments under the lock and confirms only their own queue item", async () => {
     const result = await enqueueRegisteredCheckout("site", payload)
     expect(result.status).toBe("synced")
     expect(enqueueCheckout).toHaveBeenCalledWith("site", expect.objectContaining({ registerSessionId: "session", originLocationId: "location",
       payments: [expect.objectContaining({ paymentId: expect.stringMatching(/^[a-f0-9-]{36}$/), amount: 10 })] }), expect.any(String))
     expect(syncPosCheckout).toHaveBeenCalledWith("site", "mutation")
     expect(drainPosOutbox).not.toHaveBeenCalled()
-    expect(locks.request).toHaveBeenCalledWith("pos-register:site", { mode: "exclusive" }, expect.any(Function))
+    expect(locks.request).toHaveBeenCalledWith("pos-register:site", { mode: "exclusive", signal: expect.any(AbortSignal) }, expect.any(Function))
   })
   it("keeps an ambiguous payment and reuses its original mutation/receipt IDs on retry", async () => {
     jest.mocked(syncPosCheckout).mockResolvedValueOnce(undefined)
@@ -59,6 +60,12 @@ describe("Register payment queue and closing lock", () => {
     jest.mocked(getActiveRegisterForPayment).mockResolvedValue({ error: "Open a register first" })
     await expect(enqueueRegisteredCheckout("site", payload)).rejects.toThrow("Open a register first")
     expect(enqueueCheckout).not.toHaveBeenCalled()
+  })
+  it.each(["register_required", "register_location_required"] as const)("requests setup for %s before any receipt is queued", async (code) => {
+    jest.mocked(getActiveRegisterForPayment).mockResolvedValue({ error: "Set up a register", code })
+    await expect(enqueueRegisteredCheckout("site", payload)).rejects.toBeInstanceOf(PaymentRegisterRequiredError)
+    expect(enqueueCheckout).not.toHaveBeenCalled()
+    expect(syncPosCheckout).not.toHaveBeenCalled()
   })
   it("does not enqueue a stale confirmation after New Order during register lookup", async () => {
     jest.mocked(getActiveRegisterForPayment).mockImplementationOnce(async () => {
@@ -107,6 +114,42 @@ describe("Register payment queue and closing lock", () => {
     await expect(withRegisterCloseLock("site", jest.fn())).rejects.toThrow("Storage unavailable")
     Object.defineProperty(navigator, "locks", { configurable: true, value: undefined })
     await expect(enqueueRegisteredCheckout("site", payload)).rejects.toThrow("safe register locking")
+  })
+  it("releases site admission after durable enqueue while an older payment is still confirming", async () => {
+    let locked = false
+    locks.request.mockImplementation(async (_name, _options, operation) => {
+      if (locked) throw new Error("Register lock remained held")
+      locked = true
+      try { return await operation() } finally { locked = false }
+    })
+    let finish!: () => void
+    jest.mocked(syncPosCheckout).mockImplementationOnce(async () => {
+      expect(locked).toBe(false)
+      await new Promise<void>((resolve) => { finish = resolve })
+      rows[0].status = "synced"
+    })
+    const old = enqueueRegisteredCheckout("site", { ...payload, existingOrderId: "old-order" })
+    for (let i = 0; i < 40; i++) await Promise.resolve()
+    expect(rows[0].status).toBe("pending")
+    await expect(withRegisterCloseLock("site", jest.fn())).rejects.toThrow("unsynchronized payments")
+    await expect(enqueueRegisteredCheckout("site", { ...payload, clientMutationId: "new-payment", existingOrderId: "other-order" }))
+      .resolves.toMatchObject({ status: "synced" })
+    expect(rows[0].status).toBe("pending")
+    expect(drainPosOutbox).not.toHaveBeenCalled()
+    finish()
+    await old
+  })
+  it("does not enqueue a stale order when selection changes during register lookup", async () => {
+    let finish!: (value: never) => void
+    let current = true
+    jest.mocked(getActiveRegisterForPayment).mockReturnValueOnce(new Promise((resolve) => { finish = resolve }))
+    const payment = enqueueRegisteredCheckout("site", payload, undefined, () => current).catch((error: unknown) => error)
+    for (let i = 0; i < 20; i++) await Promise.resolve()
+    current = false
+    finish({ data: { id: "session", location_id: "location" } } as never)
+    expect(await payment).toEqual(new Error("The active cart changed. Confirm the selected order again."))
+    expect(enqueueCheckout).not.toHaveBeenCalled()
+    expect(syncPosCheckout).not.toHaveBeenCalled()
   })
   it("isolates a verified receipt to its order but still blocks register closing", async () => {
     const old = { ...row({ ...payload, existingOrderId: "old-order", registerSessionId: "session" }),

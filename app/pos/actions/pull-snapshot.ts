@@ -38,6 +38,7 @@ export type PosCatalogSnapshot = {
 export async function pullPosCatalogSnapshot(
   siteId: string,
   revision?: string | null,
+  bypassCache = false,
 ): Promise<
   { data: PosCatalogSnapshot } | { error: string }
 > {
@@ -46,15 +47,7 @@ export async function pullPosCatalogSnapshot(
     const access = await requirePosSiteAccess(siteId);
     if (!("supabase" in access)) return { error: access.error };
     const { supabase } = access;
-    const cacheIdentity = await hashRedisKeyPart(
-      `${siteId}:${revision || "latest"}`,
-    );
-
-    const cached = await readThroughJsonCache<Omit<PosCatalogSnapshot, "inventorySnapshot">>({
-      key: `cache:v2:pos-catalog-snapshot:${cacheIdentity}`,
-      ttlSeconds: revision ? 300 : 30,
-      lockTtlMs: 30_000,
-      compute: async () => {
+    const compute = async (): Promise<Omit<PosCatalogSnapshot, "inventorySnapshot">> => {
         const [
           catalogRes,
           categoriesRes,
@@ -180,8 +173,18 @@ export async function pullPosCatalogSnapshot(
           modifierGroupsByHostId: modifiersRes.data || {},
           pulledAt: new Date().toISOString(),
         };
-      },
-    });
+    };
+
+    // Recovery must read fresh data but retain the observed revision locally,
+    // so the next lightweight check cannot replace it with an older cached row.
+    const cached = bypassCache || revision === null
+      ? { status: "computed" as const, value: await compute() }
+      : await readThroughJsonCache<Omit<PosCatalogSnapshot, "inventorySnapshot">>({
+          key: `cache:v2:pos-catalog-snapshot:${await hashRedisKeyPart(`${siteId}:${revision || "latest"}`)}`,
+          ttlSeconds: revision ? 300 : 30,
+          lockTtlMs: 30_000,
+          compute,
+        });
 
     if (cached.status === "busy") {
       return { error: "Catalog snapshot is being refreshed" };

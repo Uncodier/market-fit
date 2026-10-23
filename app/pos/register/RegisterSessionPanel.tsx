@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/app/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
 import { Printer } from "@/app/components/ui/icons";
-import { getRegisterSummary } from "./actions";
+import { fetchRegisterSummary as getRegisterSummary } from "../operation-client";
 import type { RegisterSession, RegisterSummary } from "./types";
 import { registerDate, registerMoney } from "./register-ui-utils";
 import { RegisterSummaryView } from "./RegisterSummaryView";

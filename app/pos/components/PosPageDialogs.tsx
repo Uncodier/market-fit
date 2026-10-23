@@ -20,6 +20,8 @@ import { resolveUnitPriceLocal } from "@/app/pos/local/resolve-unit-price-local"
 import { PosOptionsDialog } from "./PosOptionsDialog"
 import { PosRequireLeadDialog } from "./PosRequireLeadDialog"
 import { PaymentDialogSkeleton } from "./payment-dialog-skeleton"
+import { PaymentCashRegisterDialog } from "../register/CashRegisterOptions"
+import { resolveSiteCurrency } from "@/app/commerce/checkout-currency"
 import {
   scheduleDialogChunkWarming,
   warmSelectedReservationAvailability,
@@ -189,8 +191,22 @@ export function PosPageDialogs({
             onConfirm={checkout.handleCheckout}
             isLoading={checkout.checkoutLoading}
             isPreparing={cartApi.loadingOrder}
+            onContinueSelling={() => {
+              checkout.setIsPaymentDialogOpen(false)
+              void cartApi.resetToNewOrder()
+            }}
             hasCustomer={Boolean(cartApi.leadValue)}
-          />
+          >
+            <PaymentCashRegisterDialog
+              open={checkout.isRegisterDialogOpen}
+              onOpenChange={checkout.setIsRegisterDialogOpen}
+              siteId={siteId}
+              locationId={cartApi.originLocationId}
+              onLocationChange={cartApi.setOriginLocationId}
+              locations={catalog.locations}
+              currency={resolveSiteCurrency(cartApi.cartCurrency)}
+            />
+          </PaymentConfirmationDialog>
         </LoadingDialogContext.Provider>
       )}
 

@@ -16,6 +16,90 @@ function addPayment(amount: string) {
 }
 
 describe("POS payment confirmation precision", () => {
+  it("offers New Order during an uncertain confirmation without confirming or replaying it", () => {
+    const onConfirm = jest.fn()
+    const onContinueSelling = jest.fn()
+    render(<PaymentConfirmationDialog open totalAmount={10} isLoading
+      onOpenChange={jest.fn()} onConfirm={onConfirm} onContinueSelling={onContinueSelling} />)
+    expect(screen.getByRole("status")).toHaveTextContent("does not cancel or confirm")
+    const next = screen.getByRole("button", { name: "New Order" })
+    expect(next).toBeEnabled()
+    fireEvent.click(next)
+    expect(onContinueSelling).toHaveBeenCalledTimes(1)
+    expect(onConfirm).not.toHaveBeenCalled()
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeDisabled()
+  })
+  it("resets payment entries and method when reopening the same mounted dialog", () => {
+    const input = { onOpenChange: jest.fn(), totalAmount: 19.9, onConfirm: jest.fn(), currency: "USD" }
+    const { rerender } = render(<PaymentConfirmationDialog {...input} open />)
+    fireEvent.click(screen.getByRole("button", { name: "Credit Card" }))
+    addPayment("5")
+    rerender(<PaymentConfirmationDialog {...input} open={false} />)
+    rerender(<PaymentConfirmationDialog {...input} open />)
+    expect(screen.getByText("No payments applied yet.")).toBeInTheDocument()
+    expect(screen.getByLabelText("Amount Tendered")).toHaveValue(19.9)
+    expect(screen.getByRole("button", { name: "Register Payment Only" })).toBeDisabled()
+    expect(input.onConfirm).not.toHaveBeenCalled()
+  })
+
+  it("resets a stale draft when the balance changes without replaying confirmation", () => {
+    const input = { open: true, onOpenChange: jest.fn(), onConfirm: jest.fn(), currency: "USD" }
+    const { rerender } = render(<PaymentConfirmationDialog {...input} totalAmount={19.9} />)
+    addPayment("5")
+    fireEvent.change(screen.getByRole("spinbutton"), { target: { value: "10" } })
+    rerender(<PaymentConfirmationDialog {...input} totalAmount={29.9} />)
+    expect(screen.getByText("No payments applied yet.")).toBeInTheDocument()
+    expect(screen.getByRole("spinbutton")).toHaveValue(29.9)
+    expect(screen.getByRole("button", { name: "Register Payment Only" })).toBeDisabled()
+    expect(input.onConfirm).not.toHaveBeenCalled()
+  })
+
+  it("preserves the selected method, partial payments and typed amount through loading updates", () => {
+    const input = { open: true, onOpenChange: jest.fn(), totalAmount: 19.9, onConfirm: jest.fn(), currency: "USD" }
+    const { rerender } = render(<PaymentConfirmationDialog {...input} />)
+    fireEvent.click(screen.getByRole("button", { name: "Credit Card" }))
+    addPayment("5")
+    fireEvent.change(screen.getByRole("spinbutton"), { target: { value: "10" } })
+    rerender(<PaymentConfirmationDialog {...input} isLoading />)
+    rerender(<PaymentConfirmationDialog {...input} isLoading={false} />)
+    expect(screen.getByLabelText("Amount to Charge")).toHaveValue(10)
+    fireEvent.click(screen.getByRole("button", { name: "Register Payment Only" }))
+    expect(input.onConfirm).toHaveBeenCalledWith([
+      { method: "credit_card", amount: 5, tendered: 5, change: 0 },
+    ], undefined, "send")
+  })
+
+  it("initializes the payable amount after preparation finishes", () => {
+    const input = { open: true, onOpenChange: jest.fn(), onConfirm: jest.fn(), currency: "USD" }
+    const { rerender } = render(<PaymentConfirmationDialog {...input} isPreparing totalAmount={0} />)
+    expect(screen.queryByRole("spinbutton")).not.toBeInTheDocument()
+    rerender(<PaymentConfirmationDialog {...input} totalAmount={19.9} />)
+    expect(screen.getByRole("spinbutton")).toHaveValue(19.9)
+    expect(screen.getByRole("button", { name: "Pay & Complete" })).toBeDisabled()
+  })
+
+  it("prefills the balance after removing a partial or the last payment", () => {
+    openDialog(19.9)
+    addPayment("5")
+    fireEvent.click(screen.getByRole("button", { name: "Credit Card" }))
+    addPayment("5")
+    fireEvent.click(screen.getByRole("button", { name: "Remove Cash" }))
+    expect(screen.getByRole("spinbutton")).toHaveValue(14.9)
+    fireEvent.click(screen.getByRole("button", { name: "Remove Credit Card" }))
+    expect(screen.getByRole("spinbutton")).toHaveValue(19.9)
+    expect(screen.getByRole("button", { name: "Register Payment Only" })).toBeDisabled()
+  })
+
+  it("restores the full balance when removing a fully paid cash entry", () => {
+    const onConfirm = openDialog(19.9)
+    addPayment("20")
+    fireEvent.click(screen.getByRole("button", { name: "Remove Cash" }))
+    expect(screen.getByRole("spinbutton")).toHaveValue(19.9)
+    expect(screen.queryByText("Change to Return")).not.toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Pay & Complete" })).toBeDisabled()
+    expect(onConfirm).not.toHaveBeenCalled()
+  })
+
   it.each([
     ["Pay & Complete", "pay"],
     ["Register Payment Only", "send"],

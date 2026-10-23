@@ -1,16 +1,16 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import RegisterDashboard from "@/app/pos/register/RegisterDashboard";
 import { CashRegisterOptions } from "@/app/pos/register/CashRegisterOptions";
-import { closeRegister, getRegisterDashboard, getRegisterSummary, moveRegisterCash, openRegister } from "@/app/pos/register/actions";
+import { closePosRegister, fetchRegisterDashboard, fetchRegisterSummary, movePosRegisterCash, openPosRegister } from "@/app/pos/operation-client";
 import { withRegisterCloseLock } from "@/app/pos/register/queue-guard";
 import type { RegisterDashboard as Dashboard } from "@/app/pos/register/types";
 import { closedRegisterSession, registerSession, registerSummary } from "./register-ui-fixtures";
 
-jest.mock("@/app/pos/register/actions", () => ({ getRegisterDashboard: jest.fn(), getRegisterSummary: jest.fn(), openRegister: jest.fn(), moveRegisterCash: jest.fn(), closeRegister: jest.fn() }));
+jest.mock("@/app/pos/operation-client", () => ({ fetchRegisterDashboard: jest.fn(), fetchRegisterSummary: jest.fn(), openPosRegister: jest.fn(), movePosRegisterCash: jest.fn(), closePosRegister: jest.fn() }));
 jest.mock("@/app/pos/register/queue-guard", () => ({ withRegisterCloseLock: jest.fn() }));
-const dashboard = jest.mocked(getRegisterDashboard);
-const summary = jest.mocked(getRegisterSummary);
-const open = jest.mocked(openRegister);
+const dashboard = jest.mocked(fetchRegisterDashboard);
+const summary = jest.mocked(fetchRegisterSummary);
+const open = jest.mocked(openPosRegister);
 const input = { siteId: "site-1", locationId: "store-1", locations: [{ id: "store-1", name: "Main store" }, { id: "store-2", name: "Carryout" }], currency: "USD" };
 const empty: Dashboard = { active: null, history: [], hasMore: false, role: "owner", userId: "cashier-1" };
 
@@ -21,8 +21,8 @@ beforeEach(() => {
   dashboard.mockResolvedValue({ data: empty });
   summary.mockResolvedValue({ data: registerSummary });
   open.mockResolvedValue({ data: registerSession });
-  jest.mocked(moveRegisterCash).mockResolvedValue({ data: {} });
-  jest.mocked(closeRegister).mockResolvedValue({ data: closedRegisterSession });
+  jest.mocked(movePosRegisterCash).mockResolvedValue({ data: {} });
+  jest.mocked(closePosRegister).mockResolvedValue({ data: closedRegisterSession });
   jest.mocked(withRegisterCloseLock).mockImplementation(async (_siteId, operation) => operation());
 });
 
@@ -112,14 +112,14 @@ describe("cash register dashboard UI", () => {
     render(<RegisterDashboard {...input} />);
     await screen.findByText("Expected drawer cash");
     fireEvent.click(screen.getByRole("button", { name: "Withdraw cash" }));
-    expect(moveRegisterCash).not.toHaveBeenCalled();
+    expect(movePosRegisterCash).not.toHaveBeenCalled();
     expect(footerButtons()).toEqual(["Cancel", "Withdraw cash"]);
     expect(screen.queryByLabelText("Counted cash (USD)")).not.toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Withdrawal type"), { target: { value: kind } });
     fireEvent.change(screen.getByLabelText("Movement amount (USD)"), { target: { value: "30" } });
     fireEvent.change(screen.getByLabelText("Reason"), { target: { value: "Drawer withdrawal" } });
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-    expect(moveRegisterCash).not.toHaveBeenCalled();
+    expect(movePosRegisterCash).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Add cash" }));
     expect(screen.getByLabelText("Movement amount (USD)")).toHaveValue("");
     expect(screen.queryByLabelText("Withdrawal type")).not.toBeInTheDocument();
@@ -128,7 +128,7 @@ describe("cash register dashboard UI", () => {
     expect(screen.getByLabelText("Movement amount (USD)")).toHaveValue("30");
     expect(screen.getByLabelText("Withdrawal type")).toHaveValue(kind);
     fireEvent.click(screen.getByRole("button", { name: "Withdraw cash" }));
-    await waitFor(() => expect(moveRegisterCash).toHaveBeenCalledWith(expect.objectContaining({ kind, amount: 30, reason: "Drawer withdrawal" })));
+    await waitFor(() => expect(movePosRegisterCash).toHaveBeenCalledWith(expect.objectContaining({ kind, amount: 30, reason: "Drawer withdrawal" })));
     await waitFor(() => expect(screen.getByRole("button", { name: "Close register" })).toBeEnabled());
     expect(screen.queryByRole("button", { name: "Cancel" })).not.toBeInTheDocument();
   });
@@ -204,7 +204,7 @@ describe("cash register dashboard UI", () => {
     const movementButton = screen.getByRole("button", { name: "Add cash" }) as HTMLButtonElement;
     expect(movementButton.form).toBe(screen.getByLabelText("Reason").closest("form"));
     fireEvent.click(movementButton);
-    await waitFor(() => expect(moveRegisterCash).toHaveBeenCalledWith(expect.objectContaining({ amount: 25, reason: "Petty cash" })));
+    await waitFor(() => expect(movePosRegisterCash).toHaveBeenCalledWith(expect.objectContaining({ amount: 25, reason: "Petty cash" })));
     await waitFor(() => expect(screen.getByRole("button", { name: "Withdraw cash" })).toBeEnabled());
     expect(screen.queryByLabelText("Reason")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Add cash" }));
@@ -233,7 +233,7 @@ describe("cash register dashboard UI", () => {
     const detail = screen.getByRole("region", { name: "Session detail" });
     expect(within(detail).getByText("Closed session")).toBeVisible();
     expect(within(detail).queryByRole("button", { name: "Close register" })).not.toBeInTheDocument();
-    expect(jest.mocked(closeRegister)).toHaveBeenCalledWith(expect.objectContaining({ sessionId: "session-1", countedAmount: 150 }));
+    expect(jest.mocked(closePosRegister)).toHaveBeenCalledWith(expect.objectContaining({ sessionId: "session-1", countedAmount: 150 }));
     await waitFor(() => expect(dashboard).toHaveBeenCalledTimes(2));
     selectView("Today");
     expect(await screen.findByRole("button", { name: "Open register" })).toBeVisible();

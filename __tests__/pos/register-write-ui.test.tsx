@@ -1,17 +1,17 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { RegisterWriteForms, type RegisterWriteAction } from "@/app/pos/register/RegisterWriteForms";
 import { RegisterSessionPanel } from "@/app/pos/register/RegisterSessionPanel";
-import { closeRegister, getRegisterSummary, moveRegisterCash } from "@/app/pos/register/actions";
+import { closePosRegister, fetchRegisterSummary, movePosRegisterCash } from "@/app/pos/operation-client";
 import { withRegisterCloseLock } from "@/app/pos/register/queue-guard";
 import { closedRegisterSession, registerSession, registerSummary } from "./register-ui-fixtures";
 
-jest.mock("@/app/pos/register/actions", () => ({ getRegisterSummary: jest.fn(), moveRegisterCash: jest.fn(), closeRegister: jest.fn() }));
+jest.mock("@/app/pos/operation-client", () => ({ fetchRegisterSummary: jest.fn(), movePosRegisterCash: jest.fn(), closePosRegister: jest.fn() }));
 jest.mock("@/app/pos/register/queue-guard", () => ({ withRegisterCloseLock: jest.fn() }));
 
-const move = jest.mocked(moveRegisterCash);
-const close = jest.mocked(closeRegister);
+const move = jest.mocked(movePosRegisterCash);
+const close = jest.mocked(closePosRegister);
 const guard = jest.mocked(withRegisterCloseLock);
-const summary = jest.mocked(getRegisterSummary);
+const summary = jest.mocked(fetchRegisterSummary);
 
 beforeEach(() => {
   jest.clearAllMocks();

@@ -29,6 +29,8 @@ describe('home-inspired dark theme', () => {
       '--foreground': '68.571429 16.27907% 91.568627%',
       '--card': '110 8.823529% 13.333333%',
       '--popover': '92.727273 13.253012% 16.27451%',
+      '--secondary': 'var(--popover)',
+      '--muted': 'var(--card)',
       '--muted-foreground': '88 8.571429% 65.686275%',
       '--border': '96.923077 11.111111% 23.333333%',
       '--input': 'var(--border)',
@@ -79,13 +81,15 @@ describe('home-inspired dark theme', () => {
   it('compiles neutral utilities with original light fallbacks and working opacity', async () => {
     const result = await postcss([tailwindcss({
       ...config,
-      content: [{ raw: 'bg-gray-900 dark:bg-gray-900/50 text-slate-400 border-zinc-800 bg-neutral-950', extension: 'html' }],
+      content: [{ raw: 'bg-gray-900 dark:bg-gray-900/50 text-slate-400 border-zinc-800 bg-neutral-950 bg-muted dark:bg-secondary', extension: 'html' }],
     })]).process('@tailwind utilities;', { from: undefined })
 
     expect(result.css).toContain('var(--theme-neutral-900, 17 24 39) / 0.5')
     expect(result.css).toContain('var(--theme-neutral-400, 148 163 184)')
     expect(result.css).toContain('var(--theme-neutral-800, 39 39 42)')
     expect(result.css).toContain('var(--theme-neutral-950, 10 10 10)')
+    expect(result.css).toContain('background-color: hsl(var(--muted))')
+    expect(result.css).toContain('background-color: hsl(var(--secondary))')
     for (const palette of ['gray', 'slate', 'zinc', 'neutral'] as const) {
       for (const [shade, hex] of Object.entries(colors[palette])) {
         const channels = hex.slice(1).match(/.{2}/g)!.map(channel => parseInt(channel, 16)).join(' ')

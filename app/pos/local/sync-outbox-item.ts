@@ -1,6 +1,5 @@
-import { checkoutCart } from "@/app/commerce/checkout";
+import { checkoutPosCart, createPosLead } from "../operation-client";
 import { checkInTicket } from "@/app/commerce/ticket-check-in";
-import { createLeadWithIdempotency } from "@/app/pos/actions/create-lead-sync";
 import { updateOrderNotes } from "@/app/orders/actions";
 import { getPosDb } from "./db";
 import { getServerIdForLocal, mapLocalId, updateOutboxRow } from "./outbox";
@@ -19,7 +18,7 @@ export async function applyOutboxItem(row: PosOutboxRow, permission: PosPermissi
   if (row.payload.kind === "checkout" && row.payload.data.userId !== permission.userId) throw new Error("POS account changed");
   if (row.payload.kind === "create_lead") {
     const data = row.payload.data;
-    const res = await createLeadWithIdempotency({
+    const res = await createPosLead({
       siteId: data.siteId,
       name: data.name,
       email: data.email,
@@ -101,8 +100,10 @@ export async function applyOutboxItem(row: PosOutboxRow, permission: PosPermissi
       if (!existingOrderId) throw new Error("Waiting for local order to sync");
     }
 
+    // Local dependency identity is not part of the authorized HTTP checkout input.
+    delete data.localLeadId;
     assertCurrent(permission);
-    const res = await checkoutCart({
+    const res = await checkoutPosCart({
       ...data,
       leadId,
       existingOrderId,

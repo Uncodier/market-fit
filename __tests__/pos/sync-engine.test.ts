@@ -6,10 +6,9 @@ jest.mock("@/app/pos/local/location-permission-state", () => ({
   subscribePosPermission: () => () => {},
 }));
 
-jest.mock("@/app/commerce/checkout", () => ({ checkoutCart: jest.fn() }));
+jest.mock("@/app/pos/operation-client", () => ({ checkoutPosCart: jest.fn(), createPosLead: jest.fn() }));
 jest.mock("@/app/commerce/ticket-check-in", () => ({ checkInTicket: jest.fn() }));
-jest.mock("@/app/pos/actions/create-lead-sync", () => ({ createLeadWithIdempotency: jest.fn() }));
-jest.mock("@/app/pos/actions/sync-revision", () => ({ getPosCatalogRevision: jest.fn() }));
+jest.mock("@/app/pos/catalog-revision-client", () => ({ fetchPosCatalogRevision: jest.fn() }));
 jest.mock("@/app/pos/actions/list-open-orders", () => ({ listPosOpenOrders: jest.fn() }));
 jest.mock("@/app/orders/actions", () => ({ updateOrderNotes: jest.fn() }));
 jest.mock("@/app/pos/actions/report-sync-error", () => ({ reportPosSyncError: jest.fn() }));
@@ -62,7 +61,7 @@ describe("POS sync failure reporting and recovery", () => {
     const snapshot = await import("@/app/pos/local/snapshot-pull");
     catalogPull = jest.mocked(snapshot.pullAndStorePosCatalogSnapshot);
     applyOrders = jest.mocked(snapshot.applyPosOpenOrders);
-    revision = jest.mocked((await import("@/app/pos/actions/sync-revision")).getPosCatalogRevision);
+    revision = jest.mocked((await import("@/app/pos/catalog-revision-client")).fetchPosCatalogRevision);
     ordersPull = jest.mocked((await import("@/app/pos/actions/list-open-orders")).listPosOpenOrders);
     const outbox = jest.mocked(await import("@/app/pos/local/outbox"));
     listOutbox = outbox.listOutbox;
@@ -154,7 +153,7 @@ describe("POS sync failure reporting and recovery", () => {
       lines: [], fulfillment: "dine_in", source: "pos",
     } } }];
     await engine.drainPosOutbox(SITE);
-    const checkout = jest.mocked((await import("@/app/commerce/checkout")).checkoutCart);
+    const checkout = jest.mocked((await import("@/app/pos/operation-client")).checkoutPosCart);
     expect(checkout).not.toHaveBeenCalled();
     expect(rows[0]).toMatchObject({ status: "failed", lastError: "POS account changed" });
   });
@@ -168,7 +167,7 @@ describe("POS sync failure reporting and recovery", () => {
     recovery.mockResolvedValue({ state: "payment_recorded", message: "Review finalization" });
     await engine.drainPosOutbox(SITE);
     expect(recovery).toHaveBeenCalledWith(SITE, "payment");
-    expect((await import("@/app/commerce/checkout")).checkoutCart).not.toHaveBeenCalled();
+    expect((await import("@/app/pos/operation-client")).checkoutPosCart).not.toHaveBeenCalled();
     expect(checkIn).toHaveBeenCalledTimes(1);
     expect(rows[1].status).toBe("synced");
     expect(rows[0].payload.kind === "checkout" && rows[0].payload.data.payments?.[0].paymentId).toBe("original-receipt");
@@ -184,7 +183,7 @@ describe("POS sync failure reporting and recovery", () => {
     jest.mocked((await import("@/app/pos/local/checkout-recovery")).reconcilePosCheckout)
       .mockResolvedValue({ state: "payment_recorded", message: "Review finalization" });
     await engine.drainPosOutbox(SITE);
-    expect((await import("@/app/commerce/checkout")).checkoutCart).not.toHaveBeenCalled();
+    expect((await import("@/app/pos/operation-client")).checkoutPosCart).not.toHaveBeenCalled();
     expect(rows.every((row) => row.status === "failed")).toBe(true);
     expect(rows.every((row) => row.attempts === 0)).toBe(true);
   });
@@ -264,7 +263,7 @@ describe("POS sync failure reporting and recovery", () => {
   it("clears catalog failures after a successful unchanged-revision check", async () => {
     catalogPull.mockRejectedValueOnce(new Error("Catalog failed"));
     await engine.pullPosCatalogInBackground(SITE, true);
-    metaGet.mockResolvedValue({ lastCatalogRevision: "revision-1" });
+    metaGet.mockResolvedValue({ lastCatalogRevision: "revision-1", lastPulledAt: new Date().toISOString() });
     await engine.pullPosCatalogInBackground(SITE);
     expect(catalogPull).toHaveBeenCalledTimes(1);
     expect(engine.getPosSyncStatus(SITE).lastError).toBeNull();
@@ -274,8 +273,137 @@ describe("POS sync failure reporting and recovery", () => {
     revision.mockResolvedValueOnce({ error: "Revision lookup failed" });
     await engine.pullPosCatalogInBackground(SITE, true);
     expect(report).toHaveBeenCalledWith(expect.objectContaining({ operation: "catalog", error: "Revision lookup failed" }));
-    expect(catalogPull).toHaveBeenCalledWith(SITE, null);
+    expect(catalogPull).toHaveBeenCalledTimes(1);
     expect(engine.getPosSyncStatus(SITE).lastError).toBeNull();
+  });
+
+  it("still downloads the full snapshot when the revision request throws", async () => {
+    revision.mockRejectedValueOnce(new Error("Revision transport failed"));
+    await engine.pullPosCatalogInBackground(SITE);
+    expect(catalogPull).toHaveBeenCalledTimes(1);
+    expect(engine.getPosSyncStatus(SITE).lastError).toBeNull();
+  });
+
+  it("publishes catalog phases and completion timing through sync status", async () => {
+    const listener = jest.fn();
+    const unsubscribe = engine.subscribePosSync(listener, SITE);
+    catalogPull.mockImplementationOnce(async (_site, _revision, _bypass, onSaving) => {
+      await jest.advanceTimersByTimeAsync(1000);
+      onSaving();
+      await jest.advanceTimersByTimeAsync(500);
+      return { ok: true, pulledAt: new Date().toISOString() };
+    });
+    await engine.pullPosCatalogInBackground(SITE, true);
+    const phases = listener.mock.calls.map(([status]) => status.catalogSync?.phase);
+    expect(phases).toEqual(expect.arrayContaining(["checking", "downloading", "saving", "idle"]));
+    expect(engine.getPosSyncStatus(SITE).catalogSync).toMatchObject({
+      phase: "idle", error: false, startedAt: null, lastSuccess: { durationMs: 1500, fresh: true },
+    });
+    unsubscribe();
+  });
+
+  it("does not restore an old cached snapshot when revision lookup recovers", async () => {
+    metaGet.mockResolvedValue({ lastCatalogRevision: "revision-1", lastPulledAt: new Date().toISOString() });
+    revision.mockRejectedValueOnce(new Error("Revision transport failed"));
+    await engine.pullPosCatalogInBackground(SITE);
+    expect(catalogPull.mock.calls.at(-1)?.slice(0, 3)).toEqual([SITE, null, false]);
+    metaGet.mockResolvedValue({ lastCatalogRevision: null, lastPulledAt: new Date().toISOString() });
+    await jest.advanceTimersByTimeAsync(120_000);
+    await engine.runPosSyncCycle(SITE, false, true);
+    expect(catalogPull.mock.calls.at(-1)?.slice(0, 3)).toEqual([SITE, "revision-1", true]);
+  });
+
+  it("repairs a missing snapshot even when its stored revision matches", async () => {
+    metaGet.mockResolvedValue({ lastCatalogRevision: "revision-1" });
+    await engine.pullPosCatalogInBackground(SITE);
+    expect(catalogPull).toHaveBeenLastCalledWith(SITE, "revision-1", true, expect.any(Function));
+  });
+
+  it("refreshes stale snapshots without trusting an unchanged revision or its cache", async () => {
+    metaGet.mockResolvedValue({ lastCatalogRevision: "revision-1", lastPulledAt: new Date(Date.now() - 300_000).toISOString() });
+    await engine.runPosSyncCycle(SITE);
+    expect(catalogPull).toHaveBeenCalledWith(SITE, "revision-1", true, expect.any(Function));
+  });
+
+  it("does not postpone the full fallback after repeated unchanged revision checks", async () => {
+    const pulledAt = new Date(Date.now()).toISOString();
+    metaGet.mockResolvedValue({ lastCatalogRevision: "revision-1", lastPulledAt: pulledAt });
+    await engine.pullPosCatalogInBackground(SITE);
+    await jest.advanceTimersByTimeAsync(120_000);
+    await engine.runPosSyncCycle(SITE, false, true);
+    expect(catalogPull).not.toHaveBeenCalled();
+    await jest.advanceTimersByTimeAsync(180_000);
+    await engine.runPosSyncCycle(SITE);
+    expect(catalogPull).toHaveBeenCalledWith(SITE, "revision-1", true, expect.any(Function));
+  });
+
+  it("uses an uncached snapshot for an explicit retry", async () => {
+    metaGet.mockResolvedValue({ lastCatalogRevision: "revision-1", lastPulledAt: new Date().toISOString() });
+    await engine.pullPosCatalogInBackground(SITE, true);
+    expect(catalogPull).toHaveBeenCalledWith(SITE, "revision-1", true, expect.any(Function));
+  });
+
+  it("refreshes the catalog as well as the queue when connectivity returns", async () => {
+    Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
+    engine.startPosSyncLoop(SITE);
+    await settleReporting();
+    Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
+    window.dispatchEvent(new Event("online"));
+    for (let i = 0; i < 30; i++) await Promise.resolve();
+    expect(catalogPull).toHaveBeenCalledWith(SITE, "revision-1", true, expect.any(Function));
+    engine.stopPosSyncLoop(SITE);
+  });
+
+  it("retries a failed full fallback on the next background tick without advancing its freshness", async () => {
+    const pulledAt = new Date(Date.now() - 300_000).toISOString();
+    metaGet.mockResolvedValue({ lastCatalogRevision: "revision-1", lastPulledAt: pulledAt });
+    catalogPull.mockResolvedValueOnce({ ok: false, error: "Catalog unavailable" });
+    engine.startPosSyncLoop(SITE);
+    for (let i = 0; i < 30; i++) await Promise.resolve();
+    expect(engine.getPosSyncStatus(SITE)).toMatchObject({ lastError: "Catalog unavailable", lastPulledAt: pulledAt });
+    await jest.advanceTimersByTimeAsync(30_000);
+    expect(catalogPull).toHaveBeenCalledTimes(2);
+    expect(engine.getPosSyncStatus(SITE).lastError).toBeNull();
+    engine.stopPosSyncLoop(SITE);
+  });
+
+  it("does not let an old site's in-flight pull suppress the new site's catalog", async () => {
+    let finish!: (value: { ok: boolean }) => void;
+    catalogPull.mockReturnValueOnce(new Promise((resolve) => { finish = resolve; }));
+    const oldPull = engine.pullPosCatalogInBackground(SITE);
+    for (let i = 0; i < 10; i++) await Promise.resolve();
+    const otherSite = "22222222-2222-4222-8222-222222222222";
+    expect(engine.getPosSyncStatus(otherSite).pulling).toBe(false);
+    await engine.pullPosCatalogInBackground(otherSite);
+    expect(catalogPull).toHaveBeenCalledWith(otherSite, "revision-1", true, expect.any(Function));
+    finish({ ok: true });
+    await oldPull;
+  });
+
+  it("keeps the same-site catalog admission slot until its request settles", async () => {
+    let finish!: (value: { ok: boolean }) => void;
+    catalogPull.mockReturnValueOnce(new Promise((resolve) => { finish = resolve; }));
+    const pull = engine.pullPosCatalogInBackground(SITE);
+    for (let i = 0; i < 10; i++) await Promise.resolve();
+    await engine.pullPosCatalogInBackground(SITE, true);
+    expect(catalogPull).toHaveBeenCalledTimes(1);
+    finish({ ok: true });
+    await pull;
+    expect(engine.getPosSyncStatus(SITE).pulling).toBe(false);
+  });
+
+  it("checks the full snapshot deadline when the window regains focus", async () => {
+    const pulledAt = new Date(Date.now() - 300_000).toISOString();
+    metaGet.mockResolvedValue({ lastCatalogRevision: "revision-1", lastPulledAt: pulledAt });
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" });
+    engine.startPosSyncLoop(SITE);
+    for (let i = 0; i < 10; i++) await Promise.resolve();
+    expect(catalogPull).not.toHaveBeenCalled();
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+    window.dispatchEvent(new Event("focus"));
+    for (let i = 0; i < 30; i++) await Promise.resolve();
+    expect(catalogPull).toHaveBeenCalledWith(SITE, "revision-1", true, expect.any(Function));
+    engine.stopPosSyncLoop(SITE);
   });
 
   it.each([false, true])("reports returned and thrown order errors (%s), retaining cached orders until recovery", async (throws) => {

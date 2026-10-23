@@ -11,16 +11,29 @@ export async function withRegisterPaymentLock<T>(siteId: string, operation: () =
   if (!navigator.locks) {
     throw new Error("This browser does not support safe register locking. Use an up-to-date browser.")
   }
-  return navigator.locks.request(`pos-register:${siteId}`, { mode: "exclusive" }, async () => {
+  const controller = new AbortController()
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const waiting = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => {
+      reject(new Error("The register is busy. No new payment was submitted. Try again shortly."))
+      controller.abort()
+    }, 8_000)
+  })
+  // Cancel only admission. Never release an acquired lock while a write may commit.
+  const request = navigator.locks.request(`pos-register:${siteId}`, { mode: "exclusive", signal: controller.signal }, async () => {
+    if (controller.signal.aborted) throw new Error("Register lock request expired")
+    clearTimeout(timer)
     requireRegisterOnline()
     return operation()
   })
+  try { return await Promise.race([request, waiting]) }
+  finally { clearTimeout(timer) }
 }
 
 export async function assertRegisterQueueSettled(siteId: string) {
   requireRegisterOnline()
-  const { drainPosOutbox } = await import("@/app/pos/local/sync-engine")
-  await drainPosOutbox(siteId)
+  // Closing must not hold the register lock while unrelated background sync runs.
+  // Pending receipts already fence closure; recovery remains an explicit action.
   const rows = await listOutbox(siteId)
   const unresolved = rows.some((row) => row.status !== "synced" && row.payload.kind === "checkout" &&
     Boolean(row.payload.data.payments?.length) && row.recoveryState !== "rejected")

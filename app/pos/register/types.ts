@@ -1,4 +1,4 @@
-export type RegisterResult<T> = { data: T; error?: never } | { error: string; data?: never }
+export type RegisterResult<T> = { data: T; error?: never } | { error: string; data?: never; code?: "register_required" | "register_location_required" }
 
 export type RegisterMovementKind = "cash_in" | "cash_out" | "cash_refund"
 

@@ -3,6 +3,12 @@ export const ORDERS_INTERVAL_MS = 30_000;
 export const ORDERS_RETRY_MAX_MS = 5 * 60_000;
 export const CATALOG_VISIBILITY_MIN_MS = 2 * 60_000;
 
+/** Revision checks must never extend the lifetime of the full local snapshot. */
+export function shouldRefreshCatalogSnapshot(now: number, lastPulledAt: string | null): boolean {
+  const pulledAt = lastPulledAt ? Date.parse(lastPulledAt) : NaN;
+  return !Number.isFinite(pulledAt) || pulledAt > now || now - pulledAt >= CATALOG_INTERVAL_MS;
+}
+
 export function shouldRunCatalogPull({
   now,
   lastCatalogAt,

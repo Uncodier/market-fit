@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, type ReactNode } from "react"
 import { 
   Dialog, 
   DialogBody,
@@ -31,9 +31,11 @@ interface PaymentConfirmationDialogProps {
   onConfirm: (payments: PaymentEntry[], promotionCode?: string, intent?: 'complete' | 'pay' | 'send') => void
   isLoading?: boolean
   isPreparing?: boolean
+  onContinueSelling?: () => void
   hasCustomer?: boolean
   /** Currency of the amounts being registered. Shown as-is. */
   currency?: string | null
+  children?: ReactNode
 }
 
 export function PaymentConfirmationDialog({
@@ -43,8 +45,10 @@ export function PaymentConfirmationDialog({
   onConfirm,
   isLoading = false,
   isPreparing = false,
+  onContinueSelling,
   hasCustomer = false,
   currency,
+  children,
 }: PaymentConfirmationDialogProps) {
   const { t } = useLocalization()
   const { currentSite } = useSite()
@@ -53,29 +57,25 @@ export function PaymentConfirmationDialog({
   
   const [payments, setPayments] = useState<PaymentEntry[]>([])
   const [selectedMethod, setSelectedMethod] = useState("cash")
-  const [currentAmount, setCurrentAmount] = useState("")
+  const [currentAmount, setCurrentAmount] = useState(() => roundMoney(totalAmount).toString())
   const [promoCode, setPromoCode] = useState("")
+  const [draftScope, setDraftScope] = useState({ open, totalAmount })
 
-  const remainingAmount = remainingPaymentAmount(totalAmount, payments)
-  const totalChange = roundMoney(payments.reduce((sum, p) => sum + p.change, 0))
-  const pendingPayment = createPaymentEntry(selectedMethod, currentAmount, remainingAmount)
-
-  // Reset state when dialog opens
-  useEffect(() => {
+  // Reset only for a new payment session or balance, before rendering its children.
+  // Register overlays and loading updates keep the current payment draft intact.
+  if (draftScope.open !== open || !Object.is(draftScope.totalAmount, totalAmount)) {
+    setDraftScope({ open, totalAmount })
     if (open) {
       setPayments([])
       setSelectedMethod("cash")
       setCurrentAmount(roundMoney(totalAmount).toString())
       setPromoCode("")
     }
-  }, [open, totalAmount])
+  }
 
-  // Update currentAmount when remainingAmount changes
-  useEffect(() => {
-    if (open && remainingAmount > 0 && payments.length > 0) {
-      setCurrentAmount(remainingAmount.toString())
-    }
-  }, [remainingAmount, open, payments.length])
+  const remainingAmount = remainingPaymentAmount(totalAmount, payments)
+  const totalChange = roundMoney(payments.reduce((sum, p) => sum + p.change, 0))
+  const pendingPayment = createPaymentEntry(selectedMethod, currentAmount, remainingAmount)
 
   const paymentMethods = [
     { value: "cash", label: t('pos.payment.methods.cash') || "Cash", icon: Banknote },
@@ -88,14 +88,17 @@ export function PaymentConfirmationDialog({
 
   const handleAddPayment = () => {
     if (!pendingPayment) return
-    setPayments([...payments, pendingPayment])
-    setCurrentAmount("")
+    const nextPayments = [...payments, pendingPayment]
+    const nextRemaining = remainingPaymentAmount(totalAmount, nextPayments)
+    setPayments(nextPayments)
+    setCurrentAmount(nextRemaining > 0 ? nextRemaining.toString() : "")
   }
 
   const handleRemovePayment = (index: number) => {
     const newPayments = [...payments]
     newPayments.splice(index, 1)
     setPayments(newPayments)
+    setCurrentAmount(remainingPaymentAmount(totalAmount, newPayments).toString())
   }
 
   const handlePayAndComplete = () => {
@@ -142,6 +145,11 @@ export function PaymentConfirmationDialog({
         </DialogHeader>
 
         <DialogBody>
+        {isLoading && onContinueSelling && (
+          <p role="status" className="mb-4 text-sm text-muted-foreground">
+            Leaving does not cancel or confirm this payment. Check its status before collecting again.
+          </p>
+        )}
         {isPreparing ? (
           <PaymentDialogSkeleton />
         ) : (
@@ -302,7 +310,7 @@ export function PaymentConfirmationDialog({
                           <span className="font-semibold text-green-600">
                             {money(p.amount)}
                           </span>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => handleRemovePayment(idx)}>
+                          <Button variant="ghost" size="icon" aria-label={`${t('common.remove') || 'Remove'} ${getMethodLabel(p.method)}`} className="h-7 w-7 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => handleRemovePayment(idx)}>
                             <X className="h-4 w-4" />
                           </Button>
                         </div>
@@ -404,6 +412,11 @@ export function PaymentConfirmationDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
             {t('common.cancel') || 'Cancel'}
           </Button>
+          {isLoading && onContinueSelling && (
+            <Button variant="outline" onClick={onContinueSelling}>
+              {t('pos.newOrder') || 'New Order'}
+            </Button>
+          )}
 
           {selectedMethod !== "on_account" && (
             <Button
@@ -428,6 +441,7 @@ export function PaymentConfirmationDialog({
             </>
           )}
         </DialogFooter>
+        {children}
       </DialogContent>
     </Dialog>
   )

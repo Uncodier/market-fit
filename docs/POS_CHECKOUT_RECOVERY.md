@@ -35,6 +35,33 @@ per-row in-flight slot; a timeout is not permission to send a second checkout.
 Browser evidence reads use the authenticated, read-only `/api/pos/checkout-status`
 transport with a bounded wait, outside Next.js's serialized Server Action queue.
 This keeps a slow recovery lookup from holding subsequent checkout actions.
+Checkout writes, local-customer creation, order reads, and cash-register operations
+also use the authenticated same-origin `/api/pos/operation` transport, outside that
+dispatcher. Read-only requests have an eight-second deadline including response
+decoding. Checkout mutations are never aborted or retried by the transport: the
+existing 45-second outbox wait retains ownership until the real request settles.
+New unpaid sends (including splits) start only their own queued operation and
+dependencies, without waiting for old background work. Splits enqueue new customers
+locally instead of calling a Server Action before saving the orders.
+
+Payment admission uses the site Web Lock only until the receipt is durably queued.
+Confirmation runs outside that lock; the pending row still prevents closing the
+register or collecting that order again. Waiting to acquire the lock expires after
+eight seconds without running the queued callback. An acquired lock is not stolen
+while a write may commit. Closing checks existing receipts without draining the
+background queue under the lock. Resolve pending receipts explicitly before closing.
+
+The processing indicator belongs to the selected cart/session, not the whole POS.
+Selecting **New Order** can start another customer while an old confirmation waits;
+a late response cannot clear the new cart or unlock its active submission. A cart
+changed while waiting for register admission is checked again before enqueueing.
+
+Selecting a local pending order resolves only its original unpaid checkout and
+dependencies, then loads the current server order before accepting payment. It
+does not create a replacement order or accept local totals as payment evidence.
+Uncertain collected payments, missing evidence, and rejected attempts still require
+review. Server snapshot and inventory validation remain mandatory at confirmation.
+
 New queued payments retain their cart-session ID outside the server payload.
 Changing a payment in the same new-order cart cannot evade the unresolved-payment
 guard. A deliberate **New Order** rotates that identity while preserving previous
@@ -54,6 +81,13 @@ requires an authorized POS role and unrestricted location access before using a
 server-only, read-only service client. Receipt verification checks the original
 actor, site, shift, IDs, amounts, methods, tendered/change, and linked order. A
 client-provided total or tenant ID never proves payment state.
+
+The operation route additionally requires JSON with a bounded body and a matching
+browser Origin, validates its operation-specific input, and independently checks
+POS/site/actor access before invoking the existing authorized server workflows.
+Checkout references are checked against the authorized site; selected attribution
+does not grant authority. Responses are non-cacheable and errors are sanitized.
+This transport change requires no additional database migration.
 
 The forward-only migration
 `20261022140000_pos_checkout_attempt_recovery.sql` introduces server-owned durable
@@ -91,8 +125,11 @@ validation and admission do not replace a global order-edit transaction protocol
 The browser queue check covers the current device, not every cashier's device.
 Collection still requires an authorized session, connectivity, a valid open
 register, and current order validation. Separating sync errors is not an offline
-payment protocol. Recovery lookups no longer enter the Server Action dispatcher;
-other existing Server Actions still use the framework's serialization behavior.
+payment protocol. Catalog and other existing Server Actions still use the
+framework's serialization behavior, but they are no longer the transport for POS
+checkout, customer dependencies, order verification, or register operations.
+Storage failures, unavailable backend services, revoked permissions, and an
+actually closing register are not bypassed by sync isolation.
 
 ## Rollout and validation
 
@@ -144,3 +181,10 @@ receipt trigger. The checkout-status client, route, and scheduling tests cover
 bounded read transport, authorization, and continued checkout during a hung
 recovery request. No additional database migration is required for sync isolation
 or the cash-entry correction.
+
+`checkout-http-isolation.test.ts` exercises the real browser transport, payment
+preparation, and queue worker against an isolated HTTP adapter while background
+actions and an old checkout hang. It checks independent collection, bounded
+register reads, retained receipt identities, no timeout replay, and late success.
+Operation route/client tests cover origin/auth/tenant validation and response
+contracts. These tests do not perform a live payment or deploy the new route.

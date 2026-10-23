@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { PosOrderReviewDialog } from "@/app/pos/components/PosOrderReviewDialog";
-import { getPosOrder } from "@/app/pos/actions/get-order";
+import { fetchPosOrder as getPosOrder } from "@/app/pos/operation-client";
 import { listOutbox, updateOutboxRow, enqueueCheckout } from "@/app/pos/local/outbox";
 import { reconcilePosCheckout } from "@/app/pos/local/checkout-recovery";
 import { checkoutCart } from "@/app/commerce/checkout";
@@ -8,7 +8,7 @@ import type { PosOrderSnapshot } from "@/app/pos/order-snapshot";
 import type { PosOutboxRow } from "@/app/pos/local/types";
 import type { PosCheckoutRecovery } from "@/app/pos/checkout-recovery-types";
 
-jest.mock("@/app/pos/actions/get-order", () => ({ getPosOrder: jest.fn() }));
+jest.mock("@/app/pos/operation-client", () => ({ fetchPosOrder: jest.fn() }));
 jest.mock("@/app/pos/local/outbox", () => ({ listOutbox: jest.fn(), updateOutboxRow: jest.fn(), enqueueCheckout: jest.fn() }));
 jest.mock("@/app/pos/local/checkout-recovery", () => ({ reconcilePosCheckout: jest.fn() }));
 jest.mock("@/app/commerce/checkout", () => ({ checkoutCart: jest.fn() }));

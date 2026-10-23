@@ -69,7 +69,8 @@ export async function getActiveRegisterForPayment(input: unknown): Promise<Regis
     else query = query.eq("opened_by", access.user.id)
     const result = await query.limit(2)
     if (result.error) return { error: registerError(result.error) }
-    if (result.data?.length !== 1) return { error: "Open a register in Options and select its location before collecting payment." }
+    if (!result.data?.length) return { error: "Open a register before collecting payment.", code: "register_required" }
+    if (result.data.length !== 1) return { error: "Select a register location before collecting payment.", code: "register_location_required" }
     const session = result.data[0] as RegisterSession
     if (session.opened_by !== access.user.id && !["owner", "admin"].includes(access.role)) {
       return { error: "This shift belongs to another cashier. Ask a manager to close it first." }

@@ -4,10 +4,9 @@ jest.mock("@/app/pos/local/location-permission-state", () => ({
   getPosPermissionLease: jest.fn((siteId: string) => ({ siteId, userId: "cashier", generation: 1 })),
   isPosPermissionCurrent: jest.fn(() => true), subscribePosPermission: () => () => {},
 }));
-jest.mock("@/app/commerce/checkout", () => ({ checkoutCart: jest.fn() }));
+jest.mock("@/app/pos/operation-client", () => ({ checkoutPosCart: jest.fn(), createPosLead: jest.fn() }));
 jest.mock("@/app/commerce/ticket-check-in", () => ({ checkInTicket: jest.fn() }));
-jest.mock("@/app/pos/actions/create-lead-sync", () => ({ createLeadWithIdempotency: jest.fn() }));
-jest.mock("@/app/pos/actions/sync-revision", () => ({ getPosCatalogRevision: jest.fn() }));
+jest.mock("@/app/pos/catalog-revision-client", () => ({ fetchPosCatalogRevision: jest.fn() }));
 jest.mock("@/app/pos/actions/list-open-orders", () => ({ listPosOpenOrders: jest.fn() }));
 jest.mock("@/app/orders/actions", () => ({ updateOrderNotes: jest.fn() }));
 jest.mock("@/app/pos/actions/report-sync-error", () => ({ reportPosSyncError: jest.fn() }));
@@ -62,9 +61,9 @@ describe("targeted POS checkout scheduling", () => {
     Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
     rows = [];
     mappings = new Map();
-    checkout = jest.mocked((await import("@/app/commerce/checkout")).checkoutCart);
+    checkout = jest.mocked((await import("@/app/pos/operation-client")).checkoutPosCart);
     checkout.mockResolvedValue({ success: true, orderId: "server-order", saleId: "sale" });
-    createLead = jest.mocked((await import("@/app/pos/actions/create-lead-sync")).createLeadWithIdempotency);
+    createLead = jest.mocked((await import("@/app/pos/operation-client")).createPosLead);
     createLead.mockResolvedValue({ lead: { id: "server-lead" } });
     recovery = jest.mocked((await import("@/app/pos/local/checkout-recovery")).reconcilePosCheckout);
     recovery.mockResolvedValue({ state: "review_required", message: "Unknown" });
@@ -82,7 +81,7 @@ describe("targeted POS checkout scheduling", () => {
       leads: { put: jest.fn(), update: jest.fn() },
     } as unknown as ReturnType<typeof import("@/app/pos/local/db").getPosDb>);
     jest.mocked((await import("@/app/pos/actions/report-sync-error")).reportPosSyncError).mockResolvedValue({ ok: true });
-    jest.mocked((await import("@/app/pos/actions/sync-revision")).getPosCatalogRevision).mockResolvedValue({ data: "revision" });
+    jest.mocked((await import("@/app/pos/catalog-revision-client")).fetchPosCatalogRevision).mockResolvedValue({ data: "revision" });
     jest.mocked((await import("@/app/pos/local/snapshot-pull")).pullAndStorePosCatalogSnapshot).mockResolvedValue({ ok: true });
     engine = await import("@/app/pos/local/sync-engine");
   });

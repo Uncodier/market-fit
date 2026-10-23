@@ -6,7 +6,7 @@ import { loadCartSession, saveCartSession } from "@/app/pos/local/cart-session";
 jest.mock("@/app/context/DisplayCurrencyContext", () => ({
   useDisplayCurrency: () => ({ rates: {} }),
 }));
-jest.mock("@/app/pos/actions/get-order", () => ({ getPosOrder: jest.fn() }));
+jest.mock("@/app/pos/operation-client", () => ({ fetchPosOrder: jest.fn() }));
 jest.mock("@/app/pos/local/cart-session", () => ({
   loadCartSession: jest.fn(), saveCartSession: jest.fn(), clearCartSession: jest.fn(),
 }));

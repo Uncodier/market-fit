@@ -89,6 +89,22 @@ describe("pullPosCatalogSnapshot", () => {
     expect(await pullPosCatalogSnapshot("site-1")).toEqual({ error: "Inventory read failed" });
   });
 
+  it("reads products and services directly for a fallback instead of reusing the snapshot cache", async () => {
+    jest.mocked(readThroughJsonCache).mockResolvedValue({ status: "busy" });
+    jest.mocked(listCatalogItems).mockResolvedValue({ data: [parent, { id: "service", kind: "service", is_pos_available: true } as CatalogItem], count: 2 });
+    const result = await pullPosCatalogSnapshot("site-1", "revision-1", true);
+    expect("data" in result && result.data.catalogItems.map((item) => item.id)).toEqual(["parent", "service"]);
+    expect(readThroughJsonCache).not.toHaveBeenCalled();
+    expect(pullPosInventorySnapshot).toHaveBeenCalledWith("site-1");
+  });
+
+  it("still authorizes before an uncached fallback", async () => {
+    jest.mocked(requirePosSiteAccess).mockResolvedValue({ error: "Forbidden" });
+    expect(await pullPosCatalogSnapshot("other-site", null)).toEqual({ error: "Forbidden" });
+    expect(listCatalogItems).not.toHaveBeenCalled();
+    expect(readThroughJsonCache).not.toHaveBeenCalled();
+  });
+
   it("authorizes before cache or inventory reads", async () => {
     jest.mocked(requirePosSiteAccess).mockResolvedValue({ error: "Forbidden" });
     expect(await pullPosCatalogSnapshot("other-site")).toEqual({ error: "Forbidden" });

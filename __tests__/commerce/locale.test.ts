@@ -1,4 +1,5 @@
 import { loadLocaleMessages, resolveDisplayLocale } from '../../app/context/LocalizationContext';
+import spanishDashboard from '../../app/context/locales/workspace/es/dashboard.json';
 
 describe('Display locale priority', () => {
   it('uses the user stored preference over anything else', () => {
@@ -84,7 +85,9 @@ describe('loadLocaleMessages', () => {
         'Select at least {{count}} from {{group}}',
       );
       expect(messages['checkout.success.title']).not.toBe('Order Confirmed');
-      expect(messages['dashboard.analytics.clientCohort.title']).toBe('Client Cohort Analysis');
+      expect(messages['dashboard.analytics.clientCohort.title']).toBe(
+        locale === 'es' ? spanishDashboard['dashboard.analytics.clientCohort.title'] : 'Client Cohort Analysis',
+      );
     },
   );
 
@@ -92,5 +95,6 @@ describe('loadLocaleMessages', () => {
     const messages = await loadLocaleMessages('en');
     expect(messages['checkout.success.title']).toBe('Order Confirmed');
     expect(messages['pdp.getTickets']).toBe('Get Tickets');
+    expect(messages['dashboard.analytics.clientCohort.title']).toBe('Client Cohort Analysis');
   });
 });

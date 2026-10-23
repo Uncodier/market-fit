@@ -1,6 +1,7 @@
 import React, { useLayoutEffect } from 'react';
 import { fireEvent, render, act, waitFor } from '@testing-library/react';
 import { LocalizationProvider, useLocalization } from '../../app/context/LocalizationContext';
+import spanishDashboard from '../../app/context/locales/workspace/es/dashboard.json';
 
 function TestComponent() {
   const { locale, isReady, t } = useLocalization();
@@ -48,7 +49,7 @@ describe('LocalizationProvider', () => {
     document.cookie = 'makinari-locale=; Max-Age=0; path=/';
   });
 
-  it('renders Spanish storefront strings when stored locale is es', async () => {
+  it('renders Spanish storefront and workspace strings when stored locale is es', async () => {
     localStorage.setItem('makinari-locale', 'es');
 
     const { getByTestId } = render(
@@ -66,7 +67,8 @@ describe('LocalizationProvider', () => {
     expect(getByTestId('ready').textContent).toBe('ready');
     expect(getByTestId('translated').textContent).toBe('Pedido confirmado');
     expect(getByTestId('tickets').textContent).toBe('Obtener entradas');
-    expect(getByTestId('admin').textContent).toBe('Client Cohort Analysis');
+    expect(getByTestId('admin').textContent).toBe(spanishDashboard['dashboard.analytics.clientCohort.title']);
+    expect(getByTestId('admin').textContent).not.toBe('Client Cohort Analysis');
   });
 
   it('renders without throwing for en locale', async () => {
@@ -85,6 +87,7 @@ describe('LocalizationProvider', () => {
     });
 
     expect(getByTestId('ready').textContent).toBe('ready');
+    expect(getByTestId('admin').textContent).toBe('Client Cohort Analysis');
   });
 
   it('applies site locale and translations together when there is no stored preference', async () => {

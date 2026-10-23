@@ -233,17 +233,22 @@ export async function applyPosOpenOrders(siteId: string, openOrders: any[]) {
   });
 }
 
-export async function pullAndStorePosCatalogSnapshot(siteId: string, revision: string | null): Promise<{
+export async function pullAndStorePosCatalogSnapshot(
+  siteId: string, revision: string | null, bypassCache = false, onSaving?: () => void,
+): Promise<{
   ok: boolean;
   error?: string;
   pulledAt?: string;
 }> {
   const permission = requirePosPermission(siteId);
-  const res = await pullPosCatalogSnapshot(siteId, revision);
+  const res = bypassCache
+    ? await pullPosCatalogSnapshot(siteId, revision, true)
+    : await pullPosCatalogSnapshot(siteId, revision);
   if (!isPosPermissionCurrent(permission)) return { ok: false, error: "POS access changed" };
   if ("error" in res) {
     return { ok: false, error: res.error };
   }
+  onSaving?.();
   await applyPosCatalogSnapshot(siteId, res.data, revision);
   return { ok: true, pulledAt: res.data.pulledAt };
 }

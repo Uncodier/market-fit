@@ -22,6 +22,7 @@ export type UsePosCheckoutArgs = {
   leadRelationValue: RelationSelectValue;
   fulfillment: CheckoutFulfillmentMethod;
   originLocationId: string;
+  locations?: { id: string }[];
   priceListId: string;
   promoCode: string;
   appliedPromo?: {

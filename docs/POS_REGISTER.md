@@ -6,6 +6,15 @@ In the POS cart's **Options**, open **Cash Register** and select an active locat
 The selection also sets the checkout origin location, independently of fulfillment
 (including carryout).
 
+When only one location is available and no origin is selected, checkout and the
+register dialog select it automatically. Confirming a collected payment without an
+open shift overlays the same cash register dialog above the payment dialog instead
+of directing the cashier to Options. Payment methods, amounts and change remain
+in place. Opening the shift returns to the payment dialog without automatically
+collecting: the cashier confirms again, and the existing server/queue checks run
+again. Closing setup also preserves the payment draft. Authentication, cashier
+ownership, connectivity and database failures remain errors, not setup prompts.
+
 The dialog separates **Today** (the current open shift, including shifts opened
 on an earlier day) from **History** in tabs. Switching tabs preserves opening,
 movement, and closing drafts. Actions for the selected tab live in a single
@@ -68,18 +77,27 @@ review/retry rather than collecting a second payment automatically.
 See [Checkout recovery](POS_CHECKOUT_RECOVERY.md) for evidence-based status checks,
 isolated recorded/rejected payments and the migration-dependent admission flow.
 
-Payment collection and closing use the same site-scoped browser Web Lock. A
-collected payment synchronizes its own checkout and dependencies, not the entire
-outbox. Unrelated failed or ambiguous operations never prevent another order's
+Payment admission and closing use the same site-scoped browser Web Lock. Admission
+waits at most eight seconds; it retains the lock only through the register read
+and durable local enqueue, not network checkout confirmation. The pending receipt
+still prevents duplicate collection and closure. A collected payment synchronizes
+its own checkout and dependencies, not the entire outbox. Unrelated failed or
+ambiguous operations never prevent another order's
 payment; the affected order/attempt remains protected against duplicate collection.
 New cash entries round amount, tender and change to the existing two-decimal money
 precision before queueing, so exact receipt arithmetic does not reject fractional
 change because of floating-point noise. Stored ambiguous payments are not rewritten.
-Closing
-drains the local outbox and refuses to proceed while any collected payment in that
-site remains unresolved. Durable pre-write rejections do not represent collected
-receipts; recorded-but-incomplete payments still block closing. Browsers must support Web Locks (modern
+Closing checks the local outbox without draining background work and refuses to
+proceed while any collected payment in that site remains unresolved. Durable
+pre-write rejections do not represent collected receipts; recorded-but-incomplete
+payments still block closing. Browsers must support Web Locks (modern
 secure-context browsers); unsupported browsers fail closed.
+
+Register reads and writes use authenticated same-origin HTTP rather than the
+client's serialized Server Action dispatcher. Reads expire after eight seconds;
+financial writes are not aborted or automatically replayed. The payment dialog
+offers **New Order** while confirmation waits, with an explicit warning that
+leaving does not cancel or confirm the original payment.
 
 This queue check covers the current browser, not every device. Database row locks
 serialize receipt writes, movements, summaries and closure across devices.
