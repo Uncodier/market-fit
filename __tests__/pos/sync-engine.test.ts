@@ -415,7 +415,7 @@ describe("POS sync failure reporting and recovery", () => {
     expect(engine.getPosSyncStatus(SITE).lastError).toBe("Orders unavailable");
     await jest.advanceTimersByTimeAsync(30_000);
     await engine.pullPosOrdersInBackground(SITE);
-    expect(applyOrders).toHaveBeenCalledWith(SITE, []);
+    expect(applyOrders).toHaveBeenCalledWith(SITE, [], expect.objectContaining({ siteId: SITE, generation: 1 }));
     expect(engine.getPosSyncStatus(SITE).lastError).toBeNull();
   });
 
@@ -450,5 +450,36 @@ describe("POS sync failure reporting and recovery", () => {
     expect(ordersPull).not.toHaveBeenCalled();
     expect(report).not.toHaveBeenCalled();
     expect(rows[0].status).toBe("failed");
+  });
+
+  it("reads the local queue but never replays a cached grant before reconnect verification", async () => {
+    const permission = jest.mocked(await import("@/app/pos/local/location-permission-state"));
+    permission.getPosPermissionLease.mockReturnValue({ siteId: SITE, userId: "cashier", role: "owner", generation: 1, expiresAt: Infinity, offline: true });
+    metaGet.mockResolvedValue({ lastPulledAt: "2026-10-23T12:00:00Z" });
+    rows = [queued()];
+    await engine.runPosSyncCycle(SITE, true);
+    await engine.syncPosCheckout(SITE, rows[0].clientMutationId);
+    expect(engine.getPosSyncStatus(SITE)).toMatchObject({ online: false, accessVerified: true, pendingCount: 1, lastError: null });
+    expect(checkIn).not.toHaveBeenCalled();
+    expect(revision).not.toHaveBeenCalled();
+    expect(ordersPull).not.toHaveBeenCalled();
+    expect(catalogPull).not.toHaveBeenCalled();
+  });
+
+  it("does not report an interrupted download or orders pull as an error after connection loss", async () => {
+    revision.mockImplementationOnce(async () => {
+      Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
+      throw new TypeError("Failed to fetch");
+    });
+    await engine.pullPosCatalogInBackground(SITE, true);
+    expect(catalogPull).not.toHaveBeenCalled();
+    Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
+    ordersPull.mockImplementationOnce(async () => {
+      Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
+      throw new TypeError("Failed to fetch");
+    });
+    await engine.pullPosOrdersInBackground(SITE);
+    expect(engine.getPosSyncStatus(SITE).lastError).toBeNull();
+    expect(report).not.toHaveBeenCalled();
   });
 });

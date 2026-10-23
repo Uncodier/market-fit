@@ -4,6 +4,7 @@ import { requirePosPermission, isPosPermissionCurrent } from "./location-permiss
 import { updateOutboxRow, mapLocalId } from "./outbox";
 import type { PosOutboxRow } from "./types";
 import type { PosCheckoutRecovery } from "../checkout-recovery-types";
+import { assertPosRemotePermission, requirePosRemotePermission } from "./remote-permission";
 
 export async function applyPosCheckoutRecovery(row: PosOutboxRow, recovery: PosCheckoutRecovery): Promise<void> {
   const permission = requirePosPermission(row.siteId);
@@ -44,7 +45,7 @@ export async function applyPosCheckoutRecovery(row: PosOutboxRow, recovery: PosC
 
 /** Read-only reconciliation request; never calls checkout or changes the queued payload. */
 export async function reconcilePosCheckout(siteId: string, rowId: string): Promise<PosCheckoutRecovery> {
-  const permission = requirePosPermission(siteId);
+  const permission = requirePosRemotePermission(siteId);
   const row = await getPosDb().outbox.get(rowId);
   if (!isPosPermissionCurrent(permission)) throw new Error("POS access changed");
   if (!row || row.siteId !== siteId || row.payload.kind !== "checkout" || row.payload.data.userId !== permission.userId) {
@@ -52,6 +53,7 @@ export async function reconcilePosCheckout(siteId: string, rowId: string): Promi
   }
   if (row.status === "synced") throw new Error("This checkout is already synchronized.");
   const data = row.payload.data;
+  assertPosRemotePermission(permission);
   const result = await fetchPosCheckoutStatus({
     siteId, clientMutationId: row.clientMutationId,
     existingOrderId: data.existingOrderId?.startsWith("local_") ? undefined : data.existingOrderId,

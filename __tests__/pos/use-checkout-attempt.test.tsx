@@ -9,7 +9,11 @@ import { checkoutAttemptKey } from "@/app/pos/local/checkout-attempt-storage";
 import type { CheckoutOutboxPayload, PosOutboxRow } from "@/app/pos/local/types";
 
 jest.mock("@/app/pos/operation-client", () => ({ fetchActivePaymentRegister: jest.fn() }));
-jest.mock("@/app/pos/local/location-permission-state", () => ({ requirePosPermission: () => ({}), isPosPermissionCurrent: () => true }));
+jest.mock("@/app/pos/local/location-permission-state", () => ({
+  requirePosPermission: (siteId: string) => ({ siteId, userId: "actor", generation: 1 }),
+  getPosPermissionLease: (siteId: string) => ({ siteId, userId: "actor", generation: 1 }),
+  isPosPermissionCurrent: () => true,
+}));
 jest.mock("@/app/pos/local/outbox", () => ({ enqueueCheckout: jest.fn(), listOutbox: jest.fn() }));
 jest.mock("@/app/pos/local/sync-engine", () => ({ syncPosCheckout: jest.fn() }));
 jest.mock("@/app/pos/local/db", () => ({ getPosDb: () => ({ cartSessions: { put: jest.fn().mockResolvedValue(undefined) } }) }));

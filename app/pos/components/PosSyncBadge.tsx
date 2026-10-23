@@ -1,16 +1,31 @@
 "use client";
 
 import { Button } from "@/app/components/ui/button";
+import { Progress } from "@/app/components/ui/progress";
 import { AlertTriangle, CheckCircle2, Clock, Loader2 } from "@/app/components/ui/icons";
 import type { SyncStatus } from "@/app/pos/local/sync-engine";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/app/components/ui/popover";
-import { catalogSyncLabel, formatSyncDuration, PosCatalogSyncDetails } from "./PosCatalogSyncDetails";
+import { catalogSyncLabel, PosCatalogSyncDetails } from "./PosCatalogSyncDetails";
+
+export function posSyncBadgeProgress(status: SyncStatus) {
+  if (!status.online || status.accessVerified === false || status.failedCount > 0 || status.lastError || status.catalogSync?.error) return null;
+  if (status.pulling) {
+    const phase = status.catalogSync?.phase;
+    const step = phase === "saving" ? 3 : phase === "downloading" ? 2 : 1;
+    // Count completed phases, not downloaded records. Saving must finish before full fill.
+    return { label: `${step}/3`, value: ((step - 1) / 3) * 100 };
+  }
+  if (!status.syncing && status.pendingCount === 0 && status.lastPulledAt && status.catalogSync?.lastSuccess) {
+    return { label: "3/3", value: 100 };
+  }
+  return null;
+}
 
 export function posSyncBadgeView(status: SyncStatus, t: (key: string) => string) {
   const pending = status.pendingCount + status.failedCount;
-  const busy = status.pulling || status.syncing || status.pendingCount > 0;
+  const busy = status.online && (status.pulling || status.syncing || status.pendingCount > 0);
   const hasError = status.failedCount > 0 || !!status.lastError || !!status.catalogSync?.error;
   const expanded = !status.online || status.accessVerified === false || hasError || busy || !status.lastPulledAt || !!status.catalogSync?.lastSuccess;
 
@@ -37,7 +52,7 @@ export function posSyncBadgeView(status: SyncStatus, t: (key: string) => string)
     label = catalogSyncLabel(status, t);
     tone = "text-amber-800 bg-amber-100 dark:text-amber-200 dark:bg-amber-950/50";
   } else if (status.catalogSync?.lastSuccess) {
-    label += ` · ${formatSyncDuration(status.catalogSync.lastSuccess.durationMs)}`;
+    label += " · 3/3";
   }
 
   const Icon =
@@ -64,16 +79,15 @@ export function PosSyncBadge({
   t: (key: string, params?: Record<string, string | number>) => string;
 }) {
   const { label, tone, Icon, busy, expanded } = posSyncBadgeView(status, t);
+  const progress = posSyncBadgeProgress(status);
   const [now, setNow] = useState(() => Date.now());
   const [open, setOpen] = useState(false);
   useEffect(() => {
-    if (!status.pulling) return;
+    if (!open || !status.pulling || !status.online || status.accessVerified === false) return;
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
-  }, [status.pulling]);
-  const elapsed = status.pulling && status.catalogSync?.startedAt != null
-    ? formatSyncDuration(now - status.catalogSync.startedAt) : null;
-  const visibleLabel = elapsed ? `${label} · ${elapsed}` : label;
+  }, [open, status.pulling, status.online, status.accessVerified]);
+  const visibleLabel = status.pulling && progress ? `${label} · ${progress.label}` : label;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -84,21 +98,30 @@ export function PosSyncBadge({
           size="sm"
           aria-label={visibleLabel}
           className={cn(
-            "h-8 rounded-full text-xs font-medium overflow-hidden transition-[padding,gap,width] duration-200",
+            "relative isolate h-8 rounded-full text-xs font-medium overflow-hidden transition-[padding,gap,width] duration-200",
             expanded ? "gap-1.5 px-3" : "w-8 px-0 justify-center",
             tone,
           )}
           title={status.lastError || visibleLabel}
         >
+          {progress && <Progress
+            aria-hidden="true"
+            value={progress.value}
+            className="pointer-events-none absolute inset-0 h-full bg-transparent"
+            indicatorClassName={cn(
+              "duration-300 motion-reduce:transition-none",
+              status.pulling ? "bg-blue-200/70 dark:bg-blue-800/60" : "bg-emerald-200/70 dark:bg-emerald-800/60",
+            )}
+          />}
           <Icon
             className={cn(
-              "h-3.5 w-3.5 flex-shrink-0",
+              "relative z-10 h-3.5 w-3.5 flex-shrink-0",
               busy && "animate-spin motion-reduce:animate-none",
             )}
           />
           <span
             className={cn(
-              "overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-200",
+              "relative z-10 overflow-hidden whitespace-nowrap tabular-nums transition-[max-width,opacity] duration-200",
               expanded ? "max-w-64 opacity-100" : "max-w-0 opacity-0",
             )}
           >

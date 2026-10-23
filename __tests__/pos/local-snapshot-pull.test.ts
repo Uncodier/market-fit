@@ -5,7 +5,8 @@ import type { PosMeta } from "@/app/pos/local/types";
 import { isPosPermissionCurrent } from "@/app/pos/local/location-permission-state";
 
 jest.mock("@/app/pos/local/location-permission-state", () => ({
-  requirePosPermission: jest.fn(() => ({ generation: 1 })),
+  requirePosPermission: jest.fn((siteId: string) => ({ siteId, generation: 1 })),
+  getPosPermissionLease: jest.fn((siteId: string) => ({ siteId, generation: 1 })),
   isPosPermissionCurrent: jest.fn(() => true),
 }));
 
@@ -53,6 +54,14 @@ describe("local inventory snapshots", () => {
     const db = localDb();
     db.storedMeta.set("site-1", { siteId: "site-1", lastPulledAt: "old", schemaVersion: 1 });
     expect(await readLocalCatalog("site-1")).toHaveProperty("inventorySnapshot", null);
+  });
+
+  it("recognizes a downloaded empty catalog as local data", async () => {
+    localDb();
+    expect(await readLocalCatalog("site-1")).toHaveProperty("hasLocalData", false);
+    await applyPosCatalogSnapshot("site-1", snapshot, "revision-1");
+    expect(await readLocalCatalog("site-1")).toMatchObject({ catalogItems: [], hasLocalData: true });
+    expect(await readLocalCatalog("site-2")).toHaveProperty("hasLocalData", false);
   });
 
   it("preserves the previous snapshot and revision when the remote read fails", async () => {

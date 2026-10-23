@@ -172,12 +172,23 @@ export async function clearPosPrivateData() {
   }
 }
 
+/** Inspect download metadata without exposing private tables before local access is restored. */
+export async function hasPosCachedSnapshot(siteId: string): Promise<boolean> {
+  const db = new PosLocalDatabase();
+  try {
+    const meta = await db.meta.get(siteId);
+    return !!meta?.lastPulledAt && Number.isFinite(Date.parse(meta.lastPulledAt));
+  } finally {
+    db.close({ disableAutoOpen: true });
+  }
+}
+
 export function getPosDb(): PosLocalDatabase {
   if (typeof window === "undefined") {
     throw new Error("POS local DB is only available in the browser");
   }
-  if (!accessAllowed || !navigator.onLine || !accessCurrent()) {
-    throw new Error("POS requires verified online access");
+  if (!accessAllowed || !accessCurrent()) {
+    throw new Error("POS requires verified access");
   }
   if (!dbInstance) {
     const current = accessCurrent;

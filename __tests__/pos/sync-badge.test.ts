@@ -37,7 +37,7 @@ describe("posSyncBadgeView", () => {
 
   it("shows offline with count", () => {
     const view = posSyncBadgeView({ ...baseStatus, online: false, pendingCount: 2 }, t);
-    expect(view.busy).toBe(true); // Since pendingCount > 0
+    expect(view.busy).toBe(false); // Queued local work is waiting, not actively syncing.
     expect(view.expanded).toBe(true);
     expect(view.label).toContain("pos.sync.offline");
     expect(view.label).toContain("2");

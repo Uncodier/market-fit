@@ -20,7 +20,7 @@ export async function enqueueOutbox(params: {
   clientMutationId: string;
   payload: PosOutboxRow["payload"];
   checkoutCartSessionId?: string;
-}): Promise<PosOutboxRow> {
+}, beforeInsert?: () => void): Promise<PosOutboxRow> {
   const permission = requirePosPermission(params.siteId);
   if (params.payload.kind === "checkout" && params.payload.data.userId !== permission.userId) {
     throw new Error("POS account changed");
@@ -46,6 +46,7 @@ export async function enqueueOutbox(params: {
     createdAt: nowIso(),
     updatedAt: nowIso(),
   };
+  beforeInsert?.();
   await db.outbox.add(row);
   return row;
 }
@@ -54,6 +55,7 @@ export async function enqueueCheckout(
   siteId: string,
   data: CheckoutOutboxPayload,
   checkoutCartSessionId?: string,
+  beforeInsert?: () => void,
 ) {
   return enqueueOutbox({
     siteId,
@@ -61,7 +63,7 @@ export async function enqueueCheckout(
     clientMutationId: data.clientMutationId,
     payload: { kind: "checkout", data },
     checkoutCartSessionId,
-  });
+  }, beforeInsert);
 }
 
 export async function enqueueCheckIn(

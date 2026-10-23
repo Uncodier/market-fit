@@ -1,5 +1,6 @@
 import { hasPosOutboxWork, syncPosOutboxRow } from "./sync-outbox-worker";
 import { getPosPermissionLease, isPosPermissionCurrent, subscribePosPermission } from "./location-permission-state";
+import { canStartPosRemoteRequest } from "./remote-permission";
 import { getPosDb } from "./db";
 import { listOutbox } from "./outbox";
 import { pullAndStorePosCatalogSnapshot, applyPosOpenOrders } from "./snapshot-pull";
@@ -125,13 +126,14 @@ export function subscribePosSync(listener: SyncListener, siteId?: string): () =>
 }
 
 export function getPosSyncStatus(siteId: string): SyncStatus {
-  if (!getPosPermissionLease(siteId)) return {
+  const permission = getPosPermissionLease(siteId);
+  if (!permission) return {
     online: isBrowserOnline(), accessVerified: false, pulling: false, syncing: false,
     pendingCount: 0, failedCount: 0, lastPulledAt: null, lastOrdersPulledAt: null, lastError: null,
   };
   const state = siteState.get(siteId) || { ...EMPTY_SITE_STATE };
   return {
-    online: isBrowserOnline(),
+    online: isBrowserOnline() && !permission.offline,
     accessVerified: true,
     pulling: pullingSites.has(siteId),
     syncing: drainingSites.has(siteId) || hasPosOutboxWork(siteId),
@@ -146,7 +148,7 @@ export function getPosSyncStatus(siteId: string): SyncStatus {
 
 export async function drainPosOutbox(siteId: string): Promise<void> {
   const permission = getPosPermissionLease(siteId);
-  if (!permission) return;
+  if (!permission || !canStartPosRemoteRequest(permission)) return;
   if (!isBrowserOnline()) {
     emit(siteId);
     return;
@@ -168,13 +170,13 @@ export async function drainPosOutbox(siteId: string): Promise<void> {
     ];
 
     for (const row of ordered) {
-      if (!isPosPermissionCurrent(permission)) break;
+      if (!canStartPosRemoteRequest(permission)) break;
       if (row.kind === "checkout") attemptedCheckout = true;
       await syncPosOutboxRow(row, permission, outboxChanged);
     }
     clearPosSyncError(siteId, "outbox");
   } catch (error) {
-    if (!isPosPermissionCurrent(permission)) return;
+    if (!canStartPosRemoteRequest(permission)) return;
     recordPosSyncError("outbox", {
       siteId, operation: "outbox", error: error instanceof Error ? error.message : "Sync failed",
     });
@@ -200,16 +202,16 @@ function outboxChanged(siteId: string) {
  */
 export async function syncPosCheckout(siteId: string, mutationId: string): Promise<void> {
   const permission = getPosPermissionLease(siteId);
-  if (!permission || !isBrowserOnline()) return;
+  if (!permission || !canStartPosRemoteRequest(permission)) return;
   try {
     const rows = await listOutbox(siteId);
-    if (!isPosPermissionCurrent(permission)) return;
+    if (!canStartPosRemoteRequest(permission)) return;
     const row = rows.find((candidate) => candidate.siteId === siteId &&
       candidate.clientMutationId === mutationId && candidate.kind === "checkout" && candidate.payload.kind === "checkout");
     if (!row || row.status === "synced") return;
     await syncPosOutboxRow(row, permission, outboxChanged);
   } catch (error) {
-    if (isPosPermissionCurrent(permission)) recordPosSyncError("outbox", {
+    if (canStartPosRemoteRequest(permission)) recordPosSyncError("outbox", {
       siteId, operation: "outbox", error: error instanceof Error ? error.message : "Sync failed",
     });
   } finally {
@@ -233,8 +235,7 @@ export async function pullPosCatalogInBackground(
   force = false,
 ): Promise<void> {
   const permission = getPosPermissionLease(siteId);
-  if (!permission) return;
-  if (!isBrowserOnline()) return;
+  if (!canStartPosRemoteRequest(permission)) return;
   if (pullingSites.has(siteId)) return;
   pullingSites.add(siteId);
   beginCatalogSync(siteId);
@@ -242,7 +243,7 @@ export async function pullPosCatalogInBackground(
 
   try {
     const meta = await getPosDb().meta.get(siteId);
-    if (!isPosPermissionCurrent(permission)) return;
+    if (!canStartPosRemoteRequest(permission)) return;
     const recovery = catalogRecovery.get(siteId);
     const refreshSnapshot = force || recovery !== undefined || !meta?.lastCatalogRevision ||
       shouldRefreshCatalogSnapshot(Date.now(), meta?.lastPulledAt ?? null);
@@ -252,7 +253,7 @@ export async function pullPosCatalogInBackground(
     const revRes = await fetchPosCatalogRevision(siteId).catch((error: unknown) => ({
       error: error instanceof Error ? error.message : "Catalog revision failed",
     }));
-    if (!isPosPermissionCurrent(permission)) return;
+    if (!canStartPosRemoteRequest(permission)) return;
     if ("error" in revRes) {
       recordPosSyncError("catalog", { siteId, operation: "catalog", error: revRes.error || "Catalog revision failed" });
     }
@@ -272,7 +273,7 @@ export async function pullPosCatalogInBackground(
       setCatalogSyncPhase(siteId, "saving");
       emit(siteId);
     });
-    if (!isPosPermissionCurrent(permission)) return;
+    if (!canStartPosRemoteRequest(permission)) return;
     if (!res.ok) {
       recordPosSyncError("catalog", { siteId, operation: "catalog", error: res.error || "Catalog pull failed" });
       finishCatalogSync(siteId, "error");
@@ -288,18 +289,19 @@ export async function pullPosCatalogInBackground(
       if (recovery !== undefined && catalogRecovery.get(siteId) === recovery) catalogRecovery.delete(siteId);
     }
   } catch (error) {
-    if (!isPosPermissionCurrent(permission)) return;
+    if (!canStartPosRemoteRequest(permission)) return;
     recordPosSyncError("catalog", { siteId, operation: "catalog", error: error instanceof Error ? error.message : "Catalog pull failed" });
     finishCatalogSync(siteId, "error");
   } finally {
     pullingSites.delete(siteId);
+    if (!canStartPosRemoteRequest(permission)) finishCatalogSync(siteId, "checked");
     await refreshCounts(siteId);
   }
 }
 
 export function pullPosOrdersInBackground(siteId: string): Promise<void> {
   const permission = getPosPermissionLease(siteId);
-  if (!permission || !isBrowserOnline() || !isDocumentVisible()) return Promise.resolve();
+  if (!permission || !canStartPosRemoteRequest(permission) || !isDocumentVisible()) return Promise.resolve();
   const existing = ordersInFlight.get(siteId);
   if (existing) return existing;
   const state = siteState.get(siteId) || { ...EMPTY_SITE_STATE };
@@ -307,13 +309,13 @@ export function pullPosOrdersInBackground(siteId: string): Promise<void> {
   if (state.nextOrdersRetryAt !== null && Date.now() < state.nextOrdersRetryAt) return Promise.resolve();
 
   const request = Promise.resolve().then(async () => {
-    if (!isPosPermissionCurrent(permission) || !isBrowserOnline() || !isDocumentVisible()) return;
+    if (!canStartPosRemoteRequest(permission) || !isDocumentVisible()) return;
     try {
       const res = await listPosOpenOrders(siteId);
-      if (!isPosPermissionCurrent(permission)) return;
+      if (!canStartPosRemoteRequest(permission)) return;
       if (res.error) throw new Error(res.error);
-      await applyPosOpenOrders(siteId, res.data || []);
-      if (!isPosPermissionCurrent(permission)) return;
+      await applyPosOpenOrders(siteId, res.data || [], permission);
+      if (!canStartPosRemoteRequest(permission)) return;
       const prev = siteState.get(siteId) || { ...EMPTY_SITE_STATE };
       siteState.set(siteId, {
         ...prev,
@@ -324,7 +326,7 @@ export function pullPosOrdersInBackground(siteId: string): Promise<void> {
       });
       clearPosSyncError(siteId, "orders");
     } catch (error) {
-      if (!isPosPermissionCurrent(permission)) return;
+      if (!canStartPosRemoteRequest(permission)) return;
       const prev = siteState.get(siteId) || { ...EMPTY_SITE_STATE };
       const ordersRetryDelayMs = Math.min(prev.ordersRetryDelayMs * 2 || ORDERS_INTERVAL_MS, ORDERS_RETRY_MAX_MS);
       siteState.set(siteId, { ...prev, ordersRetryDelayMs, nextOrdersRetryAt: Date.now() + ordersRetryDelayMs });

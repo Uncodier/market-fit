@@ -37,3 +37,11 @@ it("retains original receipt and cart identity when another cart encounters its 
   expect(add).toHaveBeenCalledTimes(1);
   expect(original.checkoutCartSessionId).toBe("cart-a");
 });
+
+it("rechecks payment admission after local lookup, immediately before inserting a new receipt", async () => {
+  const guard = jest.fn(() => { throw new Error("Remote admission closed"); });
+  await expect(enqueueCheckout("site", payload, "cart-a", guard)).rejects.toThrow("Remote admission closed");
+  expect(first).toHaveBeenCalled();
+  expect(guard).toHaveBeenCalledTimes(1);
+  expect(add).not.toHaveBeenCalled();
+});

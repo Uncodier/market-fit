@@ -1,7 +1,7 @@
 import { getPosDb, lockPosDb, clearPosPrivateData, PosLocalDatabase } from "@/app/pos/local/db";
 import {
   acceptPosPermission, preparePosPermission, revokePosPermission,
-  suspendPosPermission, getPosPermissionLease, isPosPermissionCurrent,
+  suspendPosPermission, restorePosPermission, getPosPermissionLease, isPosPermissionCurrent,
 } from "@/app/pos/local/location-permission-state";
 
 type MockTable = { clear: jest.Mock; rows: unknown[] };
@@ -22,7 +22,9 @@ jest.mock("dexie", () => ({
           table.clear.mockImplementation(async () => { table.rows = []; });
           tables.set(name, table);
         }
-        return tables.get(name)!;
+        const table = tables.get(name)!;
+        Object.assign(this, { [name]: { get: async (siteId: string) => table.rows.find((row) => (row as { siteId?: string }).siteId === siteId) } });
+        return table;
       });
     } }; }
   },
@@ -40,7 +42,7 @@ describe("POS persisted permission boundary", () => {
   });
 
   it("denies DB reads by default and after suspension, permanently closes old handles", async () => {
-    expect(() => getPosDb()).toThrow("verified online access");
+    expect(() => getPosDb()).toThrow("verified access");
     await preparePosPermission(scope.userId, scope.siteId);
     const grant = await acceptPosPermission(scope, () => true);
     const db = getPosDb();
@@ -111,11 +113,40 @@ describe("POS persisted permission boundary", () => {
       elapsed += 38_001;
       expect(isPosPermissionCurrent(grant)).toBe(false);
       expect(getPosPermissionLease()).toBeNull();
-      expect(() => getPosDb()).toThrow("verified online access");
+      expect(() => getPosDb()).toThrow("verified access");
     } finally {
       suspendPosPermission();
       monotonic.mockRestore();
       wallClock.mockRestore();
     }
+  });
+
+  it("restores a downloaded same-scope cache offline without expiring or retiring its DB handle", async () => {
+    const initial = await acceptPosPermission(scope, () => true);
+    const db = getPosDb();
+    tables.get("meta")!.rows = [{ siteId: scope.siteId, lastPulledAt: "2026-10-23T12:00:00Z" }];
+    Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
+    const restored = await restorePosPermission(scope.userId, scope.siteId, () => true);
+    expect(restored).toMatchObject({ offline: true, generation: initial?.generation });
+    expect(getPosDb()).toBe(db);
+    expect(isPosPermissionCurrent(initial)).toBe(true);
+    suspendPosPermission();
+    const reopened = await restorePosPermission(scope.userId, scope.siteId, () => true);
+    expect(reopened?.offline).toBe(true);
+    expect(getPosDb()).not.toBe(db);
+    await revokePosPermission();
+    expect(await restorePosPermission(scope.userId, scope.siteId, () => true)).toBeNull();
+    expect(() => getPosDb()).toThrow();
+  });
+
+  it("never restores another actor/site or a marker without a downloaded snapshot", async () => {
+    await acceptPosPermission(scope, () => true);
+    expect(await restorePosPermission(scope.userId, scope.siteId, () => true)).toBeNull();
+    tables.get("meta")!.rows = [{ siteId: scope.siteId, lastPulledAt: "2026-10-23T12:00:00Z" }];
+    expect(await restorePosPermission("other-actor", scope.siteId, () => true)).toBeNull();
+    expect(await restorePosPermission(scope.userId, "other-site", () => true)).toBeNull();
+    expect(await restorePosPermission(scope.userId, scope.siteId, () => false)).toBeNull();
+    localStorage.setItem("pos-location-scope-v1", JSON.stringify([scope.userId, scope.siteId, "invalid-role"]));
+    expect(await restorePosPermission(scope.userId, scope.siteId, () => true)).toBeNull();
   });
 });

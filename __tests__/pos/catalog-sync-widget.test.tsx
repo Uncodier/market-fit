@@ -24,14 +24,22 @@ describe("catalog status within the sync widget", () => {
     expect(refresh).toHaveBeenCalledTimes(1);
   });
 
-  it("shows phases and elapsed time in the badge and its details", () => {
+  it("shows the phase number and matching background fill, keeping elapsed time in details", () => {
     const progress = { phase: "checking" as const, startedAt: Date.now(), lastAttemptDurationMs: null, lastSuccess: null, error: false };
     const { rerender } = render(<PosSyncBadge status={{ ...base, pulling: true, catalogSync: progress }} t={t} onRefresh={jest.fn()} />);
-    fireEvent.click(screen.getByRole("button", { name: "Checking catalog · 0s" }));
+    const checking = screen.getByRole("button", { name: "Checking catalog · 1/3" });
+    expect(checking.querySelector("[data-state]")).toHaveAttribute("aria-hidden", "true");
+    expect(checking.querySelector("[data-state]")).toHaveAttribute("aria-valuenow", "0");
+    fireEvent.click(checking);
     act(() => jest.advanceTimersByTime(65000));
-    expect(screen.getByRole("button", { name: "Checking catalog · 1m 5s" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Checking catalog · 1/3" })).toBeInTheDocument();
     expect(screen.getByText("Elapsed: 1m 5s")).toBeInTheDocument();
+    rerender(<PosSyncBadge status={{ ...base, pulling: true, catalogSync: { ...progress, phase: "downloading" } }} t={t} onRefresh={jest.fn()} />);
+    const downloading = screen.getByRole("button", { name: "Downloading catalog · 2/3" });
+    expect(Number(downloading.querySelector("[data-state]")?.getAttribute("aria-valuenow"))).toBeCloseTo(100 / 3);
     rerender(<PosSyncBadge status={{ ...base, pulling: true, catalogSync: { ...progress, phase: "saving" } }} t={t} onRefresh={jest.fn()} />);
+    const saving = screen.getByRole("button", { name: "Saving catalog locally · 3/3" });
+    expect(Number(saving.querySelector("[data-state]")?.getAttribute("aria-valuenow"))).toBeCloseTo(200 / 3);
     expect(screen.getByRole("status")).toHaveTextContent("Saving catalog locally");
     expect(screen.getByRole("button", { name: "Refresh catalog" })).toBeDisabled();
   });
@@ -43,10 +51,13 @@ describe("catalog status within the sync widget", () => {
     } };
     const queue = jest.fn();
     const { container } = render(<PosSyncBadge status={status} t={t} onClick={queue} />);
-    fireEvent.click(screen.getByRole("button", { name: "Synced · 12s" }));
+    const synced = screen.getByRole("button", { name: "Synced · 3/3" });
+    expect(synced.querySelector("[data-state]")).toHaveAttribute("aria-valuenow", "100");
+    fireEvent.click(synced);
     expect(screen.getByText("Full download without snapshot cache")).toBeInTheDocument();
     expect(document.querySelector("time")).toHaveAttribute("datetime", "2026-10-23T12:00:00.000Z");
-    expect(container).toHaveTextContent("Synced · 12s");
+    expect(container).toHaveTextContent("Synced · 3/3");
+    expect(screen.getByText(/Last successful catalog sync/)).toHaveTextContent("12s");
     fireEvent.click(screen.getByRole("button", { name: "Queued Operations" }));
     expect(queue).toHaveBeenCalledTimes(1);
   });
@@ -80,6 +91,21 @@ describe("catalog status within the sync widget", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Waiting for verified POS access");
     expect(document.querySelector("time")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Refresh catalog" })).toBeDisabled();
+  });
+
+  it.each([
+    { online: false },
+    { accessVerified: false },
+    { lastError: "Catalog unavailable" },
+    { failedCount: 1 },
+  ])("removes the phase number and fill when sync is blocked: %j", (blocked) => {
+    const catalogSync = { phase: "saving" as const, startedAt: Date.now(), lastAttemptDurationMs: null, lastSuccess: null, error: false };
+    const { rerender } = render(<PosSyncBadge status={{ ...base, pulling: true, catalogSync }} t={t} />);
+    expect(screen.getByRole("button")).toHaveTextContent("3/3");
+    rerender(<PosSyncBadge status={{ ...base, pulling: true, catalogSync, ...blocked }} t={t} />);
+    const badge = screen.getByRole("button");
+    expect(badge).not.toHaveTextContent("3/3");
+    expect(badge.querySelector("[aria-valuenow]")).toBeNull();
   });
 
   it("formats duration without a progress percentage", () => {

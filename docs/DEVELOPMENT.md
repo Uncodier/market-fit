@@ -204,6 +204,13 @@ transaction protocol for all simultaneous order-line writers.
 
 ### POS sync error recovery
 
+Downloaded POS snapshots remain usable without internet for the same previously
+verified actor/site/role. The local permission grant is distinct from remote sync
+admission: no outbox replay is allowed until online verification succeeds again.
+Empty downloaded catalogs also qualify; a marker without a snapshot does not.
+Offline startup, connection loss, transport failures and reconnect revocation are
+covered by the POS access, local snapshot and real Chromium IndexedDB tests.
+
 The visible POS sync loop retries pending operations and non-payment failures.
 Failed collected payments use evidence-only reconciliation rather than checkout
 replay. Recorded money is distinct from full checkout completion; safe isolation

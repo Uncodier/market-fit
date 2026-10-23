@@ -7,17 +7,20 @@ import type { PosOutboxRow } from "./types";
 import type { CheckoutCartSuccess } from "@/app/commerce/checkout-client";
 import { isPosPermissionCurrent, type PosPermissionLease } from "./location-permission-state";
 import { PosCheckoutRecoveryError } from "../checkout-recovery-types";
+import { assertPosRemotePermission } from "./remote-permission";
 
 function assertCurrent(permission: PosPermissionLease) {
   if (!isPosPermissionCurrent(permission)) throw new Error("POS access changed");
 }
 
-export async function applyOutboxItem(row: PosOutboxRow, permission: PosPermissionLease): Promise<void> {
+export async function applyOutboxItem(row: PosOutboxRow, permission: PosPermissionLease, onDispatch: () => void = () => {}): Promise<void> {
   assertCurrent(permission);
   if (row.siteId !== permission.siteId || row.payload.data.siteId !== permission.siteId) throw new Error("POS site changed");
   if (row.payload.kind === "checkout" && row.payload.data.userId !== permission.userId) throw new Error("POS account changed");
   if (row.payload.kind === "create_lead") {
     const data = row.payload.data;
+    assertPosRemotePermission(permission);
+    onDispatch();
     const res = await createPosLead({
       siteId: data.siteId,
       name: data.name,
@@ -56,6 +59,8 @@ export async function applyOutboxItem(row: PosOutboxRow, permission: PosPermissi
 
   if (row.payload.kind === "check_in") {
     const data = row.payload.data;
+    assertPosRemotePermission(permission);
+    onDispatch();
     const res = await checkInTicket({
       code: data.code,
       siteId: data.siteId,
@@ -74,7 +79,8 @@ export async function applyOutboxItem(row: PosOutboxRow, permission: PosPermissi
       : data.orderId;
     if (!orderId) throw new Error("Waiting for local order to sync");
 
-    assertCurrent(permission);
+    assertPosRemotePermission(permission);
+    onDispatch();
     const res = await updateOrderNotes(data.siteId, orderId, data.notes);
     assertCurrent(permission);
     if ("error" in res && res.error) throw new Error(res.error);
@@ -102,7 +108,8 @@ export async function applyOutboxItem(row: PosOutboxRow, permission: PosPermissi
 
     // Local dependency identity is not part of the authorized HTTP checkout input.
     delete data.localLeadId;
-    assertCurrent(permission);
+    assertPosRemotePermission(permission);
+    onDispatch();
     const res = await checkoutPosCart({
       ...data,
       leadId,

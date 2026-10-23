@@ -2,7 +2,8 @@ import { pullPosCatalogSnapshot, type PosCatalogSnapshot } from "@/app/pos/actio
 import { posOrderAmountDue, selectPosOpenOrders } from "@/app/pos/open-orders";
 import { getPosDb } from "./db";
 import type { LocalPendingOrder, LocalPromotion } from "./types";
-import { requirePosPermission, isPosPermissionCurrent } from "./location-permission-state";
+import type { PosPermissionLease } from "./location-permission-state";
+import { assertPosRemotePermission, canStartPosRemoteRequest, requirePosRemotePermission } from "./remote-permission";
 
 const SCHEMA_VERSION = 1;
 
@@ -42,7 +43,7 @@ export async function readLocalCatalog(siteId: string) {
     inventorySnapshot: meta?.inventorySnapshot ?? null,
     lastPulledAt: meta?.lastPulledAt ?? null,
     lastCatalogRevision: meta?.lastCatalogRevision ?? null,
-    hasLocalData: catalogItems.length > 0,
+    hasLocalData: !!meta?.lastPulledAt || catalogItems.length > 0,
   };
 }
 
@@ -64,7 +65,9 @@ export async function readTaxesByItemIds(catalogItemIds: string[]) {
   return map;
 }
 
-export async function applyPosCatalogSnapshot(siteId: string, snapshot: PosCatalogSnapshot, revision: string | null) {
+export async function applyPosCatalogSnapshot(
+  siteId: string, snapshot: PosCatalogSnapshot, revision: string | null, permission?: PosPermissionLease,
+) {
   const db = getPosDb();
 
   const taxRows = Object.entries(snapshot.taxesByItem || {}).map(
@@ -120,6 +123,7 @@ export async function applyPosCatalogSnapshot(siteId: string, snapshot: PosCatal
       db.promotions,
     ],
     async () => {
+      if (permission) assertPosRemotePermission(permission);
       // Keep locally-created leads that have not synced yet
       const localLeads = await db.leads
         .where("site_id")
@@ -199,11 +203,12 @@ export async function applyPosCatalogSnapshot(siteId: string, snapshot: PosCatal
         modifierGroupsByHostId: snapshot.modifierGroupsByHostId || {},
         inventorySnapshot: snapshot.inventorySnapshot ?? null,
       });
+      if (permission) assertPosRemotePermission(permission);
     },
   );
 }
 
-export async function applyPosOpenOrders(siteId: string, openOrders: any[]) {
+export async function applyPosOpenOrders(siteId: string, openOrders: any[], permission?: PosPermissionLease) {
   const db = getPosDb();
   
   const pendingOrders: LocalPendingOrder[] = selectPosOpenOrders(
@@ -225,11 +230,48 @@ export async function applyPosOpenOrders(siteId: string, openOrders: any[]) {
     };
   });
 
-  await db.transaction("rw", [db.pendingOrders], async () => {
-    await db.pendingOrders.where("site_id").equals(siteId).delete();
-    if (pendingOrders.length) {
-      await db.pendingOrders.bulkPut(pendingOrders);
+  // Read queue evidence in the same transaction as replacement so replay cannot
+  // mark a row synced between deciding to retain it and writing the projection.
+  await db.transaction("rw", [db.pendingOrders, db.outbox, db.idMaps], async () => {
+    if (permission) assertPosRemotePermission(permission);
+    const [local, outbox, mappings] = await Promise.all([
+      db.pendingOrders.where("site_id").equals(siteId).toArray(),
+      db.outbox.where("siteId").equals(siteId).toArray(),
+      db.idMaps.where("siteId").equals(siteId).toArray(),
+    ]);
+    const mutations = new Set<string>();
+    const unresolvedIds = new Set<string>();
+    for (const row of outbox) {
+      if (row.status === "synced" || row.kind !== "checkout" || row.payload.kind !== "checkout") continue;
+      mutations.add(row.clientMutationId);
+      unresolvedIds.add(`local_${row.clientMutationId}`);
+      for (const id of [row.payload.data.existingOrderId, row.resultOrderId, row.recoveryOrderId]) {
+        if (id) unresolvedIds.add(id);
+      }
     }
+    const orderMappings = mappings.filter((mapping) => mapping.kind === "order");
+    for (const mapping of orderMappings) {
+      if (unresolvedIds.has(mapping.localId) || unresolvedIds.has(mapping.serverId)) {
+        unresolvedIds.add(mapping.localId);
+        unresolvedIds.add(mapping.serverId);
+      }
+    }
+    const retained = local.filter((order) => (order.raw?.pending_sync || order.id.startsWith("local_")) &&
+      (mutations.has(order.raw?.client_mutation_id) || unresolvedIds.has(order.id)));
+    const merged = new Map(pendingOrders.map((order) => [order.id, order]));
+    for (const order of retained) {
+      // A mapped server copy must not expose a stale payable version alongside
+      // the still-unsynchronized local edit.
+      for (const mapping of orderMappings) {
+        if (mapping.localId === order.id) merged.delete(mapping.serverId);
+      }
+      merged.set(order.id, order);
+    }
+    await db.pendingOrders.where("site_id").equals(siteId).delete();
+    if (merged.size) {
+      await db.pendingOrders.bulkPut(Array.from(merged.values()));
+    }
+    if (permission) assertPosRemotePermission(permission);
   });
 }
 
@@ -240,15 +282,15 @@ export async function pullAndStorePosCatalogSnapshot(
   error?: string;
   pulledAt?: string;
 }> {
-  const permission = requirePosPermission(siteId);
+  const permission = requirePosRemotePermission(siteId);
   const res = bypassCache
     ? await pullPosCatalogSnapshot(siteId, revision, true)
     : await pullPosCatalogSnapshot(siteId, revision);
-  if (!isPosPermissionCurrent(permission)) return { ok: false, error: "POS access changed" };
+  if (!canStartPosRemoteRequest(permission)) return { ok: false, error: "POS access changed" };
   if ("error" in res) {
     return { ok: false, error: res.error };
   }
   onSaving?.();
-  await applyPosCatalogSnapshot(siteId, res.data, revision);
+  await applyPosCatalogSnapshot(siteId, res.data, revision, permission);
   return { ok: true, pulledAt: res.data.pulledAt };
 }

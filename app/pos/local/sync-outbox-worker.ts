@@ -7,6 +7,7 @@ import { PosCheckoutRecoveryError } from "../checkout-recovery-types";
 import { clearPosSyncError, recordPosSyncError } from "./sync-errors";
 import { isPosPermissionCurrent, type PosPermissionLease } from "./location-permission-state";
 import type { PosOutboxRow } from "./types";
+import { canStartPosRemoteRequest } from "./remote-permission";
 
 const SYNC_WAIT_MS = 45_000;
 const RECOVERY_WAIT_MS = 8_000;
@@ -25,13 +26,21 @@ function hasCollectedPayment(row: PosOutboxRow): boolean {
 
 async function recordFailure(row: PosOutboxRow, permission: PosPermissionLease, message: string, submitted: boolean) {
   if (!isPosPermissionCurrent(permission)) return;
+  const remote = canStartPosRemoteRequest(permission);
+  if (!remote && !submitted) return;
   const db = getPosDb();
   await db.transaction("rw", db.outbox, async () => {
     const current = await db.outbox.get(row.id);
     // A timeout can race a successful response or manual evidence lookup.
     if (!current || current.status === "synced" || !isPosPermissionCurrent(permission)) return;
-    await updateOutboxRow(row.id, { ...(submitted ? { status: "failed" as const } : {}), lastError: message });
-    recordPosSyncError(`outbox:${row.id}`, {
+    if (current.recoveryState) return;
+    await updateOutboxRow(row.id, {
+      ...(submitted ? { status: "failed" as const } : {}),
+      lastError: remote ? message : null,
+      ...(!remote && submitted && hasCollectedPayment(row) ? { recoveryState: "review_required" as const,
+        recoveryMessage: "Payment status is unconfirmed. Check its status after reconnecting; do not collect it again." } : {}),
+    });
+    if (canStartPosRemoteRequest(permission)) recordPosSyncError(`outbox:${row.id}`, {
       siteId: row.siteId, operation: row.kind, error: message,
       clientMutationId: row.clientMutationId, attempts: current.attempts,
     });
@@ -45,6 +54,7 @@ export function syncPosOutboxRow(
   changed: (siteId: string) => void,
   ancestors = new Set<string>(),
 ): Promise<void> {
+  if (!canStartPosRemoteRequest(permission)) return Promise.resolve();
   if (ancestors.has(queued.id)) return Promise.reject(new Error("Cyclic local checkout dependency"));
   const key = JSON.stringify([queued.siteId, queued.id]);
   const active = inFlight.get(key);
@@ -52,6 +62,17 @@ export function syncPosOutboxRow(
 
   let row = queued;
   let submitted = false;
+  let claimed: Pick<PosOutboxRow, "status" | "attempts"> | null = null;
+  const restoreUnsentClaim = async () => {
+    if (!claimed || submitted || !isPosPermissionCurrent(permission)) return;
+    const db = getPosDb();
+    await db.transaction("rw", db.outbox, async () => {
+      const current = await db.outbox.get(row.id);
+      if (current?.status === "syncing" && !current.recoveryState && isPosPermissionCurrent(permission)) {
+        await updateOutboxRow(row.id, claimed!);
+      }
+    });
+  };
   let expired = false;
   let timer: ReturnType<typeof setTimeout>;
   let releaseWait!: () => void;
@@ -62,9 +83,12 @@ export function syncPosOutboxRow(
     clearTimeout(timer);
     timer = setTimeout(() => {
       expired = true;
+      // A blocked local store must not extend the caller deadline or release
+      // ownership of the real request. Persistence remains best effort here.
+      releaseWait();
       void recordFailure(row, permission, "Sync timed out", submitted)
         .catch(() => { /* An unavailable local store cannot prove a failed checkout. */ })
-        .finally(() => { changed(row.siteId); releaseWait(); });
+        .finally(() => { changed(row.siteId); });
     }, Math.max(0, Math.min(ms, deadline - Date.now())));
   };
   armDeadline(SYNC_WAIT_MS);
@@ -84,6 +108,7 @@ export function syncPosOutboxRow(
     if (row.status === "synced" || row.recoveryState === "rejected") return;
 
     const recover = async () => {
+      if (!canStartPosRemoteRequest(permission)) return;
       armDeadline(RECOVERY_WAIT_MS);
       try {
         const result = await reconcilePosCheckout(row.siteId, row.id);
@@ -105,7 +130,7 @@ export function syncPosOutboxRow(
         if (isExpired()) throw new Error("Sync timed out");
         return syncPosOutboxRow(dependency, permission, changed, chain);
       });
-      if (isExpired() || !isPosPermissionCurrent(permission)) return;
+      if (isExpired() || !canStartPosRemoteRequest(permission)) return;
       // Dependencies may have taken time; never replay a newly confirmed row.
       const latest = await getPosDb().outbox.get(row.id);
       if (!latest || latest.status === "synced" || isExpired() || !isPosPermissionCurrent(permission)) return;
@@ -114,31 +139,33 @@ export function syncPosOutboxRow(
         await recover();
         return;
       }
+      claimed = { status: latest.status, attempts: latest.attempts };
       await updateOutboxRow(row.id, { status: "syncing", attempts: latest.attempts + 1 });
       if (!isPosPermissionCurrent(permission)) return;
-      if (isExpired()) {
-        // The local claim itself may have stalled. No request was dispatched.
-        const db = getPosDb();
-        await db.transaction("rw", db.outbox, async () => {
-          const current = await db.outbox.get(row.id);
-          if (current?.status === "syncing" && !current.recoveryState && isPosPermissionCurrent(permission)) {
-            await updateOutboxRow(row.id, { status: latest.status, attempts: latest.attempts });
-          }
-        });
+      if (isExpired() || !canStartPosRemoteRequest(permission)) {
+        // A stalled claim or lost connection before dispatch is still unsent work.
+        await restoreUnsentClaim();
         return;
       }
-      submitted = true;
-      await applyOutboxItem(row, permission);
+      await applyOutboxItem(row, permission, () => {
+        if (isExpired()) throw new Error("Sync timed out");
+        submitted = true;
+      });
       if (isPosPermissionCurrent(permission)) clearPosSyncError(row.siteId, `outbox:${row.id}`);
     } catch (error) {
       if (!isPosPermissionCurrent(permission)) return;
+      await restoreUnsentClaim();
+      // Returned receipt evidence is useful local data even after remote admission closes.
+      if (error instanceof PosCheckoutRecoveryError) {
+        await applyPosCheckoutRecovery(row, error.recovery);
+        return;
+      }
       await recordFailure(row, permission, error instanceof Error ? error.message : "Sync failed", submitted);
       if (!submitted) return;
-      if (error instanceof PosCheckoutRecoveryError) await applyPosCheckoutRecovery(row, error.recovery);
-      else if (hasCollectedPayment(row)) await recover();
+      if (hasCollectedPayment(row)) await recover();
     }
   }).catch((error) => {
-    if (isPosPermissionCurrent(permission)) recordPosSyncError("outbox", {
+    if (canStartPosRemoteRequest(permission)) recordPosSyncError("outbox", {
       siteId: queued.siteId, operation: "outbox", error: error instanceof Error ? error.message : "Sync failed",
     });
   }).finally(() => {

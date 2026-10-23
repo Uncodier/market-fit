@@ -141,6 +141,68 @@ describe("targeted POS checkout scheduling", () => {
     expect(engine.getPosSyncStatus(SITE)).toMatchObject({ syncing: false, failedCount: 0, lastError: null });
   });
 
+  it("exposes uncertain receipt recovery after an offline deadline without replaying the live request", async () => {
+    rows = [payment("target")];
+    const request = deferred<{ success: boolean; orderId: string }>();
+    checkout.mockReturnValue(request.promise);
+    const pending = engine.syncPosCheckout(SITE, "target");
+    await flush();
+    Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
+    await jest.advanceTimersByTimeAsync(45_000);
+    await pending;
+    expect(rows[0]).toMatchObject({ status: "failed", recoveryState: "review_required", attempts: 1, lastError: null });
+    const report = (await import("@/app/pos/actions/report-sync-error")).reportPosSyncError;
+    expect(report).not.toHaveBeenCalled();
+    Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
+    await engine.syncPosCheckout(SITE, "target");
+    expect(checkout).toHaveBeenCalledTimes(1);
+    request.resolve({ success: true, orderId: "late-confirmed" });
+    await flush();
+    expect(rows[0]).toMatchObject({ status: "synced", resultOrderId: "late-confirmed" });
+  });
+
+  it("keeps explicit rejected receipt evidence returned after offline fallback", async () => {
+    rows = [payment("target")];
+    checkout.mockImplementationOnce(async () => {
+      Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
+      return { error: "Rejected", recovery: { state: "rejected", message: "No payment was recorded" } };
+    });
+    await engine.syncPosCheckout(SITE, "target");
+    const apply = (await import("@/app/pos/local/checkout-recovery")).applyPosCheckoutRecovery;
+    expect(apply).toHaveBeenCalledWith(expect.objectContaining({ id: "row-target" }), { state: "rejected", message: "No payment was recorded" });
+    expect(recovery).not.toHaveBeenCalled();
+  });
+
+  it("restores an unsent claim if remote admission closes during final identity resolution", async () => {
+    rows = [payment("target", { localLeadId: "local_customer", leadId: "server-customer" })];
+    const permission = jest.mocked(await import("@/app/pos/local/location-permission-state"));
+    const outbox = jest.mocked(await import("@/app/pos/local/outbox"));
+    outbox.getServerIdForLocal.mockImplementationOnce(async () => {
+      permission.getPosPermissionLease.mockReturnValue({ siteId: SITE, userId: "cashier", role: "owner", generation: 1, expiresAt: Infinity, offline: true });
+      return "server-customer";
+    });
+    await engine.syncPosCheckout(SITE, "target");
+    expect(checkout).not.toHaveBeenCalled();
+    expect(recovery).not.toHaveBeenCalled();
+    expect(rows[0]).toMatchObject({ status: "pending", attempts: 0 });
+  });
+
+  it("never dispatches a claim whose final identity lookup resolves after the caller deadline", async () => {
+    rows = [payment("target", { localLeadId: "local_customer", leadId: "server-customer" })];
+    const lookup = deferred<string>();
+    const outbox = jest.mocked(await import("@/app/pos/local/outbox"));
+    outbox.getServerIdForLocal.mockReturnValueOnce(lookup.promise);
+    const pending = engine.syncPosCheckout(SITE, "target");
+    await flush();
+    await jest.advanceTimersByTimeAsync(45_000);
+    await pending;
+    lookup.resolve("server-customer");
+    await flush();
+    expect(checkout).not.toHaveBeenCalled();
+    expect(rows[0]).toMatchObject({ status: "pending", attempts: 0 });
+    expect(recovery).not.toHaveBeenCalled();
+  });
+
   it.each(["failed", "syncing"] as const)("only reconciles an existing %s collected payment with bounded waits", async (status) => {
     rows = [{ ...payment("target"), status }];
     const request = deferred<{ state: string }>();
@@ -187,6 +249,22 @@ describe("targeted POS checkout scheduling", () => {
     write.resolve();
     await flush();
     expect(rows[0]).toMatchObject({ status: "synced", resultOrderId: "confirmed", lastError: null });
+  });
+
+  it("bounds the caller even if both checkout and deadline persistence remain blocked", async () => {
+    rows = [payment("target")];
+    checkout.mockReturnValue(new Promise(() => {}));
+    transaction.mockReturnValue(new Promise(() => {}));
+    let settled = false;
+    const pending = engine.syncPosCheckout(SITE, "target").then(() => { settled = true; });
+    await flush();
+    await jest.advanceTimersByTimeAsync(45_000);
+    await flush();
+    expect(settled).toBe(true);
+    await pending;
+    await engine.syncPosCheckout(SITE, "target");
+    expect(checkout).toHaveBeenCalledTimes(1);
+    expect(rows[0].status).toBe("syncing");
   });
 
   it("syncs the exact local order creator and its lead before paying, without unrelated rows", async () => {

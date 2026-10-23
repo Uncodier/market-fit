@@ -1,12 +1,12 @@
 import { act, renderHook } from "@testing-library/react";
 import { usePosLocationAccess } from "@/app/pos/hooks/use-pos-location-access";
 import { createClient } from "@/lib/supabase/client";
-import { clearPosPrivateData, lockPosDb, unlockPosDb } from "@/app/pos/local/db";
+import { clearPosPrivateData, hasPosCachedSnapshot, lockPosDb, unlockPosDb } from "@/app/pos/local/db";
 import { getPosPermissionLease, suspendPosPermission } from "@/app/pos/local/location-permission-state";
 
 jest.mock("@/lib/supabase/client", () => ({ createClient: jest.fn() }));
 jest.mock("@/app/pos/local/db", () => ({
-  clearPosPrivateData: jest.fn(), lockPosDb: jest.fn(), unlockPosDb: jest.fn(),
+  clearPosPrivateData: jest.fn(), hasPosCachedSnapshot: jest.fn(), lockPosDb: jest.fn(), unlockPosDb: jest.fn(),
 }));
 
 const auth = jest.fn();
@@ -30,6 +30,7 @@ describe("POS current browser location access", () => {
     suspendPosPermission();
     online(true);
     jest.mocked(clearPosPrivateData).mockResolvedValue(undefined);
+    jest.mocked(hasPosCachedSnapshot).mockResolvedValue(false);
     auth.mockResolvedValue({ data: { user: { id: "actor-a" } }, error: null });
     rpc.mockImplementation(async (name: string) => ({ data: name === "current_user_site_role" ? "collaborator" : false, error: null }));
     jest.mocked(createClient).mockReturnValue({
@@ -230,7 +231,7 @@ describe("POS current browser location access", () => {
     expect(getPosPermissionLease()).toBeNull();
   });
 
-  it("denies offline startup despite a previous owner marker, preserving same-owner unconfirmed work", async () => {
+  it("requires an actual downloaded snapshot for offline startup, preserving same-owner unconfirmed work", async () => {
     localStorage.setItem("pos-location-scope-v1", JSON.stringify(["actor-a", "site-a", "collaborator"]));
     online(false);
     const { result } = renderHook(() => usePosLocationAccess("site-a", "actor-a"));
@@ -255,17 +256,75 @@ describe("POS current browser location access", () => {
     expect(clearPosPrivateData).not.toHaveBeenCalled();
   });
 
-  it("locks immediately on offline and rechecks before reconnect without deleting same-scope drafts", async () => {
+  it("keeps the downloaded POS and cart generation available offline and rechecks on reconnect", async () => {
     const { result } = renderHook(() => usePosLocationAccess("site-a", "actor-a"));
     await settle();
+    const generation = result.current.lease?.generation;
+    jest.mocked(hasPosCachedSnapshot).mockResolvedValue(true);
     jest.mocked(clearPosPrivateData).mockClear();
+    jest.mocked(lockPosDb).mockClear();
     act(() => { online(false); window.dispatchEvent(new Event("offline")); });
-    expect(result.current.status).toBe("unavailable");
-    expect(getPosPermissionLease()).toBeNull();
+    await settle();
+    expect(result.current).toMatchObject({ status: "allowed", lease: { generation, offline: true } });
+    expect(lockPosDb).not.toHaveBeenCalled();
+    act(() => jest.advanceTimersByTime(120_000));
+    await settle();
+    expect(result.current.status).toBe("allowed");
     act(() => { online(true); window.dispatchEvent(new Event("online")); });
     await settle();
     expect(result.current.status).toBe("allowed");
+    expect(result.current.lease?.generation).toBe(generation);
+    expect(result.current.lease?.offline).not.toBe(true);
     expect(clearPosPrivateData).not.toHaveBeenCalled();
+  });
+
+  it("restores downloaded data on offline startup without contacting auth or permissions", async () => {
+    localStorage.setItem("pos-location-scope-v1", JSON.stringify(["actor-a", "site-a", "collaborator"]));
+    jest.mocked(hasPosCachedSnapshot).mockResolvedValue(true);
+    online(false);
+    const { result } = renderHook(() => usePosLocationAccess("site-a", "actor-a"));
+    await settle();
+    expect(result.current).toMatchObject({ status: "allowed", lease: { offline: true } });
+    expect(auth).not.toHaveBeenCalled();
+    expect(rpc).not.toHaveBeenCalled();
+    expect(clearPosPrivateData).not.toHaveBeenCalled();
+  });
+
+  it.each(["auth", "permissions", "timeout"])("uses downloaded data on %s transport loss even if the browser reports online", async (lane) => {
+    localStorage.setItem("pos-location-scope-v1", JSON.stringify(["actor-a", "site-a", "collaborator"]));
+    jest.mocked(hasPosCachedSnapshot).mockResolvedValue(true);
+    if (lane === "auth") auth.mockRejectedValue(new TypeError("Failed to fetch"));
+    if (lane === "permissions") rpc.mockResolvedValue({ data: null, error: { message: "TypeError: Failed to fetch" } });
+    if (lane === "timeout") auth.mockReturnValue(new Promise(() => {}));
+    const { result } = renderHook(() => usePosLocationAccess("site-a", "actor-a"));
+    await settle();
+    if (lane === "timeout") { act(() => jest.advanceTimersByTime(8_000)); await settle(); }
+    expect(result.current).toMatchObject({ status: "allowed", lease: { offline: true } });
+  });
+
+  it("does not use downloaded data for an explicit auth rejection", async () => {
+    localStorage.setItem("pos-location-scope-v1", JSON.stringify(["actor-a", "site-a", "collaborator"]));
+    jest.mocked(hasPosCachedSnapshot).mockResolvedValue(true);
+    auth.mockResolvedValue({ data: { user: null }, error: { status: 401, message: "Invalid session" } });
+    const { result } = renderHook(() => usePosLocationAccess("site-a", "actor-a"));
+    await settle();
+    expect(result.current.status).toBe("unavailable");
+    expect(unlockPosDb).not.toHaveBeenCalled();
+  });
+
+  it("revokes a cached local grant when reconnect confirms location restrictions", async () => {
+    localStorage.setItem("pos-location-scope-v1", JSON.stringify(["actor-a", "site-a", "collaborator"]));
+    jest.mocked(hasPosCachedSnapshot).mockResolvedValue(true);
+    online(false);
+    const { result } = renderHook(() => usePosLocationAccess("site-a", "actor-a"));
+    await settle();
+    expect(result.current.status).toBe("allowed");
+    rpc.mockImplementation(async (name: string) => ({ data: name === "current_user_site_role" ? "collaborator" : true, error: null }));
+    act(() => { online(true); window.dispatchEvent(new Event("online")); });
+    await settle();
+    expect(result.current.status).toBe("restricted");
+    expect(getPosPermissionLease()).toBeNull();
+    expect(clearPosPrivateData).toHaveBeenCalled();
   });
 
   it("ignores a stale site response and serializes the purge before opening a new scope", async () => {

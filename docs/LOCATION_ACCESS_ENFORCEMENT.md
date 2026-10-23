@@ -129,9 +129,32 @@ mistaking an empty exclusion set for membership.
 POS is not yet a reviewed location-scoped offline projection, so it is unavailable
 to excluded members. Before POS hooks can hydrate catalog, drafts, or queues,
 the page verifies the actual actor, effective site role, and site/global restriction
-predicates online. Offline/unknown access locks the database and unmounts the
-workspace; no saved permission marker is an offline grant. Freshness has a
-30-second refresh and an 8-second verification deadline.
+predicates online. Once an atomic snapshot has been downloaded, the same verified
+actor/site/role can restore local access without internet. A marker alone, an
+unknown actor, or a different site cannot restore access. Local access has no
+network freshness expiry; online verification has a 30-second refresh and an
+8-second deadline. Transport failures/timeouts retain the downloaded POS, not
+an error screen. Explicit authentication or permission denials still lock access.
+
+The offline grant permits IndexedDB reads/writes and queued operations, never
+remote replay. Reconnect must verify the actor and restrictions before draining
+the queue. Losing internet retains the workspace/cart generation; waiting local
+operations are shown as offline, not as actively syncing. A completed empty
+catalog also counts as a downloaded version. No first download still requires
+connection. The application document and authenticated user/site context must
+already be available: this is not a service-worker installation or offline login.
+Permission changes made elsewhere cannot be learned while disconnected; explicit
+sign-out, scope changes, cross-tab invalidation and reconnect checks remain fenced.
+
+Explicit 401/403/42501 denials invalidate offline eligibility, even if delivered
+after the access-check timeout or network fallback for the same actor/site. Late
+grants never reopen access. A separate scope epoch discards denials from a previous
+account, site, storage context, or disposed verifier. Remote request generations
+change on offline fallback and reconnect without remounting the local cart.
+Read projections from the previous remote generation are discarded; accepted
+order pulls merge unsynchronized local orders using transactionally read outbox
+evidence. Receipt evidence from already dispatched payments is still applied
+locally under the matching actor/site generation.
 
 Pending POS access and route loading render a presentation-only catalog/cart
 skeleton; no private hooks mount before verification. Session notifications for

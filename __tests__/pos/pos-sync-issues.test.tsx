@@ -12,7 +12,8 @@ jest.mock("@/app/pos/checkout-status-client", () => ({ fetchPosCheckoutStatus: j
 jest.mock("@/app/commerce/checkout", () => ({ checkoutCart: jest.fn() }));
 jest.mock("@/app/pos/local/db", () => ({ getPosDb: jest.fn() }));
 jest.mock("@/app/pos/local/location-permission-state", () => ({
-  requirePosPermission: jest.fn(() => ({ userId: "cashier" })),
+  requirePosPermission: jest.fn((siteId: string) => ({ siteId, userId: "cashier", generation: 1 })),
+  getPosPermissionLease: jest.fn((siteId: string) => ({ siteId, userId: "cashier", generation: 1 })),
   isPosPermissionCurrent: jest.fn(() => true),
 }));
 jest.mock("@/app/pos/local/outbox", () => ({

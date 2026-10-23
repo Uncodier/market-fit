@@ -43,6 +43,37 @@ suite("POS permission fence in real Chromium IndexedDB (isolated, no app server)
   });
   afterEach(async () => { await page?.close(); });
 
+  it("reads and writes downloaded IndexedDB data offline, restores after reload and fences sign-out", async () => {
+    await page.evaluate(async (scope) => {
+      const handle = window.posTest.db.getPosDb();
+      await handle.meta.put({ siteId: scope.siteId, lastPulledAt: "2026-10-23T12:00:00Z", schemaVersion: 1 });
+      await handle.leads.put({ id: "cached-lead", site_id: scope.siteId, name: "Downloaded customer" });
+    }, scope);
+    await page.context().setOffline(true);
+    const result = await page.evaluate(async (scope) => {
+      const { db, permission } = window.posTest;
+      const original = db.getPosDb();
+      const onlineGrant = permission.getPosPermissionLease()!;
+      const offlineGrant = await permission.restorePosPermission(scope.userId, scope.siteId, () => true);
+      const sameHandle = db.getPosDb() === original;
+      await original.cartSessions.put({ siteId: scope.siteId, updatedAt: "now", cart: [], sentLineQuantities: {},
+        leadValue: null, fulfillment: "pickup", originLocationId: "", priceListId: "", promoCode: "", activeOrderId: "", buyerUserId: null });
+      permission.suspendPosPermission();
+      await permission.preparePosPermission(scope.userId, scope.siteId);
+      await permission.restorePosPermission(scope.userId, scope.siteId, () => true);
+      const handle = db.getPosDb();
+      const lead = await handle.leads.get("cached-lead");
+      const draft = await handle.cartSessions.get(scope.siteId);
+      await permission.revokePosPermission();
+      const cannotRestore = await permission.restorePosPermission(scope.userId, scope.siteId, () => true) === null;
+      const denied = await handle.leads.get("cached-lead").then(() => false, () => true);
+      return { offline: offlineGrant?.offline, sameHandle, sameGeneration: offlineGrant?.generation === onlineGrant.generation,
+        lead: lead?.name, draft: !!draft, cannotRestore, denied, browserOffline: !navigator.onLine };
+    }, scope);
+    expect(result).toEqual({ offline: true, sameHandle: true, sameGeneration: true, lead: "Downloaded customer",
+      draft: true, cannotRestore: true, denied: true, browserOffline: true });
+  });
+
   it.each(["suspend", "revoke"] as const)("aborts a live rw transaction on %s and cannot commit its earlier write", async (mode) => {
     const result = await page.evaluate(async ({ mode, scope }) => {
       const { db, permission } = window.posTest;

@@ -19,6 +19,20 @@ mutation ID is supplied. It never blocks unrelated orders or the entire POS.
 A rejected attempt remains visible and immutable in the queue; a newly confirmed
 attempt uses new mutation and receipt IDs. Review keeps
 the original queue identity, including when no server order has been linked yet.
+
+Offline continuity uses a local grant separate from remote admission. Receipt
+creation and each new transport call recheck online permission after asynchronous
+lookups; an offline fallback cannot create a new unresolved receipt. Unpaid sends
+remain local. Remote admission has its own generation across disconnect/reconnect,
+so retaining the cart does not authorize old requests to resume.
+
+A submitted payment whose wait expires offline is retained as failed/review-required
+with its original IDs, exposing **Check payment status** once access is verified
+again. Its live mutation still owns its slot and must never be replayed. Explicit
+success or rejection received after disconnect is persisted for the same local
+scope; losing network access suppresses new requests, not receipt evidence. An
+unsent claim restores its previous status and attempt count instead of pretending
+a payment was submitted.
 The authenticated, site-scoped order read remains separate from payment recovery:
 refreshing order details is not proof of checkout finalization. **Check payment
 status** reconciles the original attempt without replaying it. Only a verified

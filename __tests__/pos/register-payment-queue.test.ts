@@ -6,10 +6,12 @@ import { resetCheckoutCartSession } from "@/app/pos/local/checkout-attempt-stora
 import { assertRegisterQueueSettled, withRegisterCloseLock } from "@/app/pos/register/queue-guard"
 import type { CheckoutOutboxPayload, PosOutboxRow } from "@/app/pos/local/types"
 import { PaymentRegisterRequiredError } from "@/app/pos/register/payment-register-required"
+import { getPosPermissionLease } from "@/app/pos/local/location-permission-state"
 
 jest.mock("@/app/pos/operation-client", () => ({ fetchActivePaymentRegister: jest.fn() }))
 jest.mock("@/app/pos/local/location-permission-state", () => ({
-  requirePosPermission: () => ({ generation: 1 }),
+  requirePosPermission: (siteId: string) => ({ siteId, userId: "actor", generation: 1 }),
+  getPosPermissionLease: jest.fn((siteId: string) => ({ siteId, userId: "actor", generation: 1 })),
   isPosPermissionCurrent: () => true,
 }))
 jest.mock("@/app/pos/local/outbox", () => ({ enqueueCheckout: jest.fn(), listOutbox: jest.fn() }))
@@ -24,6 +26,7 @@ const row = (data: CheckoutOutboxPayload): PosOutboxRow => ({ id: "row", siteId:
 describe("Register payment queue and closing lock", () => {
   beforeEach(() => {
     jest.clearAllMocks(); rows = []; localStorage.clear()
+    jest.mocked(getPosPermissionLease).mockImplementation((siteId) => ({ siteId: siteId!, userId: "actor", generation: 1, role: "owner", expiresAt: Infinity }))
     Object.defineProperty(navigator, "onLine", { configurable: true, value: true })
     Object.defineProperty(navigator, "locks", { configurable: true, value: locks })
     jest.mocked(listOutbox).mockImplementation(async () => rows)
@@ -42,10 +45,22 @@ describe("Register payment queue and closing lock", () => {
     const result = await enqueueRegisteredCheckout("site", payload)
     expect(result.status).toBe("synced")
     expect(enqueueCheckout).toHaveBeenCalledWith("site", expect.objectContaining({ registerSessionId: "session", originLocationId: "location",
-      payments: [expect.objectContaining({ paymentId: expect.stringMatching(/^[a-f0-9-]{36}$/), amount: 10 })] }), expect.any(String))
+      payments: [expect.objectContaining({ paymentId: expect.stringMatching(/^[a-f0-9-]{36}$/), amount: 10 })] }), expect.any(String), expect.any(Function))
     expect(syncPosCheckout).toHaveBeenCalledWith("site", "mutation")
     expect(drainPosOutbox).not.toHaveBeenCalled()
     expect(locks.request).toHaveBeenCalledWith("pos-register:site", { mode: "exclusive", signal: expect.any(AbortSignal) }, expect.any(Function))
+  })
+  it.each(["before", "during lookup"])("does not create receipts when access becomes local-only %s", async (when) => {
+    const offline = () => jest.mocked(getPosPermissionLease).mockReturnValue({ siteId: "site", userId: "actor", generation: 1, role: "owner", expiresAt: Infinity, offline: true })
+    if (when === "before") offline()
+    else jest.mocked(getActiveRegisterForPayment).mockImplementationOnce(async () => {
+      offline()
+      return { data: { id: "session", location_id: "location" } } as never
+    })
+    await expect(enqueueRegisteredCheckout("site", payload)).rejects.toThrow("verify POS access")
+    expect(enqueueCheckout).not.toHaveBeenCalled()
+    expect(syncPosCheckout).not.toHaveBeenCalled()
+    if (when === "before") expect(getActiveRegisterForPayment).not.toHaveBeenCalled()
   })
   it("keeps an ambiguous payment and reuses its original mutation/receipt IDs on retry", async () => {
     jest.mocked(syncPosCheckout).mockResolvedValueOnce(undefined)

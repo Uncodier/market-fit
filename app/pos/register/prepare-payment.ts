@@ -6,6 +6,7 @@ import { withRegisterPaymentLock } from "./queue-guard"
 import { requirePosPermission, isPosPermissionCurrent } from "../local/location-permission-state"
 import { getCheckoutCartSession } from "../local/checkout-attempt-storage"
 import { throwPaymentRegisterError } from "./payment-register-required"
+import { assertPosRemotePermission } from "../local/remote-permission"
 
 function paymentFingerprint(data: CheckoutOutboxPayload, sameAttempt = false) {
   return JSON.stringify(data, (key, value) =>
@@ -18,6 +19,7 @@ export async function enqueueRegisteredCheckout(siteId: string, payload: Checkou
   isCurrent: () => boolean = () => true) {
   const permission = requirePosPermission(siteId)
   if (!payload.payments?.length) return enqueueCheckout(siteId, payload)
+  assertPosRemotePermission(permission)
   const cartSessionId = getCheckoutCartSession(siteId)
   const assertSelection = () => {
     if (!isCurrent() || getCheckoutCartSession(siteId) !== cartSessionId) {
@@ -25,7 +27,7 @@ export async function enqueueRegisteredCheckout(siteId: string, payload: Checkou
     }
   }
   const queued = await withRegisterPaymentLock(siteId, async () => {
-    if (!isPosPermissionCurrent(permission)) throw new Error("POS access changed")
+    assertPosRemotePermission(permission)
     assertSelection()
     const rows = await listOutbox(siteId)
     if (!isPosPermissionCurrent(permission)) throw new Error("POS access changed")
@@ -57,16 +59,17 @@ export async function enqueueRegisteredCheckout(siteId: string, payload: Checkou
         payload = { ...payload, clientMutationId: uuidv4() }
         onReceipt?.(payload.clientMutationId)
       }
+      assertPosRemotePermission(permission)
       const result = await fetchActivePaymentRegister({
         siteId, ...(payload.originLocationId ? { locationId: payload.originLocationId } : {}),
       })
-      if (!isPosPermissionCurrent(permission)) throw new Error("POS access changed")
+      assertPosRemotePermission(permission)
       if (result.error !== undefined) throwPaymentRegisterError(result)
       assertSelection()
       return enqueueCheckout(siteId, {
         ...payload, originLocationId: result.data.location_id, registerSessionId: result.data.id,
         payments: payload.payments!.map((payment) => ({ ...payment, paymentId: uuidv4() })),
-      }, cartSessionId)
+      }, cartSessionId, () => { assertSelection(); assertPosRemotePermission(permission) })
     }
     return previous
   })
