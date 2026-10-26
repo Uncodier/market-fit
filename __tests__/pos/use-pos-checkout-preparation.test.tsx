@@ -59,7 +59,7 @@ describe("POS payment preparation", () => {
     outboxFirst.mockReset().mockResolvedValue({ status: "failed", lastError: "old sale failure" });
     jest.mocked(enqueueRegisteredCheckout).mockImplementation(async (siteId, data) => {
       await enqueueCheckout(siteId, data);
-      return { clientMutationId: data.clientMutationId } as never;
+      return { id: "row", siteId, status: "synced", payload: { kind: "checkout", data }, clientMutationId: data.clientMutationId } as never;
     });
     Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
     jest.mocked(getPosOrder).mockResolvedValue({ data: snapshot } as never);
@@ -288,7 +288,7 @@ describe("POS payment preparation", () => {
     expect(jest.mocked(enqueueRegisteredCheckout).mock.calls[2][1].clientMutationId).not.toBe(original);
   });
 
-  it("does not show stale sync callbacks over a new cart", async () => {
+  it("keeps receipt-specific feedback active after the cashier starts a new cart", async () => {
     Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
     let finish!: () => void;
     jest.mocked(syncPosCheckout).mockReturnValueOnce(new Promise<void>((resolve) => { finish = resolve; }));
@@ -300,11 +300,11 @@ describe("POS payment preparation", () => {
     jest.mocked(toast.message).mockClear();
     await act(async () => { finish(); });
     expect(toast.message).not.toHaveBeenCalled();
-    expect(outboxFirst).not.toHaveBeenCalled();
-    expect(toast.error).not.toHaveBeenCalled();
+    expect(outboxFirst).toHaveBeenCalled();
+    expect(toast.error).toHaveBeenCalledWith(expect.stringContaining("needs review"), expect.objectContaining({ id: "pos-checkout:row" }));
   });
 
-  it("rechecks after deferred receipt lookup before showing an old failure", async () => {
+  it("suppresses background feedback after permission loss during a receipt lookup", async () => {
     Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
     jest.mocked(syncPosCheckout).mockResolvedValueOnce(undefined);
     let finish!: (value: { status: string; lastError: string }) => void;
@@ -313,8 +313,43 @@ describe("POS payment preparation", () => {
     const { result, rerender } = renderHook(usePosCheckout, { initialProps: input });
     await act(async () => { await result.current.handleCheckout(payments); });
     expect(outboxFirst).toHaveBeenCalledTimes(1);
-    rerender({ ...input, cart: [{ ...input.cart[0], cartQty: 3 }] });
+    permissionCurrent = false;
+    rerender({ ...input, siteId: "other-site" });
     await act(async () => { finish({ status: "failed", lastError: "old sale failure" }); });
     expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  it("closes after local acceptance while confirmation hangs, without claiming payment or changing the balance", async () => {
+    jest.mocked(enqueueRegisteredCheckout).mockImplementationOnce(async (siteId, data) => ({
+      id: "pending-row", siteId, status: "pending", clientMutationId: data.clientMutationId,
+      payload: { kind: "checkout", data },
+    } as never));
+    jest.mocked(syncPosCheckout).mockReturnValueOnce(new Promise(() => {}));
+    const input = args();
+    const { result } = renderHook(() => usePosCheckout(input));
+    act(() => result.current.initiateCheckout());
+    await act(async () => { await result.current.handleCheckout(payments); });
+    expect(result.current.checkoutLoading).toBe(false);
+    expect(result.current.isPaymentDialogOpen).toBe(false);
+    expect(input.onCleared).toHaveBeenCalledTimes(1);
+    expect(enqueueRegisteredCheckout).toHaveBeenCalledWith("site", expect.any(Object), expect.any(Function), expect.any(Function), { waitForConfirmation: false });
+    expect(toast.success).not.toHaveBeenCalled();
+    expect(toast.message).toHaveBeenCalledWith(expect.stringContaining("Confirming in the background"), expect.any(Object));
+    expect(pendingDelete).not.toHaveBeenCalled();
+    expect(pendingPut).not.toHaveBeenCalled();
+  });
+
+  it("retains the payment alias after failed durable cart cleanup and still starts confirmation", async () => {
+    const input = { ...args(), activeOrderId: "new", onCleared: jest.fn().mockRejectedValue(new Error("Cart storage unavailable")) };
+    jest.mocked(syncPosCheckout).mockReturnValue(new Promise(() => {}));
+    const first = renderHook(() => usePosCheckout(input));
+    await act(async () => { await first.result.current.handleCheckout(payments); });
+    const original = jest.mocked(enqueueRegisteredCheckout).mock.calls[0][1].clientMutationId;
+    expect(syncPosCheckout).toHaveBeenCalledWith("site", original);
+    expect(toast.error).toHaveBeenCalledWith("Cart storage unavailable");
+    first.unmount();
+    const retry = renderHook(() => usePosCheckout(input));
+    await act(async () => { await retry.result.current.handleCheckout(payments); });
+    expect(jest.mocked(enqueueRegisteredCheckout).mock.calls[1][1].clientMutationId).toBe(original);
   });
 });

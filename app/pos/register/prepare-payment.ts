@@ -14,9 +14,9 @@ function paymentFingerprint(data: CheckoutOutboxPayload, sameAttempt = false) {
       (sameAttempt && ["leadId", "localLeadId"].includes(key))) ? undefined : value)
 }
 
-/** Collect only after the register receipt has reached the server, preserving retry IDs. */
+/** Persist receipt identities before dispatch. Optimistic callers must observe server confirmation separately. */
 export async function enqueueRegisteredCheckout(siteId: string, payload: CheckoutOutboxPayload, onReceipt?: (id: string) => void,
-  isCurrent: () => boolean = () => true) {
+  isCurrent: () => boolean = () => true, options: { waitForConfirmation?: boolean } = {}) {
   const permission = requirePosPermission(siteId)
   if (!payload.payments?.length) return enqueueCheckout(siteId, payload)
   assertPosRemotePermission(permission)
@@ -78,6 +78,9 @@ export async function enqueueRegisteredCheckout(siteId: string, payload: Checkou
   const mutationId = queued.clientMutationId
   onReceipt?.(mutationId)
   if (!isPosPermissionCurrent(permission)) throw new Error("POS access changed")
+  // The durable row still blocks duplicate payment and register closing. Returning
+  // it is local acceptance, not proof of a paid or completed order.
+  if (options.waitForConfirmation === false) return queued
   if (queued.status === "synced") return queued
   const { syncPosCheckout } = await import("@/app/pos/local/sync-engine")
   if (!isPosPermissionCurrent(permission)) throw new Error("POS access changed")

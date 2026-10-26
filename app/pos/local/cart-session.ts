@@ -63,7 +63,15 @@ export async function saveCartSession(
   return next;
 }
 
-export async function clearCartSession(siteId: string): Promise<PosCartSession> {
+export async function clearCartSession(
+  siteId: string,
+  isCurrent: () => boolean = () => true,
+): Promise<PosCartSession> {
+  if (!isCurrent()) throw new Error("The active cart changed. Confirm the selected order again.");
+  // IndexedDB must forget the previous basket before localStorage gives it a
+  // fresh payment identity. Failed writes retain the original payment fence.
+  const cleared = await saveCartSession(DEFAULT_SESSION(siteId));
+  if (!isCurrent()) throw new Error("The active cart changed. Confirm the selected order again.");
   resetCheckoutCartSession(siteId);
-  return saveCartSession(DEFAULT_SESSION(siteId));
+  return cleared;
 }

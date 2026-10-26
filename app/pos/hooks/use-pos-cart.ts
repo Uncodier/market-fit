@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CatalogItem, Tax } from "@/app/types";
 import type { RelationSelectValue } from "@/app/components/ui/relation-select";
 import type { PosCartItem } from "@/app/pos/components/CartPanel";
@@ -176,6 +176,11 @@ export function usePosCart({
   }), [cart, sentLineQuantities, existingPaymentTotal, leadValue, fulfillment,
     originLocationId, priceListId, promoCode, activeOrderId, buyerUserId,
     sellerUserId, sellerName, orderNotes, shippingAddress, expectedOrderVersion, orderCurrency]);
+  const resetSelection = useRef({ siteId, snapshot: sessionSnapshot });
+  useLayoutEffect(() => {
+    resetSelection.current = { siteId, snapshot: sessionSnapshot };
+    return () => { resetSelection.current = { siteId: undefined, snapshot: sessionSnapshot }; };
+  }, [siteId, sessionSnapshot]);
   const sessionReady = usePosCartSession({
     siteId, snapshot: sessionSnapshot, loadingOrder: loadingOrder || !catalogHydrated, sequence: orderSelectionSequence,
     onRestore: restoreSession,
@@ -328,11 +333,19 @@ export function usePosCart({
     setSelectedCartItemId(null);
   }, [resetPromo]);
   const resetToNewOrder = useCallback(async () => {
-    orderSelectionSequence.current += 1;
-    setLoadingOrder(false);
-    setActiveOrderId("new");
-    clearOrderFields();
-    if (siteId) await clearCartSession(siteId);
+    const sequence = ++orderSelectionSequence.current;
+    const selected = resetSelection.current;
+    const isCurrent = () => sequence === orderSelectionSequence.current && resetSelection.current === selected;
+    // Suspend old-cart autosaves and collection until the durable reset succeeds.
+    setLoadingOrder(true);
+    try {
+      if (siteId) await clearCartSession(siteId, isCurrent);
+      if (!isCurrent()) throw new Error("The active cart changed. Confirm the selected order again.");
+      setActiveOrderId("new");
+      clearOrderFields();
+    } finally {
+      if (sequence === orderSelectionSequence.current) setLoadingOrder(false);
+    }
   }, [siteId, clearOrderFields]);
   const populateFromOrder = useCallback((order: Parameters<typeof posSessionFromOrder>[0], includeCart: boolean) => {
     const session = posSessionFromOrder(includeCart ? order : { ...order, sale_order_items: [] }, catalogItems);

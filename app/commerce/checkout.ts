@@ -5,7 +5,8 @@ import { createClient, createServiceClient } from "@/lib/supabase/server"
 import { findPosClientMutation } from "@/app/pos/actions/idempotency"
 import { assertPosOrderCurrent } from "@/app/pos/assert-order-current"
 import { assertRegisterCheckout } from "@/app/pos/register/checkout-guard"
-import { requirePosSiteAccess } from "@/app/pos/actions/site-access"
+import { requirePosCheckoutAccess } from "@/app/pos/checkout-request-access"
+import { checkoutStageTimer } from "@/app/pos/checkout-server-timing"
 import { claimPosCheckout, transitionPosCheckout, posCheckoutFingerprint, type PosCheckoutClaim } from "@/app/pos/checkout-attempt-server"
 import { PosCheckoutRecoveryError } from "@/app/pos/checkout-recovery-types"
 import { inspectPosPayment } from "@/app/pos/payment-recovery-server"
@@ -42,13 +43,15 @@ export type {
 } from "./checkout-types"
 
 export async function checkoutCart(params: CheckoutCartParams) {
+  const timing = checkoutStageTimer()
+  timing.stage("checkout_auth")
   let activeQuotationClaim: {
     quotationId: string
     claimId: string
   } | null = null
-  let quotationClaimClient: any = null
+  let quotationClaimClient: Awaited<ReturnType<typeof createServiceClient>> | null = null
   let publicMutationClaim: PublicCheckoutClaim | null = null
-  let checkoutAdminClient: any = null
+  let checkoutAdminClient: Awaited<ReturnType<typeof createServiceClient>> | null = null
   let publicMutationHasSideEffects = false
   let posClaim: PosCheckoutClaim | null = null
   let posWritesStarted = false
@@ -59,14 +62,17 @@ export async function checkoutCart(params: CheckoutCartParams) {
     const boundary = await authorizeCheckoutBoundary(params)
     params = boundary.params
     publicCheckout = boundary.publicCheckout
+    let posAccess: Awaited<ReturnType<typeof requirePosCheckoutAccess>> | undefined
     if (params.source === 'pos') {
-      const access = await requirePosSiteAccess(params.siteId)
+      const access = await requirePosCheckoutAccess(params.siteId)
       if ('error' in access) return { error: access.error }
+      posAccess = access
       if (params.payments?.length && !["owner", "admin", "collaborator"].includes(access.role)) {
         return { error: "Forbidden POS payment." }
       }
       if (params.payments?.length && !params.clientMutationId) return { error: "A stable checkout identity is required for POS payment." }
     }
+    timing.stage("checkout_admission")
     if (params.clientMutationId && params.source === "pos" && !params.payments?.length) {
       const existing = await findPosClientMutation(
         params.siteId,
@@ -84,12 +90,12 @@ export async function checkoutCart(params: CheckoutCartParams) {
       }
     }
 
-    const supabase = await createClient()
+    const supabase = posAccess?.supabase || await createClient()
     const supabaseAdmin = checkoutAdminClient || await createServiceClient(true, {
       access: ['shop', 'marketplace', 'quote'].includes(params.source) ? 'public' : 'workspace',
     })
     checkoutAdminClient = supabaseAdmin
-    const authenticatedUserId = (await supabase.auth.getUser()).data.user?.id || null
+    const authenticatedUserId = posAccess?.user?.id || (await supabase.auth.getUser()).data.user?.id || null
     if (boundary.publicCheckout && params.ownerSiteId && !params.selfServiceLocationId &&
       (!authenticatedUserId || !await verifySiteMembership(supabase, authenticatedUserId, params.ownerSiteId))) {
       throw new Error("You cannot assign this purchase to that account.")
@@ -255,6 +261,7 @@ export async function checkoutCart(params: CheckoutCartParams) {
       effectiveExistingOrderId = existingQuoteOrder?.id || undefined
     }
 
+    timing.stage("checkout_environment")
     const environment = await prepareCheckoutEnvironment({
       supabase,
       supabaseAdmin,
@@ -279,6 +286,7 @@ export async function checkoutCart(params: CheckoutCartParams) {
       ...(selfService ? { selfServiceLocationId: params.selfServiceLocationId } : {}),
     })
 
+    timing.stage("checkout_attribution")
     const attribution = await resolveCheckoutAttribution({
       supabaseAdmin,
       siteId: params.siteId,
@@ -288,6 +296,7 @@ export async function checkoutCart(params: CheckoutCartParams) {
       requestedByLeadId: environment.finalLeadId,
     })
 
+    timing.stage("checkout_lines")
     publicMutationHasSideEffects = Boolean(publicMutationClaim) && !selfService
     // Reservations/line preparation may write too. Persist the boundary first;
     // any failure afterward is ambiguous, never a safe-to-recollect rejection.
@@ -315,6 +324,7 @@ export async function checkoutCart(params: CheckoutCartParams) {
     })
 
     publicMutationHasSideEffects = Boolean(publicMutationClaim)
+    timing.stage("checkout_records")
     const records = await persistCheckoutRecords({
       supabase,
       supabaseAdmin,
@@ -350,6 +360,7 @@ export async function checkoutCart(params: CheckoutCartParams) {
       ...lineResult,
     })
 
+    timing.stage("checkout_finalize")
     const result = await finalizeCheckout({
       supabase,
       supabaseAdmin,
@@ -386,8 +397,9 @@ export async function checkoutCart(params: CheckoutCartParams) {
       notes: params.notes,
       ...(publicMutationClaim ? { onReadyForPublicToken: () => markPublicCheckoutReady(supabaseAdmin, publicMutationClaim!, records) } : {}),
     })
-    if (result.quotationCompleted) activeQuotationClaim = null
-    const { quotationCompleted: _, ...checkoutResult } = result
+    timing.stage("checkout_complete")
+    const { quotationCompleted, ...checkoutResult } = result
+    if (quotationCompleted) activeQuotationClaim = null
     if (posClaim) {
       await transitionPosCheckout(supabaseAdmin, posClaim, "completed", checkoutResult)
       posClaim = null
@@ -401,7 +413,7 @@ export async function checkoutCart(params: CheckoutCartParams) {
       })
     }
     return checkoutResult
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (posClaim && checkoutAdminClient) {
       try {
         await transitionPosCheckout(checkoutAdminClient, posClaim, posWritesStarted ? "review_required" : "rejected")
@@ -424,7 +436,9 @@ export async function checkoutCart(params: CheckoutCartParams) {
       )
     }
     if (error instanceof PosCheckoutRecoveryError) return { error: error.message, recovery: error.recovery }
-    return { error: error.message,
+    const message = error && typeof error === "object" && "message" in error && typeof error.message === "string"
+      ? error.message : "Unable to complete checkout."
+    return { error: message,
       ...(publicCheckout ? { checkoutState: publicMutationHasSideEffects || publicAttemptUncertain ? "uncertain" as const : "rejected" as const } : {}) }
-  }
+  } finally { timing.finish() }
 }

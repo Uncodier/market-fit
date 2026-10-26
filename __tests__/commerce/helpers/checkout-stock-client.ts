@@ -68,6 +68,10 @@ export function checkoutStockClient(fixture: StockFixture) {
         return query
       },
       eq: (key: string, value: unknown) => { filters[key] = value; return query },
+      in: (_key: string, ids: string[]) => Promise.resolve({
+        data: fixture.items.filter((item) => ids.includes(item.id) && item.site_id === filters.site_id),
+        error: null,
+      }),
       single: async () => result(),
       maybeSingle: async () => result(),
       then: <T>(resolve: (value: ReturnType<typeof result>) => T) => Promise.resolve(result()).then(resolve),

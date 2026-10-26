@@ -50,6 +50,25 @@ describe("Register payment queue and closing lock", () => {
     expect(drainPosOutbox).not.toHaveBeenCalled()
     expect(locks.request).toHaveBeenCalledWith("pos-register:site", { mode: "exclusive", signal: expect.any(AbortSignal) }, expect.any(Function))
   })
+
+  it("accepts an optimistic payment only after durable enqueue without awaiting the server", async () => {
+    jest.mocked(syncPosCheckout).mockImplementation(() => new Promise(() => {}))
+    const queued = await enqueueRegisteredCheckout("site", payload, undefined, undefined, { waitForConfirmation: false })
+    expect(queued.status).toBe("pending")
+    expect(queued.payload.kind === "checkout" && queued.payload.data.payments?.[0].paymentId).toBeTruthy()
+    expect(syncPosCheckout).not.toHaveBeenCalled()
+    await expect(assertRegisterQueueSettled("site")).rejects.toThrow("unsynchronized payments")
+    await expect(enqueueRegisteredCheckout("site", { ...payload, clientMutationId: "changed", payments: [{ method: "cash", amount: 11 }] },
+      undefined, undefined, { waitForConfirmation: false })).rejects.toThrow("unresolved payment")
+    expect(enqueueCheckout).toHaveBeenCalledTimes(1)
+  })
+
+  it("does not acknowledge optimistic storage failures", async () => {
+    jest.mocked(enqueueCheckout).mockRejectedValueOnce(new Error("Storage unavailable"))
+    await expect(enqueueRegisteredCheckout("site", payload, undefined, undefined, { waitForConfirmation: false }))
+      .rejects.toThrow("Storage unavailable")
+    expect(syncPosCheckout).not.toHaveBeenCalled()
+  })
   it.each(["before", "during lookup"])("does not create receipts when access becomes local-only %s", async (when) => {
     const offline = () => jest.mocked(getPosPermissionLease).mockReturnValue({ siteId: "site", userId: "actor", generation: 1, role: "owner", expiresAt: Infinity, offline: true })
     if (when === "before") offline()

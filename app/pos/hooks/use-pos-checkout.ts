@@ -15,11 +15,12 @@ import {
   enqueueCreateLead,
 } from "@/app/pos/local/outbox";
 import { enqueueRegisteredCheckout } from "@/app/pos/register/prepare-payment";
-import { syncPosCheckout, refreshPosSyncCounts } from "@/app/pos/local/sync-engine";
+import { refreshPosSyncCounts } from "@/app/pos/local/sync-engine";
 import { getPosDb } from "@/app/pos/local/db";
 import { useSite } from "@/app/context/SiteContext";
 import { normalizePrintersSettings, ticketBrandFromSite } from "@/lib/printer";
-import { printAfterPosCheckout, receiptFromPosCart } from "@/app/pos/print-after-checkout";
+import { receiptFromPosCart } from "@/app/pos/print-after-checkout";
+import { confirmPosCheckoutInBackground } from "../checkout-feedback";
 import { createPendingSplitOrders as enqueuePendingSplitOrders } from "@/app/pos/create-pending-split-orders";
 import { planPosLeadSync } from "@/app/pos/lead-utils";
 import { checkOrderBeforePayment, PosOrderChangedError } from "@/app/pos/check-order-before-payment";
@@ -209,7 +210,7 @@ export function usePosCheckout({
       intent: params.intent,
       notes: orderNotes.trim(),
       clientMutationId,
-    }, (id) => { if (isCurrent()) checkoutAttempt.adopt(id); }, isCurrent);
+    }, (id) => { if (isCurrent()) checkoutAttempt.adopt(id); }, isCurrent, { waitForConfirmation: false });
     if (!isCurrent()) return;
     clientMutationId = queuedCheckout.clientMutationId;
     refreshPosSyncCounts(siteId);
@@ -219,11 +220,13 @@ export function usePosCheckout({
       Math.max(0, amountDue - totalPaid),
     );
     const db = getPosDb();
-    if (activeOrderId !== "new") {
+    // Do not publish a reduced balance or completed order for an unconfirmed payment.
+    const confirmedOrUnpaid = !params.payments.length || queuedCheckout.status === "synced";
+    if (confirmedOrUnpaid && activeOrderId !== "new") {
       await db.pendingOrders.delete(activeOrderId);
       if (!isCurrent()) return;
     }
-    if (nextAmountDue > 0) {
+    if (confirmedOrUnpaid && nextAmountDue > 0) {
       const status = params.intent === "complete" ? "completed" : "pending";
       const id =
         activeOrderId !== "new" ? activeOrderId : `local_${clientMutationId}`;
@@ -253,21 +256,6 @@ export function usePosCheckout({
       if (!isCurrent()) return;
     }
 
-    onCleared();
-    checkoutAttempt.clear();
-    const finishedSelection = selection.current;
-    const finishedSession = checkoutAttempt.session();
-    const receiptCurrent = () => isPosPermissionCurrent(permission) && checkoutAttempt.isCurrent(finishedSession) &&
-      (selection.current === finishedSelection || (selection.current.siteId === siteId &&
-        selection.current.userId === userId && selection.current.activeOrderId === "new" && selection.current.cartKey === "[]"));
-    setIsPaymentDialogOpen(false);
-
-    toast.success(
-      params.intent === "send"
-        ? t("pos.orderSent") || "Order sent to orders panel!"
-        : t("pos.checkoutComplete") || "Checkout complete!",
-    );
-
     const receipt = receiptFromPosCart({
       cart,
       total,
@@ -283,48 +271,13 @@ export function usePosCheckout({
     });
     const printersSettings = normalizePrintersSettings(currentSite?.settings?.printers);
 
-    if (typeof navigator !== "undefined" && navigator.onLine) {
-      void syncPosCheckout(siteId, clientMutationId).then(async () => {
-        if (!receiptCurrent()) return;
-        const row = await getPosDb()
-          .outbox.where("clientMutationId")
-          .equals(clientMutationId)
-          .first();
-        if (!receiptCurrent()) return;
-        if (row?.status === "synced") {
-          try {
-            await printAfterPosCheckout({
-              settings: printersSettings,
-              siteId,
-              intent: params.intent,
-              orderId: row.resultOrderId,
-              orderNumber: row.resultOrderNumber,
-              kitchenDelta: row.resultKitchenDelta,
-              fulfillment: row.resultFulfillment,
-              receipt,
-            });
-          } catch (err) {
-            console.warn("[printer] POS print failed", err);
-          }
-        } else if (row?.status === "failed") {
-          toast.error(
-            row.lastError ||
-              t("pos.sync.failed") ||
-              "Sale queued but sync failed. Check sync issues.",
-          );
-        } else {
-          toast.message(
-            t("pos.sync.pendingSale") ||
-              "Sale saved locally. Syncing when online…",
-          );
-        }
-      }).catch(() => undefined);
-    } else {
-      toast.message(
-        t("pos.sync.pendingSale") ||
-          "Sale saved locally. Syncing when online…",
-      );
-    }
+    void confirmPosCheckoutInBackground({ row: queuedCheckout, permission,
+      print: { settings: printersSettings, siteId, intent: params.intent, receipt } });
+    setIsPaymentDialogOpen(false);
+    // A persisted receipt must keep its alias until the old cart is durably gone.
+    // Start confirmation even if local cleanup fails; never enqueue another charge.
+    await onCleared();
+    checkoutAttempt.clear(clientMutationId);
   };
 
   const handleCheckout = async (

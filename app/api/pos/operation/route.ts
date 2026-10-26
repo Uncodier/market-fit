@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { executePosOperation } from "@/app/pos/operation-boundary";
+import { withPosServerTiming } from "@/app/pos/checkout-server-timing";
 import { decodeRequestBody, readLimitedRequestBody, RequestBodyTooLargeError } from "@/lib/http/read-limited-request-body";
 
 const MAX_BODY_BYTES = 1024 * 1024;
@@ -27,6 +28,6 @@ export async function POST(request: Request) {
       status: error instanceof RequestBodyTooLargeError ? 413 : 400, headers,
     });
   }
-  const result = await executePosOperation(input);
-  return NextResponse.json(result.body, { status: result.status, headers });
+  const { value: result, serverTiming } = await withPosServerTiming(() => executePosOperation(input));
+  return NextResponse.json(result.body, { status: result.status, headers: { ...headers, "Server-Timing": serverTiming } });
 }

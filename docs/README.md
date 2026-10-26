@@ -5,6 +5,10 @@ Use the guides below before relying on older implementation notes.
 
 ## Start here
 
+- [Module guide](MODULES.md) — current module purposes, capabilities, practical usage,
+  cross-module workflows, and implementation limits.
+- [Workspace and public commerce guide](MODULES_COMMERCE_AND_ACCOUNT.md) — account tools,
+  storefronts, checkout, booking, buyer portal, and public documents.
 - [Development](DEVELOPMENT.md) — local setup, scripts, tests, and validation.
 - [Architecture](ARCHITECTURE.md) — runtime boundaries and repository layout.
 - [Localization coverage and repair](LOCALIZATION_AUDIT.md) — dictionary checks,

@@ -182,6 +182,11 @@ function PosSyncIssuesSession({ siteId, open, onOpenChange, t, onReviewOrder }: 
                   {details && (
                     <div className="text-xs opacity-80">{details}</div>
                   )}
+                  {checkout && <p className="text-xs font-medium">
+                    {row.status === "synced" ? "Confirmed by the server"
+                      : row.status === "failed" ? "Requires review — do not collect again before checking payment status"
+                      : "Processing — saved on this device, not yet confirmed by the server"}
+                  </p>}
                   <dl className="text-xs break-words space-y-1">
                     {[
                       ["Client mutation ID", row.clientMutationId],

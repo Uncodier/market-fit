@@ -3,7 +3,7 @@ import { allocateCheckoutBackorders, revalidateCheckoutAvailability } from "./ch
 import { getTaxesByCatalogItemIds } from "@/app/catalog/tax-actions"
 import { assertCommerceReservationSlot } from "./pass-round-robin-server"
 import { isRoundRobinPass } from "./pass-round-robin"
-import { resolveUnitPrice } from "@/app/price-lists/actions"
+import { loadCheckoutCatalogItems, loadCheckoutParentModes, loadCheckoutResolvedPrices } from "./checkout-line-reads"
 import { getUsdFxRates } from "@/app/lib/fx-rates"
 import {
   checkoutLinesNeedFxConversion,
@@ -14,6 +14,7 @@ import {
 import { calculateOrderTaxTotal } from "./taxes"
 import { resolveExistingCheckoutCurrency } from "./checkout-existing-currency"
 import { loadSelfServicePricing } from "./self-service-pricing"
+import type { CatalogItem } from "@/app/types"
 import {
   CheckoutCartParams,
   CheckoutLine,
@@ -28,9 +29,13 @@ type ProcessCheckoutLinesParams = {
   lines: CheckoutLine[]
   isAdmin: boolean
   isStaffCheckout: boolean
-  siteSettings: any
+  siteSettings: {
+    [key: string]: unknown
+    currency?: string | null
+    shop?: { free_shipping_threshold?: number | null; shipping_cost?: number | null }
+  } | null | undefined
   finalPriceListId?: string
-  priceListChannel: any
+  priceListChannel: string | null | undefined
   finalLeadId?: string
   originLocationId?: string
   existingReservationId?: string
@@ -59,52 +64,47 @@ export async function processCheckoutLines(params: ProcessCheckoutLinesParams) {
   const queryClient = isAdmin ? supabaseAdmin : supabase
   const existingCurrency = await resolveExistingCheckoutCurrency(params)
   const checkoutStock = await revalidateCheckoutAvailability(params)
-  const selfServicePricing = params.selfServiceLocationId || (params.publicCheckout && ["shop", "marketplace"].includes(priceListChannel)) ? await loadSelfServicePricing(queryClient, siteId,
+  const selfServicePricing = params.selfServiceLocationId || (params.publicCheckout && ["shop", "marketplace"].includes(priceListChannel ?? "")) ? await loadSelfServicePricing(queryClient, siteId,
     lines.flatMap((line) => [line.catalogItemId, ...(line.modifiers || []).map((modifier) => modifier.catalogItemId)]), priceListChannel === "marketplace" ? "marketplace" : "shop") : null
+  const catalogItems = await loadCheckoutCatalogItems(queryClient, siteId, lines)
+  const [parentModes, resolvedPrices] = await Promise.all([
+    loadCheckoutParentModes(queryClient, siteId, catalogItems, lines),
+    selfServicePricing ? Promise.resolve(new Map<string, number>()) : loadCheckoutResolvedPrices({
+      siteId, lines, finalPriceListId, isAdmin, priceListChannel,
+    }),
+  ])
   let orderSubtotal = 0
   const processedLines: ProcessedCheckoutLine[] = []
   const catalogItemsForShipping: Partial<
     import("@/app/types").CatalogItem
   >[] = []
 
-  const resolveLinePrice = async (
+  const resolveLinePrice = (
     catalogItemId: string,
     unitPriceOverride?: number
   ) => {
     if (selfServicePricing) {
       const mapped = selfServicePricing.priceByItemId.get(catalogItemId)
       if (mapped !== undefined) return mapped
-      const { data: item, error } = await queryClient.from("catalog_items").select("target_sale_price")
-        .eq("site_id", siteId).eq("id", catalogItemId).single()
+      const item = catalogItems.get(catalogItemId)
       const price = Number(item?.target_sale_price ?? 0)
-      if (error || !item || !Number.isFinite(price) || price < 0) throw new Error("Unable to verify item price.")
+      if (!item || !Number.isFinite(price) || price < 0) throw new Error("Unable to verify item price.")
       return price
     }
     if (unitPriceOverride !== undefined) return unitPriceOverride
-    const { price } = await resolveUnitPrice(
-      siteId,
-      catalogItemId,
-      finalPriceListId,
-      isAdmin,
-      priceListChannel
-    )
-    return price || 0
+    const resolved = resolvedPrices.get(catalogItemId)
+    if (resolved && typeof resolved === "object") throw resolved.error
+    return resolved || 0
   }
 
   for (const line of lines) {
-    const { data: catalogItem } = await queryClient
-      .from("catalog_items")
-      .select(
-        "id, name, description, is_recurring, kind, digital_subtype, is_reservation, redeem_assignment_mode, currency, metadata, target_sale_price, parent_id, parent:parent_id(name)"
-      )
-      .eq("id", line.catalogItemId)
-      .single()
+    const catalogItem = catalogItems.get(line.catalogItemId)
     const isAccessOnly = isAccessOnlyItem({
       is_recurring: Boolean(catalogItem?.is_recurring),
       kind: catalogItem?.kind,
       digital_subtype: catalogItem?.digital_subtype,
       redeem_assignment_mode: catalogItem?.redeem_assignment_mode,
-    } as any)
+    } as CatalogItem)
 
     let isRoundRobinDropin = false
     let effectiveAssignmentMode = catalogItem?.redeem_assignment_mode
@@ -125,12 +125,7 @@ export async function processCheckoutLines(params: ProcessCheckoutLinesParams) {
       }
       isRoundRobinDropin = isRoundRobinPass(catalogItem)
       if (!isRoundRobinDropin && catalogItem?.parent_id) {
-        const { data: parentItem } = await queryClient
-          .from("catalog_items")
-          .select("redeem_assignment_mode")
-          .eq("id", catalogItem.parent_id)
-          .single()
-        if (parentItem?.redeem_assignment_mode === "round_robin") {
+        if (parentModes.get(catalogItem.parent_id) === "round_robin") {
           isRoundRobinDropin = true
           effectiveAssignmentMode = "round_robin"
         }
@@ -153,13 +148,13 @@ export async function processCheckoutLines(params: ProcessCheckoutLinesParams) {
       }
     }
 
-    const price = await resolveLinePrice(
+    const price = resolveLinePrice(
       line.catalogItemId,
       line.unitPriceOverride
     )
     const subtotal = price * line.quantity
     orderSubtotal += subtotal
-    if (catalogItem) catalogItemsForShipping.push(catalogItem as any)
+    if (catalogItem) catalogItemsForShipping.push(catalogItem)
 
     const clientLineKey =
       line.clientLineKey || `${line.catalogItemId}:${processedLines.length}`
@@ -194,12 +189,8 @@ export async function processCheckoutLines(params: ProcessCheckoutLinesParams) {
 
     for (const modifier of line.modifiers || []) {
       const modifierQuantity = modifier.quantity * line.quantity
-      const { data: modifierItem } = await queryClient
-        .from("catalog_items")
-        .select("name, description, currency")
-        .eq("id", modifier.catalogItemId)
-        .single()
-      const modifierPrice = await resolveLinePrice(
+      const modifierItem = catalogItems.get(modifier.catalogItemId)
+      const modifierPrice = resolveLinePrice(
         modifier.catalogItemId,
         modifier.unitPriceOverride
       )

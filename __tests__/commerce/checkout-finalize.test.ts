@@ -81,6 +81,77 @@ describe("finalizeCheckout", () => {
     expect(revalidatePath).toHaveBeenCalledWith("/orders/order-1")
   })
 
+  it("batches only product metadata and awaits each repeated-product stock decrement", async () => {
+    const params = posUpdateParams()
+    const events: string[] = []
+    const metadataBatches: string[][] = []
+    let stock = 10
+    let releaseWrite: (() => void) | undefined
+    let startedWrite: (() => void) | undefined
+    const firstWriteStarted = new Promise<void>((resolve) => { startedWrite = resolve })
+    const firstWriteGate = new Promise<void>((resolve) => { releaseWrite = resolve })
+    const client = { from: jest.fn((table: string) => {
+      let columns = ""
+      let payload: { quantity: number } | undefined
+      const filters: Record<string, unknown> = {}
+      const query = {
+        select: (value: string) => { columns = value; return query },
+        eq: (key: string, value: unknown) => { filters[key] = value; return query },
+        in: async (_key: string, ids: string[]) => {
+          if (columns === "id, track_inventory") {
+            expect(filters.site_id).toBe("site-1")
+            metadataBatches.push(ids)
+            return { data: [
+              { id: "sku", track_inventory: true },
+              { id: "untracked", track_inventory: false },
+            ], error: null }
+          }
+          return { data: [], error: null }
+        },
+        single: async () => {
+          if (table === "settings") return { data: { commerce: { decrement_stock_on: "pay" } } }
+          if (table === "inventory_levels") {
+            expect(filters).toEqual({ catalog_item_id: "sku", location_id: "origin" })
+            events.push(`read:${stock}`)
+            return { data: { id: "level", quantity: stock } }
+          }
+          return { data: null }
+        },
+        update: (value: { quantity: number }) => { payload = value; return query },
+        then: (resolve: (value: { error: null }) => unknown, reject: (error: unknown) => unknown) => {
+          const write = async () => {
+            if (!payload) throw new Error("Unexpected write")
+            events.push(`write:${payload.quantity}`)
+            if (stock === 10) { startedWrite?.(); await firstWriteGate }
+            stock = payload.quantity
+            return { error: null }
+          }
+          return write().then(resolve, reject)
+        },
+      }
+      return query
+    }) }
+    let finished = false
+    const pending = finalizeCheckout({
+      ...params, supabase: client as never,
+      lines: [
+        { catalogItemId: "sku", quantity: 2 },
+        { catalogItemId: "untracked", quantity: 4 },
+        { catalogItemId: "sku", quantity: 3 },
+      ],
+      finalOriginLocationId: "origin", orderInitialStatus: "completed",
+    }).then((result) => { finished = true; return result })
+    await firstWriteStarted
+    expect(finished).toBe(false)
+    expect(events).toEqual(["read:10", "write:8"])
+    expect(ensurePublicAccessTokenForRecord).not.toHaveBeenCalled()
+    releaseWrite?.()
+    await expect(pending).resolves.toEqual(expect.objectContaining({ success: true }))
+    expect(events).toEqual(["read:10", "write:8", "read:8", "write:5"])
+    expect(stock).toBe(5)
+    expect(metadataBatches).toEqual([["sku", "untracked"]])
+  })
+
   it("derives ordinary public free completion from trusted payment state", async () => {
     await finalizeCheckout({ ...posUpdateParams(), publicCheckout: true, intent: "draft", isFullyPaid: true })
     expect(upsertSaleOrderItemsWithModifiers).toHaveBeenCalledWith(expect.objectContaining({ intent: "complete" }))

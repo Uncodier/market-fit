@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { lookupCurrentUserSiteRole } from "@/lib/auth/site-role-lookup";
 import { canAccessUnscopedSite } from "@/lib/permissions/location-boundary";
 import { checkoutCart } from "@/app/commerce/checkout";
+import { requirePosCheckoutAccess } from "@/app/pos/checkout-request-access";
 import { createLeadWithIdempotency } from "@/app/pos/actions/create-lead-sync";
 import { getPosOrder } from "@/app/pos/actions/get-order";
 import { buildCartFromSaleOrderItems } from "@/app/pos/populate-cart-from-order";
@@ -86,12 +87,31 @@ it.each(operations)("authenticates and authorizes $operation before dispatch", a
   const response = await POST(request(operation));
   expect(response.status).toBe(200);
   expect(response.headers.get("cache-control")).toBe("private, no-store");
+  expect(response.headers.get("server-timing")).toMatch(/^pos_total;dur=\d+\.\d, pos_auth;dur=\d+\.\d/);
+  expect(response.headers.get("server-timing")).not.toContain(userId);
   expect(createClient).toHaveBeenCalledWith(true);
   expect(lookupCurrentUserSiteRole).toHaveBeenCalledWith(userClient, siteId);
   expect(canAccessUnscopedSite).toHaveBeenCalledWith(userClient, siteId);
   const called = actions.filter((action) => jest.mocked(action).mock.calls.length);
   expect(called).toHaveLength(1);
   expect(getUser.mock.invocationCallOrder[0]).toBeLessThan(jest.mocked(called[0]).mock.invocationCallOrder[0]);
+});
+
+it("reuses the route's authorization during checkout but refreshes it on the next request", async () => {
+  jest.mocked(checkoutCart).mockImplementationOnce(async (input) => {
+    const access = await requirePosCheckoutAccess(input.siteId);
+    expect(access.user?.id).toBe(userId);
+    expect(access.supabase).toBe(userClient);
+    return checkoutResult;
+  });
+  expect((await POST(request())).status).toBe(200);
+  expect(getUser).toHaveBeenCalledTimes(1);
+  expect(lookupCurrentUserSiteRole).toHaveBeenCalledTimes(1);
+  expect(canAccessUnscopedSite).toHaveBeenCalledTimes(1);
+  jest.mocked(canAccessUnscopedSite).mockResolvedValue(false);
+  expect((await POST(request())).status).toBe(403);
+  expect(getUser).toHaveBeenCalledTimes(2);
+  expect(checkoutCart).toHaveBeenCalledTimes(1);
 });
 
 it.each(operations)("rejects unauthenticated $operation before actions", async (operation) => {

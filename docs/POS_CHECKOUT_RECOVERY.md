@@ -2,6 +2,38 @@
 
 ## Operational behavior
 
+### Optimistic checkout interface
+
+The payment modal closes after order/register preflight and durable local enqueue,
+not after the full server checkout. A per-attempt notification says the order is
+saved on this device and is being confirmed in the background. This is **not** a
+paid/completed receipt. The queue shows processing, server-confirmed, or review
+required states. Unconfirmed payments never publish a reduced cached balance or
+completed order. Other customers can start a new cart immediately.
+
+The original mutation, receipt IDs, and cart identity stay in the outbox. Pending
+payments still block duplicate collection for that order and register closing.
+Timeouts and ambiguous errors retain the attempt for **Check payment status**;
+they do not recreate the sale. Storage/preflight failures leave the cart available
+instead of reporting optimistic acceptance.
+The blank cart snapshot is persisted before its local identity rotates; checkout
+awaits this local cleanup before dropping the attempt alias. A failed reset keeps
+the original payment fence across remount/reload while confirmation continues.
+
+Receipt-specific confirmation and automatic printing can finish while the cashier
+works on a different cart; they never clear, overwrite, or reopen that cart.
+Printing requires a confirmed outbox result. Permission changes suppress old
+notifications/printing. Concurrent observers of the same receipt share their wait
+and printing, including retries after local cart cleanup fails. The durable queue,
+rather than the notification, remains the recovery source after reload or
+navigation. A response after the bounded wait
+updates the queue through the existing worker; use the order's print action if
+automatic printing was no longer observing that attempt.
+
+Server finalization remains awaited and must finish before an attempt is marked
+completed. Optimistic UI does not move financial, stock, or entitlement writes to
+an untracked background task, nor does it enable offline payment collection.
+
 Collected payments are never replayed blindly after a failure or timeout. The
 queue's **Check payment status** action reads server evidence using the original
 mutation and receipt IDs. It does not collect money, delete a queue entry, cancel
@@ -144,6 +176,34 @@ framework's serialization behavior, but they are no longer the transport for POS
 checkout, customer dependencies, order verification, or register operations.
 Storage failures, unavailable backend services, revoked permissions, and an
 actually closing register are not bypassed by sync isolation.
+
+## Checkout performance diagnostics
+
+`/api/pos/operation` returns a `Server-Timing` header with fixed metric names and
+durations only (no customer data, tokens, payloads, or order IDs). Inspect it on
+the checkout request in the browser Network panel. `pos_total` covers operation
+execution; `pos_auth` and `pos_references` cover HTTP admission. Checkout phases
+separate authorization, admission, environment, attribution, lines, records,
+finalization, and durable completion. Early returns report only reached phases.
+These are measurements, not fixed delays or payment confirmation evidence.
+
+POS site authorization and its authenticated client are reused only inside the
+current server-created operation scope. Separate HTTP requests and direct Server
+Action calls still authorize independently; clients cannot supply a trusted
+authorization result. No cross-request permission or price cache is introduced.
+
+Product/modifier metadata and inherited reservation modes are read in tenant-scoped
+100-ID batches. Price resolution is deduplicated by SKU and limited to eight
+concurrent resolver calls; the authoritative price resolver, overrides, channel
+eligibility, and currency rules remain intact. This removes repeated metadata
+round trips and serial price waits, but is not a single bulk pricing RPC.
+
+Finalization also batches inventory-tracking metadata. Stock quantities are not
+cached or parallelized: repeated products must observe the preceding decrement.
+Order-item writes remain ordered to preserve parent/modifier relationships and
+failure behavior. Broader atomic inventory writes and transactional finalization
+remain separate work; these optimizations do not claim to solve those existing
+concurrency limitations.
 
 ## Rollout and validation
 

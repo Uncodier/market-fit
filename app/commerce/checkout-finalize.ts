@@ -10,6 +10,7 @@ import {
 import { ensurePublicAccessTokenForRecord } from "@/app/documents/public-token-store"
 import { grantFromOrder, syncSubscriptionEntitlements } from "./entitlements"
 import { upsertSaleOrderItemsWithModifiers } from "./checkout-order-items"
+import { readCheckoutTrackedInventoryIds } from "./checkout-inventory-metadata"
 import { syncCheckoutDropinReservations } from "./checkout-reservations"
 import { kitchenDeltaForSend } from "./checkout-print-delta"
 import { recordPosClientMutation } from "@/app/pos/actions/idempotency"
@@ -38,9 +39,9 @@ type FinalizeCheckoutParams = {
   source: CheckoutSource
   lines: CheckoutLine[]
   processedLines: ProcessedCheckoutLine[]
-  sale: any
+  sale: { id: string }
   order: PersistedCheckoutOrder
-  existingItems: any[]
+  existingItems: Parameters<typeof upsertSaleOrderItemsWithModifiers>[0]["existingItems"]
   effectiveExistingOrderId?: string
   intent?: CheckoutCartParams["intent"]
   selfServiceLocationId?: string
@@ -55,7 +56,7 @@ type FinalizeCheckoutParams = {
   buyerUserId?: string | null
   ownerSiteId?: string | null
   existingReservationId?: string
-  shippingAddress?: any
+  shippingAddress?: unknown
   clientMutationId?: string
   quoteForAccept: QuotationForCheckout | null
   activeQuotationClaim: { quotationId: string; claimId: string } | null
@@ -155,13 +156,13 @@ export async function finalizeCheckout(params: FinalizeCheckoutParams) {
       .single()
     const policy = settings?.commerce?.decrement_stock_on || "ship"
     if (policy !== "never") {
+      const trackedIds = await readCheckoutTrackedInventoryIds(
+        queryClient, params.siteId, params.lines.map((line) => line.catalogItemId),
+      )
+      // Repeated products must observe the preceding decrement. Only catalog
+      // metadata is batched; stock reads and durable writes remain sequential.
       for (const line of params.lines) {
-        const { data: catalogItem } = await queryClient
-          .from("catalog_items")
-          .select("track_inventory")
-          .eq("id", line.catalogItemId)
-          .single()
-        if (!catalogItem?.track_inventory) continue
+        if (!trackedIds.has(line.catalogItemId)) continue
         const { data: level } = await queryClient
           .from("inventory_levels")
           .select("id, quantity")
@@ -204,8 +205,8 @@ export async function finalizeCheckout(params: FinalizeCheckoutParams) {
     )
   const recurringIds =
     catalogItems
-      ?.filter((item: any) => item.is_recurring)
-      .map((item: any) => item.id) || []
+      ?.filter((item: { id: string; is_recurring: boolean | null }) => item.is_recurring)
+      .map((item: { id: string }) => item.id) || []
   for (const line of params.processedLines) {
     if (!recurringIds.includes(line.catalog_item_id)) continue
     const { data: subscription } = await queryClient

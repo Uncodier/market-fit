@@ -165,9 +165,7 @@ export default function PosWorkspace() {
     subtotal: cartApi.subtotal,
     taxTotal: cartApi.taxTotal,
     currency: cartApi.cartCurrency,
-    onCleared: () => {
-      void cartApi.resetToNewOrder();
-    },
+    onCleared: () => cartApi.resetToNewOrder(),
     appliedPromoRequiresLead: cartApi.appliedPromoRequiresLead,
     onRequireLead: (reason) => setLeadGate(reason),
     t,

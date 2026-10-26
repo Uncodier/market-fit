@@ -25,7 +25,8 @@ export function useCheckoutAttempt(siteId?: string, userId?: string) {
       attempt.current = { key, id }
       return attempt.current.id
     },
-    clear() {
+    clear(expectedId?: string) {
+      if (expectedId && attempt.current?.id !== expectedId) return
       if (attempt.current && localStorage.getItem(attempt.current.key) === attempt.current.id) {
         localStorage.removeItem(attempt.current.key)
       }

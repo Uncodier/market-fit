@@ -4,7 +4,8 @@ import { checkoutCart } from "@/app/commerce/checkout";
 import { authorizeCheckoutBoundary } from "@/app/commerce/checkout-boundary";
 import { createLeadWithIdempotency } from "./actions/create-lead-sync";
 import { getPosOrder } from "./actions/get-order";
-import { requirePosSiteAccess } from "./actions/site-access";
+import { requirePosCheckoutAccess, withPosCheckoutAccessScope } from "./checkout-request-access";
+import { timePosStage } from "./checkout-server-timing";
 import {
   getActiveRegisterForPayment, getRegisterDashboard, getRegisterSummary,
   openRegister, closeRegister, moveRegisterCash,
@@ -68,13 +69,17 @@ function actionResult(operation: PosOperation, result: unknown): BoundaryResult 
   return success ? { status: 200, body: success } : failure(502, UNCONFIRMED);
 }
 
-/** Every HTTP operation authorizes independently; actions repeat their existing checks. */
+/** Each invocation starts fresh; checkout can reuse only this server-owned scope. */
 export async function executePosOperation(input: unknown): Promise<BoundaryResult> {
+  return withPosCheckoutAccessScope(() => executeOperation(input));
+}
+
+async function executeOperation(input: unknown): Promise<BoundaryResult> {
   const parsed = posOperationSchema.safeParse(input);
   if (!parsed.success) return failure(400, "Invalid POS operation request.");
   const operation = parsed.data;
   try {
-    const access = await requirePosSiteAccess(operation.input.siteId);
+    const access = await timePosStage("pos_auth", () => requirePosCheckoutAccess(operation.input.siteId));
     const requiresCashier = operation.operation.startsWith("register") ||
       (operation.operation === "checkout" && !!operation.input.payments?.length);
     if (access.error || !access.user || (requiresCashier && !["owner", "admin", "collaborator"].includes(access.role))) {
@@ -85,7 +90,7 @@ export async function executePosOperation(input: unknown): Promise<BoundaryResul
     switch (operation.operation) {
       case "checkout": {
         if (operation.input.userId && operation.input.userId !== access.user.id) return failure(403, "POS account changed.");
-        if (!await hasPosCheckoutReferenceAccess(access, operation.input)) return failure(403, "POS checkout references are not available for this site.");
+        if (!await timePosStage("pos_references", () => hasPosCheckoutReferenceAccess(access, operation.input))) return failure(403, "POS checkout references are not available for this site.");
         const authorized = await authorizeCheckoutBoundary({ ...operation.input, userId: access.user.id });
         result = await checkoutCart(authorized.params);
         break;

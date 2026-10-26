@@ -37,6 +37,9 @@ function client(order: unknown = persisted, readError = false) {
     const query = {
       select: (fields: string) => { read.fields = fields; return query },
       eq: (key: string, value: unknown) => { read.filters[key] = value; return query },
+      in: (_key: string, ids: string[]) => Promise.resolve({
+        data: catalog.filter((item) => ids.includes(item.id)), error: null,
+      }),
       single: async () => ({ data: table === "sale_orders" ? order : catalog.find((item) => item.id === read.filters.id),
         error: readError ? { message: "Database error" } : null }),
     }

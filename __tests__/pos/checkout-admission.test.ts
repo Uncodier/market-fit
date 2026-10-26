@@ -10,7 +10,9 @@ import { prepareCheckoutEnvironment } from "@/app/commerce/checkout-environment"
 import { processCheckoutLines } from "@/app/commerce/checkout-lines";
 import { persistCheckoutRecords } from "@/app/commerce/checkout-records";
 import { finalizeCheckout } from "@/app/commerce/checkout-finalize";
-import { createServiceClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { requirePosCheckoutAccess, withPosCheckoutAccessScope } from "@/app/pos/checkout-request-access";
+import { withPosServerTiming } from "@/app/pos/checkout-server-timing";
 import type { CheckoutCartParams } from "@/app/commerce/checkout-types";
 
 jest.mock("server-only", () => ({}));
@@ -68,6 +70,30 @@ describe("POS durable checkout admission and evidence ordering", () => {
     jest.mocked(inspectPosPayment).mockRejectedValue(new Error("Unable to read"));
     await expect(checkoutCart(payload)).resolves.toMatchObject({ error: "Unable to read" });
     expect(claimPosCheckout).not.toHaveBeenCalled(); expect(persistCheckoutRecords).not.toHaveBeenCalled();
+  });
+  it("reuses only server-authorized client/identity and times all awaited checkout stages", async () => {
+    const measured = await withPosServerTiming(() => withPosCheckoutAccessScope(async () => {
+      const access = await requirePosCheckoutAccess(payload.siteId);
+      const result = await checkoutCart({ ...payload, userId: "forged-client-user" });
+      expect(prepareCheckoutEnvironment).toHaveBeenCalledWith(expect.objectContaining({ supabase: access.supabase, userId: "cashier" }));
+      return result;
+    }));
+    expect(measured.value).toMatchObject({ success: true });
+    expect(requirePosSiteAccess).toHaveBeenCalledTimes(1);
+    expect(createClient).not.toHaveBeenCalled();
+    for (const stage of ["auth", "admission", "environment", "attribution", "lines", "records", "finalize", "complete"]) {
+      expect(measured.serverTiming).toContain(`checkout_${stage};dur=`);
+    }
+    expect(measured.serverTiming).not.toMatch(/cashier|token|receipt|forged/);
+    await checkoutCart(payload);
+    expect(requirePosSiteAccess).toHaveBeenCalledTimes(2);
+  });
+  it("ignores browser-supplied authorization flags on direct action calls", async () => {
+    jest.mocked(requirePosSiteAccess).mockResolvedValue({ error: "Forbidden" });
+    const forged = { ...payload, authorized: true, posAccess: { user: { id: "cashier" }, role: "owner" } };
+    expect(await checkoutCart(forged)).toEqual({ error: "Forbidden" });
+    expect(createServiceClient).not.toHaveBeenCalled();
+    expect(persistCheckoutRecords).not.toHaveBeenCalled();
   });
   it("persists admission and a write boundary before applying checkout", async () => {
     await expect(checkoutCart(payload)).resolves.toMatchObject({ success: true });

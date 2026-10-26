@@ -38,7 +38,7 @@ export type UsePosCheckoutArgs = {
   buyerUserId: string | null;
   orderNotes?: string;
   shippingAddress?: PosShippingAddress;
-  onCleared: () => void;
+  onCleared: () => void | Promise<void>;
   appliedPromoRequiresLead?: boolean;
   onRequireLead?: (reason: "checkout" | "send") => void;
   t: (key: string) => string;

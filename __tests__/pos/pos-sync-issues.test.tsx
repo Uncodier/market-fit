@@ -213,6 +213,8 @@ it("does not offer payment checks for pending/synced checkouts or other failed o
   }];
   render(<PosSyncIssues {...props} />);
   await screen.findByText("Offline buyer");
+  expect(screen.getByText("Confirmed by the server")).toBeInTheDocument();
+  expect(screen.getByText("Processing — saved on this device, not yet confirmed by the server")).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Check payment status" })).not.toBeInTheDocument();
   expectNoBlindRetry();
 });

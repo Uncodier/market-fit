@@ -4,7 +4,8 @@ import { listPosOpenOrders } from "@/app/pos/actions/list-open-orders";
 import { getActiveRegisterForPayment } from "@/app/pos/register/actions";
 import { getPosDb } from "@/app/pos/local/db";
 import { enqueueCheckout, listOutbox, mapLocalId, updateOutboxRow } from "@/app/pos/local/outbox";
-import { pullPosOrdersInBackground } from "@/app/pos/local/sync-engine";
+import { pullPosOrdersInBackground, syncPosCheckout } from "@/app/pos/local/sync-engine";
+import { assertRegisterQueueSettled } from "@/app/pos/register/queue-guard";
 import type { CheckoutOutboxPayload, PosOutboxRow } from "@/app/pos/local/types";
 
 // Deliberately use the real HTTP client and queue worker. Only the network,
@@ -124,4 +125,40 @@ it("expires a hung register read before enqueue, releasing admission for the nex
   jest.mocked(fetch).mockImplementation(async (_url, options) =>
     JSON.parse(String(options?.body)).operation === "register" ? response({ data: register }) : success(NEW));
   await expect(enqueueRegisteredCheckout(SITE, payload("after-timeout", NEW))).resolves.toMatchObject({ status: "synced" });
+});
+
+it("optimistically accepts two orders, retains timed-out receipt identity and never replays a late payment", async () => {
+  let finishOld!: (value: Response) => void;
+  jest.mocked(fetch).mockImplementation(async (_url, options) => {
+    const { operation, input } = JSON.parse(String(options?.body));
+    if (operation === "register") return response({ data: register });
+    if (operation === "checkout" && input.clientMutationId === "optimistic-old") {
+      return new Promise<Response>((resolve) => { finishOld = resolve; });
+    }
+    if (operation === "checkout") return success(NEW);
+    throw new Error("Unexpected transport");
+  });
+  const options = { waitForConfirmation: false };
+  const old = await enqueueRegisteredCheckout(SITE, payload("optimistic-old", OLD), undefined, undefined, options);
+  expect(old.status).toBe("pending");
+  const originalPayments = JSON.stringify(old.payload.kind === "checkout" && old.payload.data.payments);
+  const confirmation = syncPosCheckout(SITE, old.clientMutationId);
+  await flush();
+  const next = await enqueueRegisteredCheckout(SITE, payload("optimistic-new", NEW), undefined, undefined, options);
+  await syncPosCheckout(SITE, next.clientMutationId);
+  expect(next.status).toBe("synced");
+  expect(old.status).toBe("syncing");
+  await expect(assertRegisterQueueSettled(SITE)).rejects.toThrow("unsynchronized payments");
+  await jest.advanceTimersByTimeAsync(45_000);
+  await confirmation;
+  expect(old.status).toBe("failed");
+  await syncPosCheckout(SITE, old.clientMutationId);
+  const checkouts = jest.mocked(fetch).mock.calls.map(([, request]) => JSON.parse(String(request?.body)))
+    .filter((request) => request.operation === "checkout");
+  expect(checkouts.map((request) => request.input.clientMutationId)).toEqual(["optimistic-old", "optimistic-new"]);
+  finishOld(success(OLD));
+  await flush();
+  expect(old.status).toBe("synced");
+  expect(JSON.stringify(old.payload.kind === "checkout" && old.payload.data.payments)).toBe(originalPayments);
+  await expect(assertRegisterQueueSettled(SITE)).resolves.toBeUndefined();
 });
