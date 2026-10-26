@@ -14,6 +14,7 @@ import { useToast } from "@/app/components/ui/use-toast"
 import { useIsMobile } from "@/app/hooks/use-mobile-view"
 
 import { resolveInstanceIdParam, resolveSelectedInstanceId } from "@/lib/navigation/robots-instance"
+import { useRobotsBillingWake } from "./use-robots-billing-wake"
 
 export function useRobotsController() {
 
@@ -68,23 +69,7 @@ export function useRobotsController() {
     }
   }, [currentSite?.id])
 
-  // Verify subscription on re-entry
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        // Refresh site data to check subscription status
-        refreshSites()
-      }
-    }
-
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    window.addEventListener('focus', handleVisibilityChange)
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-      window.removeEventListener('focus', handleVisibilityChange)
-    }
-  }, [refreshSites])
+  useRobotsBillingWake()
 
   // Detect mode/activity changes
   useEffect(() => {

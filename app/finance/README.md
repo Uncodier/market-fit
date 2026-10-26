@@ -25,6 +25,9 @@
 - The UI loads read-only chart metadata and aggregates together, hides totals
   until both succeed, and rejects unclassified accounts. Site, currency, date,
   tab, and refresh changes invalidate previous requests and their results.
+  Report currency always follows Company Settings (`settings.currency`), with
+  no report-level selector. Missing or invalid settings block loading and direct
+  the user to Company Settings; changes to those settings reload the report.
 - CSV exports use the selected report currency in the filename and every row,
   quote text fields, escape spreadsheet formula prefixes, and release temporary
   download URLs. Numeric amounts are unconverted journal amounts.

@@ -12,8 +12,7 @@ import { Skeleton } from '@/app/components/ui/skeleton'
 import { SyncJournalEntriesDialog } from '@/app/accounting/components/SyncJournalEntriesDialog'
 import { CalendarDateRangePicker } from '@/app/components/ui/date-range-picker'
 import { TrendingUp, Building, ListOrdered, Download } from '@/app/components/ui/icons'
-import { ReportCurrencySelect } from '@/app/components/dashboard/report-currency-select'
-import { REPORT_CURRENCIES, reportCurrency } from '../report-currency'
+import { reportCurrency } from '../report-currency'
 import { downloadFinanceReport, financeReportCsv } from '../report-export'
 import type { FinanceReportTab } from '../report-types'
 import { FinanceReportContent } from './FinanceReportContent'
@@ -21,15 +20,14 @@ import { useFinanceReport } from './useFinanceReport'
 
 export function FinanceReportsClient() {
   const { currentSite } = useSite()
-  // Remount site-scoped preferences and outstanding request generations together.
+  // Remount site-scoped filters and outstanding request generations together.
   return <SiteFinanceReports key={currentSite?.id ?? 'no-site'} siteId={currentSite?.id}
     defaultCurrency={currentSite?.settings?.currency} />
 }
 
 function SiteFinanceReports({ siteId, defaultCurrency }: { siteId?: string; defaultCurrency?: string }) {
   const { t } = useLocalization()
-  const [chosenCurrency, setChosenCurrency] = useState<string | null>(null)
-  const currency = chosenCurrency ?? reportCurrency(defaultCurrency) ?? ''
+  const currency = reportCurrency(defaultCurrency) ?? ''
   const [from, setFrom] = useState(() => format(subMonths(
     parse(new Date().toISOString().slice(0, 10), 'yyyy-MM-dd', new Date()), 1,
   ), 'yyyy-MM-dd'))
@@ -84,7 +82,6 @@ function SiteFinanceReports({ siteId, defaultCurrency }: { siteId?: string; defa
             </TabsList>
           </div>
           <div className="ml-auto flex flex-wrap items-center gap-2">
-            <ReportCurrencySelect label="Report currency" value={currency} currencies={REPORT_CURRENCIES} onChange={setChosenCurrency} />
             <Button variant="ghost" size="sm" onClick={report.refresh} disabled={!siteId || !currency}>Refresh</Button>
             <Button variant="ghost" size="sm" className="flex items-center gap-1" onClick={exportReport}
               aria-label="Export report" disabled={!report.data}>
@@ -99,11 +96,11 @@ function SiteFinanceReports({ siteId, defaultCurrency }: { siteId?: string; defa
       </StickyHeader>
       <TabsContent value={tab} className="flex-1 m-0 p-4 md:p-6 md:px-8 overflow-auto max-w-[1400px] mx-auto w-full space-y-6">
         <p className="text-sm text-muted-foreground">
-          {currency ? `${currency} entries only. No currency conversion. ` : 'Choose a report currency. '}
+          {currency ? `${currency} entries only. No currency conversion. ` : ''}
           Accounting dates use UTC; the end date includes the entire UTC day.
         </p>
         {!siteId ? <p>Select a site to view finance reports.</p>
-          : !currency ? <p>Select a valid currency to load this report.</p>
+          : !currency ? <p>Configure a valid currency in Company Settings to load this report.</p>
           : report.error ? (
             <div role="alert" className="rounded-lg border border-destructive/30 p-6 space-y-3">
               <h2 className="font-semibold">Finance report unavailable</h2>

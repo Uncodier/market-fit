@@ -79,6 +79,25 @@ lock form details until retried. Retries also repeat existing accounting/linked-
 recovery. Secondary errors are warnings, not failed payments. The flow uses the
 existing sales/subscription foreign key and adds no migration.
 
+## Period synchronization performance
+
+The sync dialog discovers candidates with authenticated RLS reads, then submits
+sequential batches of at most 25 sources. Each batch rechecks membership and every
+source's site before creating a service client. Four server-side workers share one
+account-code map per batch; each source still uses its version-checked atomic RPC.
+The dialog reports processed documents, blocks duplicate submissions/dismissal,
+and retains partial-failure messages instead of announcing a false success.
+
+Each browser wait has a 60-second deadline. This stops the UI wait, not an already
+running server mutation; no automatic retry occurs, and users are warned that some
+entries may have been saved. Batching reduces request size but is not a durable
+background queue or a guarantee against platform timeouts.
+
+Expense candidates are date-filtered in PostgreSQL. Sales and purchases still
+scan their minimal historical receipt metadata to include old documents paid in
+the selected period. Removing that scan safely requires an indexed receipt-date
+model or database query; filtering only invoice dates would omit valid cash entries.
+
 ## Chart and opening balances
 
 Chart initialization is an explicit action, not a side effect of viewing reports.

@@ -6,8 +6,13 @@ import { createClient } from "@/lib/supabase/client"
 import { uploadAssetFile } from "@/app/assets/actions"
 import type { InstanceNode } from "@/app/types/instance-nodes"
 import type { useImprentaPanelState } from "@/app/components/agents/imprenta-panel/state"
+import { useRobotsBillingWake } from "@/app/robots/use-robots-billing-wake"
 
-jest.mock("@/app/context/SiteContext", () => ({ useSite: () => ({ currentSite: { id: "site-a" } }) }))
+const mockRefreshSites = jest.fn()
+const mockRefreshBilling = jest.fn().mockResolvedValue(undefined)
+jest.mock("@/app/context/SiteContext", () => ({ useSite: () => ({
+  currentSite: { id: "site-a" }, refreshSites: mockRefreshSites, refreshSiteBilling: mockRefreshBilling,
+}) }))
 jest.mock("@/app/context/LayoutContext", () => ({ useLayout: () => ({ isLayoutCollapsed: false }) }))
 jest.mock("@/app/context/ThemeContext", () => ({ useTheme: () => ({ isDarkMode: false }) }))
 jest.mock("@/app/hooks/use-mobile-view", () => ({ useIsMobile: () => false }))
@@ -85,4 +90,35 @@ it("does not add a pending upload to another canvas after navigation", async () 
   rerender(<ImprentaPanel activeInstanceId="instance-b" />)
   await act(async () => { finish() })
   expect(screen.queryByText("Photo.png")).not.toBeInTheDocument()
+})
+
+it("keeps the file input and pending upload alive across file-picker wake events", async () => {
+  let finish!: (value: { path: string }) => void
+  jest.mocked(uploadAssetFile).mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
+  Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" })
+  function Workspace() {
+    useRobotsBillingWake()
+    return <ImprentaPanel activeInstanceId="instance-a" />
+  }
+  render(<Workspace />)
+  const input = screen.getByLabelText("Upload file")
+  await act(async () => {
+    window.dispatchEvent(new Event("focus"))
+    document.dispatchEvent(new Event("visibilitychange"))
+    fireEvent.change(input, {
+      target: { files: [new File(["image"], "Photo.png", { type: "image/png" })] },
+    })
+  })
+  await waitFor(() => expect(uploadAssetFile).toHaveBeenCalledTimes(1))
+  await act(async () => {
+    window.dispatchEvent(new Event("focus"))
+    document.dispatchEvent(new Event("visibilitychange"))
+  })
+  expect(mockRefreshSites).not.toHaveBeenCalled()
+  expect(mockRefreshBilling).toHaveBeenCalledWith("site-a")
+  expect(screen.getByLabelText("Upload file")).toBe(input)
+  expect(screen.getByText("Existing prompt")).toBeInTheDocument()
+  await act(async () => { finish({ path: "https://example.test/photo.png" }) })
+  await waitFor(() => expect(screen.getByText("Photo.png")).toBeInTheDocument())
+  expect(cacheUploadedNode).toHaveBeenCalledWith(uploaded)
 })

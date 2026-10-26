@@ -3,8 +3,7 @@
 import { z } from 'zod'
 import { createServiceClient } from '@/lib/supabase/server'
 import { requireAccountingAccess } from './access'
-import { accountingDate, accountingDateRange } from './dates'
-import { readAllAccountingRows } from './paging'
+import { findPeriodSyncSources, postPeriodSyncSources, PERIOD_SYNC_BATCH_SIZE } from './period-sync'
 import { postSourceJournalWithClient, replaceSourceJournals, sourceTables, type AccountingSourceType } from './source-posting'
 
 async function authorizedSource(type: AccountingSourceType, sourceId: string, siteId: string, command: 'update' | 'delete') {
@@ -74,41 +73,32 @@ export async function removePolizaForSource(type: AccountingSourceType, sourceId
 
 export async function ensurePolizasForPeriod(siteId: string, fromDate: string, toDate: string): Promise<void> {
   const userClient = await requireAccountingAccess(siteId, 'update')
-  const range = accountingDateRange(fromDate, toDate)
-  const start = range.from.slice(0, 10)
-  const end = accountingDate(toDate)
-  const within = (date: unknown) => {
-    if (typeof date !== 'string' || !date) return false
-    const day = accountingDate(date)
-    return day >= start && day <= end
-  }
-  const sources: { type: AccountingSourceType; id: string }[] = []
-  for (const type of ['sale', 'expense', 'purchase'] as const) {
-    const dateColumn = type === 'sale' ? 'sale_date' : type === 'purchase' ? 'purchase_date' : 'date'
-    const columns = `id, ${dateColumn}, updated_at, accounting_state${type === 'expense' ? '' : ', payments'}`
-    const rows = await readAllAccountingRows<any>(() => userClient.from(sourceTables[type])
-      .select(columns, { count: 'exact' }).eq('site_id', siteId).neq('accounting_state', 'unpublished').order('id'))
-    for (const row of rows) {
-      if (within(row[dateColumn]) || within(row.updated_at) || row.payments?.some((payment: any) => within(payment.date))) {
-        sources.push({ type, id: row.id })
-      }
-    }
-  }
-  const refunds = await readAllAccountingRows<{ sale_id: string }>(() => userClient.from('accounting_sale_refunds')
-    .select('id, sale_id', { count: 'exact' }).eq('site_id', siteId)
-    .gte('refunded_at', range.from).lt('refunded_at', range.toExclusive).order('id'))
-  for (const refund of refunds) {
-    if (!sources.some(source => source.type === 'sale' && source.id === refund.sale_id)) sources.push({ type: 'sale', id: refund.sale_id })
-  }
+  const sources = await findPeriodSyncSources(userClient, siteId, fromDate, toDate)
   // Every candidate came from authenticated, site-scoped reads. Each source is replaced atomically.
   const service = await createServiceClient(true)
-  let failed = 0
-  for (const source of sources) {
-    try {
-      await postSourceJournalWithClient(service, source.type, source.id, siteId, { skipUnpublished: true })
-    } catch {
-      failed += 1
-    }
-  }
+  const { failed } = await postPeriodSyncSources(service, siteId, sources)
   if (failed) throw new Error(`${failed} of ${sources.length} sources could not be synchronized. Existing entries were preserved; review source data and retry.`)
+}
+
+export async function preparePeriodSync(siteId: string, fromDate: string, toDate: string) {
+  const userClient = await requireAccountingAccess(siteId, 'update')
+  return findPeriodSyncSources(userClient, siteId, fromDate, toDate)
+}
+
+export async function syncPeriodBatch(siteId: string, input: unknown) {
+  const sources = z.array(z.object({ type: z.enum(['sale', 'expense', 'purchase']), id: z.string().uuid() }))
+    .min(1).max(PERIOD_SYNC_BATCH_SIZE).parse(input)
+  const unique = new Set(sources.map(source => `${source.type}:${source.id}`))
+  if (unique.size !== sources.length) throw new Error('Duplicate accounting sources')
+  const userClient = await requireAccountingAccess(siteId, 'update')
+  // Browser-provided source IDs are untrusted. Verify every ID under RLS before elevation.
+  await Promise.all((['sale', 'expense', 'purchase'] as const).map(async type => {
+    const ids = sources.filter(source => source.type === type).map(source => source.id)
+    if (!ids.length) return
+    const { data, error } = await userClient.from(sourceTables[type]).select('id')
+      .eq('site_id', siteId).in('id', ids)
+    if (error || !data || data.length !== ids.length) throw new Error('Accounting source not found in this site')
+  }))
+  const service = await createServiceClient(true)
+  return postPeriodSyncSources(service, siteId, sources)
 }

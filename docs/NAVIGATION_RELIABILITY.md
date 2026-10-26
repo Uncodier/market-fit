@@ -26,6 +26,21 @@ remain unchanged: changing prefetch traffic is a separate optimization.
 Explicit logout, external redirects, demo transitions, and site-archival document
 reloads retain their existing behavior. These are not idle-recovery mechanisms.
 
+### Robots file-picker recovery
+
+Robots checks subscription changes on focus/visibility through the existing
+user-scoped `refreshSiteBilling` read, not `refreshSites`. A full-site refresh
+sets the workspace loading flag, which pauses SWR and temporarily removes the
+active robot and Imprenta file input. OS file pickers can emit those wake events
+before the selected file's change event, interrupting the upload. Billing-only
+refresh keeps the site, selected instance, canvas, and input mounted; concurrent
+wake events share one billing read. A failed read does not reload the page or
+replay an upload. Later wake events may retry the read.
+
+Regression coverage includes the real Robots controller's wake handler and a
+pending upload through the real Imprenta panel controller. Authenticated browser
+verification of the native OS picker still requires a configured test target.
+
 ## Version checks from public storefronts
 
 Storefronts on www query the app's public `/api/version` endpoint directly to

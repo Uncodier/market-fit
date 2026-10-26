@@ -46,6 +46,14 @@ describe('source journals use one atomic operation', () => {
     expect(client.rpc).not.toHaveBeenCalled()
     expect(ensureChartWithClient).not.toHaveBeenCalled()
   })
+  it('reuses server-loaded account codes without initializing the chart per source', async () => {
+    const accountCodes = new Map([['revenue', '4000']])
+    await postSourceJournalWithClient(client, 'sale', sourceId, siteId, { accountCodes })
+    expect(ensureChartWithClient).not.toHaveBeenCalled()
+    expect(loadAccountsWithClient).not.toHaveBeenCalled()
+    expect(buildSaleJournalDrafts).toHaveBeenCalledWith(expect.anything(), null, accountCodes)
+    expect(client.rpc).toHaveBeenCalledTimes(1)
+  })
   it('never replaces a legacy draft purchase with an empty set when journal history exists', async () => {
     source.status = 'draft'
     chain.limit = jest.fn(async () => ({ data: [{ id: 'old-journal' }], error: null }))

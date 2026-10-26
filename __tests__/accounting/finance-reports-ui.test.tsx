@@ -70,10 +70,11 @@ it('renders its imported buttons on the first render and does not show zero tota
   expect(screen.getByRole('button', { name: 'Export report' })).toBeEnabled()
 })
 
-it('requires a selected currency rather than silently assuming USD', () => {
-  mockSite = { id: 'site-a', settings: {} }
+it.each([undefined, 'invalid'])('requires valid company settings currency (%s) rather than silently assuming USD', currency => {
+  mockSite = { id: 'site-a', settings: { currency } }
   render(<FinanceReportsClient />)
-  expect(screen.getByText('Select a valid currency to load this report.')).toBeInTheDocument()
+  expect(screen.getByText('Configure a valid currency in Company Settings to load this report.')).toBeInTheDocument()
+  expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
   expect(getPnLReport).not.toHaveBeenCalled()
   expect(screen.getByRole('button', { name: 'Export report' })).toBeDisabled()
 })
@@ -116,19 +117,19 @@ it.each(['failed', 'incomplete'])('fails closed for a %s chart of accounts', asy
   expect(screen.queryByRole('region', { name: 'Total Income' })).not.toBeInTheDocument()
 })
 
-it('selects a currency independently from the site default and ignores stale currency results', async () => {
+it('follows company currency changes and ignores stale currency results without a selector', async () => {
   const usd = deferred<ReportAmounts>()
   const eur = deferred<ReportAmounts>()
   jest.mocked(getPnLReport).mockImplementation((_site, _from, _to, currency) => currency === 'EUR' ? eur.promise : usd.promise)
-  render(<FinanceReportsClient />)
-  fireEvent.change(screen.getByRole('combobox', { name: 'Report currency' }), { target: { value: 'EUR' } })
+  const { rerender } = render(<FinanceReportsClient />)
+  mockSite = { id: 'site-a', settings: { currency: 'EUR' } }
+  rerender(<FinanceReportsClient />)
   expect(getPnLReport).toHaveBeenLastCalledWith('site-a', expect.any(String), expect.any(String), 'EUR')
   await act(async () => eur.resolve(amounts(25)))
   expect(screen.getByRole('region', { name: 'Total Income' })).toHaveTextContent('EUR 25.00')
   await act(async () => usd.resolve(amounts(999)))
   expect(screen.getByRole('region', { name: 'Total Income' })).toHaveTextContent('EUR 25.00')
-  expect(screen.getByRole('combobox')).toHaveValue('EUR')
-  expect(mockSite?.settings.currency).toBe('USD')
+  expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
   expect(screen.getByText(/EUR entries only. No currency conversion/)).toBeInTheDocument()
 })
 
@@ -170,35 +171,34 @@ it('removes previously successful totals if a refresh fails', async () => {
   expect(downloadFinanceReport).not.toHaveBeenCalled()
 })
 
-it('keeps a chosen currency when site settings finish loading in the background', async () => {
+it('loads the company currency when site settings finish loading in the background', async () => {
   mockSite = { id: 'site-a', settings: {} }
   const { rerender } = render(<FinanceReportsClient />)
-  fireEvent.change(screen.getByRole('combobox'), { target: { value: 'EUR' } })
-  await screen.findByRole('region', { name: 'Total Income' })
-  mockSite = { id: 'site-a', settings: { currency: 'USD' } }
+  expect(getPnLReport).not.toHaveBeenCalled()
+  mockSite = { id: 'site-a', settings: { currency: ' mxn ' } }
   rerender(<FinanceReportsClient />)
-  expect(screen.getByRole('combobox')).toHaveValue('EUR')
-  expect(screen.getByRole('region', { name: 'Total Income' })).toHaveTextContent('EUR 10.00')
+  expect(await screen.findByRole('region', { name: 'Total Income' })).toHaveTextContent('MXN 10.00')
+  expect(getPnLReport).toHaveBeenLastCalledWith('site-a', expect.any(String), expect.any(String), 'MXN')
+  expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
 })
 
 it('resets currency and totals for another site and ignores the old site response', async () => {
   const old = deferred<ReportAmounts>()
   jest.mocked(getPnLReport).mockImplementation(site => site === 'site-a' ? old.promise : Promise.resolve(amounts(50)))
   const { rerender } = render(<FinanceReportsClient />)
-  fireEvent.change(screen.getByRole('combobox'), { target: { value: 'EUR' } })
   mockSite = { id: 'site-b', settings: { currency: 'GBP' } }
   rerender(<FinanceReportsClient />)
-  expect(screen.getByRole('combobox')).toHaveValue('GBP')
   await screen.findByRole('region', { name: 'Total Income' })
   await act(async () => old.resolve(amounts(999)))
   expect(screen.getByRole('region', { name: 'Total Income' })).toHaveTextContent('GBP 50.00')
   expect(getAllAccounts).toHaveBeenLastCalledWith('site-b')
 })
 
-it('exports the latest selected currency and dates instead of the site default', async () => {
-  render(<FinanceReportsClient />)
+it('exports the latest company settings currency and dates', async () => {
+  const { rerender } = render(<FinanceReportsClient />)
   await screen.findByRole('region', { name: 'Total Income' })
-  fireEvent.change(screen.getByRole('combobox'), { target: { value: 'EUR' } })
+  mockSite = { id: 'site-a', settings: { currency: 'EUR' } }
+  rerender(<FinanceReportsClient />)
   fireEvent.click(screen.getByRole('button', { name: 'January dates' }))
   await waitFor(() => expect(screen.getByRole('button', { name: 'Export report' })).toBeEnabled())
   fireEvent.click(screen.getByRole('button', { name: 'Export report' }))

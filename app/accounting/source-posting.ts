@@ -18,7 +18,7 @@ const purchaseSelect = `*, vendor:companies!vendor_company_id(name),
 const selects = { sale: saleSelect, expense: expenseSelect, purchase: purchaseSelect }
 const first = (value: any) => Array.isArray(value) ? value[0] : value
 
-async function accountMap(supabase: any, siteId: string) {
+export async function loadPostingAccountMap(supabase: any, siteId: string) {
   await ensureChartWithClient(supabase, siteId)
   const accounts = await loadAccountsWithClient(supabase, siteId)
   const map = new Map<string, string>()
@@ -33,7 +33,7 @@ async function accountMap(supabase: any, siteId: string) {
 /** Only call with a service client after authorizing the exact source and site. */
 export async function postSourceJournalWithClient(
   supabase: any, type: AccountingSourceType, sourceId: string, siteId: string,
-  options: { skipUnpublished?: boolean } = {},
+  options: { skipUnpublished?: boolean; accountCodes?: Map<string, string> } = {},
 ) {
   z.string().uuid().parse(siteId)
   z.string().uuid().parse(sourceId)
@@ -46,7 +46,7 @@ export async function postSourceJournalWithClient(
       .eq('site_id', siteId).eq('source_type', type).eq('source_id', sourceId).limit(1)
     if (lookupError || existing?.length) throw new Error('Draft status cannot remove an existing purchase journal')
   }
-  const codes = await accountMap(supabase, siteId)
+  const codes = options.accountCodes ?? await loadPostingAccountMap(supabase, siteId)
   let drafts: JournalDraft[]
   if (type === 'sale') {
     const refunds = await readAllAccountingRows<any>(() => supabase.from('accounting_sale_refunds')
