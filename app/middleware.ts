@@ -11,6 +11,7 @@ import { isRouterPrefetchRequest } from '@/lib/navigation/is-router-prefetch'
 import { isServerActionRequest } from '@/lib/navigation/is-server-action'
 import { enforceApiAdmission } from '@/lib/redis/api-admission'
 import { isSuspiciousRequest } from '@/lib/http/suspicious-request'
+import { developmentConnectSources } from '@/lib/http/development-connect-src'
 
 // Lista específica y exacta de rutas públicas permitidas
 const ALLOWED_PUBLIC_PATHS = [
@@ -237,6 +238,12 @@ const getCorsHeaders = (
   // Include https://app.makinari.com so commerce pages proxied under www can load assetPrefix chunks.
   let csp = "default-src 'self'; connect-src 'self' https://app.makinari.com https://www.makinari.com https://*.supabase.co wss://*.supabase.co https://*.supabase.in http://localhost:3001 http://192.168.0.38:3001 http://192.168.87.79:3001 http://192.168.87.25:3001 http://192.168.87.246:3001 http://192.168.87.34:* http://192.168.87.34 https://192.168.87.34:* http://192.168.87.49/* http://192.168.87.49:* https://192.168.87.49/* https://192.168.87.49:* http://192.168.87.174:* http://192.168.87.174 https://192.168.87.174:* http://192.168.87.180:* http://192.168.87.180 https://192.168.87.180:* https://tu-api-real.com https://api.market-fit.ai https://backend.aimarket.fit https://backend.uncodie.com https://api.uncodie.com https://backend.makinari.com https://db.makinari.com wss://db.makinari.com https://ipapi.co https://nominatim.openstreetmap.org https://api.stripe.com https://*.stripe.com; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://js.stripe.com https://files.uncodie.com https://backend.uncodie.com https://app.makinari.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://app.makinari.com; img-src 'self' data: blob: https: http://localhost:3001; font-src 'self' data: https://fonts.gstatic.com https://app.makinari.com; media-src 'self' blob: https://files.uncodie.com https://*.supabase.co https://rnjgeloamtszdjplmqxy.supabase.co https://db.makinari.com; frame-src 'self' https://*.vercel.app https://*.supabase.co https://rnjgeloamtszdjplmqxy.supabase.co https://docs.google.com https://js.stripe.com https://hooks.stripe.com https://*.stripe.com https://*.scrapybara.com https://*.makinari.com https://*.preview.makinari.com https://www.openstreetmap.org;";
   
+  const developmentSources = developmentConnectSources()
+  if (developmentSources.length) {
+    csp = csp.replace("connect-src 'self'", `connect-src 'self' ${developmentSources.join(' ')}`)
+    const httpSources = developmentSources.filter(source => source.startsWith('http'))
+    csp = csp.replace("img-src 'self'", `img-src 'self' ${httpSources.join(' ')}`)
+  }
   csp += isPublicBooking ? " frame-ancestors *;" : ` ${DEMO_FRAME_ANCESTORS};`
   response.headers.delete('X-Frame-Options')
   

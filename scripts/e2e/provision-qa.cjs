@@ -6,6 +6,7 @@ const { openStore } = require('./provision-qa-store.cjs');
 const { schemaPreflight } = require('./provision-qa-schema.cjs');
 const { seedRows, seedAuth, assetBucket } = require('./provision-qa-seed.cjs');
 const { verify } = require('./provision-qa-verify.cjs');
+const { adjustImages } = require('./provision-qa-adjust.cjs');
 const root = path.resolve(__dirname, '../..');
 
 function loadEnvironment(base = process.env, directory = root) {
@@ -40,14 +41,22 @@ async function provision(env, args = [], dependencies = {}) {
   });
   const store = (dependencies.openStore || openStore)(dependencies.root || root, config);
   // Invalidate prior success artifacts before any attempt: stale PASS is unsafe.
+  let stage = 'artifacts';
   try {
     store.write('env.json', { QA_ENVIRONMENT_ID: config.id, QA_STATUS: 'INCOMPLETE' });
     store.write('summary.json', { status: 'INCOMPLETE', environmentId: config.id });
     const setup = makeClient(config.setupKey);
+    stage = 'auth-setup';
     await seedAuth(setup, battery, store);
+    stage = 'relational-setup';
+    await adjustImages(config, battery, store, makeClient, env.QA_ALLOW_SMOKE_ADJUSTMENTS === '1');
+    stage = 'relational-setup';
     await seedRows(setup, battery, store);
+    stage = 'assets-prerequisite';
     await assetBucket(setup, store);
-    const evidence = await verify(config, battery, store, makeClient);
+    stage = 'public-verification';
+    const evidence = await verify(config, battery, store, makeClient, env.QA_ALLOW_SMOKE_ADJUSTMENTS === '1');
+    stage = 'output';
     const values = environment(config, battery, store.state.credentials);
     values.QA_STATUS = 'VERIFIED';
     store.write('env.json', values);
@@ -55,8 +64,9 @@ async function provision(env, args = [], dependencies = {}) {
     store.write('summary.json', summary);
     return summary;
   } catch (error) {
+    if (error instanceof Error) error.qaStage = stage;
     store.event('provision', 'failed-partial-state-retained');
-    store.write('summary.json', { status: 'FAILED', environmentId: config.id,
+    store.write('summary.json', { status: 'FAILED', stage, environmentId: config.id,
       message: 'Partial run-owned fixtures may remain. No cleanup or automatic retry. Inspect private journal before rerun.' });
     throw error;
   } finally { store.close(); }
@@ -66,9 +76,11 @@ async function main(args = process.argv.slice(2)) {
   const result = await provision(loadEnvironment(), args);
   console.log(JSON.stringify(result, null, 2));
 }
-if (require.main === module) main().catch(() => {
+if (require.main === module) main().catch(error => {
   // Never print arbitrary SQL, Auth, URL, key or SDK error payloads.
-  console.error('QA provisioning refused or failed. No success claimed; inspect configuration and private fixture journal.');
+  const stages = ['artifacts', 'auth-setup', 'relational-setup', 'assets-prerequisite', 'public-verification', 'output'];
+  const stage = stages.includes(error?.qaStage) ? error.qaStage : 'configuration-or-read-only-preflight';
+  console.error(`QA provisioning refused or failed (${stage}). No success claimed; inspect configuration and private fixture journal.`);
   process.exitCode = 1;
 });
 module.exports = { loadEnvironment, provision, main };

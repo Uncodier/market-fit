@@ -136,8 +136,14 @@ does not mean an execution occurred or that fixtures have already been delivered
 4. **Shop:** `reserve-in-shop.test.yaml:56–66` asserts a zero-total cash/hash
    result. Author a separate nonzero Stripe case rather than relabel this one.
 5. **Manual:** `reserve-in-reservations-page.test.yaml:74–90` asserts a count
-   increase. `app/reservations/actions.ts:181–196` returns the actual upsert row;
-   capture/correlate its exact ID, and verify through an authenticated read.
+   increase. The actual dialog calls `submitServiceReservationForm`
+   (`app/reservations/components/reservation-dialog-submit.ts:188–204`), which
+   awaits `saveServiceReservation`, then discards the successful row locally.
+   `app/reservations/sale-order-actions.ts:261–313` returns `{ data: Reservation }`
+   after reservation persistence and order/sale creation. An order failure can
+   return `{ error }` after the reservation already committed. Capture the
+   decoded save action result, not an arbitrary UUID from the Flight/UI payload,
+   and reconcile partial commits before any retry or cleanup.
 6. **Persistence:** `app/commerce/checkout-reservations.ts:112–174` links order
    lines and creates/updates pending or confirmed reservations based on intent
    and full payment. Verify expected channel-specific state, dates, quantity,

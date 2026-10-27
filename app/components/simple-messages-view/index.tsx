@@ -351,7 +351,7 @@ const { className, activeRobotInstance, isBrowserVisible, hasTopHeaderSpace, ski
         {!isEmpty && (
           // Preserve the measured composer height and scroll spacer when the button hides.
           <div
-            className={cn("flex w-full shrink-0 justify-center", !showJumpToLatest && "invisible pointer-events-none")}
+            className={cn("flex w-full shrink-0 justify-center", !showJumpToLatest && "invisible opacity-0 pointer-events-none")}
             aria-hidden={!showJumpToLatest}
           >
             <Button

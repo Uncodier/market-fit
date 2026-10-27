@@ -1,6 +1,7 @@
 const { fixtureId } = require('./provision-qa-policy.cjs');
 const roles = ['admin', 'collaborator', 'marketing', 'foreign', 'buyer'];
 const marker = 'market-fit-qa-v1';
+const { imageUrl } = require('./provision-qa-adjust.cjs');
 
 function plan(config) {
   const id = kind => fixtureId(config.id, kind);
@@ -35,7 +36,7 @@ function plan(config) {
   add('record-category', 'record_categories', { site_id: site, name: name('record category'), template_fields: [] });
   // Companies are global in this schema, not tenant-scoped. Use run-owned name+ID.
   add('company', 'companies', { name: name('company'), email: `company@${config.id}.invalid`, industry: 'technology', size: '1-10' });
-  add('expense-account', 'accounting_accounts', { site_id: site, code: config.id, key: config.id, label: name('expense account'), type: 'expense', system: false, active: true }, 'code');
+  add('expense-account', 'accounting_accounts', { site_id: site, code: config.id, key: config.id.replace(/-/g, '_'), label: name('expense account'), type: 'expense', system: false, active: true }, 'code');
   add('agent', 'agents', { site_id: site, user_id: admin, name: name('agent'), type: 'support', status: 'inactive', prompt: 'Local QA only. Do not contact external services.', configuration: ownership });
   add('campaign', 'campaigns', { site_id: site, user_id: admin, title: name('campaign'), type: 'email', status: 'pending', metadata: ownership }, 'title');
   for (const kind of ['product', 'reservable', 'recurring']) {
@@ -43,7 +44,7 @@ function plan(config) {
       kind: kind === 'reservable' ? 'service' : 'product', status: 'active', currency: 'USD', target_sale_price: 0,
       lowest_sale_price: 0, cost: 0, track_inventory: false, availability_mode: 'always', availability_status: 'available',
       is_purchasable: true, is_reservation: kind === 'reservable', is_recurring: kind === 'recurring',
-      is_marketplace_listed: true, is_pos_available: true, metadata: ownership });
+      is_marketplace_listed: true, is_pos_available: true, metadata: ownership, image_url: imageUrl });
   }
   add('content', 'content', { site_id: site, user_id: admin, author_id: admin, title: name('smoke content'), type: 'blog_post',
     status: 'draft', text: 'Deterministic local QA smoke content.', campaign_id: id('campaign'), metadata: ownership }, 'title');
@@ -60,6 +61,7 @@ function environment(config, battery, credentials) {
     TEST_SITE_ID: row('site').id, TEST_SITE_NAME: row('site').name, TEST_FOREIGN_SITE_ID: row('foreign-site').id,
     TEST_SHOP_SLUG: row('site').id, TEST_CATALOG_ITEM_ID: row('product').id, TEST_CATALOG_ITEM_NAME: row('product').name,
     TEST_CONTENT_NAME: row('content').title, TEST_LEAD_NAME: row('lead').name, TEST_INVITE_EMAIL_DOMAIN: `${config.id}.invalid`,
+    TEST_CALENDAR_MEMBER_EMAIL: battery.users[0].email,
     TEST_ASSET_BUCKET: 'assets', TEST_ASSET_PREFIX: `${config.id}/`,
     TEST_RESERVATION_CUSTOMER_ID: row('lead').id, TEST_RESERVATION_CUSTOMER_NAME: row('lead').name };
   for (const user of battery.users) {

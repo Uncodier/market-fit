@@ -10,6 +10,7 @@ function localOrigin(value) {
   let url;
   try { url = new URL(value); } catch { throw new Error('Invalid local origin'); }
   if (!['http:', 'https:'].includes(url.protocol) || !['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)
+    || (value !== url.origin && value !== `${url.origin}/`)
     || url.username || url.password || url.pathname !== '/' || url.search || url.hash) {
     throw new Error('Only canonical loopback HTTP(S) origins are allowed');
   }

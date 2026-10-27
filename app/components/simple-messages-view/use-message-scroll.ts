@@ -1,6 +1,14 @@
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react"
 import type { SimpleMessagesViewProps, InstanceLog } from "./types"
 const SCROLL_BOTTOM_THRESHOLD_PX = 80
+const SCROLL_POSITION_EPSILON_PX = 1
+
+function scrollPosition(container: HTMLDivElement) {
+  const maxTop = Math.max(0, container.scrollHeight - container.clientHeight)
+  // Safari can report positions outside the scroll range during rubber-banding.
+  const top = Math.max(0, Math.min(container.scrollTop, maxTop))
+  return { top, maxTop, distance: maxTop - top }
+}
 
 export function useMessageScroll(activeRobotInstance: SimpleMessagesViewProps["activeRobotInstance"], setIsStepIndicatorExpanded: (value: boolean) => void) {
   const scrollToBottomImmediateRef = useRef<(() => void) | null>(null)
@@ -9,18 +17,21 @@ export function useMessageScroll(activeRobotInstance: SimpleMessagesViewProps["a
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
-  /** When true, new logs follow the bottom (like a terminal). When false, we show "Latest" instead of auto-scrolling. */
+  /** Follow new logs until the user scrolls up; Latest visibility is measured separately. */
   const stickToBottomRef = useRef(true)
   const [showJumpToLatest, setShowJumpToLatest] = useState(false)
   const lastScrollTopRef = useRef(0)
-  const lastScrollHeightRef = useRef(0)
 
-  const updateStickToBottomFromScroll = useCallback(() => {
+  const updateStickToBottomFromScroll = useCallback((allowResume = false) => {
     const container = messagesContainerRef.current
     if (!container) return
-    const dist = container.scrollHeight - container.scrollTop - container.clientHeight
-    const nearBottom = dist <= SCROLL_BOTTOM_THRESHOLD_PX
-    stickToBottomRef.current = nearBottom
+    const { top, distance } = scrollPosition(container)
+    const nearBottom = distance <= SCROLL_BOTTOM_THRESHOLD_PX
+    const scrollingUp = top < lastScrollTopRef.current && distance > SCROLL_POSITION_EPSILON_PX
+    if (scrollingUp) stickToBottomRef.current = false
+    else if (allowResume && top > lastScrollTopRef.current && nearBottom) stickToBottomRef.current = true
+    // Visibility describes the viewport, not whether automatic following is enabled.
+    // A small upward gesture must suspend following without flashing Latest.
     setShowJumpToLatest(!nearBottom)
   }, [])
 
@@ -28,24 +39,28 @@ export function useMessageScroll(activeRobotInstance: SimpleMessagesViewProps["a
   useLayoutEffect(() => {
     stickToBottomRef.current = true
     lastScrollTopRef.current = 0
-    lastScrollHeightRef.current = 0
   }, [activeRobotInstance?.id])
 
   const scrollContainerToBottomImmediate = useCallback(() => {
     const container = messagesContainerRef.current
     if (container) {
-      container.scrollTop = container.scrollHeight
-      lastScrollTopRef.current = container.scrollTop
-      lastScrollHeightRef.current = container.scrollHeight
+      const { maxTop, distance } = scrollPosition(container)
+      // Even a no-op assignment can interrupt native momentum scrolling in Safari.
+      if (distance > SCROLL_POSITION_EPSILON_PX) container.scrollTop = maxTop
+      lastScrollTopRef.current = scrollPosition(container).top
+      setShowJumpToLatest(false)
     }
   }, [])
 
   /** Used after fetching logs: only snap down if the user was already following the tail. */
   const scrollToBottomImmediateIfStuck = useCallback(() => {
+    // Layout/resize/fetch callbacks can run before the queued native scroll event.
+    // Check the live position before a write erases the user's first upward move.
+    updateStickToBottomFromScroll()
     if (stickToBottomRef.current) {
       scrollContainerToBottomImmediate()
     }
-  }, [scrollContainerToBottomImmediate])
+  }, [scrollContainerToBottomImmediate, updateStickToBottomFromScroll])
   useLayoutEffect(() => {
     scrollToBottomImmediateRef.current = scrollToBottomImmediateIfStuck
   }, [scrollToBottomImmediateIfStuck])
@@ -66,7 +81,7 @@ export function useMessageScroll(activeRobotInstance: SimpleMessagesViewProps["a
     scrollContainerToBottomImmediate()
   }, [scrollContainerToBottomImmediate])
 
-  return { bottomPadding, setBottomPadding, bottomContainerRef, scrollToBottomImmediateRef, messagesEndRef, messagesContainerRef, stickToBottomRef, showJumpToLatest, setShowJumpToLatest, lastScrollTopRef, lastScrollHeightRef, updateStickToBottomFromScroll, scrollContainerToBottomImmediate, scrollToBottomImmediateIfStuck, jumpToLatestLogs, scrollToBottom }
+  return { bottomPadding, setBottomPadding, bottomContainerRef, scrollToBottomImmediateRef, messagesEndRef, messagesContainerRef, stickToBottomRef, showJumpToLatest, setShowJumpToLatest, lastScrollTopRef, updateStickToBottomFromScroll, scrollContainerToBottomImmediate, scrollToBottomImmediateIfStuck, jumpToLatestLogs, scrollToBottom }
 }
 
 interface PendingHistoryScroll {
@@ -92,8 +107,8 @@ type MessageScrollEffectsOptions = ReturnType<typeof useMessageScroll> & {
 
 export function useMessageScrollEffects({
   bottomPadding, setBottomPadding, bottomContainerRef, messagesContainerRef, stickToBottomRef,
-  setShowJumpToLatest, lastScrollTopRef, lastScrollHeightRef, updateStickToBottomFromScroll,
-  scrollContainerToBottomImmediate, activeRobotInstance, isLoadingLogs,
+  setShowJumpToLatest, lastScrollTopRef, updateStickToBottomFromScroll,
+  scrollContainerToBottomImmediate, scrollToBottomImmediateIfStuck, activeRobotInstance, isLoadingLogs,
   isLoadingMore, logs, hasMoreLogs, loadMoreLogs,
 }: MessageScrollEffectsOptions) {
   const instanceId = activeRobotInstance?.id
@@ -128,6 +143,7 @@ export function useMessageScrollEffects({
       pendingHistoryRef.current = null
       stickToBottomRef.current = true
       setShowJumpToLatest(false)
+      scrollContainerToBottomImmediate()
     }
 
     const pending = pendingHistoryRef.current
@@ -141,7 +157,7 @@ export function useMessageScrollEffects({
           ? element.getBoundingClientRect().top + container.scrollTop - anchor.offset
           : container.scrollHeight - pending.height
         container.scrollTop += shift
-        lastScrollTopRef.current = container.scrollTop
+        lastScrollTopRef.current = scrollPosition(container).top
         pending.height = container.scrollHeight
         pending.firstLogId = logs[0]?.id
         if (element && anchor) anchor.offset = element.getBoundingClientRect().top + container.scrollTop
@@ -149,8 +165,37 @@ export function useMessageScrollEffects({
       if (pending.settled) pendingHistoryRef.current = null
     }
 
-    if (stickToBottomRef.current) scrollContainerToBottomImmediate()
+    scrollToBottomImmediateIfStuck()
   })
+
+  useEffect(() => {
+    const container = messagesContainerRef.current
+    if (!container) return
+    // Stop following before a trackpad/touch gesture is applied by the browser.
+    // Passive listeners leave native scrolling (including nested content) alone.
+    const onWheel = (event: WheelEvent) => {
+      if (!event.ctrlKey && event.deltaY < 0 && Math.abs(event.deltaY) > Math.abs(event.deltaX)) {
+        stickToBottomRef.current = false
+      }
+    }
+    let touchY: number | undefined
+    const onTouchStart = (event: TouchEvent) => {
+      touchY = event.touches.length === 1 ? event.touches[0].clientY : undefined
+    }
+    const onTouchMove = (event: TouchEvent) => {
+      const nextY = event.touches.length === 1 ? event.touches[0].clientY : undefined
+      if (touchY !== undefined && nextY !== undefined && nextY > touchY) stickToBottomRef.current = false
+      touchY = nextY
+    }
+    container.addEventListener('wheel', onWheel, { passive: true })
+    container.addEventListener('touchstart', onTouchStart, { passive: true })
+    container.addEventListener('touchmove', onTouchMove, { passive: true })
+    return () => {
+      container.removeEventListener('wheel', onWheel)
+      container.removeEventListener('touchstart', onTouchStart)
+      container.removeEventListener('touchmove', onTouchMove)
+    }
+  }, [instanceId, isLoadingLogs, messagesContainerRef, stickToBottomRef])
 
   useEffect(() => {
     if (!bottomContainerRef.current) return
@@ -173,35 +218,22 @@ export function useMessageScrollEffects({
   useEffect(() => {
     const container = messagesContainerRef.current
     if (!container) return
-    const observer = new ResizeObserver(() => {
-      if (stickToBottomRef.current) scrollContainerToBottomImmediate()
-    })
+    const observer = new ResizeObserver(scrollToBottomImmediateIfStuck)
     observer.observe(container)
     if (container.firstElementChild) observer.observe(container.firstElementChild)
     return () => observer.disconnect()
-  }, [instanceId, isLoadingLogs, messagesContainerRef, stickToBottomRef, scrollContainerToBottomImmediate])
+  }, [instanceId, isLoadingLogs, messagesContainerRef, scrollToBottomImmediateIfStuck])
 
   const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     const container = e.currentTarget
     const previousTop = lastScrollTopRef.current
-    const currentTop = container.scrollTop
-    const previousHeight = lastScrollHeightRef.current
+    const { top: currentTop, distance } = scrollPosition(container)
+    // Reconcile visibility even for stationary events after viewport/content resizing.
+    updateStickToBottomFromScroll(true)
     lastScrollTopRef.current = currentTop
-    lastScrollHeightRef.current = container.scrollHeight
-    if (currentTop === previousTop) return
-
-    const scrollingUp = currentTop < previousTop
     // Removing a preview/status or shrinking the composer can clamp scrollTop
-    // before ResizeObserver runs. That is not the user leaving the latest turn.
-    const clampedToBottom = stickToBottomRef.current && scrollingUp
-      && container.scrollHeight < previousHeight
-      && Math.abs(Math.max(0, container.scrollHeight - container.clientHeight) - currentTop) <= 1
-    if (clampedToBottom) return
-    updateStickToBottomFromScroll()
-    if (scrollingUp) {
-      stickToBottomRef.current = false
-      setShowJumpToLatest(true)
-    }
+    // to the bottom. Neither this nor Safari's rebound is reading older logs.
+    const scrollingUp = currentTop < previousTop && distance > SCROLL_POSITION_EPSILON_PX
     if (!scrollingUp || currentTop >= 100 || !hasMoreLogs || isLoadingLogs || isLoadingMore || pendingHistoryRef.current) {
       return
     }
@@ -224,7 +256,7 @@ export function useMessageScrollEffects({
       pending.settled = true
       setHistoryRevision(revision => revision + 1)
     })
-  }, [lastScrollTopRef, lastScrollHeightRef, updateStickToBottomFromScroll, stickToBottomRef, setShowJumpToLatest, hasMoreLogs, isLoadingLogs, isLoadingMore, loadMoreLogs, logs])
+  }, [lastScrollTopRef, updateStickToBottomFromScroll, hasMoreLogs, isLoadingLogs, isLoadingMore, loadMoreLogs, logs])
 
   return { handleScroll }
 }

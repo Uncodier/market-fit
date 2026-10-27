@@ -1,7 +1,7 @@
 # Suppliers, Procurement, Tenders, and the Unified Account Portal
 
 **Status:** agreed product direction; implementation design, not shipped behavior.
-**Design baseline:** 2026-10-14; scope extended 2026-10-16. Existing behavior was inspected in the local repository;
+**Design baseline:** 2026-10-14; scope extended 2026-10-27. Existing behavior was inspected in the local repository;
 the deployed application and remote database schema were not verified.
 
 This document consolidates the final decisions from the product discussion, including
@@ -136,7 +136,7 @@ Simple purchases may enter directly as Bills; advances and partial deliveries re
 separate facts. Preserve the documented [accounting policy][accounting-guide].
 
 1. Creating a tender may also create its linked internal request in one guided flow.
-2. Publishing requires complete bases, dates, participation rules, and explicit approval.
+2. Publishing requires complete bases, dates, participation rules, and authorization under the configured approval policy.
 3. Submitting requires an authenticated, authorized participant and validated totals.
    Store the submitted revision and return a dated receipt; do not overwrite that revision.
 4. Before the deadline, replacement or withdrawal follows the published rules and retains
@@ -176,7 +176,7 @@ planned; **modified** means extending an existing screen, not replacing its curr
 | Purchase Order `/purchases/orders/[id]` | Modified | **Overview, Items, Deliveries, Bills, Activity**; confirm, receive partially, accept service, link Bill. |
 | Bills `/bills`, `/bills/[id]` | Modified | Supplier/order/receipt references, invoice reference/duplicate checks, matching; preserve due dates, payments, and posting. |
 | Inventory `/inventory` | Modified | Receipt provenance and order references; no second stock ledger. |
-| Settings `/settings?tab=procurement` | New section | Portal enabled state, stable slug, branding, legal versions, participation/approval policies and global-listing defaults; individual tenders still require publication authorization. |
+| Settings `/settings?tab=procurement`; Rules `/purchases/rules` | Separate settings section and Buying screen | Settings: visibility, portal and base periods. Rules: product/category requirements, approvals and participation, using Subscriptions/Requirements tables; see [policy configuration](PROCUREMENT_POLICIES_DESIGN.md). |
 | Team `/settings?tab=team` | Modified | Explicit capabilities for supplier management, publication, evaluation, awards, receiving, and payments. |
 | Companies `/companies/[id]` | Contextual change | Link to the authorized site's supplier relationship without exposing other sites' private data. |
 | Control Center, notifications, and navigation | Modified integration | Procurement tasks/events, module icons, breadcrumbs, screen-access keys, and links. |
@@ -235,7 +235,7 @@ must include account and acting identity; switching identities must not retain f
 The main CTA is **Submit proposal**, not Buy or Checkout. Authentication returns to the
 correct participation under `/home/tenders/[id]`, preserving safe intent and authorized scope.
 
-Visibility and eligibility are independent:
+Visibility and eligibility are independent; [workspace policies and tender overrides](PROCUREMENT_POLICIES_DESIGN.md) configure defaults, allowed values and approval rules:
 
 - Global discoverability is separate from site publication: `is_globally_listed` is a
   proposed tender-level opt-in, never a catalog flag. Exclude drafts, unlisted/private
@@ -384,7 +384,7 @@ without a current workspace site. Public `/tenders` and private `/home/tenders` 
 5. **Later:** split/lot awards, advanced weighted evaluation, supplier performance,
    contracts/renewals, automated sourcing, advanced search and global-directory recommendations.
 
-Recommended states and approval thresholds must be finalized before implementation;
+Configurable approval rules and remaining decisions are defined in [the policy extension](PROCUREMENT_POLICIES_DESIGN.md);
 they are not claims about existing database enums. Decide opening/withdrawal rules,
 supplier representation onboarding, tax/unit handling, and retention policy explicitly.
 Do not block the first vertical slice on replacing the entire CRM or building an ERP.

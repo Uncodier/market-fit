@@ -37,10 +37,11 @@ describe.each([
     await page.goto("http://pos.test/");
     await page.addScriptTag({ path: path.join(process.cwd(), "node_modules/dexie/dist/dexie.js") });
     await page.addScriptTag({ content: `(() => {
-      const db = {}, permission = {};
+      const db = {}, permission = {}, diagnostic = {};
       const load = (source, exports, require) => new Function('exports', 'require', source)(exports, require);
       load(${JSON.stringify(source("app/pos/local/db.ts"))}, db, () => ({ default: Dexie }));
-      load(${JSON.stringify(source("app/pos/local/location-permission-state.ts"))}, permission, () => db);
+      load(${JSON.stringify(source("app/pos/local/storage-diagnostic.ts"))}, diagnostic, () => { throw new Error('Unexpected import'); });
+      load(${JSON.stringify(source("app/pos/local/location-permission-state.ts"))}, permission, (name) => name === './db' ? db : diagnostic);
       window.posTest = { db, permission, Dexie };
     })();` });
     await page.evaluate(async (scope) => { await window.posTest.permission.acceptPosPermission(scope, () => true); }, scope);

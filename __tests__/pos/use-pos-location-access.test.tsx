@@ -154,7 +154,7 @@ describe("POS current browser location access", () => {
     jest.mocked(preparePosStorage).mockRejectedValueOnce(error);
     const { result } = renderHook(() => usePosLocationAccess("site-a", "actor-a"));
     await settle();
-    expect(result.current).toMatchObject({ status: "unavailable", reason: "storage", diagnostic: "POS_STORAGE_OPEN" });
+    expect(result.current).toMatchObject({ status: "unavailable", reason: "storage", diagnostic: "POS_STORAGE_OPEN:DB_OPEN" });
     expect(auth).not.toHaveBeenCalled();
     expect(unlockPosDb).not.toHaveBeenCalled();
     act(() => result.current.retry!());

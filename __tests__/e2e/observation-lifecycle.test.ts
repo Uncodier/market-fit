@@ -84,6 +84,26 @@ describe('read observer lifecycle', () => {
     p.emit('requestfinished', r);
     await expect(assertReadObservation(p)).rejects.toThrow();
   });
+  it.each([true, false])('keeps FX assertions and adds metadata only for invalid JSON: valid=%s', async valid => {
+    const p = page();
+    startReadObservation(p);
+    const r = request('/api/fx/rates?private=secret');
+    const body = valid ? '{"base":"USD","rates":{"EUR":0.92},"date":"2030-01-01"}' : '<Buffer>';
+    p.emit('response', { url: r.url, status: () => 200,
+      headers: () => ({ 'content-type': 'application/json; charset=utf-8; private=secret' }),
+      request: () => r, ok: () => true, text: async () => body });
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    if (valid) await expect(assertReadObservation(p)).resolves.toBeUndefined();
+    else {
+      const assertion = assertReadObservation(p);
+      await expect(assertion).rejects.toThrow(/invalid-json/);
+      await expect(assertion).rejects.toThrow(/response-text-utf8/);
+      await expect(assertion).rejects.toThrow(/bodyLength/);
+      await expect(assertion).rejects.not.toThrow(/secret|<Buffer>/);
+    }
+  });
   it('keeps body inspection in the drain gate after the HTTP request finishes', async () => {
     const p = page();
     startReadObservation(p);
@@ -115,6 +135,37 @@ describe('read observer lifecycle', () => {
       await Promise.resolve();
       if (failure === 'net::ERR_ABORTED') await expect(assertReadObservation(p)).resolves.toBeUndefined();
       else await expect(assertReadObservation(p)).rejects.toThrow();
+    },
+  );
+  it.each(['net::ERR_ABORTED', 'net::ERR_FAILED', null])(
+    'accepts resolved empty text only with same-request explicit cancellation: %s', async failure => {
+      const p = page();
+      startReadObservation(p);
+      const r = { ...request('/api/fx/rates'), failure: () => failure ? { errorText: failure } : null };
+      p.emit('request', r);
+      p.emit('response', { url: r.url, status: () => 200,
+        headers: () => ({ 'content-type': 'application/json' }),
+        request: () => r, ok: () => true, text: async () => '' });
+      p.emit(failure ? 'requestfailed' : 'requestfinished', r);
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+      if (failure === 'net::ERR_ABORTED') await expect(assertReadObservation(p)).resolves.toBeUndefined();
+      else await expect(assertReadObservation(p)).rejects.toThrow();
+    },
+  );
+  it.each(['{"error":"actual application failure"}', 'malformed JSON'])(
+    'never suppresses a nonempty application failure even on an aborted request', async body => {
+      const p = page();
+      startReadObservation(p);
+      const r = { ...request('/api/fx/rates'), failure: () => ({ errorText: 'net::ERR_ABORTED' }) };
+      p.emit('response', { url: r.url, status: () => 200,
+        headers: () => ({ 'content-type': 'application/json' }),
+        request: () => r, ok: () => true, text: async () => body });
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+      await expect(assertReadObservation(p)).rejects.toThrow();
     },
   );
   it('never drops an HTTP failure just because its request was subsequently cancelled', async () => {

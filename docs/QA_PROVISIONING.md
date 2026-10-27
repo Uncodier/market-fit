@@ -70,6 +70,8 @@ Supabase requests are pinned to the configured origin and redirects are refused.
   column), expense accounting account, inactive agent, pending campaign.
 - Zero-price purchasable product, reservable service and recurring product;
   draft smoke content and a buyer-linked lead with campaign/company dependencies.
+  Catalog images use the real repository static asset `/images/logo.png`, not
+  generated images or fabricated API responses.
 - Shared `assets` bucket prerequisite if absent. An existing compatible bucket
   is explicitly reused, not claimed as run-owned; it is never updated/deleted.
   Asset object prefixes are run-owned; no object upload is performed.
@@ -81,6 +83,23 @@ is read-only under the actual bootstrap `user_can` helper; collaborator can
 insert/update but not delete. Foreign and buyer sessions must not see private
 main-site content; the buyer must see the public product. These are read/RPC
 checks, **not** successful browser journeys or attempted write-denial evidence.
+The bootstrap creates `profiles.language='es'` and does not consume language
+Auth metadata. Initial setup sets only the five exact journal-owned QA profiles
+to `language='en'` through their own public-key sessions, with exact identity
+reads, conditional updates and persisted verification. Expected profile
+fingerprints are journaled; real accounts are never touched.
+
+For a previously verified QA run, explicitly set
+`QA_ALLOW_SMOKE_ADJUSTMENTS=1` on the authorized `--apply` invocation to repair
+legacy Spanish profiles and null catalog images. Image adjustment requires the
+exact prior fixture fingerprint and every old planned field to match. It records
+a separate durable adjustment intent with old/new fingerprints before the
+user-scoped admin update, verifies the new row, then advances ownership. Existing
+custom images, unrelated drift and unjournaled partial changes are rejected.
+Matching interrupted adjustment intents can resume safely. Without this flag,
+legacy product drift is never overwritten; later profile-language drift also
+requires explicit adjustment consent. No image generation endpoint is mocked,
+skipped or granted extra permissions.
 
 ## Private artifacts, reruns and failure
 
@@ -97,8 +116,16 @@ IDs/names are deterministic by environment ID. Existing rows/users require the
 matching private journal intent **and** exact expected persisted fields. Exact
 IDs without journal ownership, same names/emails under other IDs, mismatched
 metadata, changed expiry/backend or fixture drift fail; nothing is adopted or
-overwritten. A private lock rejects concurrent runs. Inspect interrupted processes
-before manually removing a stale lock. Partial successful inserts remain after
+overwritten. A private lock rejects concurrent runs.
+
+The sole legacy-plan exception is a failed `expense-account` intent whose key
+was the hyphenated QA ID: after fresh exact-ID and scoped-code absence checks,
+the script may replace only that known intent fingerprint with the underscore
+key required by `accounting_guard_account`, recording both fingerprints. Any
+existing row, verified intent, or other plan difference still fails closed.
+No database row is updated by this repair.
+
+Inspect interrupted processes before manually removing a stale lock. Partial successful inserts remain after
 failure; reruns recover only exact journal-owned identities. No broad deletes,
 automatic cleanup, password resets, upserts or blind retries exist.
 

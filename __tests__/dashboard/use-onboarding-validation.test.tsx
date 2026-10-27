@@ -30,17 +30,26 @@ function setup(initial: Settings | null = {
   let row = initial
   let readError: { code: string; message: string } | null = null
   let writeError: { code: string; message: string } | null = null
-  let workflows = false
+  const workflowNodes: Array<{ id: string; site_id: string; type: string }> = []
+  let workflowReadError: { code: string; message: string } | null = null
   let nextWriteGate: Promise<void> | null = null
   const writes = jest.fn()
   const reads = jest.fn()
+  const queries = jest.fn()
   const from = (table: string) => {
     let payload: Partial<Settings> | null = null
     let operation = "select"
     let siteId: string | null = null
+    let nodeTypes: string[] = []
     let onboardingFilter: string | null | undefined
     const execute = async () => {
-      if (table !== "settings") return { data: workflows && table === "workflows" ? [{ id: "workflow" }] : [], error: null }
+      queries(table, siteId, nodeTypes)
+      if (table !== "settings") return {
+        data: table === "instance_nodes"
+          ? workflowNodes.filter(node => node.site_id === siteId && nodeTypes.includes(node.type))
+          : [],
+        error: table === "instance_nodes" ? workflowReadError : null,
+      }
       if (!payload) {
         reads(siteId)
         return { data: row, error: readError }
@@ -68,6 +77,7 @@ function setup(initial: Settings | null = {
       }),
       is: (key: string, value: null) => { if (key === "onboarding") onboardingFilter = value; return builder },
       limit: jest.fn().mockImplementation(() => builder),
+      in: (key: string, values: string[]) => { if (key === "type") nodeTypes = values; return builder },
       single: execute,
       maybeSingle: execute,
       update: (value: Partial<Settings>) => { operation = "update"; payload = value; return builder },
@@ -80,10 +90,13 @@ function setup(initial: Settings | null = {
   const onDenied = jest.fn()
   jest.mocked(createClient).mockReturnValue(wrapSupabaseClient({ from }, { onDenied }) as ReturnType<typeof createClient>)
   return {
-    writes, reads, onDenied, row: () => row,
+    writes, reads, queries, onDenied, row: () => row,
     failRead: () => { readError = { code: "503", message: "Unavailable" } },
     failWrite: () => { writeError = { code: "503", message: "Unavailable" } },
-    addWorkflow: () => { workflows = true },
+    addWorkflow: (type = "wf-trigger", site_id = "site-1") => {
+      workflowNodes.push({ id: `node-${workflowNodes.length}`, type, site_id })
+    },
+    failWorkflowRead: () => { workflowReadError = { code: "42501", message: "Permission denied" } },
     holdNextWrite: () => {
       let release!: () => void
       nextWriteGate = new Promise<void>(resolve => { release = resolve })
@@ -208,6 +221,44 @@ describe("onboarding progress persistence", () => {
       onboarding: { take_guided_tour: true, create_workflows: true },
     }, "site-1")
     expect(result.current.tasks.create_workflows).toBe(true)
+    expect(db.queries).toHaveBeenCalledWith("instance_nodes", "site-1", ["wf-trigger", "wf-step", "wf-condition"])
+    expect(db.queries.mock.calls.some(([table]) => table === "workflows")).toBe(false)
+  })
+
+  it.each(["wf-step", "wf-condition"])("recognizes persisted %s workflow nodes", async type => {
+    const db = setup()
+    db.addWorkflow(type)
+    const { result } = await mount()
+    await act(async () => { await jest.advanceTimersByTimeAsync(1000) })
+    expect(result.current.tasks.create_workflows).toBe(true)
+  })
+
+  it.each(["wf-result", "image", "text"])("does not treat a %s node as a configured workflow", async type => {
+    const db = setup()
+    db.addWorkflow(type)
+    const { result } = await mount()
+    await act(async () => { await jest.advanceTimersByTimeAsync(1000) })
+    expect(result.current.tasks.create_workflows).toBeUndefined()
+    expect(db.writes).not.toHaveBeenCalled()
+  })
+
+  it("does not count another site's workflow nodes", async () => {
+    const db = setup()
+    db.addWorkflow("wf-trigger", "foreign-site")
+    const { result } = await mount()
+    await act(async () => { await jest.advanceTimersByTimeAsync(1000) })
+    expect(result.current.tasks.create_workflows).toBeUndefined()
+    expect(db.writes).not.toHaveBeenCalled()
+  })
+
+  it("does not claim completion when the workflow read fails", async () => {
+    const db = setup()
+    db.addWorkflow()
+    db.failWorkflowRead()
+    const { result } = await mount()
+    await act(async () => { await jest.advanceTimersByTimeAsync(1000) })
+    expect(result.current.tasks.create_workflows).toBeUndefined()
+    expect(db.writes).not.toHaveBeenCalled()
   })
 
   it("does not write during auto-validation if no new task was completed", async () => {

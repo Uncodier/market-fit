@@ -11,6 +11,14 @@ open error, `QUOTA` a storage quota error, `DENIED` a security restriction, and
 `TIMEOUT` a preparation that did not settle within eight seconds. These codes
 identify the error category, not a confirmed device-level cause.
 
+Diagnostics also include a fixed operation suffix such as `:PROBE`, `:DB_OPEN`,
+`:OWNER_RESERVE`, `:PURGE`, `:OWNER_PUBLISH`, or `:SNAPSHOT`. For example,
+`POS_STORAGE_TYPE:DB_OPEN` identifies a TypeError while opening IndexedDB,
+not a quota error. `WRITE_UNVERIFIED` means a write could not be read back;
+`EARLY_COMMIT` and `TRANSACTION_INACTIVE` identify transaction lifetime errors.
+No raw exception messages, stacks, storage keys, or record values are displayed.
+These diagnostics do not repair a device failure or authorize bypassing storage.
+
 Temporary purge and snapshot handles have bounded waits. On timeout, Dexie's
 pending open is closed and any active purge transaction is aborted so permission
 serialization can accept a fresh retry. The database is never deleted/recreated

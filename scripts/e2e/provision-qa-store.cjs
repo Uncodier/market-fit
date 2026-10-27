@@ -49,6 +49,23 @@ function openStore(root, config) {
         return state.credentials[role];
       },
       owns(key, value) { return state.entries[key]?.fingerprint === fingerprint(value); },
+      repairAbsentExpenseIntent(value) {
+        // Called only after a fresh setup read proves both exact ID and scoped
+        // code identity absent. This is the single known legacy-plan repair,
+        // not permission to revise arbitrary intents or verified fixtures.
+        const entry = state.entries['expense-account'];
+        if (!entry || this.owns('expense-account', value)) return;
+        const legacy = { ...value, key: config.id };
+        if (entry.status !== 'intent' || entry.fingerprint !== fingerprint(legacy)
+          || value.code !== config.id || value.key !== config.id.replace(/-/g, '_')
+          || value.type !== 'expense' || value.system !== false) {
+          throw new Error('Expense intent repair refused; legacy plan or status differs');
+        }
+        state.entries['expense-account'] = { fingerprint: fingerprint(value), status: 'intent' };
+        state.events.push({ at: new Date().toISOString(), kind: 'expense-account-key-repair', status: 'legacy-intent-reconciled-after-absence',
+          previousFingerprint: entry.fingerprint, fingerprint: fingerprint(value) });
+        save();
+      },
       intent(key, value) {
         if (state.entries[key] && !this.owns(key, value)) throw new Error('Owned fixture plan changed; use a new QA environment ID');
         state.entries[key] = { fingerprint: fingerprint(value), status: 'intent' }; save();

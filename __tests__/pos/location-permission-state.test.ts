@@ -3,6 +3,7 @@ import {
   acceptPosPermission, preparePosPermission, revokePosPermission,
   suspendPosPermission, restorePosPermission, getPosPermissionLease, isPosPermissionCurrent,
 } from "@/app/pos/local/location-permission-state";
+import { posStorageDiagnostic } from "@/app/pos/local/storage-diagnostic";
 
 type MockTable = { clear: jest.Mock; rows: unknown[] };
 const instances: { close: jest.Mock; open: jest.Mock; transaction: jest.Mock; tables: MockTable[] }[] = [];
@@ -40,6 +41,18 @@ describe("POS persisted permission boundary", () => {
     tables.clear();
     suspendPosPermission();
     Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
+  });
+
+  it("reports the original probe failure when cleanup also fails without touching IndexedDB", async () => {
+    const original = new TypeError("Private browser details");
+    const write = jest.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw original; });
+    const remove = jest.spyOn(Storage.prototype, "removeItem").mockImplementation(() => { throw new Error("Cleanup failed"); });
+    try {
+      await expect(preparePosPermission(scope.userId, scope.siteId)).rejects.toBe(original);
+      expect(posStorageDiagnostic(original)).toBe("POS_STORAGE_TYPE:PROBE");
+      expect(instances).toHaveLength(0);
+      expect(getPosPermissionLease()).toBeNull();
+    } finally { write.mockRestore(); remove.mockRestore(); }
   });
 
   it("denies DB reads by default and after suspension, permanently closes old handles", async () => {

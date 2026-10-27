@@ -12,6 +12,29 @@ A transport failure while calling the Server Action can still reflect a network
 or deployment issue. The recoverable state prevents the secondary `content.id`
 crash; it does not prove the original dependency is healthy.
 
+## Explicit workspace navigation and onboarding
+
+An unfinished guided tour must not redirect an explicitly opened Content, Leads,
+Robots, or buyer screen to Onboarding. Automatic guidance is offered only while
+the user is on `/onboarding`; it does not navigate again to that route. Pending
+widget observers are cancelled when the route changes. Explicit `tour=start`,
+resumed `showTour` steps, and the `tour:start` event retain manual navigation.
+The repair does not mark users' tours or onboarding tasks complete.
+
+Onboarding detects saved workflows through user-scoped `instance_nodes` reads,
+filtered by site and the shared workflow definition node types. Generated results
+and unrelated media are not workflow definitions. A failed read cannot mark the
+task complete; the obsolete `workflows` table is no longer queried.
+
+```sh
+npm test -- --runInBand __tests__/components/onboarding/guided-tour-navigation.test.tsx __tests__/dashboard/use-onboarding-validation.test.tsx
+```
+
+Disposable QA traces reproduced the Content redirect with a successful persisted
+content read. Local regression validation covers the correction; it is not proof
+that the patch is deployed. Independent Reddit provider rejection and development
+chunk preload failures remain errors, not successful empty data.
+
 ## Content Creator file uploads
 
 The `/robots?mode=imprenta` canvas confirms both the Storage upload and the

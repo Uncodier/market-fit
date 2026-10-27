@@ -1,4 +1,5 @@
 const { assertRow } = require('./provision-qa-store.cjs');
+const { ensureEnglish } = require('./provision-qa-adjust.cjs');
 
 async function visible(client, table, id, expected) {
   const result = await client.from(table).select('id').eq('id', id);
@@ -11,7 +12,7 @@ async function permission(client, site, command, expected) {
   if (result.error || result.data !== expected) throw new Error('Public role permission verification failed');
 }
 
-async function verify(config, battery, store, makeClient) {
+async function verify(config, battery, store, makeClient, authorizedAdjustments = false) {
   const site = battery.rows.find(row => row.kind === 'site').row.id;
   const foreign = battery.rows.find(row => row.kind === 'foreign-site').row.id;
   const clients = {};
@@ -24,6 +25,7 @@ async function verify(config, battery, store, makeClient) {
       const profile = await client.from('profiles').select('id,email').eq('id', user.id);
       if (profile.error || profile.data?.length !== 1) throw new Error('Auth profile trigger verification failed');
       assertRow(profile.data[0], { id: user.id, email: user.email });
+      await ensureEnglish(client, user, store, authorizedAdjustments);
       const mainMember = ['admin', 'collaborator', 'marketing'].includes(user.role);
       await visible(client, 'sites', site, mainMember);
       await visible(client, 'sites', foreign, user.role === 'foreign');

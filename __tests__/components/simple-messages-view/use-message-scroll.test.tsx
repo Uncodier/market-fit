@@ -80,6 +80,7 @@ function Harness({ instanceId = 'robot-a', logs = initialLogs, loading = false,
     {!loading && <div ref={attachComposer} data-testid="composer" />}
     <output data-testid="bottom-padding">{scroll.bottomPadding}</output>
     <button onClick={scroll.scrollToBottom}>Send</button>
+    <button onClick={scroll.scrollToBottomImmediateIfStuck}>Refresh logs</button>
     {showJumpToLatest && <button onClick={jumpToLatestLogs}>Latest</button>}
   </>
 }
@@ -316,5 +317,119 @@ describe('robot message scroll', () => {
     Object.defineProperty(container, 'scrollHeight', { configurable: true, value: 1200 })
     resize(container.firstElementChild!)
     expect(container.scrollTop).toBe(700)
+  })
+
+  it.each(['render', 'resize', 'refresh'])('preserves the first upward movement before its scroll event on %s', trigger => {
+    const { rerender } = render(<Harness />)
+    const container = screen.getByTestId('messages')
+    container.scrollTop = 1480
+    if (trigger === 'render') rerender(<Harness />)
+    if (trigger === 'resize') resize(container)
+    if (trigger === 'refresh') fireEvent.click(screen.getByRole('button', { name: 'Refresh logs' }))
+    expect(container.scrollTop).toBe(1480)
+    fireEvent.scroll(container)
+    // Leaving follow mode and showing Latest are separate decisions.
+    expect(screen.queryByRole('button', { name: 'Latest' })).not.toBeInTheDocument()
+    Object.defineProperty(container, 'scrollHeight', { configurable: true, value: 2400 })
+    resize(container.firstElementChild!)
+    expect(container.scrollTop).toBe(1480)
+    expect(screen.getByRole('button', { name: 'Latest' })).toBeInTheDocument()
+  })
+
+  it('does not rewrite scrollTop on unchanged renders or resize notifications', () => {
+    const { rerender } = render(<Harness />)
+    const container = screen.getByTestId('messages')
+    const writeTop = jest.spyOn(container, 'scrollTop', 'set')
+    rerender(<Harness />)
+    resize(container)
+    resize(container.firstElementChild!)
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh logs' }))
+    expect(writeTop).not.toHaveBeenCalled()
+  })
+
+  it.each(['wheel', 'touch'])('suspends following on upward %s intent before the browser moves', gesture => {
+    const { rerender } = render(<Harness />)
+    const container = screen.getByTestId('messages')
+    if (gesture === 'wheel') fireEvent.wheel(container, { deltaY: -30 })
+    else {
+      fireEvent.touchStart(container, { touches: [{ clientY: 200 }] })
+      fireEvent.touchMove(container, { touches: [{ clientY: 230 }] })
+    }
+    Object.defineProperty(container, 'scrollHeight', { configurable: true, value: 2400 })
+    rerender(<Harness />)
+    resize(container.firstElementChild!)
+    expect(container.scrollTop).toBe(1500)
+    expect(screen.getByRole('button', { name: 'Latest' })).toBeInTheDocument()
+    moveTo(1900)
+    expect(screen.queryByRole('button', { name: 'Latest' })).not.toBeInTheDocument()
+    Object.defineProperty(container, 'scrollHeight', { configurable: true, value: 2600 })
+    resize(container.firstElementChild!)
+    expect(container.scrollTop).toBe(2100)
+  })
+
+  it('does not treat Safari bottom overscroll rebound as leaving the bottom', () => {
+    const { rerender } = render(<Harness />)
+    const container = screen.getByTestId('messages')
+    Object.defineProperty(container, 'scrollTop', { configurable: true, writable: true, value: 1540 })
+    fireEvent.scroll(container)
+    container.scrollTop = 1500
+    fireEvent.scroll(container)
+    expect(screen.queryByRole('button', { name: 'Latest' })).not.toBeInTheDocument()
+    rerender(<Harness />)
+    expect(screen.queryByRole('button', { name: 'Latest' })).not.toBeInTheDocument()
+  })
+
+  it.each(['render', 'resize', 'scroll'])('hides Latest after a viewport resize with no scrollTop change on %s', trigger => {
+    const { rerender } = render(<Harness />)
+    const container = moveTo(1000)
+    expect(screen.getByRole('button', { name: 'Latest' })).toBeInTheDocument()
+    Object.defineProperty(container, 'clientHeight', { configurable: true, value: 1000 })
+    if (trigger === 'render') rerender(<Harness />)
+    if (trigger === 'resize') resize(container)
+    if (trigger === 'scroll') fireEvent.scroll(container)
+    expect(screen.queryByRole('button', { name: 'Latest' })).not.toBeInTheDocument()
+    expect(container.scrollTop).toBe(1000)
+  })
+
+  it('keeps Latest hidden for a small upward scroll but does not resume following on a stationary event', () => {
+    render(<Harness />)
+    const container = moveTo(1480)
+    fireEvent.scroll(container)
+    expect(screen.queryByRole('button', { name: 'Latest' })).not.toBeInTheDocument()
+    Object.defineProperty(container, 'scrollHeight', { configurable: true, value: 2500 })
+    resize(container.firstElementChild!)
+    expect(container.scrollTop).toBe(1480)
+    expect(screen.getByRole('button', { name: 'Latest' })).toBeInTheDocument()
+  })
+
+  it.each([
+    { deltaY: -30, ctrlKey: true },
+    { deltaY: -10, deltaX: 100 },
+    { deltaY: 30 },
+  ])('does not detach for a zoom, horizontal or downward wheel gesture: %j', event => {
+    render(<Harness />)
+    const container = screen.getByTestId('messages')
+    fireEvent.wheel(container, event)
+    Object.defineProperty(container, 'scrollHeight', { configurable: true, value: 2300 })
+    resize(container.firstElementChild!)
+    expect(container.scrollTop).toBe(1800)
+    expect(screen.queryByRole('button', { name: 'Latest' })).not.toBeInTheDocument()
+  })
+
+  it('reattaches gesture listeners after loading and removes them from a retired container', () => {
+    const { rerender } = render(<Harness />)
+    const oldContainer = screen.getByTestId('messages')
+    rerender(<Harness loading />)
+    rerender(<Harness />)
+    const container = screen.getByTestId('messages')
+    fireEvent.wheel(oldContainer, { deltaY: -30 })
+    Object.defineProperty(container, 'scrollHeight', { configurable: true, value: 2300 })
+    resize(container.firstElementChild!)
+    expect(container.scrollTop).toBe(1800)
+    fireEvent.wheel(container, { deltaY: -30 })
+    Object.defineProperty(container, 'scrollHeight', { configurable: true, value: 2600 })
+    resize(container.firstElementChild!)
+    expect(container.scrollTop).toBe(1800)
+    expect(screen.getByRole('button', { name: 'Latest' })).toBeInTheDocument()
   })
 })

@@ -5,7 +5,9 @@ import path from 'node:path';
 import { configuration, localOrigin, localFetch } from '../../scripts/e2e/provision-qa-policy.cjs';
 import { plan, environment } from '../../scripts/e2e/provision-qa-plan.cjs';
 import { provision, loadEnvironment } from '../../scripts/e2e/provision-qa.cjs';
-import { openStore, assertRow } from '../../scripts/e2e/provision-qa-store.cjs';
+import { openStore, assertRow, fingerprint } from '../../scripts/e2e/provision-qa-store.cjs';
+import { seedRows } from '../../scripts/e2e/provision-qa-seed.cjs';
+import { adjustImages } from '../../scripts/e2e/provision-qa-adjust.cjs';
 import { schemaPreflight } from '../../scripts/e2e/provision-qa-schema.cjs';
 
 const jwt = role => `x.${Buffer.from(JSON.stringify({ role })).toString('base64url')}.x`;
@@ -38,7 +40,7 @@ function database() {
             if (!privileged) throw new Error('setup key only');
             const actual = { ...attributes, email_confirmed_at: '2026-01-01' };
             authUsers.push(actual); passwords[attributes.id] = attributes.password;
-            (tables.profiles ||= []).push({ id: attributes.id, email: attributes.email });
+            (tables.profiles ||= []).push({ id: attributes.id, email: attributes.email, language: 'es' });
             return { data: { user: actual } };
           }),
         },
@@ -50,21 +52,31 @@ function database() {
         signOut: jest.fn(async () => ({ error: null })),
       },
       from(table) {
-        let filters = [], insertion, columns;
+        let filters = [], insertion, update, columns;
         const query = {
           select(value) { columns = value; return query; },
           eq(field, value) { filters.push([field, value]); return query; },
+          is(field, value) { filters.push([field, value]); return query; },
+          update(row) { update = row; return query; },
           insert(row) { insertion = row; return query; },
           then(resolve, reject) {
             return Promise.resolve().then(() => {
-              calls.push({ table, insertion, privileged });
+              calls.push({ table, insertion, update, privileged });
               if (failures[table]) return { error: { message: 'sensitive-provider-payload' } };
               if (insertion) {
                 if (!privileged) throw new Error('No verification writes');
+                if (table === 'accounting_accounts' && insertion.key !== null
+                  && !/^[A-Za-z][A-Za-z0-9_]{0,63}$/.test(insertion.key)) return { error: { code: '23514' } };
                 (tables[table] ||= []).push(JSON.parse(JSON.stringify(insertion)));
                 return { error: null };
               }
               let data = (tables[table] || []).filter(row => filters.every(([field, value]) => row[field] === value));
+              if (update) {
+                if (privileged || !user || (table === 'profiles' && data.some(row => row.id !== user.id))
+                  || (table === 'catalog_items' && data.some(row => role(row.site_id) !== 'admin'))) throw new Error('User-scoped updates only');
+                data.forEach(row => Object.assign(row, update));
+                return { error: null };
+              }
               if (!privileged) data = data.filter(row => {
                 if (table === 'profiles') return row.id === user?.id;
                 if (table === 'sites') return !!role(row.id);
@@ -72,7 +84,7 @@ function database() {
                 if (table === 'companies') return !!user;
                 return !!role(row.site_id);
               });
-              return { data: data.map(row => Object.fromEntries(columns.split(',').map(field => [field, row[field]]))) };
+              return { data: data.map(row => Object.fromEntries(columns.split(',').map(field => [field, row[field] === undefined && field === 'image_url' ? null : row[field]]))) };
             }).then(resolve, reject);
           },
         };
@@ -110,7 +122,8 @@ describe('local QA provisioning', () => {
     expect(fs.readdirSync(root)).toEqual([]);
   });
   it.each(['https://project.supabase.co', 'http://localhost.evil:54321', 'http://localhost.:54321',
-    'http://user:secret@localhost:54321', 'http://localhost:54321/api', 'http://localhost:54321/?x=1', 'file:///tmp'])('refuses unsafe origin %s', value => {
+    'http://user:secret@localhost:54321', 'http://localhost:54321/api', 'http://localhost:54321/?x=1',
+    'http://127.1:54321', 'http://2130706433:54321', 'file:///tmp'])('refuses unsafe origin %s', value => {
     expect(() => localOrigin(value)).toThrow();
   });
   it.each(['../qa-unit', 'qa-../escape', 'unit', 'qa-', 'qa-UPPER'])('refuses unsafe environment ID %s', value => {
@@ -203,6 +216,171 @@ describe('local QA provisioning', () => {
     expect(read(root, 'journal.json').events.at(-1).status).toBe('failed-partial-state-retained');
     expect(fs.existsSync(path.join(fixtureDir(root), 'lock'))).toBe(false);
   });
+  it('recovers partial exact-owned inserts without retrying failures or duplicating identities', async () => {
+    const db = database(), deps = dependencies(root, db);
+    db.fail({ agents: true });
+    // Inspection fails before relational writes; Auth identities already owned.
+    await expect(provision(env, ['--apply'], deps)).rejects.toThrow('Cannot inspect agents');
+    expect(db.authUsers).toHaveLength(5);
+    expect(db.calls.filter(call => call.insertion)).toHaveLength(0);
+    db.fail({});
+    await expect(provision(env, ['--apply'], deps)).resolves.toMatchObject({ status: 'VERIFIED' });
+    expect(db.authUsers).toHaveLength(5);
+    expect(db.tables.sites).toHaveLength(2);
+    const store = openStore(root, configuration(env));
+    const item = plan(configuration(env)).rows.find(row => row.kind === 'product');
+    // Model an interrupted insert: durable intent and exact persisted row.
+    store.intent(item.kind, item.row);
+    store.close();
+    await expect(provision(env, ['--apply'], deps)).resolves.toMatchObject({ status: 'VERIFIED' });
+    expect(db.tables.catalog_items).toHaveLength(3);
+  });
+  it('never resets a changed password or overwrites an incompatible shared bucket', async () => {
+    const db = database(), deps = dependencies(root, db);
+    await provision(env, ['--apply'], deps);
+    const admin = db.authUsers[0];
+    db.passwords[admin.id] = 'changed-password';
+    await expect(provision(env, ['--apply'], deps)).rejects.toThrow('login');
+    db.passwords[admin.id] = read(root, 'journal.json').credentials.admin;
+    db.buckets[0].public = false;
+    await expect(provision(env, ['--apply'], deps)).rejects.toThrow('Incompatible');
+    expect(db.buckets[0].public).toBe(false);
+  });
+  it('normalizes accounting keys to the bootstrap guard without changing code or deterministic ID', () => {
+    for (const id of ['qa-unit', 'qa-1793126113145-a4b7d0d6', `qa-${'a'.repeat(60)}`]) {
+      const row = plan(configuration({ ...env, QA_ENVIRONMENT_ID: id })).rows.find(item => item.kind === 'expense-account').row;
+      expect(row.key).toMatch(/^[A-Za-z][A-Za-z0-9_]{0,63}$/);
+      expect(row.code).toBe(id);
+      expect(row.key).toBe(id.replace(/-/g, '_'));
+    }
+  });
+  it('sets only owned QA profiles to English through public sessions and rejects later drift without consent', async () => {
+    const db = database(), deps = dependencies(root, db);
+    db.tables.profiles = [{ id: 'real-account', email: 'real@example.test', language: 'es' }];
+    await provision(env, ['--apply'], deps);
+    expect(db.tables.profiles.filter(row => row.id !== 'real-account').every(row => row.language === 'en')).toBe(true);
+    expect(db.tables.profiles[0].language).toBe('es');
+    expect(db.calls.filter(call => call.update).every(call => !call.privileged && call.table === 'profiles')).toBe(true);
+    const journal = read(root, 'journal.json');
+    expect(journal.entries['profile:admin'].status).toBe('verified');
+    db.tables.profiles[1].language = 'es';
+    await expect(provision(env, ['--apply'], deps)).rejects.toThrow('drift');
+    await expect(provision({ ...env, QA_ALLOW_SMOKE_ADJUSTMENTS: '1' }, ['--apply'], deps)).resolves.toMatchObject({ status: 'VERIFIED' });
+  });
+  it('uses a real repository static image and requires consent plus exact old fingerprints for existing products', async () => {
+    expect(fs.existsSync(path.resolve(__dirname, '../../public/images/logo.png'))).toBe(true);
+    const db = database(), deps = dependencies(root, db);
+    await provision(env, ['--apply'], deps);
+    const config = configuration(env), battery = plan(config);
+    const store = openStore(root, config);
+    for (const item of battery.rows.filter(item => item.table === 'catalog_items')) {
+      const legacy = { ...item.row }; delete legacy.image_url;
+      store.state.entries[item.kind] = { fingerprint: fingerprint(legacy), status: 'verified' };
+      db.tables.catalog_items.find(row => row.id === item.row.id).image_url = null;
+    }
+    // Reproduce a previously verified run whose profile trigger defaulted to es.
+    for (const user of battery.users) {
+      delete store.state.entries[`profile:${user.role}`];
+      db.tables.profiles.find(row => row.id === user.id).language = 'es';
+    }
+    store.save(); store.close();
+    await expect(provision(env, ['--apply'], deps)).rejects.toThrow('QA_ALLOW_SMOKE_ADJUSTMENTS');
+    const before = db.calls.filter(call => call.update).length;
+    await expect(provision({ ...env, QA_ALLOW_SMOKE_ADJUSTMENTS: '1' }, ['--apply'], deps)).resolves.toMatchObject({ status: 'VERIFIED' });
+    expect(db.calls.filter(call => call.update).length - before).toBe(8);
+    expect(db.tables.catalog_items.every(row => row.image_url === '/images/logo.png')).toBe(true);
+    expect(read(root, 'journal.json').entries['adjust-image:product'].status).toBe('verified');
+    await provision(env, ['--apply'], deps);
+    expect(db.calls.filter(call => call.update).length - before).toBe(8);
+  });
+  it('rejects custom images even when the legacy row fingerprint and adjustment consent match', async () => {
+    const db = database(), deps = dependencies(root, db);
+    await provision(env, ['--apply'], deps);
+    const config = configuration(env), battery = plan(config), store = openStore(root, config);
+    const item = battery.rows.find(item => item.kind === 'product');
+    const legacy = { ...item.row }; delete legacy.image_url;
+    store.state.entries.product = { fingerprint: fingerprint(legacy), status: 'verified' }; store.save();
+    db.tables.catalog_items[0].image_url = 'https://custom.invalid/image.png';
+    await expect(adjustImages(config, battery, store, key => db.createClient(config.url, key, {}), true)).rejects.toThrow('custom image');
+    expect(db.tables.catalog_items[0].image_url).toBe('https://custom.invalid/image.png');
+    store.close();
+  });
+  it('resumes only a durable matching image adjustment and refuses unrelated catalog drift', async () => {
+    const db = database(), deps = dependencies(root, db);
+    await provision(env, ['--apply'], deps);
+    const config = configuration(env), battery = plan(config), store = openStore(root, config);
+    const item = battery.rows.find(item => item.kind === 'product');
+    const legacy = { ...item.row }; delete legacy.image_url;
+    store.state.entries.product = { fingerprint: fingerprint(legacy), status: 'verified' }; store.save();
+    const makeClient = key => db.createClient(config.url, key, {});
+    await expect(adjustImages(config, battery, store, makeClient, true)).rejects.toThrow('Unjournaled');
+    const adjustment = { previousFingerprint: fingerprint(legacy), fingerprint: fingerprint(item.row), id: item.row.id, image_url: '/images/logo.png' };
+    store.intent('adjust-image:product', adjustment);
+    db.tables.catalog_items[0].name = 'changed-name';
+    await expect(adjustImages(config, battery, store, makeClient, true)).rejects.toThrow('drift');
+    db.tables.catalog_items[0].name = item.row.name;
+    const writes = db.calls.filter(call => call.update).length;
+    await adjustImages(config, battery, store, makeClient, true);
+    expect(db.calls.filter(call => call.update)).toHaveLength(writes);
+    expect(store.owns('product', item.row)).toBe(true);
+    expect(store.state.entries['adjust-image:product'].status).toBe('verified');
+    store.close();
+  });
+  it('resumes a failed legacy expense insert only after fresh absence checks and journals the repair', async () => {
+    const config = configuration(env), battery = plan(config), db = database();
+    const legacyBattery = plan(config);
+    const legacyItem = legacyBattery.rows.find(item => item.kind === 'expense-account');
+    legacyItem.row.key = config.id;
+    const client = db.createClient(config.url, config.setupKey, {});
+    const store = openStore(root, config);
+    await expect(seedRows(client, legacyBattery, store)).rejects.toThrow('Setup insert failed in accounting_accounts');
+    expect(db.tables.accounting_accounts).toBeUndefined();
+    expect(store.state.entries['expense-account']).toEqual({ status: 'intent', fingerprint: fingerprint(legacyItem.row) });
+    const priorInserts = db.calls.filter(call => call.insertion && call.table !== 'accounting_accounts').length;
+    store.close();
+    const resumed = openStore(root, config);
+    await seedRows(client, battery, resumed);
+    const expected = battery.rows.find(item => item.kind === 'expense-account').row;
+    expect(db.tables.accounting_accounts).toEqual([expected]);
+    expect(resumed.state.entries['expense-account']).toEqual({ status: 'verified', fingerprint: fingerprint(expected) });
+    expect(resumed.state.events).toContainEqual(expect.objectContaining({ kind: 'expense-account-key-repair',
+      previousFingerprint: fingerprint(legacyItem.row), fingerprint: fingerprint(expected) }));
+    expect(db.calls.filter(call => call.insertion && call.table === 'sites')).toHaveLength(2);
+    expect(priorInserts).toBeGreaterThan(0);
+    const inserts = db.calls.filter(call => call.insertion).length;
+    await seedRows(client, battery, resumed);
+    expect(db.calls.filter(call => call.insertion)).toHaveLength(inserts);
+    resumed.close();
+  });
+  it.each(['legacy-row', 'corrected-row', 'code-collision'])('never repairs/adopts an existing expense %s', async collision => {
+    const config = configuration(env), battery = plan(config), db = database();
+    const item = battery.rows.find(row => row.kind === 'expense-account');
+    const legacy = { ...item.row, key: config.id };
+    const store = openStore(root, config);
+    store.intent(item.kind, legacy);
+    db.tables.accounting_accounts = [{ ...(collision === 'legacy-row' ? legacy : item.row),
+      ...(collision === 'code-collision' ? { id: 'foreign-id' } : {}) }];
+    const client = db.createClient(config.url, config.setupKey, {});
+    await expect(seedRows(client, battery, store)).rejects.toThrow(/collision/i);
+    expect(store.state.entries[item.kind].fingerprint).toBe(fingerprint(legacy));
+    expect(store.state.events).toHaveLength(0);
+    expect(db.calls.filter(call => call.insertion)).toHaveLength(0);
+    store.close();
+  });
+  it.each(['verified', 'different-fingerprint'])('refuses absent expense repair for %s journal state', async state => {
+    const config = configuration(env), battery = plan(config), db = database();
+    const item = battery.rows.find(row => row.kind === 'expense-account');
+    const legacy = { ...item.row, key: config.id, ...(state === 'different-fingerprint' ? { label: 'different-label' } : {}) };
+    const store = openStore(root, config);
+    store.intent(item.kind, legacy);
+    if (state === 'verified') store.done(item.kind);
+    const original = { ...store.state.entries[item.kind] };
+    const client = db.createClient(config.url, config.setupKey, {});
+    await expect(seedRows(client, { ...battery, rows: [item] }, store)).rejects.toThrow('repair refused');
+    expect(store.state.entries[item.kind]).toEqual(original);
+    expect(db.calls.filter(call => call.insertion)).toHaveLength(0);
+    store.close();
+  });
   it('rejects journal binding changes and symlink output directories', () => {
     const config = configuration(env), store = openStore(root, config);
     expect(() => openStore(root, config)).toThrow('locked');
@@ -239,5 +417,19 @@ describe('local QA provisioning', () => {
     expect(run.mock.calls[0][1].slice(0, 3)).toEqual(['--host', 'unix:///var/run/docker.sock', 'exec']);
     expect(run.mock.calls[0][1].at(-1)).toContain('BEGIN READ ONLY');
     expect(() => schemaPreflight({}, run)).toThrow('Apply requires');
+  });
+  it('accepts the actual bootstrap guard through read-only local psql, not remote URLs or shell interpolation', () => {
+    const guard = "QA_RLS=9\nQA workflow webhook rejected: non-local destination\nwebhook_url !~ '^http://(127[.]0[.]0[.]1|localhost|host[.]docker[.]internal):[0-9]+/'";
+    const run = jest.fn(() => ({ status: 0, stdout: guard }));
+    const url = 'postgres://postgres:private-password@127.0.0.1:54322/postgres';
+    expect(() => schemaPreflight({ QA_DATABASE_URL: url }, run)).not.toThrow();
+    const [command, args, options] = run.mock.calls[0];
+    expect(command).toBe('psql');
+    expect(JSON.stringify(args)).not.toContain('private-password');
+    expect(options.env.PGOPTIONS).toContain('default_transaction_read_only=on');
+    expect(options.env.PGDATABASE).toBe(url);
+    expect(args.at(-1)).toContain('ROLLBACK');
+    expect(() => schemaPreflight({ QA_DB_CONTAINER: 'x; touch /tmp/unsafe' }, run)).toThrow('Apply requires');
+    expect(run).toHaveBeenCalledTimes(1);
   });
 });

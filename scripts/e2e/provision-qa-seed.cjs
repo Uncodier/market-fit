@@ -27,6 +27,9 @@ async function seedRows(client, battery, store) {
       if (!store.owns(item.kind, item.row)) throw new Error(`Unowned collision in ${item.table}`);
       assertRow(existing, item.row);
     } else {
+      if (item.kind === 'expense-account' && item.table === 'accounting_accounts' && item.field === 'code') {
+        store.repairAbsentExpenseIntent(item.row);
+      }
       store.intent(item.kind, item.row);
       const inserted = await client.from(item.table).insert(item.row);
       if (inserted.error) throw new Error(`Setup insert failed in ${item.table}; partial fixtures remain, no automatic retry/delete`);

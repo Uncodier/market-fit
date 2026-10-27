@@ -8,6 +8,7 @@ import { X, ChevronRight, Check } from "@/app/components/ui/icons";
 import { Button } from "@/app/components/ui/button";
 import { cn } from "@/lib/utils";
 import { steps } from "./constants/tour-constants";
+import type { User } from "@supabase/supabase-js";
 
 export function GuidedTour() {
   const { user } = useAuth();
@@ -23,7 +24,7 @@ export function GuidedTour() {
   );
 }
 
-function GuidedTourContent({ user }: { user: any }) {
+function GuidedTourContent({ user }: { user: User | null }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -61,20 +62,20 @@ function GuidedTourContent({ user }: { user: any }) {
   }, []);
 
   const checkAndStartTour = useCallback(() => {
-    if (!user) return false;
+    // Automatic guidance belongs to onboarding, not an explicitly opened app.
+    // Manual starts and resumed URL steps retain their own navigation below.
+    if (!user || pathname !== steps[0].path || processedStepRef.current !== null) return false;
     
     const firstTargetExists = document.querySelector(steps[0].selector) !== null;
 
     if (!user.user_metadata?.has_completed_tour && firstTargetExists) {
+      setCurrentStepIndex(0);
       setIsVisible(true);
-      if (steps[0].path) {
-        router.push(steps[0].path);
-      }
       updateTargetRect(0, true);
       return true;
     }
     return false;
-  }, [user, updateTargetRect, router]);
+  }, [user, pathname, updateTargetRect]);
 
   const completeTour = useCallback(async () => {
     setIsVisible(false);
@@ -250,12 +251,14 @@ function GuidedTourContent({ user }: { user: any }) {
 
   useEffect(() => {
     if (!mounted) return;
+    const params = new URLSearchParams(searchParams?.toString() || window.location.search);
+    if (pathname !== steps[0].path || params.has("tour") || params.get("showTour") === "true") return;
     
     let observer: MutationObserver | null = null;
     let fallbackTimeout: NodeJS.Timeout | null = null;
 
     const checkTimer = setTimeout(() => {
-      // Solo hacer el autocheck estricto si tenemos usuario
+      // Wait for the onboarding widget only while this route remains selected.
       if (user && !checkAndStartTour() && user.user_metadata?.has_completed_tour !== true) {
         observer = new MutationObserver(() => {
           if (checkAndStartTour()) {
@@ -275,7 +278,7 @@ function GuidedTourContent({ user }: { user: any }) {
       if (fallbackTimeout) clearTimeout(fallbackTimeout);
       if (observer) observer.disconnect();
     };
-  }, [mounted, user, checkAndStartTour]);
+  }, [mounted, user, pathname, searchParams, checkAndStartTour]);
 
   useEffect(() => {
     if (!isVisible) return;

@@ -12,7 +12,9 @@ export async function authenticate(page: Page, role: 'admin' | 'buyer'): Promise
   const email = required(process.env, `${prefix}_EMAIL`);
   const password = required(process.env, `${prefix}_PASSWORD`);
   const origin = role === 'buyer' ? config.commerceBaseURL : config.baseURL;
-  const response = await page.goto(`${origin}/auth`, { waitUntil: 'domcontentloaded' });
+  // Local QA shares one host; preserve the buyer journey through its real returnTo contract.
+  const returnTo = role === 'buyer' ? '?returnTo=%2Fbuyer' : '';
+  const response = await page.goto(`${origin}/auth${returnTo}`, { waitUntil: 'domcontentloaded' });
   expect(response?.ok(), 'The actual sign-in page must be available').toBe(true);
   await expect(page.locator('input[name="email"]')).toBeVisible();
   await dismissConsent(page);

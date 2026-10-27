@@ -114,7 +114,8 @@ describe('SimpleMessagesView', () => {
 
     expect(bottomContainer).toContainElement(row)
     expect(Array.from(bottomContainer.children)).toEqual(children)
-    expect(row).toHaveClass('flex', 'shrink-0', 'invisible', 'pointer-events-none')
+    // Opacity also hides descendants forced visible by global Safari icon rules.
+    expect(row).toHaveClass('flex', 'shrink-0', 'invisible', 'opacity-0', 'pointer-events-none')
     expect(row).not.toHaveClass('hidden')
     expect(row).toHaveAttribute('aria-hidden', 'true')
     expect(button).toBeDisabled()

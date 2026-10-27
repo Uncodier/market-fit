@@ -7,6 +7,7 @@ import { toast } from "sonner"
 import { isRlsError } from "@/lib/permissions/error-map"
 import { notifyPermissionDenied } from "@/lib/permissions/notify"
 import { saveOnboardingProgress } from "../onboarding-progress"
+import { WF_LOAD_NODE_TYPES } from "@/app/components/workflows/types"
 import {
   ALL_TASK_IDS,
   type OnboardingTaskId,
@@ -228,7 +229,10 @@ export function useOnboardingValidation() {
       }, true)
 
       await check("create_workflows", async () => {
-        const { data } = await supabase.from("workflows").select("id").eq("site_id", currentSite.id).limit(1)
+        // Workflow definitions live in instance_nodes; results alone are not a definition.
+        const { data, error } = await supabase.from("instance_nodes").select("id")
+          .eq("site_id", currentSite.id).in("type", [...WF_LOAD_NODE_TYPES]).limit(1)
+        if (error) throw error
         return !!data?.length
       }, true)
 
