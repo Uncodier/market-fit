@@ -26,6 +26,8 @@ Use the guides below before relying on older implementation notes.
   and data assumptions.
 - [E2E execution and evidence](E2E_TESTING.md) — safe suite selection, fixtures,
   run provenance, strict assertions and unresolved live-verification blockers.
+- [Local QA provisioning](QA_PROVISIONING.md) — deterministic disposable fixtures,
+  local safety gates, private ownership journal and offline regression tests.
 - [Production harness canaries](HARNESS_PRODUCTION_CANARIES.md) — five explicitly
   scoped requirement tests and a read-only local cron observer; separate from browser suites.
 
