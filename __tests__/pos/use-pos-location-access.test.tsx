@@ -1,12 +1,12 @@
 import { act, renderHook } from "@testing-library/react";
 import { usePosLocationAccess } from "@/app/pos/hooks/use-pos-location-access";
 import { createClient } from "@/lib/supabase/client";
-import { clearPosPrivateData, hasPosCachedSnapshot, lockPosDb, unlockPosDb } from "@/app/pos/local/db";
+import { clearPosPrivateData, hasPosCachedSnapshot, lockPosDb, preparePosStorage, unlockPosDb } from "@/app/pos/local/db";
 import { getPosPermissionLease, suspendPosPermission } from "@/app/pos/local/location-permission-state";
 
 jest.mock("@/lib/supabase/client", () => ({ createClient: jest.fn() }));
 jest.mock("@/app/pos/local/db", () => ({
-  clearPosPrivateData: jest.fn(), hasPosCachedSnapshot: jest.fn(), lockPosDb: jest.fn(), unlockPosDb: jest.fn(),
+  clearPosPrivateData: jest.fn(), preparePosStorage: jest.fn(), hasPosCachedSnapshot: jest.fn(), lockPosDb: jest.fn(), unlockPosDb: jest.fn(),
 }));
 
 const auth = jest.fn();
@@ -30,6 +30,7 @@ describe("POS current browser location access", () => {
     suspendPosPermission();
     online(true);
     jest.mocked(clearPosPrivateData).mockResolvedValue(undefined);
+    jest.mocked(preparePosStorage).mockResolvedValue(undefined);
     jest.mocked(hasPosCachedSnapshot).mockResolvedValue(false);
     auth.mockResolvedValue({ data: { user: { id: "actor-a" } }, error: null });
     rpc.mockImplementation(async (name: string) => ({ data: name === "current_user_site_role" ? "collaborator" : false, error: null }));
@@ -46,6 +47,7 @@ describe("POS current browser location access", () => {
     await settle();
     expect(result.current.status).toBe("checking");
     expect(unlockPosDb).not.toHaveBeenCalled();
+    expect(clearPosPrivateData).not.toHaveBeenCalled();
     pending.resolve({ data: false, error: null });
     await settle();
     expect(result.current.status).toBe("allowed");
@@ -146,9 +148,24 @@ describe("POS current browser location access", () => {
     expect(result.current.status).toBe("allowed");
   });
 
+  it("exposes a safe storage code and performs a new check after retry", async () => {
+    const error = new Error("Private browser details must not be shown");
+    error.name = "UnknownError";
+    jest.mocked(preparePosStorage).mockRejectedValueOnce(error);
+    const { result } = renderHook(() => usePosLocationAccess("site-a", "actor-a"));
+    await settle();
+    expect(result.current).toMatchObject({ status: "unavailable", reason: "storage", diagnostic: "POS_STORAGE_OPEN" });
+    expect(auth).not.toHaveBeenCalled();
+    expect(unlockPosDb).not.toHaveBeenCalled();
+    act(() => result.current.retry!());
+    await settle();
+    expect(result.current.status).toBe("allowed");
+    expect(result.current.diagnostic).toBeUndefined();
+  });
+
   it("bounds a stalled device-storage preparation without starting private hooks", async () => {
     const pending = deferred<void>();
-    jest.mocked(clearPosPrivateData).mockReturnValueOnce(pending.promise);
+    jest.mocked(preparePosStorage).mockReturnValueOnce(pending.promise);
     const { result } = renderHook(() => usePosLocationAccess("site-a", "actor-a"));
     await settle();
     expect(result.current.status).toBe("checking");
@@ -191,6 +208,29 @@ describe("POS current browser location access", () => {
     expect(result.current.status).toBe("allowed");
     expect(result.current.lease).toBe(issued);
     expect(lockPosDb).not.toHaveBeenCalled();
+  });
+
+  it("fences an empty initial session without purging a previously verified cart", async () => {
+    localStorage.setItem("pos-location-scope-v1", JSON.stringify(["actor-a", "site-a", "collaborator"]));
+    const pending = deferred<{ data: { user: { id: string } }; error: null }>();
+    auth.mockReturnValueOnce(pending.promise);
+    const { result } = renderHook(() => usePosLocationAccess("site-a", "actor-a"));
+    await settle();
+    act(() => { authChange("INITIAL_SESSION", null); jest.advanceTimersByTime(0); });
+    await settle();
+    expect(clearPosPrivateData).not.toHaveBeenCalled();
+    expect(unlockPosDb).not.toHaveBeenCalled();
+    pending.resolve({ data: { user: { id: "actor-a" } }, error: null });
+    await settle();
+    act(() => jest.advanceTimersByTime(0));
+    await settle();
+    expect(result.current.status).toBe("allowed");
+    expect(clearPosPrivateData).not.toHaveBeenCalled();
+    auth.mockResolvedValue({ data: { user: null }, error: null });
+    act(() => { authChange("SIGNED_OUT", null); jest.advanceTimersByTime(0); });
+    await settle();
+    expect(result.current.status).not.toBe("allowed");
+    expect(clearPosPrivateData).toHaveBeenCalled();
   });
 
   it.each(["auth", "site"])("bounds pending %s context without deleting drafts", async (context) => {

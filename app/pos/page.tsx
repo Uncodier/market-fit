@@ -38,6 +38,9 @@ export default function POSPage() {
           ? t("pos.access.restricted")
           : access.reason ? t(ACCESS_ERRORS[access.reason]) : t("pos.access.unverified")}
       </p>
+      {access.reason === "storage" && access.diagnostic && (
+        <code className="text-xs text-muted-foreground">{access.diagnostic}</code>
+      )}
       {access.status === "unavailable" && access.retry && (
         <Button variant="outline" onClick={access.retry}>{t("pos.access.retry")}</Button>
       )}

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
+import { posStorageDiagnostic } from "../local/storage-diagnostic";
 import {
   acceptPosPermission, getPosPermissionLease, preparePosPermission,
   revokePosPermission, restorePosPermission, subscribePosPermission, suspendPosPermission,
@@ -15,6 +16,7 @@ type AccessState = {
   lease: PosPermissionLease | null;
   reason?: "offline" | "session" | "permission" | "storage" | "timeout" | "context";
   retry?: () => void;
+  diagnostic?: string;
 };
 const CHECKING: AccessState = { status: "checking", lease: null };
 const ROLES = new Set(["owner", "admin", "collaborator", "marketing"]);
@@ -63,13 +65,13 @@ export function usePosLocationAccess(siteId?: string, userId?: string, authLoadi
     let prepared = false;
     void preparation.then(() => { prepared = true; }, () => undefined);
     // Storage failures lock the workspace even if the browser is offline.
-    void preparation.catch(() => { if (!disposed) setState({ status: "unavailable", lease: null, reason: "storage" }); });
+    void preparation.catch((error) => { if (!disposed) setState({ status: "unavailable", lease: null, reason: "storage", diagnostic: posStorageDiagnostic(error) }); });
     const current = (request: number) => !disposed && sequence === request;
 
-    const deny = async (request: number, status: "restricted" | "unavailable", purge = false, reason?: AccessState["reason"]) => {
+    const deny = async (request: number, status: "restricted" | "unavailable", purge = false, reason?: AccessState["reason"], diagnostic?: string) => {
       if (!current(request)) return;
       suspendPosPermission();
-      setState({ status, lease: null, reason });
+      setState({ status, lease: null, reason, diagnostic });
       if (purge) {
         permissionRevoked = true;
         try { await revokePosPermission(); } catch { /* Remain locked if storage is unavailable. */ }
@@ -86,8 +88,8 @@ export function usePosLocationAccess(siteId?: string, userId?: string, authLoadi
         if (!current(request)) return;
         if (grant) setState({ status: "allowed", lease: grant });
         else await deny(request, "unavailable", false, reason);
-      } catch {
-        await deny(request, "unavailable", false, "storage");
+      } catch (error) {
+        await deny(request, "unavailable", false, "storage", posStorageDiagnostic(error));
       }
     };
 
@@ -182,7 +184,7 @@ export function usePosLocationAccess(siteId?: string, userId?: string, authLoadi
       } catch (error) {
         if (failureReason !== "storage" && isPosAuthorizationDenial(error)) await revokeForScope("unavailable", failureReason);
         else if (failureReason !== "storage" && isPosConnectionFailure(error)) await restoreCachedAccess(request, "offline");
-        else await deny(request, "unavailable", false, failureReason);
+        else await deny(request, "unavailable", false, failureReason, failureReason === "storage" ? posStorageDiagnostic(error) : undefined);
       } finally {
         inFlight = false;
         clearTimeout(timeout);
@@ -196,6 +198,17 @@ export function usePosLocationAccess(siteId?: string, userId?: string, authLoadi
 
     try {
       const { data } = createClient().auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
+        if (event === "INITIAL_SESSION" && !session) {
+          // An empty initial SDK snapshot is not a confirmed sign-out. Fence old
+          // requests and offline restoration, then verify without destroying drafts.
+          scopeEpoch += 1;
+          permissionRevoked = true;
+          sequence += 1;
+          suspendPosPermission();
+          clearTimeout(authTimer);
+          authTimer = setTimeout(() => { void refresh(); }, 0);
+          return;
+        }
         const sameActor = event !== "SIGNED_OUT" && session?.user.id === userId;
         // INITIAL_SESSION and SIGNED_IN can reconfirm the same actor on focus.
         // They are not revocations and must not interrupt getUser/token refresh.

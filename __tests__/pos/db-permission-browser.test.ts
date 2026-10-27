@@ -2,7 +2,7 @@
 import { readFileSync, existsSync } from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { chromium, type Browser, type Page } from "playwright";
+import { chromium, webkit, type Browser, type Page } from "playwright";
 import ts from "typescript";
 import type Dexie from "dexie";
 import type { DBCoreQuery } from "dexie";
@@ -13,7 +13,6 @@ type Harness = { Dexie: typeof Dexie; db: typeof Database; permission: typeof Pe
 declare global { interface Window { posTest: Harness } }
 const headlessShell = path.join(os.homedir(), "Library/Caches/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-mac-arm64/chrome-headless-shell");
 const executablePath = existsSync(headlessShell) ? headlessShell : chromium.executablePath();
-const suite = existsSync(executablePath) ? describe : describe.skip;
 const scope = { userId: "actor", siteId: "site", role: "owner" };
 function source(file: string) {
   return ts.transpileModule(readFileSync(path.join(process.cwd(), file), "utf8"), {
@@ -21,10 +20,15 @@ function source(file: string) {
   }).outputText;
 }
 
-suite("POS permission fence in real Chromium IndexedDB (isolated, no app server)", () => {
+describe.each([
+  { name: "Chromium", engine: chromium, executable: executablePath },
+  { name: "WebKit", engine: webkit, executable: webkit.executablePath() },
+])("POS permission fence in real $name IndexedDB (isolated, no app server)", ({ engine, executable }) => {
+  const suite = existsSync(executable) ? describe : describe.skip;
+  suite("available browser", () => {
   let browser: Browser;
   let page: Page;
-  beforeAll(async () => { browser = await chromium.launch({ executablePath, headless: true }); }, 30_000);
+  beforeAll(async () => { browser = await engine.launch({ executablePath: executable, headless: true }); }, 30_000);
   afterAll(async () => { await browser?.close(); });
   beforeEach(async () => {
     page = await browser.newPage();
@@ -42,6 +46,41 @@ suite("POS permission fence in real Chromium IndexedDB (isolated, no app server)
     await page.evaluate(async (scope) => { await window.posTest.permission.acceptPosPermission(scope, () => true); }, scope);
   });
   afterEach(async () => { await page?.close(); });
+
+  it("preserves legacy work on failed writes, then performs one authorized purge on retry", async () => {
+    const result = await page.evaluate(async (scope) => {
+      const { db, permission } = window.posTest;
+      await db.getPosDb().leads.put({ id: "legacy-private", site_id: scope.siteId });
+      permission.suspendPosPermission();
+      localStorage.removeItem("pos-location-scope-v1");
+      const originalClear = IDBObjectStore.prototype.clear;
+      const originalSet = Storage.prototype.setItem;
+      let clears = 0;
+      IDBObjectStore.prototype.clear = function () { clears++; return originalClear.call(this); };
+      Storage.prototype.setItem = function (key, value) {
+        if (key === "pos-location-scope-v1") throw new DOMException("Synthetic denial", "QuotaExceededError");
+        return originalSet.call(this, key, value);
+      };
+      try {
+        await permission.preparePosPermission(scope.userId, scope.siteId);
+        const error = await permission.acceptPosPermission(scope, () => true).then(() => null, (error) => error.name);
+        const inspect = new db.PosLocalDatabase();
+        const retained = !!await inspect.leads.get("legacy-private");
+        inspect.close();
+        const beforeRetry = { error, retained, clears, allowed: !!permission.getPosPermissionLease() };
+        Storage.prototype.setItem = originalSet;
+        await permission.preparePosPermission(scope.userId, scope.siteId);
+        await permission.acceptPosPermission(scope, () => true);
+        await permission.preparePosPermission(scope.userId, scope.siteId);
+        await permission.acceptPosPermission(scope, () => true);
+        return { beforeRetry, clears, allowed: !!permission.getPosPermissionLease() };
+      } finally {
+        IDBObjectStore.prototype.clear = originalClear;
+        Storage.prototype.setItem = originalSet;
+      }
+    }, scope);
+    expect(result).toEqual({ beforeRetry: { error: "QuotaExceededError", retained: true, clears: 0, allowed: false }, clears: 14, allowed: true });
+  });
 
   it("reads and writes downloaded IndexedDB data offline, restores after reload and fences sign-out", async () => {
     await page.evaluate(async (scope) => {
@@ -172,5 +211,6 @@ suite("POS permission fence in real Chromium IndexedDB (isolated, no app server)
       return denied;
     });
     expect(result).toBe(true);
+  });
   });
 });

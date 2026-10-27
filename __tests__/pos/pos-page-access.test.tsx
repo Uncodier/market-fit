@@ -86,6 +86,16 @@ describe("POS guarded workspace mount", () => {
     expect(screen.getByText(/Check server orders and payments/)).toBeInTheDocument();
   });
 
+  it("shows the storage diagnostic and wires retry without mounting private data", () => {
+    const retry = jest.fn();
+    jest.mocked(usePosLocationAccess).mockReturnValue({ status: "unavailable", lease: null, reason: "storage", diagnostic: "POS_STORAGE_OPEN", retry });
+    render(<LocalizedPOS />);
+    expect(screen.getByText("POS_STORAGE_OPEN")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Retry access check" }));
+    expect(retry).toHaveBeenCalledTimes(1);
+    expect(getPosDb).not.toHaveBeenCalled();
+  });
+
   it("translates access warnings without granting access or mounting private data", () => {
     const retry = jest.fn();
     jest.mocked(usePosLocationAccess).mockReturnValue({ status: "unavailable", lease: null, reason: "timeout", retry });

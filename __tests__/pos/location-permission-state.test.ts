@@ -5,14 +5,15 @@ import {
 } from "@/app/pos/local/location-permission-state";
 
 type MockTable = { clear: jest.Mock; rows: unknown[] };
-const instances: { close: jest.Mock; transaction: jest.Mock; tables: MockTable[] }[] = [];
+const instances: { close: jest.Mock; open: jest.Mock; transaction: jest.Mock; tables: MockTable[] }[] = [];
 const tables = new Map<string, MockTable>();
 jest.mock("dexie", () => ({
   __esModule: true,
   default: class {
     tables: MockTable[] = [];
     close = jest.fn();
-    transaction = jest.fn(async (_mode, _tables, callback: () => Promise<void>) => callback());
+    open = jest.fn(async () => this);
+    transaction = jest.fn(async (_mode, _tables, callback: (tx: { abort: jest.Mock }) => Promise<void>) => callback({ abort: jest.fn() }));
     constructor() { instances.push(this); }
     use() { return this; }
     version() { return { stores: (schema: Record<string, string>) => {
@@ -79,8 +80,80 @@ describe("POS persisted permission boundary", () => {
     expect(tables.get("outbox")!.rows).toEqual([]);
     tables.get("outbox")!.rows = [{ unconfirmed: true }];
     await preparePosPermission("actor-b", scope.siteId);
-    expect(tables.get("outbox")!.rows).toEqual([]);
+    expect(tables.get("outbox")!.rows).toEqual([{ unconfirmed: true }]);
     expect(getPosPermissionLease()).toBeNull();
+    expect(() => getPosDb()).toThrow();
+    expect(await restorePosPermission("actor-b", scope.siteId, () => true)).toBeNull();
+    await acceptPosPermission({ ...scope, userId: "actor-b" }, () => true);
+    expect(tables.get("outbox")!.rows).toEqual([]);
+  });
+
+  it("prepares legacy storage without clearing and purges only once after verified admission", async () => {
+    await preparePosPermission(scope.userId, scope.siteId);
+    for (const table of tables.values()) expect(table.clear).not.toHaveBeenCalled();
+    expect(() => getPosDb()).toThrow();
+    await acceptPosPermission(scope, () => true);
+    for (const table of tables.values()) expect(table.clear).toHaveBeenCalledTimes(1);
+    await preparePosPermission(scope.userId, scope.siteId);
+    await acceptPosPermission(scope, () => true);
+    for (const table of tables.values()) expect(table.clear).toHaveBeenCalledTimes(1);
+  });
+
+  it("preserves all rows and the previous marker when storage writes fail before admission", async () => {
+    await acceptPosPermission(scope, () => true);
+    tables.get("outbox")!.rows = [{ unconfirmed: true }];
+    const marker = localStorage.getItem("pos-location-scope-v1");
+    const write = jest.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("Synthetic quota failure", "QuotaExceededError");
+    });
+    try {
+      await expect(preparePosPermission(scope.userId, scope.siteId)).rejects.toMatchObject({ name: "QuotaExceededError" });
+      await expect(acceptPosPermission({ ...scope, userId: "other" }, () => true)).rejects.toMatchObject({ name: "QuotaExceededError" });
+      expect(tables.get("outbox")!.rows).toEqual([{ unconfirmed: true }]);
+      expect(localStorage.getItem("pos-location-scope-v1")).toBe(marker);
+      expect(() => getPosDb()).toThrow();
+    } finally { write.mockRestore(); }
+    await preparePosPermission(scope.userId, scope.siteId);
+    await acceptPosPermission(scope, () => true);
+    expect(tables.get("outbox")!.rows).toEqual([{ unconfirmed: true }]);
+  });
+
+  it("never trusts a pending marker after a failed purge and permits a fresh retry", async () => {
+    await preparePosPermission(scope.userId, scope.siteId);
+    tables.get("outbox")!.clear.mockRejectedValueOnce(new Error("Transient IDB failure"));
+    await expect(acceptPosPermission(scope, () => true)).rejects.toThrow("Transient IDB failure");
+    expect(JSON.parse(localStorage.getItem("pos-location-scope-v1")!)).toHaveProperty("pending");
+    expect(getPosPermissionLease()).toBeNull();
+    expect(await restorePosPermission(scope.userId, scope.siteId, () => true)).toBeNull();
+    expect(() => getPosDb()).toThrow();
+    await preparePosPermission(scope.userId, scope.siteId);
+    await acceptPosPermission(scope, () => true);
+    expect(getPosPermissionLease()).not.toBeNull();
+  });
+
+  it("never grants access when final marker publication fails after a successful purge", async () => {
+    await preparePosPermission(scope.userId, scope.siteId);
+    const original = Storage.prototype.setItem;
+    const write = jest.spyOn(Storage.prototype, "setItem").mockImplementation(function (this: Storage, key, value) {
+      if (key === "pos-location-scope-v1" && value.startsWith("[")) throw new Error("Publication failed");
+      original.call(this, key, value);
+    });
+    try {
+      await expect(acceptPosPermission(scope, () => true)).rejects.toThrow("Publication failed");
+      expect(getPosPermissionLease()).toBeNull();
+      expect(await restorePosPermission(scope.userId, scope.siteId, () => true)).toBeNull();
+      expect(() => getPosDb()).toThrow();
+    } finally { write.mockRestore(); }
+  });
+
+  it("does not publish ownership when admission becomes stale during a purge", async () => {
+    await preparePosPermission(scope.userId, scope.siteId);
+    let current = true;
+    tables.get("outbox")!.clear.mockImplementationOnce(async () => { current = false; });
+    expect(await acceptPosPermission(scope, () => current)).toBeNull();
+    expect(getPosPermissionLease()).toBeNull();
+    expect(await restorePosPermission(scope.userId, scope.siteId, () => true)).toBeNull();
+    expect(() => getPosDb()).toThrow();
   });
 
   it("denies without trusting a persisted marker offline or from another tab", async () => {
@@ -100,6 +173,49 @@ describe("POS persisted permission boundary", () => {
     await expect(revokePosPermission()).rejects.toThrow("storage unavailable");
     expect(localStorage.getItem("pos-location-scope-v1")).toBeNull();
     expect(() => getPosDb()).toThrow();
+  });
+
+  it("bounds a stalled open, retains pending rows and allows a fresh preparation", async () => {
+    jest.useFakeTimers();
+    try {
+      const purge = clearPosPrivateData();
+      const db = instances[0];
+      let rejectOpen!: (error: Error) => void;
+      db.open.mockImplementationOnce(() => new Promise((_resolve, reject) => { rejectOpen = reject; }));
+      db.close.mockImplementation(() => rejectOpen?.(new Error("Database closed")));
+      const failure = expect(purge).rejects.toMatchObject({ name: "PosStorageTimeoutError" });
+      await jest.advanceTimersByTimeAsync(8_000);
+      await failure;
+      expect(db.close).toHaveBeenCalledWith({ disableAutoOpen: true });
+      expect(db.transaction).not.toHaveBeenCalled();
+      expect(tables.get("outbox")!.rows).toEqual([{ private: true }]);
+      expect(() => getPosDb()).toThrow();
+      await preparePosPermission(scope.userId, scope.siteId);
+      await acceptPosPermission(scope, () => true);
+      expect(getPosPermissionLease()).not.toBeNull();
+    } finally {
+      suspendPosPermission();
+      jest.useRealTimers();
+    }
+  });
+
+  it("aborts an active purge transaction before releasing its timed-out wait", async () => {
+    jest.useFakeTimers();
+    try {
+      const purge = clearPosPrivateData();
+      const db = instances[0];
+      const abort = jest.fn();
+      db.transaction.mockImplementationOnce(async (_mode, _tables, callback) => callback({ abort }));
+      tables.get("outbox")!.clear.mockImplementationOnce(() => new Promise(() => {}));
+      const failure = expect(purge).rejects.toMatchObject({ name: "PosStorageTimeoutError" });
+      await jest.advanceTimersByTimeAsync(8_000);
+      await failure;
+      expect(abort).toHaveBeenCalledTimes(1);
+      expect(db.close).toHaveBeenCalledWith({ disableAutoOpen: true });
+      expect(() => getPosDb()).toThrow();
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it("rejects an elapsed monotonic deadline before the timer runs, even after wall-clock rollback", async () => {

@@ -1,4 +1,4 @@
-import { clearPosPrivateData, hasPosCachedSnapshot, lockPosDb, unlockPosDb } from "./db";
+import { clearPosPrivateData, hasPosCachedSnapshot, lockPosDb, preparePosStorage, unlockPosDb } from "./db";
 
 export const POS_PERMISSION_REFRESH_MS = 30_000;
 export const POS_PERMISSION_TIMEOUT_MS = 8_000;
@@ -67,17 +67,20 @@ export function revokePosPermission(): Promise<void> {
   });
 }
 
-/** A different actor/site must never inherit the previous device cache. */
+/** Preparation is non-destructive; only verified access can replace cache ownership. */
 export function preparePosPermission(userId: string | null, siteId: string | null): Promise<void> {
   suspendPosPermission();
   return serialize(async () => {
-    const marker = localStorage.getItem(OWNER_KEY);
-    let owner: unknown;
-    try { owner = marker ? JSON.parse(marker) : null; } catch { owner = null; }
-    if (!Array.isArray(owner) || owner[0] !== userId || owner[1] !== siteId) {
-      localStorage.removeItem(OWNER_KEY);
-      await clearPosPrivateData();
+    // Test real writes, not just API presence, before touching any saved work.
+    const probeKey = "pos-storage-probe-v1";
+    const probe = JSON.stringify([userId, siteId, "collaborator"]);
+    try {
+      localStorage.setItem(probeKey, probe);
+      if (localStorage.getItem(probeKey) !== probe) throw new Error("POS storage write could not be verified");
+    } finally {
+      localStorage.removeItem(probeKey);
     }
+    await preparePosStorage();
   });
 }
 
@@ -115,10 +118,15 @@ export function acceptPosPermission(
     const key = ownerKey(scope);
     if (localStorage.getItem(OWNER_KEY) !== key) {
       suspendPosPermission();
-      localStorage.removeItem(OWNER_KEY);
+      // An object is deliberately not a valid ownership grant. Reserve and verify
+      // the actual marker write before purging, including browsers rejecting writes.
+      const pending = JSON.stringify({ pending: key });
+      localStorage.setItem(OWNER_KEY, pending);
+      if (localStorage.getItem(OWNER_KEY) !== pending) throw new Error("POS storage write could not be verified");
       await clearPosPrivateData();
-      if (!isCurrent() || !navigator.onLine) return null;
+      if (!isCurrent() || !navigator.onLine || localStorage.getItem(OWNER_KEY) !== pending) return null;
       localStorage.setItem(OWNER_KEY, key);
+      if (localStorage.getItem(OWNER_KEY) !== key) throw new Error("POS storage write could not be verified");
     }
     const previous = getPosPermissionLease(scope.siteId);
     if (!previous) lockPosDb();

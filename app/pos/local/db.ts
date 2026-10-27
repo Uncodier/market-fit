@@ -1,4 +1,4 @@
-import Dexie, { type DBCoreCursor, type DBCoreTransaction, type Table } from "dexie";
+import Dexie, { type DBCoreCursor, type DBCoreTransaction, type Table, type Transaction } from "dexie";
 import type { CatalogItem, Tax } from "@/app/types";
 import type {
   IdMapRow,
@@ -158,10 +158,15 @@ export function unlockPosDb(isCurrent: () => boolean) {
 /** Erase every table: legacy tax/price/slot rows have no site index. */
 export async function clearPosPrivateData() {
   const db = new PosLocalDatabase();
+  let transaction: Transaction | undefined;
   try {
-    await db.transaction("rw", db.tables, async () => {
-      await Promise.all(db.tables.map((table) => table.clear()));
-    });
+    await withStorageDeadline(db, async () => {
+      await db.open();
+      await db.transaction("rw", db.tables, async (tx) => {
+        transaction = tx;
+        await Promise.all(db.tables.map((table) => table.clear()));
+      });
+    }, () => transaction?.abort());
     for (const key of Object.keys(localStorage)) {
       if (["pos-active-order:", "pos-checkout-session:", "pos-checkout-attempt:"].some((prefix) => key.startsWith(prefix))) {
         localStorage.removeItem(key);
@@ -172,15 +177,42 @@ export async function clearPosPrivateData() {
   }
 }
 
+/** Open storage without reading private records or clearing a previous session. */
+export async function preparePosStorage(): Promise<void> {
+  const db = new PosLocalDatabase();
+  try {
+    await withStorageDeadline(db, () => db.open());
+  } finally {
+    db.close({ disableAutoOpen: true });
+  }
+}
+
 /** Inspect download metadata without exposing private tables before local access is restored. */
 export async function hasPosCachedSnapshot(siteId: string): Promise<boolean> {
   const db = new PosLocalDatabase();
   try {
-    const meta = await db.meta.get(siteId);
+    const meta = await withStorageDeadline(db, () => db.meta.get(siteId));
     return !!meta?.lastPulledAt && Number.isFinite(Date.parse(meta.lastPulledAt));
   } finally {
     db.close({ disableAutoOpen: true });
   }
+}
+
+/** Release serialized permission checks when WebKit never settles an IDB open.
+ * Close cancels Dexie's pending open; abort rolls back any active purge.
+ * Never delete/recreate the database or unlock access on a timeout.
+ */
+function withStorageDeadline<T>(db: PosLocalDatabase, operation: () => Promise<T>, abort = () => {}): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      const error = new Error("POS storage preparation timed out");
+      error.name = "PosStorageTimeoutError";
+      try { abort(); } catch { /* The transaction may already have finished. */ }
+      db.close({ disableAutoOpen: true });
+      reject(error);
+    }, 8_000);
+    Promise.resolve().then(operation).then(resolve, reject).finally(() => clearTimeout(timer));
+  });
 }
 
 export function getPosDb(): PosLocalDatabase {

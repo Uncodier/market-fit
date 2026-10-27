@@ -6,7 +6,7 @@ import { getPosPermissionLease, suspendPosPermission } from "@/app/pos/local/loc
 
 jest.mock("@/lib/supabase/client", () => ({ createClient: jest.fn() }));
 jest.mock("@/app/pos/local/db", () => ({
-  clearPosPrivateData: jest.fn(), hasPosCachedSnapshot: jest.fn(), lockPosDb: jest.fn(), unlockPosDb: jest.fn(),
+  clearPosPrivateData: jest.fn(), preparePosStorage: jest.fn(), hasPosCachedSnapshot: jest.fn(), lockPosDb: jest.fn(), unlockPosDb: jest.fn(),
 }));
 
 const KEY = "pos-location-scope-v1";

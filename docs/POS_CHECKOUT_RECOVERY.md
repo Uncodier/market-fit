@@ -2,6 +2,43 @@
 
 ## Operational behavior
 
+### Device storage access failures
+
+POS remains locked when browser storage cannot be prepared; it never falls back
+to an in-memory payment queue. Storage errors display a fixed `POS_STORAGE_*`
+diagnostic, not browser messages or private data. `OPEN` indicates an IndexedDB
+open error, `QUOTA` a storage quota error, `DENIED` a security restriction, and
+`TIMEOUT` a preparation that did not settle within eight seconds. These codes
+identify the error category, not a confirmed device-level cause.
+
+Temporary purge and snapshot handles have bounded waits. On timeout, Dexie's
+pending open is closed and any active purge transaction is aborted so permission
+serialization can accept a fresh retry. The database is never deleted/recreated
+as a repair, and failed preparation never grants access. Same-scope rechecks
+continue preserving unconfirmed drafts and receipts. Do not clear website data
+or reinstall an app before reconciling pending orders/payments on the server.
+
+Startup preparation probes localStorage writes and opens IndexedDB without
+clearing records. Only after server identity and permission verification may
+admission replace a missing or different ownership marker. It first writes and
+reads back a pending object at the real marker key; this object is never accepted
+as an online/offline grant. If that write fails, the old records are untouched.
+A successful ownership transition performs one purge, not separate preparation
+and admission purges, then publishes the verified marker. The same verified
+scope does not purge. Legacy/unowned data is still not adopted by a new actor;
+successful admission retains the existing ownership-isolation purge policy.
+The write probe cannot guarantee that a later write will succeed if device
+storage becomes unavailable mid-transition; such failures still deny access.
+
+An empty `INITIAL_SESSION` notification suspends access and requests verification
+without purging. Confirmed sign-out, a different authenticated actor, or an
+authoritative permission denial still revoke access. These changes do not
+provide an in-memory fallback when durable storage is unavailable.
+
+The isolated IndexedDB permission tests exercise Chromium and WebKit when the
+corresponding Playwright browser is installed; they do not reproduce every
+iPadOS version or device storage restriction.
+
 ### Optimistic checkout interface
 
 The payment modal closes after order/register preflight and durable local enqueue,

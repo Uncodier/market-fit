@@ -1,5 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Private SSH QA tunnels use this loopback hostname for development assets/HMR.
+  allowedDevOrigins: ['127.0.0.1'],
   // Unique per deploy so stale tabs can detect a new version and prompt reload.
   env: {
     NEXT_PUBLIC_BUILD_ID:
