@@ -84,6 +84,47 @@ queue's **Check payment status** action reads server evidence using the original
 mutation and receipt IDs. It does not collect money, delete a queue entry, cancel
 an order, issue a refund, or mark incomplete checkout as successful.
 
+The queue offers status checks for both failed and syncing checkouts. Checks have
+per-operation busy states: a slow lookup or global sync does not disable another
+lookup, order review, or closing the queue. List loading and action waits in the
+dialog expire after ten seconds with an actionable message; this only releases
+the UI wait, never aborts checkout writes, deletes evidence, or releases worker
+ownership. Storage timeouts offer **Refresh list**. Unconfirmed entries explain
+why deletion and blind payment replay are unavailable. Other orders remain usable.
+
+### Explicit resolution actions
+
+**Cancel operation** is available from the queue and order review. It requires a
+reason and explicit confirmation, then calls the authenticated same-origin
+`/api/pos/checkout-cancel` endpoint. It cancels only the original checkout attempt,
+not the order, a provider charge, or a refund. Server admission is atomically
+fenced before the client marks the attempt rejected; evidence and audit history
+remain. A late processing status read cannot undo confirmed rejection.
+Rejected/cancelled attempts remain visible for audit but no longer count as active
+sync errors or block register closing. They are not reported as paid/synchronized.
+
+Only the original authorized cashier can cancel an existing attempt still before
+checkout writes (`processing`), or acknowledge one already `rejected`. Missing
+legacy attempts, completed payments, `writes_started`, and `review_required`
+attempts are refused: absence of receipts does not prove absence of side effects.
+Those cases still require financial/fulfillment investigation; this change does
+not introduce a force-cancel or replay partial checkout finalization.
+
+**Register payment** in review requires a server-rejected/cancelled attempt and a
+current open unpaid server order with complete lines. After explicit consent to
+replace the current cart, it rechecks payment evidence, reloads the order, and
+opens the normal payment form once the selected cart renders. The cashier must
+confirm the payment method/amount there. Existing register, price, permission,
+receipt-identity, and duplicate-payment guards remain in force. An attempt without
+a server order cannot be restored using this action. Recorded/uncertain payments
+remain blocked from replacement collection, with an explanation rather than an
+unexplained disabled control.
+
+The cancellation endpoint requires forward migration
+`20261027190000_pos_checkout_cancel.sql` before use. Apply it only to an explicitly
+approved target and deploy matching application code; missing RPCs fail closed.
+Local implementation/testing does not resolve an affected production queue.
+
 | Evidence | Local outcome | Other orders | Register closing |
 | --- | --- | --- | --- |
 | Completed checkout | Synced, restored result | Allowed | Allowed if all receipts settled |

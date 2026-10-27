@@ -16,7 +16,7 @@ function parseArgs(args, env = process.env) {
       result[flag.slice(2)] = value;
     } else throw new Error(`Unsupported option: ${flag}. Allowed: --suite --target --list --validate --grep --headed`);
   }
-  if (!['smoke', 'regression', 'buyer', 'roles', 'project-lifecycle'].includes(result.suite)) throw new Error('Invalid suite');
+  if (!['smoke', 'regression', 'buyer', 'roles', 'project-lifecycle', 'account-lifecycle'].includes(result.suite)) throw new Error('Invalid suite');
   if (result.target && !['local', 'staging', 'production'].includes(result.target)) throw new Error('Invalid target');
   if (result.list && result.validate) throw new Error('Choose --list or --validate');
   if (result.grep) new RegExp(result.grep);

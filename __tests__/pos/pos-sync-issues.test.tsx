@@ -100,6 +100,19 @@ it("does not downgrade exact recorded receipts after an in-flight status respons
   expectNoBlindRetry();
 });
 
+it("does not restore an unresolved fence when a status read predates cancellation", async () => {
+  const lookup = deferred<Awaited<ReturnType<typeof fetchPosCheckoutStatus>>>();
+  jest.mocked(fetchPosCheckoutStatus).mockReturnValueOnce(lookup.promise);
+  render(<PosSyncIssues {...props} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Check payment status" }));
+  await waitFor(() => expect(fetchPosCheckoutStatus).toHaveBeenCalledTimes(1));
+  storedRows = [checkoutRow({ recoveryState: "rejected", recoveryMessage: "Operation cancelled" })];
+  await act(async () => { lookup.resolve({ data: { state: "processing", message: "Old response" } }); });
+  expect(storedRows[0].recoveryState).toBe("rejected");
+  expect(storedRows[0].recoveryMessage).toBe("Operation cancelled");
+  expect(updateOutboxRow).not.toHaveBeenCalled();
+});
+
 it("shows order/mutation diagnostics and the queued payment sum and methods", async () => {
   storedRows = [checkoutRow({ resultOrderId: "result-order", recoveryOrderId: "recovery-order", recoverySaleId: "recovery-sale" })];
   render(<PosSyncIssues {...props} />);
@@ -127,7 +140,7 @@ it("uses reconciliation to look up server status, blocks duplicate clicks, and r
   fireEvent.click(check);
   fireEvent.click(check);
   expect(screen.getByRole("button", { name: "Checking payment status…" })).toBeDisabled();
-  expect(screen.getByRole("button", { name: "Retry sync" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Retry sync" })).toBeEnabled();
   await waitFor(() => expect(fetchPosCheckoutStatus).toHaveBeenCalledTimes(1));
   expect(fetchPosCheckoutStatus).toHaveBeenCalledWith({
     siteId: "site-a", clientMutationId: "mutation-a", existingOrderId: "existing-order",
@@ -160,7 +173,7 @@ it.each([
   expect(await screen.findByText(label)).toBeInTheDocument();
   expect(screen.getByText(explanation)).toBeInTheDocument();
   expect(screen.getByText("Server recovery diagnostic")).toBeInTheDocument();
-  expect(screen.getByText("failed")).toBeInTheDocument();
+  expect(screen.getByText(recoveryState === "rejected" ? "Closed — no payment recorded" : "failed")).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Check payment status" })).toBeEnabled();
   expectNoBlindRetry();
 });
@@ -264,7 +277,7 @@ it("retains an explicit global retry with busy/error handling, separate from pay
   await screen.findByRole("button", { name: "Check payment status" });
   fireEvent.click(screen.getByRole("button", { name: "Retry sync" }));
   expect(screen.getByRole("button", { name: "Retrying sync…" })).toBeDisabled();
-  expect(screen.getByRole("button", { name: "Check payment status" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Check payment status" })).toBeEnabled();
   await act(async () => { retry.reject(new Error("Sync unavailable")); });
   expect(screen.getByRole("alert")).toHaveTextContent("Unable to retry sync. Try again. Sync unavailable");
   expect(screen.getByRole("button", { name: "Retry sync" })).toBeEnabled();
@@ -359,4 +372,67 @@ it("does not read, subscribe or retry without an open dialog and a site", () => 
   expect(listOutbox).not.toHaveBeenCalled();
   expect(subscribePosSync).not.toHaveBeenCalled();
   expectNoBlindRetry();
+});
+
+it("allows read-only recovery for a checkout stuck syncing", async () => {
+  storedRows = [checkoutRow({ status: "syncing" })];
+  render(<PosSyncIssues {...props} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Check payment status" }));
+  await waitFor(() => expect(fetchPosCheckoutStatus).toHaveBeenCalledTimes(1));
+  await screen.findByText("Payment recorded — checkout not confirmed complete");
+  expectNoBlindRetry();
+});
+
+it("keeps review, close and another payment check available during a stalled check", async () => {
+  storedRows.push(checkoutRow({ id: "attempt-b", clientMutationId: "mutation-b" }));
+  jest.mocked(fetchPosCheckoutStatus).mockReturnValueOnce(new Promise(() => {}));
+  const onReviewOrder = jest.fn();
+  render(<PosSyncIssues {...props} onReviewOrder={onReviewOrder} />);
+  const checks = await screen.findAllByRole("button", { name: "Check payment status" });
+  fireEvent.click(checks[0]);
+  await waitFor(() => expect(fetchPosCheckoutStatus).toHaveBeenCalledTimes(1));
+  expect(checks[1]).toBeEnabled();
+  fireEvent.click(checks[1]);
+  await waitFor(() => expect(fetchPosCheckoutStatus).toHaveBeenCalledTimes(2));
+  const reviews = screen.getAllByRole("button", { name: "Review order" });
+  expect(reviews[0]).toBeEnabled();
+  fireEvent.click(reviews[0]);
+  expect(onReviewOrder).toHaveBeenCalledWith("existing-order", "attempt-a");
+  fireEvent.click(screen.getByRole("button", { name: "Close queue" }));
+  expect(onOpenChange).toHaveBeenCalledWith(false);
+  expectNoBlindRetry();
+});
+
+it.each(["list", "check", "sync"])("releases a stalled %s wait without deleting or replaying a payment", async (operation) => {
+  jest.useFakeTimers();
+  const original = checkoutRow();
+  storedRows = [original];
+  if (operation === "list") jest.mocked(listOutbox).mockReturnValueOnce(new Promise(() => {}));
+  if (operation === "check") jest.mocked(fetchPosCheckoutStatus).mockReturnValueOnce(new Promise(() => {}));
+  if (operation === "sync") jest.mocked(drainPosOutbox).mockReturnValueOnce(new Promise(() => {}));
+  const view = render(<PosSyncIssues {...props} />);
+  try {
+    await act(async () => {});
+    if (operation !== "list") {
+      fireEvent.click(screen.getByRole("button", { name: operation === "check" ? "Check payment status" : "Retry sync" }));
+      await act(async () => {});
+    }
+    await act(async () => { jest.advanceTimersByTime(10_000); });
+    expect(screen.getByRole("alert")).toHaveTextContent(operation === "list"
+      ? "Unable to load queued operations" : "The operation is still unconfirmed");
+    const nextAction = operation === "list" ? "Refresh list" : operation === "check" ? "Check payment status" : "Retry sync";
+    expect(screen.getByRole("button", { name: nextAction })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Close queue" })).toBeEnabled();
+    expect(storedRows).toEqual([original]);
+    expect(enqueueCheckout).not.toHaveBeenCalled();
+    expect(checkoutCart).not.toHaveBeenCalled();
+    if (operation === "list") {
+      fireEvent.click(screen.getByRole("button", { name: "Refresh list" }));
+      await act(async () => {});
+      expect(screen.getByText("mutation-a")).toBeInTheDocument();
+    }
+  } finally {
+    view.unmount();
+    jest.useRealTimers();
+  }
 });

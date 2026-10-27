@@ -63,8 +63,10 @@ it('keeps the lifecycle native test out of broad YAML transpilation and protects
   const { sources } = await import('../../scripts/e2e/run.cjs');
   expect(sources('project-lifecycle')).toEqual([]);
   const config = fs.readFileSync('playwright.config.ts', 'utf8');
-  expect(config).toContain("suite === 'project-lifecycle' ? 'off' : 'retain-on-failure'");
-  expect(config).toContain("suite === 'project-lifecycle' ? 'off' : 'only-on-failure'");
+  expect(config).toContain("const privateLifecycle = suite === 'project-lifecycle' || suite === 'account-lifecycle'");
+  expect(config).toContain("video: privateLifecycle ? 'off' : 'retain-on-failure'");
+  expect(config).toContain("trace: privateLifecycle ? 'off' : 'retain-on-failure'");
+  expect(config).toContain("screenshot: privateLifecycle ? 'off' : 'only-on-failure'");
   const source = fs.readFileSync('tests/projects/lifecycle.spec.ts', 'utf8');
   expect(source).not.toMatch(/\.delete\(|service_role|waitForTimeout|force: true/);
 });

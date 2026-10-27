@@ -224,3 +224,28 @@ it("does not start a server order read after the original queue read outlives it
   expect(getPosOrder).not.toHaveBeenCalled();
   expect(reconcilePosCheckout).not.toHaveBeenCalled();
 });
+
+it("registers payment through the real payment callback only after consent and a fresh rejection check", async () => {
+  rows = [{ ...baseRow, recoveryState: "rejected" }];
+  jest.mocked(reconcilePosCheckout).mockResolvedValue({ state: "rejected", message: "No writes" });
+  const onRegisterPayment = jest.fn().mockResolvedValue(true);
+  render(<PosOrderReviewDialog {...props} onRegisterPayment={onRegisterPayment} />);
+  await screen.findByText("original-mutation");
+  expect(screen.getByRole("button", { name: "Register payment" })).toBeDisabled();
+  fireEvent.click(screen.getByRole("checkbox"));
+  fireEvent.click(screen.getByRole("button", { name: "Register payment" }));
+  await waitFor(() => expect(onRegisterPayment).toHaveBeenCalledWith("order-a"));
+  expect(reconcilePosCheckout).toHaveBeenCalledWith("site-a", "original-row");
+  expect(props.onReloadOrder).not.toHaveBeenCalled();
+  expectNoMoneyMutation();
+});
+
+it.each(["payment_recorded", "review_required"] as const)("prevents replacement payment for %s", async (recoveryState) => {
+  rows = [{ ...baseRow, recoveryState }];
+  const onRegisterPayment = jest.fn();
+  render(<PosOrderReviewDialog {...props} onRegisterPayment={onRegisterPayment} />);
+  await screen.findByText("original-mutation");
+  expect(screen.getByRole("button", { name: "Register payment" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Cancel operation" })).toBeEnabled();
+  expect(onRegisterPayment).not.toHaveBeenCalled();
+});

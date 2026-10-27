@@ -1,7 +1,7 @@
 const c = require('./common.cjs');
 
 function sources(suite) {
-  if (suite === 'smoke' || suite === 'roles' || suite === 'project-lifecycle') return [];
+  if (suite === 'smoke' || suite === 'roles' || suite === 'project-lifecycle' || suite === 'account-lifecycle') return [];
   return c.fs.readdirSync(c.path.join(c.root, 'tests')).filter(file => file.endsWith('.test.yaml') &&
     (suite === 'buyer' ? file === 'buyer-navigation.test.yaml' : !['example.test.yaml', 'buyer-navigation.test.yaml'].includes(file)))
     .sort().map(file => `tests/${file}`);

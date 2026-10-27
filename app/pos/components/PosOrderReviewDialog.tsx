@@ -9,6 +9,7 @@ import { reconcilePosCheckout } from "../local/checkout-recovery";
 import type { PosOutboxRow } from "../local/types";
 import { checkoutReviewOrderId, PosCheckoutRecoveryDetails } from "./PosCheckoutRecoveryDetails";
 import type { PosOrderSnapshot } from "../order-snapshot";
+import { CancelCheckoutOperation } from "./CancelCheckoutOperation";
 import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext";
 import { Button } from "@/app/components/ui/button";
 import {
@@ -22,6 +23,7 @@ type Props = {
   rowId?: string;
   onOpenChange: (open: boolean) => void;
   onReloadOrder?: (orderId: string) => Promise<boolean> | boolean;
+  onRegisterPayment?: (orderId: string) => Promise<boolean> | boolean;
   onContinueSelling?: () => void;
 };
 
@@ -58,12 +60,13 @@ export function PosOrderReviewDialog(props: Props) {
   return <OrderReviewSession key={`${props.siteId ?? ""}:${props.rowId ?? ""}:${props.orderId ?? ""}`} {...props} />;
 }
 
-function OrderReviewSession({ siteId, orderId, rowId, onOpenChange, onReloadOrder, onContinueSelling }: Props) {
+function OrderReviewSession({ siteId, orderId, rowId, onOpenChange, onReloadOrder, onRegisterPayment, onContinueSelling }: Props) {
   const { formatPrice } = useDisplayCurrency();
   const canRead = Boolean(siteId && (rowId || (orderId && !orderId.startsWith("local_"))));
   const [snapshot, setSnapshot] = useState<ReviewSnapshot>({ row: null, order: null, error: null });
   const [loading, setLoading] = useState(canRead);
-  const [busy, setBusy] = useState<"refresh" | "check" | "reload" | null>(null);
+  const [busy, setBusy] = useState<"refresh" | "check" | "reload" | "pay" | null>(null);
+  const [paymentConfirmed, setPaymentConfirmed] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const busyRef = useRef(false);
   const sessionRef = useRef({ active: false });
@@ -87,7 +90,7 @@ function OrderReviewSession({ siteId, orderId, rowId, onOpenChange, onReloadOrde
     if (continueSelling) onContinueSelling?.();
   }
 
-  async function runAction(action: "refresh" | "check" | "reload") {
+  async function runAction(action: "refresh" | "check" | "reload" | "pay") {
     const session = sessionRef.current;
     if (!session.active || !siteId || busyRef.current || loading) return;
     busyRef.current = true;
@@ -102,7 +105,7 @@ function OrderReviewSession({ siteId, orderId, rowId, onOpenChange, onReloadOrde
           setSnapshot(result);
           return;
         }
-        if (action === "reload" && !canReload(result)) {
+        if ((action === "reload" || action === "pay") && !canReload(result)) {
           setSnapshot(result);
           setActionError("This attempt is not eligible for a new confirmation. Keep it for review.");
           return;
@@ -112,14 +115,15 @@ function OrderReviewSession({ siteId, orderId, rowId, onOpenChange, onReloadOrde
         result = await readReview(siteId, rowId, orderId, () => session.active);
         if (!session.active) return;
         setSnapshot(result);
-        if (action === "reload" && (evidence.state !== "rejected" || !canReload(result))) {
+        if ((action === "reload" || action === "pay") && (evidence.state !== "rejected" || !canReload(result))) {
           setActionError("A new confirmation requires a verified rejection and an available unpaid order.");
           return;
         }
       }
       setSnapshot(result);
-      if (action === "reload" && canReload(result) && result.order && onReloadOrder) {
-        const loaded = await onReloadOrder(result.order.id);
+      const load = action === "pay" ? onRegisterPayment : onReloadOrder;
+      if ((action === "reload" || action === "pay") && canReload(result) && result.order && load) {
+        const loaded = await load(result.order.id);
         if (!session.active) return;
         if (loaded) closeReview(true);
         else setActionError("Unable to reload this order for a new confirmation. Keep the original attempt for review.");
@@ -147,8 +151,8 @@ function OrderReviewSession({ siteId, orderId, rowId, onOpenChange, onReloadOrde
         <DialogHeader>
           <DialogTitle>Review order</DialogTitle>
           <DialogDescription>
-            Read-only server data. Reviewing an order does not confirm checkout completion,
-            collect payment, or clear the queued operation. Do not charge a recorded payment again.
+            Resolve the original payment attempt using server evidence. Register payment opens the payment form;
+            cancellation requires server confirmation and never refunds a recorded payment.
           </DialogDescription>
         </DialogHeader>
         <DialogBody className="space-y-4">
@@ -165,6 +169,17 @@ function OrderReviewSession({ siteId, orderId, rowId, onOpenChange, onReloadOrde
             Reload order for new confirmation replaces the current cart with this unpaid order.
             Review it before confirming a new payment. The original attempt will not be replayed or removed.
           </p>}
+          {row && row.status !== "synced" && siteId && <CancelCheckoutOperation
+            key={`${siteId}:${row.id}`} siteId={siteId} rowId={row.id}
+            onResolved={() => { void runAction("refresh"); }} />}
+          {rowId && onRegisterPayment && <section className="space-y-2 text-sm" aria-label="Register a replacement payment">
+            {canReload(snapshot) ? <label className="flex items-start gap-2">
+              <input type="checkbox" checked={paymentConfirmed} onChange={(event) => setPaymentConfirmed(event.target.checked)} />
+              <span>Replace the current cart with this unpaid order and open the payment form. I will verify any money already received before confirming.</span>
+            </label> : <p>Register payment requires a server-confirmed rejection or cancellation and an available unpaid order. Check payment status or cancel the attempt first. Recorded or uncertain payments cannot be collected again.</p>}
+            <Button disabled={loading || Boolean(busy) || !canReload(snapshot) || !paymentConfirmed}
+              onClick={() => { void runAction("pay"); }}>{busy === "pay" ? "Preparing payment…" : "Register payment"}</Button>
+          </section>}
           {actionError && <p role="alert" className="text-sm text-destructive">{actionError}</p>}
           {!loading && !order && !error && <p role="alert" className="text-sm text-destructive">
             No server order is available yet. Keep the queued operation and check payment status.

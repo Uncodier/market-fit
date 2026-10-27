@@ -118,3 +118,12 @@ App env vars are documented in `docs/ENVIRONMENT_VARIABLES.md` (Supabase, API se
 - Paid checkout and complete POS reservation remain unverified live journeys; cash-zero Shop checkout is not Stripe evidence.
 - Smoke reads named pre-existing catalog/content/lead fixtures. CRUD uses run-owned data and scoped authenticated cleanup, never a service-role global reset.
 - The supported commands, exact-run reports and residual blockers are documented in `docs/E2E_TESTING.md`.
+- `account-lifecycle` is a separate, local-only disposable QA suite. It starts
+  anonymous, registers a new run-owned user through the UI, consumes actual local
+  confirmation/recovery emails, verifies identity/login/logout and password change,
+  and tests invalid login/missing recovery token. It requires verified QA/expiry,
+  a public key, `TEST_INBUCKET_URL`, both mutation flags and explicit
+  `TEST_ALLOW_ACCOUNT_LIFECYCLE=1`; it never uses fixture passwords for recovery.
+  Trace/video/screenshots are disabled; account cleanup is exact QA destruction,
+  pending until resource-group absence is verified. Authored/offline validation
+  does not imply live success. See `specs/tests/account-lifecycle.md`.

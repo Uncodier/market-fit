@@ -22,6 +22,7 @@ import { PosOrderReviewDialog } from "./components/PosOrderReviewDialog";
 import { usePosCatalog } from "./hooks/use-pos-catalog";
 import { usePosCart } from "./hooks/use-pos-cart";
 import { usePosCheckout } from "./hooks/use-pos-checkout";
+import { useRecoveredOrderPayment } from "./hooks/use-recovered-order-payment";
 import { usePosSyncStatus } from "./hooks/use-pos-sync-status";
 import { usePosAddItem } from "./hooks/use-pos-add-item";
 import { usePosLead } from "./hooks/use-pos-lead";
@@ -245,6 +246,13 @@ export default function PosWorkspace() {
   const emptyOffline =
     catalog.hydrated && !catalog.hasLocalData && !syncStatus.online;
 
+  const registerRecoveredPayment = useRecoveredOrderPayment({
+    siteId, activeOrderId: cartApi.activeOrderId,
+    ready: cartApi.sessionReady && !cartApi.loadingOrder,
+    loadOrder: cartApi.handleOrderSelect,
+    initiateCheckout: checkout.initiateCheckout,
+  });
+
   const cartPanelProps = {
     cart: cartApi.cart,
     subtotal: cartApi.subtotal,
@@ -435,6 +443,7 @@ export default function PosWorkspace() {
         siteId={siteId}
         orderId={reviewOrder?.siteId === siteId ? reviewOrder?.orderId : undefined}
         rowId={reviewOrder?.siteId === siteId ? reviewOrder?.rowId : undefined}
+        onRegisterPayment={registerRecoveredPayment}
         onReloadOrder={async (orderId) => {
           if (!siteId || reviewOrder?.siteId !== siteId) return false;
           return cartApi.handleOrderSelect(orderId, true);

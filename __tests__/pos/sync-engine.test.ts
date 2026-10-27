@@ -196,6 +196,16 @@ describe("POS sync failure reporting and recovery", () => {
     expect(engine.getPosSyncStatus(SITE)).toMatchObject({ failedCount: 0, lastError: null });
   });
 
+  it("retires sync errors after confirmed rejection without deleting audit evidence", async () => {
+    rows = [{ ...queued("cancelled-attempt"), status: "failed", lastError: "Original failure" }];
+    await engine.refreshPosSyncCounts(SITE);
+    expect(engine.getPosSyncStatus(SITE)).toMatchObject({ failedCount: 1, lastError: "Original failure" });
+    rows[0].recoveryState = "rejected";
+    await engine.refreshPosSyncCounts(SITE);
+    expect(engine.getPosSyncStatus(SITE)).toMatchObject({ failedCount: 0, lastError: null });
+    expect(rows[0]).toMatchObject({ id: "cancelled-attempt", status: "failed", lastError: "Original failure" });
+  });
+
   it("does not hide an unresolved failure when another operation or catalog pull succeeds", async () => {
     rows = [queued("failed-row"), queued("successful-row")];
     checkIn.mockResolvedValueOnce({ error: "Ticket sync failed" });

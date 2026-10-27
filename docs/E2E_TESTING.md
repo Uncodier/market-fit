@@ -64,11 +64,49 @@ handled only by the exact-run report command.
 
 ## Suites and required fixtures
 
+### Disposable account and project onboarding
+
+`account-lifecycle` is an isolated local-QA suite with an empty browser context.
+It registers a fresh run-owned account through the app, receives and consumes real
+confirmation and recovery emails from local Inbucket, verifies the exact Auth user,
+tests login/logout, changes the password, rejects the old password and confirms
+replacement login. Negative cases cover invalid login and missing-token recovery.
+It does not reuse or change the five provisioned role/buyer identities.
+
+The installer exposes `qa run --suite account-lifecycle` and
+`qa run --suite project-lifecycle` after `qa provision`. Account runs require
+25 minutes remaining; browser timeout is 20 minutes. The account preflight requires
+verified QA identity/expiry, `TEST_ALLOW_ACCOUNT_LIFECYCLE=1`, both disposable
+mutation flags, a unique installer run ID, a public Supabase key and explicit
+`TEST_INBUCKET_URL`. Production and remote staging are forbidden for this suite.
+Project creation/selection/password-confirmed archival uses the existing separate
+project journey, not fixture seeding. Run both before product smoke/regression.
+
+```sh
+# Discovery only: no signup, mailbox read, login or other network execution.
+npm run test:e2e -- --suite account-lifecycle --list
+npm run test:e2e -- --suite project-lifecycle --list
+```
+
+Passwords and action links remain in memory. Account trace/video/screenshots are
+disabled; evidence contains only IDs and confirmed checkpoints. The private
+account journal records `cleanup.completed=false` until the installer verifies
+absence of the exact disposable resource group. There is no service-role Auth
+delete, no shared-user password reset, and no fabricated success response.
+Fresh QA needs enabled email confirmation and app-compatible local email templates;
+an older QA with disabled confirmations must fail, not silently bypass the journey.
+See [account lifecycle spec](../specs/tests/account-lifecycle.md).
+
+New account coverage is authored and offline validated, **not live verified**.
+No new environment or expiry extension was authorized. A passing Jest helper test
+or Playwright discovery is not evidence that email delivery or onboarding works.
+
 | Suite | Evidence | Required fixtures beyond target/site |
 | --- | --- | --- |
 | `smoke` | Six strict read-only product checks: anonymous public product/storefront, app login redirect, exact workspace, persisted content and lead sentinels | Admin email/password; shop slug; catalog item UUID/name; `TEST_CONTENT_NAME`, `TEST_LEAD_NAME` |
 | `regression` | Root YAML journeys, including destructive CRUD, settings, mobile accessibility and negative checks | Dedicated admin; configured entity dependencies and disposal authority; see each YAML/helper |
 | `buyer` | Separate buyer login on commerce host, identity and completed read surfaces | `TEST_BUYER_EMAIL`/`TEST_BUYER_PASSWORD`; commerce fixtures |
+| `account-lifecycle` | New UI signup, real email confirmation, initial password setup, login/logout, recovery/password change; invalid login and missing token | Verified disposable local QA, unique run/expiry, public Supabase key, local Inbucket, explicit account/disposal flags |
 | `project-lifecycle` | New run-owned project persists, selects and archives with password; cancel preserves it; reference workspace remains intact | Admin credentials; Supabase URL/project ref/public key; unique run ID; `TEST_ALLOW_PROJECT_LIFECYCLE=1` |
 | `roles` | Real role RPC capabilities, positive fixture existence and cross-site RLS denial, anonymous private API denial | Four distinct accounts: admin, collaborator, marketing, foreign; second site UUID; public Supabase connection |
 

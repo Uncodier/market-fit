@@ -7,7 +7,8 @@ dotenv.config({ path: path.resolve(__dirname, '.env'), quiet: true });
 dotenv.config({ path: path.resolve(__dirname, '.env.local'), quiet: true });
 
 const suite = (process.env.TEST_SUITE || 'smoke') as TestSuite;
-if (!['smoke', 'regression', 'buyer', 'roles', 'project-lifecycle'].includes(suite)) throw new Error('Invalid TEST_SUITE');
+if (!['smoke', 'regression', 'buyer', 'roles', 'project-lifecycle', 'account-lifecycle'].includes(suite)) throw new Error('Invalid TEST_SUITE');
+const privateLifecycle = suite === 'project-lifecycle' || suite === 'account-lifecycle';
 const generated = shiplightConfig();
 const safeReporters = Array.isArray(generated.reporter) ? generated.reporter.map(entry =>
   Array.isArray(entry) && entry[0] === 'shiplightai/reporter'
@@ -16,6 +17,9 @@ const safeReporters = Array.isArray(generated.reporter) ? generated.reporter.map
 const shared = { browserName: 'chromium' as const };
 const adminState = storageStatePath('admin');
 const projects = suite === 'roles' ? [{ name: 'roles', testMatch: /tests\/boundaries\/.*\.spec\.ts$/ }]
+  : suite === 'account-lifecycle' ? [
+    { name: 'account-lifecycle', testMatch: /tests\/accounts\/lifecycle\.spec\.ts$/, use: { ...shared, storageState: { cookies: [], origins: [] } } },
+  ]
   : suite === 'project-lifecycle' ? [
     { name: 'setup', testMatch: /(^|\/)auth\.setup\.ts$/, use: { storageState: { cookies: [], origins: [] } } },
     { name: 'project-lifecycle', testMatch: /tests\/projects\/lifecycle\.spec\.ts$/, use: { ...shared, storageState: adminState }, dependencies: ['setup'] },
@@ -36,7 +40,7 @@ export default defineConfig({
   testIgnore: ['**/node_modules/**', '**/tests/agent/**', '**/arch.yaml.spec.ts'],
   globalSetup: './tests/support/preflight.ts',
   timeout: suite === 'smoke' ? 90_000 : 300_000,
-  globalTimeout: suite === 'smoke' ? 600_000 : 7_200_000,
+  globalTimeout: suite === 'smoke' ? 600_000 : suite === 'account-lifecycle' ? 1_200_000 : 7_200_000,
   expect: { timeout: 15_000 },
   workers: 1,
   retries: 0,
@@ -56,9 +60,9 @@ export default defineConfig({
     actionTimeout: 15_000,
     navigationTimeout: 45_000,
     // Archival reauthenticates with an account password; never record this suite.
-    video: suite === 'project-lifecycle' ? 'off' : 'retain-on-failure',
-    screenshot: suite === 'project-lifecycle' ? 'off' : 'only-on-failure',
-    trace: suite === 'project-lifecycle' ? 'off' : 'retain-on-failure',
+    video: privateLifecycle ? 'off' : 'retain-on-failure',
+    screenshot: privateLifecycle ? 'off' : 'only-on-failure',
+    trace: privateLifecycle ? 'off' : 'retain-on-failure',
   },
   projects,
 });

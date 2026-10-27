@@ -18,6 +18,8 @@ import type { PosOutboxRow } from "@/app/pos/local/types";
 import { CheckCircle2, Loader2, AlertTriangle, Clock } from "@/app/components/ui/icons";
 import { cn } from "@/lib/utils";
 import { recoveryDetails } from "./PosCheckoutRecoveryDetails";
+import { waitForSyncDialog } from "./sync-dialog-wait";
+import { CancelCheckoutOperation } from "./CancelCheckoutOperation";
 
 type PosSyncIssuesProps = {
   siteId?: string;
@@ -38,8 +40,8 @@ function PosSyncIssuesSession({ siteId, open, onOpenChange, t, onReviewOrder }: 
   const [loading, setLoading] = useState(open && Boolean(siteId));
   const [listError, setListError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<{ rowId?: string; message: string } | null>(null);
-  const [busy, setBusy] = useState<string | null>(null);
-  const busyRef = useRef(false);
+  const [busy, setBusy] = useState<Set<string>>(new Set());
+  const busyRef = useRef(new Set<string>());
   const sessionRef = useRef({ active: false });
 
   useEffect(() => {
@@ -51,7 +53,7 @@ function PosSyncIssuesSession({ siteId, open, onOpenChange, t, onReviewOrder }: 
   useEffect(() => {
     if (!open || !siteId) return;
     let active = true;
-    void listOutbox(siteId).then((data) => {
+    void waitForSyncDialog(listOutbox(siteId), "Queue loading timed out.").then((data) => {
       if (!active) return;
       setRows(
         [...data].sort(
@@ -80,14 +82,17 @@ function PosSyncIssuesSession({ siteId, open, onOpenChange, t, onReviewOrder }: 
 
   async function runAction(row?: PosOutboxRow) {
     const session = sessionRef.current;
-    if (!session.active || !open || !siteId || busyRef.current) return;
-    if (row && (row.siteId !== siteId || row.status !== "failed" || row.payload.kind !== "checkout")) return;
-    busyRef.current = true;
-    setBusy(row?.id ?? "retry");
+    const actionId = row?.id ?? "retry";
+    if (!session.active || !open || !siteId || busyRef.current.has(actionId)) return;
+    if (row && (row.siteId !== siteId || !["failed", "syncing"].includes(row.status) || row.payload.kind !== "checkout")) return;
+    busyRef.current.add(actionId);
+    setBusy(new Set(busyRef.current));
     setActionError(null);
     try {
-      if (row) await reconcilePosCheckout(siteId, row.id);
-      else await drainPosOutbox(siteId);
+      await waitForSyncDialog<unknown>(
+        row ? reconcilePosCheckout(siteId, row.id) : drainPosOutbox(siteId),
+        "The operation is still unconfirmed. You can check payment status again or review the order. Do not collect again or clear device data.",
+      );
       if (session.active) setRefreshTrigger((v) => v + 1);
     } catch (error) {
       if (!session.active) return;
@@ -95,8 +100,8 @@ function PosSyncIssuesSession({ siteId, open, onOpenChange, t, onReviewOrder }: 
       setActionError({ rowId: row?.id, message: error instanceof Error ? `${fallback} ${error.message}` : fallback });
     } finally {
       if (session.active) {
-        busyRef.current = false;
-        setBusy(null);
+        busyRef.current.delete(actionId);
+        setBusy(new Set(busyRef.current));
       }
     }
   }
@@ -115,13 +120,14 @@ function PosSyncIssuesSession({ siteId, open, onOpenChange, t, onReviewOrder }: 
           </DialogTitle>
           <DialogDescription>
             Check failed checkout payment status before confirming again. A status check does not retry checkout.
+            {" "}You can close this window and serve other orders while confirmation is pending.
           </DialogDescription>
         </DialogHeader>
         <DialogBody className="space-y-3">
           {listError && (
             <div role="alert" className="text-sm text-destructive space-y-2">
               <p>{listError}</p>
-              <Button variant="outline" size="sm" disabled={Boolean(busy)} onClick={() => {
+              <Button variant="outline" size="sm" disabled={loading} onClick={() => {
                 setLoading(true);
                 setRefreshTrigger((v) => v + 1);
               }}>Refresh list</Button>
@@ -176,7 +182,7 @@ function PosSyncIssuesSession({ siteId, open, onOpenChange, t, onReviewOrder }: 
                     <span className="capitalize">{row.kind.replace("_", " ")}</span>
                     <span className="flex items-center gap-1 text-xs">
                       <Icon className={cn("w-3.5 h-3.5", row.status === "syncing" && "animate-spin")} />
-                      {row.status}
+                      {row.recoveryState === "rejected" ? "Closed — no payment recorded" : row.status}
                     </span>
                   </div>
                   {details && (
@@ -184,6 +190,7 @@ function PosSyncIssuesSession({ siteId, open, onOpenChange, t, onReviewOrder }: 
                   )}
                   {checkout && <p className="text-xs font-medium">
                     {row.status === "synced" ? "Confirmed by the server"
+                      : row.recoveryState === "rejected" ? "Attempt closed without payment — retained for audit"
                       : row.status === "failed" ? "Requires review — do not collect again before checking payment status"
                       : "Processing — saved on this device, not yet confirmed by the server"}
                   </p>}
@@ -212,22 +219,29 @@ function PosSyncIssuesSession({ siteId, open, onOpenChange, t, onReviewOrder }: 
                   {row.lastError && (
                     <div className="text-destructive text-xs font-medium">{row.lastError}</div>
                   )}
+                  {checkout && row.status !== "synced" && (
+                    <p className="text-xs text-muted-foreground">
+                      Retry sync does not collect a failed payment again. Review order to register a payment after a verified rejection, or cancel this attempt below. Cancellation does not refund money or delete the order.
+                    </p>
+                  )}
                   {actionError?.rowId === row.id && <p role="alert" className="text-xs text-destructive">{actionError.message}</p>}
                   <div className="flex flex-wrap gap-2">
-                    {checkout && row.status === "failed" && (
-                      <Button variant="outline" size="sm" disabled={Boolean(busy)} onClick={() => { void runAction(row); }}>
-                        {busy === row.id && <Loader2 aria-hidden={true} className="mr-2 h-3.5 w-3.5 animate-spin" />}
-                        {busy === row.id ? "Checking payment status…" : "Check payment status"}
+                    {checkout && (row.status === "failed" || row.status === "syncing") && (
+                      <Button variant="outline" size="sm" disabled={busy.has(row.id)} onClick={() => { void runAction(row); }}>
+                        {busy.has(row.id) && <Loader2 aria-hidden={true} className="mr-2 h-3.5 w-3.5 animate-spin" />}
+                        {busy.has(row.id) ? "Checking payment status…" : "Check payment status"}
                       </Button>
                     )}
                     {onReviewOrder && (checkout || reviewOrderId) && (
-                      <Button variant="outline" size="sm" disabled={Boolean(busy)} onClick={() => {
+                      <Button variant="outline" size="sm" onClick={() => {
                         if (!sessionRef.current.active || !open || row.siteId !== siteId) return;
                         onOpenChange(false);
                         onReviewOrder(reviewOrderId || undefined, checkout ? row.id : undefined);
                       }}>Review order</Button>
                     )}
                   </div>
+                  {checkout && row.status !== "synced" && siteId && <CancelCheckoutOperation
+                    siteId={siteId} rowId={row.id} onResolved={() => setRefreshTrigger((v) => v + 1)} />}
                   <div className="text-xs opacity-60">
                     {new Date(row.createdAt).toLocaleString()}
                   </div>
@@ -237,9 +251,10 @@ function PosSyncIssuesSession({ siteId, open, onOpenChange, t, onReviewOrder }: 
           )}
         </DialogBody>
         <DialogFooter>
-          <Button disabled={!siteId || Boolean(busy) || loading} onClick={() => { void runAction(); }}>
-            {busy === "retry" && <Loader2 aria-hidden={true} className="mr-2 h-4 w-4 animate-spin" />}
-            {busy === "retry" ? "Retrying sync…" : label("pos.sync.retry", "Retry sync")}
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Close queue</Button>
+          <Button disabled={!siteId || busy.has("retry") || loading} onClick={() => { void runAction(); }}>
+            {busy.has("retry") && <Loader2 aria-hidden={true} className="mr-2 h-4 w-4 animate-spin" />}
+            {busy.has("retry") ? "Retrying sync…" : label("pos.sync.retry", "Retry sync")}
           </Button>
         </DialogFooter>
       </DialogContent>

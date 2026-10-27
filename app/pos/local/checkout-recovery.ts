@@ -30,6 +30,9 @@ export async function applyPosCheckoutRecovery(row: PosOutboxRow, recovery: PosC
     const current = await db.outbox.get(row.id);
     // A late status read cannot overwrite a newer confirmed checkout result.
     if (!current || current.status === "synced") return;
+    // Rejection/cancellation is terminal server evidence. An older status read
+    // that observed processing must not restore an unresolved payment fence.
+    if (current.recoveryState === "rejected" && recoveryState !== "rejected") return;
     if (!isPosPermissionCurrent(permission)) throw new Error("POS access changed");
     // Confirmed immutable receipt evidence remains valid if a subsequent read
     // catches a transient/in-flight state. Never undo safe order isolation.

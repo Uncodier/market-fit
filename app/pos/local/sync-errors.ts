@@ -52,8 +52,8 @@ export function recordPosSyncError(key: string, report: PosSyncErrorReport) {
 
 export function reconcilePosOutboxErrors(siteId: string, rows: PosOutboxRow[]) {
   const errors = siteErrors(siteId);
-  const failed = rows.filter((row) => row.status === "failed");
-  const openKeys = new Set(rows.filter((row) => row.status !== "synced").map((row) => `outbox:${row.id}`));
+  const failed = rows.filter((row) => row.status === "failed" && row.recoveryState !== "rejected");
+  const openKeys = new Set(rows.filter((row) => row.status !== "synced" && row.recoveryState !== "rejected").map((row) => `outbox:${row.id}`));
   for (const key of errors.keys()) {
     if (key.startsWith("outbox:") && !openKeys.has(key)) errors.delete(key);
   }

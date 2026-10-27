@@ -89,7 +89,7 @@ async function refreshCounts(siteId: string) {
     const pendingCount = rows.filter(
       (r) => r.status === "pending" || r.status === "syncing",
     ).length;
-    const failedCount = rows.filter((r) => r.status === "failed").length;
+    const failedCount = rows.filter((r) => r.status === "failed" && r.recoveryState !== "rejected").length;
     const meta = await getPosDb().meta.get(siteId);
     if (!isPosPermissionCurrent(permission)) return;
     const prev = siteState.get(siteId) || { ...EMPTY_SITE_STATE };
