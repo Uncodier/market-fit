@@ -31,6 +31,20 @@ it("distinguishes read-back failures from generic exceptions", () => {
   expect(posStorageDiagnostic(error)).toBe("POS_STORAGE_WRITE_UNVERIFIED:OWNER_PUBLISH");
 });
 
+it.each([
+  ["Can't find variable: indexedDB", "INDEXEDDB"],
+  ["Can't find variable: CustomEvent", "CUSTOMEVENT"],
+  ["IDBKeyRange is not defined", "IDBKEYRANGE"],
+])("identifies an allowlisted missing API from %s", (message, api) => {
+  const error = new ReferenceError(message);
+  expect(() => posStorageStep("DB_OPEN", () => { throw error; })).toThrow(error);
+  expect(posStorageDiagnostic(error)).toBe(`POS_STORAGE_REFERENCE:DB_OPEN:${api}`);
+});
+
+it.each(["Can't find variable: privateCustomerName", "indexedDB private payload is not defined", "Can't find variable: indexedDB\nprivate details"])("never publishes reference messages or arbitrary variable names", (message) => {
+  expect(posStorageDiagnostic(new ReferenceError(message))).toBe("POS_STORAGE_REFERENCE");
+});
+
 it.each([null, undefined, "private details", { name: "private-key" }, { name: "toString" }])("does not expose unknown errors", (error) => {
   expect(posStorageDiagnostic(error)).toBe("POS_STORAGE_FAILED");
 });

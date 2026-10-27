@@ -50,8 +50,14 @@ export function posStorageDiagnostic(error: unknown): string {
     Error: "POS_STORAGE_ERROR",
   };
   if (!error || typeof error !== "object") return "POS_STORAGE_FAILED";
-  const { name } = error as { name?: unknown };
+  const { name, message } = error as { name?: unknown; message?: unknown };
   const code = typeof name === "string" && Object.prototype.hasOwnProperty.call(codes, name) ? codes[name] : "POS_STORAGE_FAILED";
   const stage = stages.get(error);
-  return stage ? `${code}:${stage}` : code;
+  // Safari's missing global is otherwise hidden behind the same ReferenceError
+  // as application bugs. Match complete messages and expose only known API names.
+  const reference = name === "ReferenceError" && typeof message === "string"
+    ? /^(?:Can't find variable: (indexedDB|CustomEvent|IDBKeyRange)|(indexedDB|CustomEvent|IDBKeyRange) is not defined)$/.exec(message)
+    : null;
+  const missing = reference ? (reference[1] || reference[2]).toUpperCase() : null;
+  return `${code}${stage ? `:${stage}` : ""}${missing ? `:${missing}` : ""}`;
 }
