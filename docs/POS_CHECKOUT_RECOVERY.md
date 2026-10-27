@@ -4,6 +4,23 @@
 
 ### Device storage access failures
 
+`POS_STORAGE_REFERENCE:DB_OPEN:INDEXEDDB` can originate from Dexie 4.4.4's
+Safari readiness check: it reads the global `indexedDB` even when Dexie already
+captured a native factory. The POS constructor now resolves the browser's native
+factory on every handle creation, passes it explicitly to Dexie, and restores a
+missing global alias from a vendor-prefixed or previously captured factory.
+This uses the same origin and database name; it does not clear records, create
+an in-memory substitute, or bypass an exception from a browser security getter.
+If no factory is available, preparation reports `POS_STORAGE_UNSUPPORTED:DB_OPEN`
+instead of a ReferenceError and does not admit checkout. Native open errors also
+remain failures. Retrying can detect a native API that becomes available later.
+
+`indexeddb-runtime-browser.test.ts` runs the production minified Dexie bundle in
+isolated WebKit and Chromium. It verifies retained records and writes after
+reopening with restored aliases, normal native access, and denial for absent,
+restricted, or failing storage. This does not establish why a particular iPad
+lost its global API or guarantee recovery when native storage is truly absent.
+
 POS remains locked when browser storage cannot be prepared; it never falls back
 to an in-memory payment queue. Storage errors display a fixed `POS_STORAGE_*`
 diagnostic, not browser messages or private data. `OPEN` indicates an IndexedDB

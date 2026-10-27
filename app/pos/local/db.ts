@@ -1,4 +1,5 @@
 import Dexie, { type DBCoreCursor, type DBCoreTransaction, type Table, type Transaction } from "dexie";
+import { resolvePosIndexedDB } from "./indexeddb-runtime";
 import type { CatalogItem, Tax } from "@/app/types";
 import type {
   IdMapRow,
@@ -62,7 +63,7 @@ export class PosLocalDatabase extends Dexie {
   idMaps!: Table<IdMapRow, string>;
 
   constructor(isCurrent?: () => boolean) {
-    super("market-fit-pos");
+    super("market-fit-pos", resolvePosIndexedDB(Dexie.dependencies));
     this.version(1).stores({
       meta: "siteId",
       catalogItems: "id, site_id, category_id, kind, name",

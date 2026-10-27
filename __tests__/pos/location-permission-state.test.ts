@@ -6,6 +6,8 @@ import {
 import { posStorageDiagnostic } from "@/app/pos/local/storage-diagnostic";
 
 type MockTable = { clear: jest.Mock; rows: unknown[] };
+// This suite models transactions; native factory resolution is browser-tested.
+jest.mock("@/app/pos/local/indexeddb-runtime", () => ({ resolvePosIndexedDB: () => ({}) }));
 const instances: { close: jest.Mock; open: jest.Mock; transaction: jest.Mock; tables: MockTable[] }[] = [];
 const tables = new Map<string, MockTable>();
 jest.mock("dexie", () => ({
