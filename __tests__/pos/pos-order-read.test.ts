@@ -187,6 +187,7 @@ describe("getPosOrder", () => {
       fulfillment_method: null, origin_location_id: null, price_list_id: null,
       promotion_id: null, buyer_user_id: null, seller_user_id: null,
       shipping_address: null, scheduled_for: null,
+      promotions: { name: null, code: null, image_url: null },
       sale_order_items: projection(POS_ORDER_SNAPSHOT_SELECT).sale_order_items,
       sales: {
         id: null, status: null, source: null, amount: null, payment_method: null,
@@ -281,7 +282,7 @@ describe("listPosOpenOrders snapshots", () => {
     expect(supabase.limit).toHaveBeenCalledWith(100);
     expect(hashRedisKeyPart).toHaveBeenCalledWith(`${SITE_ID}:owner:user-1`);
     expect(readThroughJsonCache).toHaveBeenCalledWith(expect.objectContaining({
-      key: "cache:v3:pos-open-orders:cache-hash", ttlSeconds: 5, lockTtlMs: 10_000,
+      key: "cache:v4:pos-open-orders:cache-hash", ttlSeconds: 5, lockTtlMs: 10_000,
     }));
   });
 

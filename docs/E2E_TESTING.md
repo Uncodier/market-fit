@@ -95,6 +95,14 @@ absence of the exact disposable resource group. There is no service-role Auth
 delete, no shared-user password reset, and no fabricated success response.
 Fresh QA needs enabled email confirmation and app-compatible local email templates;
 an older QA with disabled confirmations must fail, not silently bypass the journey.
+Current Supabase CLI releases use Mailpit behind the legacy `inbucket` service
+name. The account helper supports both transports: only an actual old-endpoint
+404 selects Mailpit; auth/server errors remain failures. Mailpit search and
+message reads are bound to the exact run-owned recipient. No global mailbox
+deletion or generated-link shortcut is used. Confirmation waits for document
+load before clicking its server-rendered button. Passwords remain ephemeral
+worker values, not persisted test fixtures; native fill titles and bearer-link
+query credentials are redacted before reporter serialization.
 See [account lifecycle spec](../specs/tests/account-lifecycle.md).
 
 New account coverage is authored and offline validated, **not live verified**.

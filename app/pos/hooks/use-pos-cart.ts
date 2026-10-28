@@ -38,6 +38,7 @@ import {
 } from "@/app/pos/shipping-address";
 import { usePosOrderSelection } from "./use-pos-order-selection";
 import { posSessionFromOrder } from "@/app/pos/order-session";
+import { normalizePosPromoFingerprint, posPromoCartFingerprint, posPromoOrderContext, recordedPosOrderPromo } from "@/app/pos/recorded-order-promo";
 import { toast } from "sonner";
 import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext";
 import { resolveSiteCurrency } from "@/app/commerce/checkout-currency";
@@ -122,6 +123,7 @@ export function usePosCart({
     );
   }, [cart, sentLineQuantities, activeOrderId]);
   const hasLead = hasPosCustomer(leadValue);
+  const promoContext = posPromoOrderContext({ leadValue, buyerUserId, fulfillment, originLocationId, expectedOrderVersion });
   const cartCurrency = useMemo(
     () => orderCurrency || resolvePosCartCurrency(cart, siteCurrency),
     [cart, siteCurrency, orderCurrency],
@@ -136,6 +138,11 @@ export function usePosCart({
     validatePromotion,
     clearAppliedPromo,
     resetPromo,
+    recordedOrderPromo,
+    hydrateRecordedOrderPromo,
+    recordedPromoFingerprint,
+    recordedPromoNeedsReview,
+    hydratePromoCode,
   } = usePosPromo({
     cart,
     promotions,
@@ -146,6 +153,7 @@ export function usePosCart({
     t,
     siteCurrency: cartCurrency,
     fxRates: rates,
+    orderContext: promoContext,
   });
   const restoreSession = useCallback((session: PosCartSession) => {
       const needsOrderSnapshot = session.activeOrderId !== "new" &&
@@ -159,7 +167,16 @@ export function usePosCart({
       setFulfillment(session.fulfillment || "dine_in");
       setOriginLocationId(session.originLocationId || "");
       setPriceListId(session.priceListId || "none");
-      setPromoCode(session.promoCode || "");
+      let recorded = session.recordedOrderPromo || null;
+      if (session.activeOrderId !== "new" && session.recordedOrderPromo === undefined && session.expectedOrderVersion) {
+        try { recorded = recordedPosOrderPromo(JSON.parse(session.expectedOrderVersion)); } catch { /* Legacy invalid versions still fail payment validation. */ }
+      }
+      hydrateRecordedOrderPromo(recorded, (session.recordedPromoFingerprint
+        ? normalizePosPromoFingerprint(session.recordedPromoFingerprint, session.expectedOrderVersion) : null) || (recorded && session.recordedOrderPromo === undefined
+        ? "legacy-promotion-review" : posPromoCartFingerprint(
+        session.cart || [], posPromoOrderContext(session),
+      )));
+      if (!recorded) hydratePromoCode(session.promoCode || "");
       setActiveOrderId(session.activeOrderId || "new");
       setBuyerUserId(session.buyerUserId);
       setSellerUserId(session.sellerUserId || null);
@@ -168,13 +185,13 @@ export function usePosCart({
       setShippingAddress(session.shippingAddress || EMPTY_POS_SHIPPING_ADDRESS);
       setExpectedOrderVersion(session.expectedOrderVersion);
       setOrderCurrency(session.activeOrderId !== "new" ? session.orderCurrency : undefined);
-  }, [setPromoCode]);
+  }, [hydratePromoCode, hydrateRecordedOrderPromo]);
   const sessionSnapshot = useMemo(() => ({
     cart, sentLineQuantities, existingPaymentTotal, leadValue, fulfillment,
-    originLocationId, priceListId, promoCode, activeOrderId, buyerUserId,
+    originLocationId, priceListId, promoCode, recordedOrderPromo, recordedPromoFingerprint, activeOrderId, buyerUserId,
     sellerUserId, sellerName, orderNotes, shippingAddress, expectedOrderVersion, orderCurrency,
   }), [cart, sentLineQuantities, existingPaymentTotal, leadValue, fulfillment,
-    originLocationId, priceListId, promoCode, activeOrderId, buyerUserId,
+    originLocationId, priceListId, promoCode, recordedOrderPromo, recordedPromoFingerprint, activeOrderId, buyerUserId,
     sellerUserId, sellerName, orderNotes, shippingAddress, expectedOrderVersion, orderCurrency]);
   const resetSelection = useRef({ siteId, snapshot: sessionSnapshot });
   useLayoutEffect(() => {
@@ -365,8 +382,10 @@ export function usePosCart({
     setOrderCurrency(typeof order.currency === "string" && order.currency.trim()
       ? resolveSiteCurrency(order.currency) : undefined);
     if (includeCart && session.cart) setCart(session.cart);
+    hydrateRecordedOrderPromo(session.recordedOrderPromo, posPromoCartFingerprint(session.cart || [],
+      posPromoOrderContext({ ...session, expectedOrderVersion: includeCart ? posOrderVersion(order) : undefined })));
     return true;
-  }, [catalogItems]);
+  }, [catalogItems, hydrateRecordedOrderPromo]);
   const { handleOrderSelect } = usePosOrderSelection({
     siteId, pendingOrders, sequence: orderSelectionSequence, populateFromOrder,
     clearOrderFields, resetToNewOrder, setActiveOrderId, setLoadingOrder,
@@ -421,7 +440,13 @@ export function usePosCart({
     updateQty: inventoryCart.updateQty,
     setItemQty: inventoryCart.setItemQty,
     getItemAvailability: inventoryCart.getItemAvailability,
-    validateInventory: inventoryCart.validateInventory,
+    validateInventory: () => {
+      if (recordedPromoNeedsReview) {
+        toast.error("This order has a recorded promotion. Reload the original order before payment, or update it in Orders.");
+        return false;
+      }
+      return inventoryCart.validateInventory();
+    },
     setItemPrice,
     setItemDiscount,
     handlePriceListChange,

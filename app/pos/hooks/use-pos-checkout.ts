@@ -288,6 +288,16 @@ export function usePosCheckout({
     if (!siteId || !userId || orderPreparing || submission.busy() || !isPosPermissionCurrent(permission)) return;
     const isCurrent = checkoutGuard();
     if (!isCurrent()) return;
+    if (checkoutPromoCode?.trim() && expectedOrderVersion) {
+      try {
+        const baseline = JSON.parse(expectedOrderVersion);
+        if (baseline.promotion_id && Number(baseline.discount_total) > 0 &&
+          checkoutPromoCode.trim().toUpperCase() !== (appliedPromo?.code || promoCode).trim().toUpperCase()) {
+          toast.error("Change the recorded promotion in Orders, then reload this order before payment.");
+          return;
+        }
+      } catch { /* The existing version check rejects malformed order baselines. */ }
+    }
 
     const resolvedIntent = intent || "pay";
     const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);

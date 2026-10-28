@@ -7,6 +7,7 @@ import {
   type PosShippingAddress,
 } from "@/app/pos/shipping-address"
 import { sentLineQuantitiesFromSaleOrderItems } from "@/app/pos/send-delta"
+import { recordedPosOrderPromo } from "@/app/pos/recorded-order-promo"
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value)
@@ -110,5 +111,6 @@ export function posSessionFromOrder(
       (order.seller_user_id ? "Seller unavailable" : null),
     shippingAddress,
     existingPaymentTotal,
+    recordedOrderPromo: recordedPosOrderPromo(order),
   }
 }

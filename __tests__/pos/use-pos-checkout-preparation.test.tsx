@@ -82,6 +82,30 @@ describe("POS payment preparation", () => {
     expect(result.current.isPaymentDialogOpen).toBe(false);
   });
 
+  it("submits the restored online promotion ID and discounted balance unchanged", async () => {
+    const saved = { ...snapshot, promotion_id: "shop-promo", discount_total: 20, total: 80,
+      sales: { ...snapshot.sales, amount: 80, amount_due: 80 } };
+    jest.mocked(getPosOrder).mockResolvedValueOnce({ data: saved } as never);
+    const { result } = renderHook(() => usePosCheckout({ ...args(), total: 80, promoCode: "SAVE20",
+      appliedPromo: { promotionId: "shop-promo", code: "SAVE20", byConditions: false },
+      expectedOrderVersion: posOrderVersion(saved) }));
+    await act(async () => { await result.current.handleCheckout([{ ...payments[0], amount: 80, tendered: 80 }]); });
+    expect(enqueueRegisteredCheckout).toHaveBeenCalledWith("site", expect.objectContaining({
+      existingOrderId: "order", promotionId: "shop-promo", promotionCode: "SAVE20",
+      payments: [expect.objectContaining({ amount: 80 })],
+    }), expect.any(Function), expect.any(Function), { waitForConfirmation: false });
+  });
+
+  it("rejects a payment-dialog replacement code before admitting a recorded coupon payment", async () => {
+    const saved = { ...snapshot, promotion_id: "shop-promo", discount_total: 20 };
+    const { result } = renderHook(() => usePosCheckout({ ...args(), promoCode: "SAVE20",
+      appliedPromo: { promotionId: "shop-promo", code: "SAVE20", byConditions: false },
+      expectedOrderVersion: posOrderVersion(saved) }));
+    await act(async () => { await result.current.handleCheckout(payments, "OTHER"); });
+    expect(enqueueRegisteredCheckout).not.toHaveBeenCalled();
+    expect(toast.error).toHaveBeenCalledWith(expect.stringContaining("recorded promotion"));
+  });
+
   it("uses the only location even before the cart default has been restored", async () => {
     const input = { ...args(), originLocationId: "", locations: [{ id: "store" }] };
     const { result } = renderHook(usePosCheckout, { initialProps: input });

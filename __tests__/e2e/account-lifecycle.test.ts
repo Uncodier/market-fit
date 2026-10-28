@@ -110,3 +110,32 @@ it('sanitizes mailbox transport errors', async () => {
   try { await expect(mailboxSnapshot(policy)).rejects.toThrow('QA local mailbox read failed'); }
   finally { global.fetch = original; }
 });
+it('supports Supabase Mailpit only after a genuine Inbucket 404 and preserves exact recipient/action binding', async () => {
+  const original = global.fetch;
+  const alternate = { ...policy, mailbox: 'http://127.0.0.1:54325' };
+  const fetcher = jest.fn().mockResolvedValueOnce({ status: 404, ok: false })
+    .mockResolvedValueOnce({ ok: true, text: async () => JSON.stringify({ messages_count: 1,
+      messages: [{ ID: 'mailpit-new', To: [{ Address: policy.email }] }] }) })
+    .mockResolvedValueOnce({ ok: true, text: async () => JSON.stringify({
+      To: [{ Address: policy.email }], HTML: message('recovery').body.html,
+    }) });
+  global.fetch = fetcher;
+  try {
+    await expect(waitForAccountEmail(alternate, 'recovery', new Set())).resolves.toBe(link('recovery'));
+    const url = new URL(fetcher.mock.calls[1][0]);
+    expect(url.pathname).toBe('/api/v1/search');
+    expect(url.searchParams.get('query')).toBe(`to:${policy.email}`);
+    expect(fetcher.mock.calls[2][0]).toBe(`${alternate.mailbox}/api/v1/message/mailpit-new`);
+  } finally { global.fetch = original; }
+});
+it('never falls back on mailbox auth failures or uses an unscoped Mailpit search result', async () => {
+  const original = global.fetch;
+  global.fetch = jest.fn().mockResolvedValue({ status: 403, ok: false });
+  try { await expect(mailboxSnapshot({ ...policy, mailbox: 'http://127.0.0.1:54326' })).rejects.toThrow('QA local mailbox read failed'); }
+  finally { global.fetch = original; }
+  global.fetch = jest.fn().mockResolvedValueOnce({ status: 404, ok: false })
+    .mockResolvedValueOnce({ ok: true, text: async () => JSON.stringify({ messages_count: 1,
+      messages: [{ ID: 'foreign', To: [{ Address: 'foreign@example.invalid' }] }] }) });
+  try { await expect(mailboxSnapshot({ ...policy, mailbox: 'http://127.0.0.1:54327' })).rejects.toThrow('unscoped'); }
+  finally { global.fetch = original; }
+});

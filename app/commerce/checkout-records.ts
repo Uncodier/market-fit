@@ -1,6 +1,7 @@
 import { format } from "date-fns"
 import { randomUUID } from "node:crypto"
 import { resolvePromotionDiscount } from "@/app/promotions/resolve-promotion"
+import { loadRecordedCheckoutPromotion, recordedPromotionVersion } from "./checkout-recorded-promotion"
 import { roundMoney } from "./taxes"
 import {
   CheckoutCartParams,
@@ -93,33 +94,42 @@ export async function persistCheckoutRecords(
   )
   let normalizedPromotionCode: string | undefined
   let resolvedPromotionId: string | undefined
+  let recordedPromotionId: string | undefined
+  let recordedPromotionBaseline: string | undefined
   let promoDiscount = 0
   if (params.promotionCode?.trim() || params.promotionId) {
-    normalizedPromotionCode = params.promotionCode?.trim()
-      ? params.promotionCode.trim().toUpperCase()
-      : undefined
-    resolvedPromotionId = params.promotionId
-    const promoPreview = await resolvePromotionDiscount({
-      siteId: params.siteId,
-      code: normalizedPromotionCode,
-      promotionId: resolvedPromotionId,
-      lines: params.processedLines.map((line) => ({
-        catalogItemId: line.catalog_item_id,
-        subtotal: line.subtotal,
-        quantity: line.quantity,
-      })),
-      buyerUserId: params.buyerUserId,
-      leadId: params.finalLeadId,
-      source: params.source,
-      locationId: params.finalOriginLocationId || null,
-      excludeOrderId: params.effectiveExistingOrderId || null,
-      forceServiceRole: params.isAdmin,
-    }, queryClient)
-    if ("error" in promoPreview) {
-      throw new Error(`Promotion failed: ${promoPreview.error}`)
+    const recorded = await loadRecordedCheckoutPromotion(queryClient, params)
+    if (recorded) {
+      promoDiscount = recorded.discount
+      recordedPromotionId = recorded.promotionId
+      recordedPromotionBaseline = recorded.version
+    } else {
+      normalizedPromotionCode = params.promotionCode?.trim()
+        ? params.promotionCode.trim().toUpperCase()
+        : undefined
+      resolvedPromotionId = params.promotionId
+      const promoPreview = await resolvePromotionDiscount({
+        siteId: params.siteId,
+        code: normalizedPromotionCode,
+        promotionId: resolvedPromotionId,
+        lines: params.processedLines.map((line) => ({
+          catalogItemId: line.catalog_item_id,
+          subtotal: line.subtotal,
+          quantity: line.quantity,
+        })),
+        buyerUserId: params.buyerUserId,
+        leadId: params.finalLeadId,
+        source: params.source,
+        locationId: params.finalOriginLocationId || null,
+        excludeOrderId: params.effectiveExistingOrderId || null,
+        forceServiceRole: params.isAdmin,
+      }, queryClient)
+      if ("error" in promoPreview) {
+        throw new Error(`Promotion failed: ${promoPreview.error}`)
+      }
+      promoDiscount = promoPreview.data.discount
+      resolvedPromotionId = promoPreview.data.promotionId
     }
-    promoDiscount = promoPreview.data.discount
-    resolvedPromotionId = promoPreview.data.promotionId
     orderTotal = roundMoney(
       Math.max(
         0,
@@ -212,16 +222,20 @@ export async function persistCheckoutRecords(
   if (params.effectiveExistingOrderId) {
     const { data: existingOrder } = await queryClient
       .from("sale_orders")
-      .select("sale_id, status, total, currency, notes, updated_at, items")
+      .select("sale_id, status, total, currency, notes, updated_at, items, promotion_id, discount_total, subtotal, tax_total, shipping_cost, buyer_user_id, origin_location_id, fulfillment_method")
       .eq("id", params.effectiveExistingOrderId)
       .single()
     if (!existingOrder) throw new Error("Existing order not found")
     const { data: existingSale } = await queryClient
       .from("sales")
-      .select("status, amount, amount_due, payments, source")
+      .select("status, amount, amount_due, payments, source, lead_id")
       .eq("id", existingOrder.sale_id)
       .single()
     if (!existingSale) throw new Error("Existing sale is unavailable. No payment was collected.")
+    if (recordedPromotionBaseline && (recordedPromotionVersion(existingOrder) !== recordedPromotionBaseline ||
+      (existingSale.lead_id || null) !== (params.finalLeadId || null))) {
+      throw new Error("The recorded promotion changed. Reload the order before payment.")
+    }
     const { data: storedItems } = await queryClient
       .from("sale_order_items")
       .select("*")
@@ -328,13 +342,8 @@ export async function persistCheckoutRecords(
       shipping_cost: params.orderShippingCost,
       total: orderTotal,
       currency: params.orderCurrency,
-      ...(resolvedPromotionId || normalizedPromotionCode
-        ? {
-            discount_total: promoDiscount,
-            ...(resolvedPromotionId
-              ? { promotion_id: resolvedPromotionId }
-              : {}),
-          }
+      ...(recordedPromotionId || resolvedPromotionId || normalizedPromotionCode
+        ? { discount_total: promoDiscount, promotion_id: recordedPromotionId || resolvedPromotionId }
         : {}),
       status: orderInitialStatus,
       user_id: params.resolvedUserId,
@@ -353,7 +362,8 @@ export async function persistCheckoutRecords(
         p_site_id: params.siteId, p_mutation_id: params.posClaim.mutationId,
         p_owner_token: params.posClaim.ownerToken, p_order_id: params.effectiveExistingOrderId,
         p_sale_patch: saleData, p_order_patch: orderData,
-        p_expected_sale: { amount: existingSale?.amount, amount_due: existingSale?.amount_due, payments: existingSale?.payments },
+        p_expected_sale: { amount: existingSale?.amount, amount_due: existingSale?.amount_due, payments: existingSale?.payments,
+          ...(recordedPromotionBaseline ? { lead_id: existingSale.lead_id || null } : {}) },
         p_expected_order: existingOrder,
       })
       if (error || !committed?.sale || !committed?.order) throw new Error("Payment and order could not be committed. Check payment status before retrying.")

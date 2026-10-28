@@ -17,6 +17,7 @@ test('new user signs up, confirms email, logs in, logs out and recovers their pa
   const evidence = { qaId: policy.qaId, runId: policy.runId, userId: null as string | null,
     signup: false, confirmation: false, initialPasswordSetup: false, login: false, logout: false, recovery: false,
     passwordChanged: false, oldPasswordDenied: false, newPasswordLogin: false,
+    stage: 'before-signup', failureKind: null as string | null,
     cleanup: { method: 'exact-disposable-environment-destruction', completed: false, expiresAt: policy.expiresAt } };
   const directory = path.resolve('.auth', 'local', policy.runId);
   await mkdir(directory, { recursive: true, mode: 0o700 });
@@ -37,6 +38,8 @@ test('new user signs up, confirms email, logs in, logs out and recovers their pa
     return result.data.user;
   };
   const login = async (secret: string, success: boolean) => {
+    evidence.stage = success ? 'password-login-requested' : 'old-password-login-requested';
+    await persist();
     await page.goto('/auth?returnTo=%2Fprojects', { waitUntil: 'domcontentloaded' });
     await dismissConsent(page);
     await page.locator('input[name="email"]').fill(policy.email);
@@ -56,15 +59,20 @@ test('new user signs up, confirms email, logs in, logs out and recovers their pa
   };
   const logout = async () => {
     // Exercise the app's real logout route, then prove workspace navigation is denied.
-    await page.goto('/api/auth/logout', { waitUntil: 'domcontentloaded' });
+    evidence.stage = 'logout-requested';
+    await persist();
+    await page.goto('/api/auth/logout', { waitUntil: 'load' });
     await page.waitForURL(url => url.origin === policy.baseURL && url.pathname === '/auth');
+    evidence.stage = 'logout-returned-to-auth';
+    await persist();
     await page.goto('/projects', { waitUntil: 'domcontentloaded' });
     await page.waitForURL(url => url.origin === policy.baseURL && url.pathname === '/auth');
     await expect(page.locator('input[name="password"]')).toBeVisible();
   };
   const openEmail = async (link: string) => {
     // The link has already been bound to the local Auth origin and app redirect.
-    try { await page.goto(link, { waitUntil: 'domcontentloaded' }); }
+    // SSR renders the confirmation button before its client click handler loads.
+    try { await page.goto(link, { waitUntil: 'load' }); }
     catch { throw new Error('QA email action navigation failed; bearer URL is not reported'); }
     if (new URL(page.url()).pathname === '/auth/confirm') {
       // Custom local templates lead to the app's explicit confirmation action.
@@ -93,14 +101,18 @@ test('new user signs up, confirms email, logs in, logs out and recovers their pa
     }
     evidence.userId = user.id;
     evidence.signup = true;
+    evidence.stage = 'signup-created-awaiting-email';
     await persist();
     if (user.email_confirmed_at) throw new Error('QA signup must require real email confirmation; enable email confirmations');
     await openEmail(await waitForAccountEmail(policy, 'signup', beforeSignup));
+    evidence.stage = 'confirmation-clicked-awaiting-identity';
+    await persist();
     // Confirmation is proved by Auth, not just a UI toast or a delivered email.
     await expect.poll(async () => {
       try { return Boolean((await identity()).email_confirmed_at); } catch { return false; }
     }, { timeout: 45_000 }).toBe(true);
     evidence.confirmation = true;
+    evidence.stage = 'confirmed-awaiting-initial-password';
     await persist();
     // Current signup confirmation requires the app's initial password-set step.
     // Do not mark password_set through metadata or bypass this onboarding screen.
@@ -112,12 +124,14 @@ test('new user signs up, confirms email, logs in, logs out and recovers their pa
     expect((await configured).ok(), 'Initial password setup must persist through real Auth').toBe(true);
     await page.waitForURL(url => url.origin === policy.baseURL && ['/projects', '/auth'].includes(url.pathname));
     evidence.initialPasswordSetup = true;
+    evidence.stage = 'initial-password-set';
     await persist();
     await logout();
     await login(password, true);
     evidence.login = true;
     await logout();
     evidence.logout = true;
+    evidence.stage = 'login-logout-verified';
     await persist();
     const beforeRecovery = await mailboxSnapshot(policy);
     await page.goto('/auth?returnTo=%2Fprojects', { waitUntil: 'domcontentloaded' });
@@ -126,10 +140,14 @@ test('new user signs up, confirms email, logs in, logs out and recovers their pa
     const requested = page.waitForResponse(response => onBackend(response.url(), 'recover') && response.request().method() === 'POST');
     await accountButton(page, ['auth.sendResetLink']).click();
     expect((await requested).ok(), 'Real recovery request must succeed').toBe(true);
+    evidence.stage = 'recovery-requested-awaiting-email';
+    await persist();
     await openEmail(await waitForAccountEmail(policy, 'recovery', beforeRecovery));
     await page.waitForURL(url => url.origin === policy.baseURL && url.pathname === '/auth/set-password');
     await identity();
     evidence.recovery = true;
+    evidence.stage = 'recovery-confirmed';
+    await persist();
     await page.locator('#password').fill(replacement);
     await page.locator('#confirmPassword').fill(`${replacement}-mismatch`);
     await expect(page.locator('button[type="submit"]')).toBeDisabled();
@@ -138,14 +156,25 @@ test('new user signs up, confirms email, logs in, logs out and recovers their pa
     await page.locator('button[type="submit"]').click();
     expect((await updated).ok(), 'Password update must persist through real Auth').toBe(true);
     evidence.passwordChanged = true;
+    evidence.stage = 'replacement-password-set';
+    await persist();
     await page.waitForURL(url => url.origin === policy.baseURL && ['/projects', '/auth'].includes(url.pathname));
     await logout();
     await login(password, false);
     evidence.oldPasswordDenied = true;
     await login(replacement, true);
     evidence.newPasswordLogin = true;
+    evidence.stage = 'all-account-checkpoints-verified';
     await logout();
-  } catch {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '';
+    evidence.failureKind = message.startsWith('QA email recipient') ? 'mail-recipient-mismatch'
+      : message.startsWith('Unexpected or unscoped') ? 'mail-response-invalid'
+      : message.startsWith('QA local mailbox') ? 'mail-transport-failure'
+      : message.startsWith('QA email action') ? 'mail-link-navigation'
+      : message.startsWith('QA email confirmation') ? 'confirmation-control-unavailable'
+      : message.includes('Unable to bind') ? 'browser-session-binding'
+      : 'assertion-or-product-failure';
     // Engine failures may include the current bearer-link URL in their call log.
     throw new Error('Account lifecycle failed; inspect safe checkpoints in the private run journal');
   } finally {
@@ -168,7 +197,7 @@ test('invalid login does not establish an authenticated workspace session', asyn
   });
   await accountButton(page, ['auth.signInBtn']).click();
   expect((await denied).status()).toBe(400);
-  await expect(page.getByRole('alert')).toBeVisible();
+  await expect(page.getByRole('alert').filter({ hasText: /Invalid login credentials|Credenciales de inicio de sesión no válidas/ }).first()).toBeVisible();
   await page.goto('/projects', { waitUntil: 'domcontentloaded' });
   await page.waitForURL(url => url.origin === policy.baseURL && url.pathname === '/auth');
   await expect(page.locator('input[name="password"]')).toBeVisible();

@@ -33,7 +33,7 @@ export async function listPosOpenOrders(siteId: string) {
     const cacheIdentity = await hashRedisKeyPart(`${siteId}:${access.role}:${access.user.id}`);
 
     const cached = await readThroughJsonCache({
-      key: `cache:v3:pos-open-orders:${cacheIdentity}`,
+      key: `cache:v4:pos-open-orders:${cacheIdentity}`,
       ttlSeconds: 5,
       lockTtlMs: 10_000,
       compute: async () => {

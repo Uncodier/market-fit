@@ -170,6 +170,32 @@ fallback uses one authenticated, RLS-scoped order query rather than loading
 shipments, requestors or attribution profiles. Stored line prices use the order
 currency, not the catalog item's current currency.
 
+Order snapshots also include the applied promotion's name/code and recorded
+discount. POS restores that discount without requiring a fresh redemption from
+the POS-only promotion catalog, and persists it in the device session. Unchanged
+existing orders keep their server-owned discount during partial/full payment,
+including Shop-only or subsequently expired coupons; checkout verifies the
+original customer, lines, monetary fields, recorded origin/fulfillment and commit
+baseline. New or edited redemptions retain normal promotion validation. Changing
+a recorded coupon or its cart/customer context requires review in Orders and an explicit POS reload
+before collection; POS cannot silently collect a different promotion total.
+Legacy device sessions recover the discount from their original version without
+discarding unsaved edits and require an explicit order reload before payment.
+Fully paid/zero-payable orders remain excluded from the POS payment picker.
+Customer fingerprints compare IDs rather than picker labels. An explicit
+unassigned online origin permits initial POS location assignment without losing
+its discount; changing a recorded origin requires promotion revalidation. Register
+authorization and the sale's canonical location constraints remain unchanged.
+Older saved fingerprints are normalized from their original baseline, not from
+an edited basket. Coupon input edits invalidate only the preview discount and
+retain the replacement text; an explicit Clear action also empties the code.
+
+Regression coverage: `__tests__/pos/order-promotion-hydration.test.tsx`,
+`__tests__/commerce/checkout-recorded-promotion.test.ts`, and
+`__tests__/pos/cart-promo-input.test.tsx` (context contracts also have focused
+coverage in `__tests__/pos/recorded-promo-context.test.ts`). These tests run locally
+with isolated clients and do not create live orders or payments.
+
 Restored prices carry sale-order-item references, not trusted client currency codes.
 Server checkout validates each reference against the selected site's order, uses
 its persisted currency for restored overrides, and converts newly added catalog

@@ -27,12 +27,15 @@ jest.mock("@/app/pos/local/cart-session", () => ({
 jest.mock("@/app/pos/hooks/use-pos-promo", () => ({
   usePosPromo: () => ({
     promoCode: "", setPromoCode: mockSetPromoCode, promoDiscount: 0, resetPromo: mockResetPromo,
+    hydrateRecordedOrderPromo: mockHydratePromo,
+    hydratePromoCode: mockSetPromoCode,
   }),
 }));
 jest.mock("sonner", () => ({ toast: { error: jest.fn(), warning: jest.fn() } }));
 
 const mockSetPromoCode = jest.fn();
 const mockResetPromo = jest.fn();
+const mockHydratePromo = jest.fn();
 const item = { id: "sku", name: "Coffee", kind: "product", currency: "USD",
   availability_mode: "always", target_sale_price: 80 } as CatalogItem;
 const args = {

@@ -21,8 +21,11 @@ function expireCookie(response: NextResponse, name: string) {
   response.cookies.set(name, '', EXPIRED_COOKIE_OPTIONS)
 }
 
-export async function GET(request: Request) {
-  const response = NextResponse.redirect(new URL('/auth', request.url), 302)
+export async function GET(_request: Request) {
+  void _request
+  // Relative Location keeps the browser's public origin behind local/reverse
+  // proxies. Never redirect to Next's internal bind port or trust forwarded hosts.
+  const response = new NextResponse(null, { status: 302, headers: { Location: '/auth' } })
   response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate')
   response.headers.set('Pragma', 'no-cache')
 

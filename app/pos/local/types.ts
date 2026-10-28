@@ -83,6 +83,9 @@ export type PosCartSession = {
   originLocationId: string;
   priceListId: string;
   promoCode: string;
+  /** UI snapshot only; checkout verifies the original discount on the server. */
+  recordedOrderPromo?: import("./resolve-promo-local").LocalPromoMatch | null;
+  recordedPromoFingerprint?: string | null;
   activeOrderId: string;
   expectedOrderVersion?: string;
   /** Keep prior receipts and subsequent cart edits in the original order currency. */

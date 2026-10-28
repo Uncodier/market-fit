@@ -353,10 +353,7 @@ export function CartPanel({
                 <Input
                   placeholder={t("pos.cart.promoCode") || "Promo code..."}
                   value={promoCode}
-                  onChange={(e) => {
-                    setPromoCode(e.target.value);
-                    if (appliedPromo?.code) clearAppliedPromo();
-                  }}
+                  onChange={(e) => setPromoCode(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault();

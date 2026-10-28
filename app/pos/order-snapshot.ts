@@ -9,6 +9,7 @@ export const POS_ORDER_SNAPSHOT_SELECT = `
   currency, subtotal, tax_total, discount_total, total, notes,
   fulfillment_method, origin_location_id, price_list_id, promotion_id,
   buyer_user_id, seller_user_id, shipping_address, scheduled_for,
+  promotions (name, code, image_url),
   sale_order_items (
     id, catalog_item_id, unit_price, metadata, quantity, status, name,
     parent_sale_order_item_id
@@ -31,6 +32,7 @@ export type PosOrderSnapshot = Pick<
 > & {
   origin_location_id: string | null;
   seller?: PosOrderSeller;
+  promotions?: { name: string; code: string | null; image_url: string | null } | null;
   sale_order_items: Array<{
     id: string;
     catalog_item_id: string | null;

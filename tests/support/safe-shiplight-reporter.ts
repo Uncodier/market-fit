@@ -1,6 +1,6 @@
 import ShiplightReporter from 'shiplightai/reporter';
 import type { TestCase, TestError, TestResult, TestStep } from '@playwright/test/reporter';
-import { redactReportText } from './report-redaction';
+import { redactApiStepTitle, redactReportText } from './report-redaction';
 
 function sanitizeError(error?: TestError): void {
   if (!error) return;
@@ -10,7 +10,7 @@ function sanitizeError(error?: TestError): void {
 }
 
 function sanitizeStep(step: TestStep): void {
-  step.title = redactReportText(step.title);
+  step.title = redactApiStepTitle(step.title, step.category);
   sanitizeError(step.error);
   for (const child of step.steps) sanitizeStep(child);
 }

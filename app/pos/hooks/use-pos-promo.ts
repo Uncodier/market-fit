@@ -12,6 +12,7 @@ import {
 import type { LocalPromotion } from "@/app/pos/local/types";
 import type { PosCartItem } from "@/app/pos/components/CartPanel";
 import { posCartLineSubtotal } from "@/app/pos/cart-totals";
+import { posPromoCartFingerprint } from "@/app/pos/recorded-order-promo";
 
 export type AppliedPosPromo = LocalPromoMatch;
 
@@ -25,6 +26,7 @@ type UsePosPromoArgs = {
   t: (key: string) => string;
   siteCurrency?: string;
   fxRates?: Record<string, number>;
+  orderContext?: string;
 };
 
 export function usePosPromo({
@@ -37,11 +39,30 @@ export function usePosPromo({
   t,
   siteCurrency = "USD",
   fxRates = {},
+  orderContext = "",
 }: UsePosPromoArgs) {
   const [promoCode, setPromoCode] = useState("");
   const [appliedPromo, setAppliedPromo] = useState<AppliedPosPromo | null>(
     null,
   );
+  const [recordedOrderPromo, setRecordedOrderPromo] = useState<AppliedPosPromo | null>(null);
+  const [recordedPromoFingerprint, setRecordedPromoFingerprint] = useState<string | null>(null);
+
+  const hydrateRecordedOrderPromo = useCallback((promo: AppliedPosPromo | null, fingerprint: string | null = null) => {
+    setRecordedOrderPromo(promo);
+    setRecordedPromoFingerprint(fingerprint);
+    setPromoCode(promo?.code || "");
+    setAppliedPromo(promo);
+  }, []);
+  const changePromoCode = useCallback((code: string) => {
+    if (recordedOrderPromo) {
+      toast.error("Change the recorded promotion in Orders, then reload this order before payment.");
+      return;
+    }
+    setRecordedOrderPromo(null);
+    setPromoCode(code);
+    setAppliedPromo(null);
+  }, [recordedOrderPromo]);
 
   const promoLines = useMemo((): LocalPromoLine[] => {
     return cart
@@ -82,6 +103,9 @@ export function usePosPromo({
 
   // Keep applied promo in sync with cart; auto-apply codeless condition promos
   useEffect(() => {
+    // Shop-only, expired or exhausted coupons remain a recorded order discount.
+    // They are not a fresh POS redemption; the server verifies payment eligibility.
+    if (recordedOrderPromo) return;
     if (promoLines.length === 0) {
       setAppliedPromo(null);
       return;
@@ -150,19 +174,30 @@ export function usePosPromo({
     siteTimezone,
     promoCode,
     hasLead,
+    recordedOrderPromo,
   ]);
 
   const clearAppliedPromo = useCallback(() => {
+    if (recordedOrderPromo) {
+      toast.error("Change the recorded promotion in Orders, then reload this order before payment.");
+      return;
+    }
+    setRecordedOrderPromo(null);
     setAppliedPromo(null);
-  }, []);
+    setPromoCode("");
+  }, [recordedOrderPromo]);
 
   const resetPromo = useCallback(() => {
+    setRecordedOrderPromo(null);
+    setRecordedPromoFingerprint(null);
     setPromoCode("");
     setAppliedPromo(null);
   }, []);
 
   const validatePromotion = useCallback(
     (opts?: { leadPresent?: boolean }) => {
+      if (recordedOrderPromo) return;
+      setRecordedOrderPromo(null);
       const leadPresent = opts?.leadPresent ?? hasLead;
       if (promoLines.length === 0) {
         toast.error(t("pos.errorCartEmpty") || "Cart is empty");
@@ -212,6 +247,7 @@ export function usePosPromo({
       hasLead,
       applyMatch,
       t,
+      recordedOrderPromo,
     ],
   );
 
@@ -221,13 +257,18 @@ export function usePosPromo({
 
   return {
     promoCode,
-    setPromoCode,
+    setPromoCode: changePromoCode,
     appliedPromo,
     promoDiscount: appliedPromo?.discount ?? 0,
     appliedPromoRequiresLead,
     validatePromotion,
     clearAppliedPromo,
     resetPromo,
+    recordedOrderPromo,
+    recordedPromoFingerprint,
+    recordedPromoNeedsReview: !!recordedOrderPromo &&
+      posPromoCartFingerprint(cart, orderContext) !== recordedPromoFingerprint,
+    hydrateRecordedOrderPromo,
     /** Used when hydrating cart session */
     hydratePromoCode: setPromoCode,
   };

@@ -21,6 +21,7 @@ test('owner creates a unique project and archives that same project with passwor
   let archiveConfirmed = false;
   let cleanupUsed = false;
   let submittedArchives = 0;
+  let archivalResponse: { ok: boolean; result: unknown } | null = null;
   // Guard the actual browser request as well as the selected-site UI/cache state.
   await page.context().route(url => url.pathname === '/api/sites/archive', async route => {
     let valid = false;
@@ -33,7 +34,9 @@ test('owner creates a unique project and archives that same project with passwor
     } catch { /* Fail closed without logging the password-bearing request. */ }
     if (!valid) { await route.abort('blockedbyclient'); return; }
     submittedArchives++;
-    await route.continue();
+    const response = await route.fetch({ maxRedirects: 0 });
+    archivalResponse = { ok: response.ok(), result: await response.json() };
+    await route.fulfill({ response });
   });
   try {
     const response = await page.goto('/create-site', { waitUntil: 'domcontentloaded' });
@@ -50,17 +53,29 @@ test('owner creates a unique project and archives that same project with passwor
     const create = page.getByRole('button', { name: 'Create Project', exact: true });
     await expect(create).toBeEnabled();
     // Capture the actual persisted ID, never infer it from whichever site is active.
-    const inserted = page.waitForResponse(result => {
-      const url = new URL(result.url());
+    let creationResponse: { ok: boolean; rows: unknown } | null = null;
+    // Relay the real insertion once and read its original body before a hard
+    // navigation invalidates Chromium's response identifier. No mock response.
+    await page.context().route(url => url.pathname === '/rest/v1/sites', async route => {
+      const request = route.request();
+      const url = new URL(request.url());
       const trustedOrigin = url.origin === policy.backend ||
         (policy.target === 'production' && url.origin === 'https://db.makinari.com');
-      return trustedOrigin && url.pathname === '/rest/v1/sites' && result.request().method() === 'POST';
-    }, { timeout: 45_000 });
+      if (!trustedOrigin || request.method() !== 'POST') { await route.continue(); return; }
+      const payload = request.postDataJSON();
+      const values = Array.isArray(payload) ? payload : [payload];
+      if (values.length !== 1 || values[0].name !== policy.marker || values[0].url !== policy.url ||
+        values[0].user_id !== userId || creationResponse) { await route.abort('blockedbyclient'); return; }
+      const response = await route.fetch({ maxRedirects: 0 });
+      creationResponse = { ok: response.ok(), rows: await response.json() };
+      await route.fulfill({ response });
+    });
     creationAttempted = true;
     await create.click();
-    const persisted = await inserted;
-    expect(persisted.ok(), 'Site insertion must succeed').toBe(true);
-    const rows = await persisted.json();
+    await expect.poll(() => creationResponse !== null, { timeout: 45_000 }).toBe(true);
+    const persisted = creationResponse! as { ok: boolean; rows: unknown };
+    expect(persisted.ok, 'Site insertion must succeed').toBe(true);
+    const rows = persisted.rows;
     if (!Array.isArray(rows) || rows.length !== 1) throw new Error('Site creation did not return one identifiable project');
     assertOwnedProject(rows[0], userId);
     project = { id: rows[0].id, name: rows[0].name, url: rows[0].url, user_id: rows[0].user_id };
@@ -91,13 +106,12 @@ test('owner creates a unique project and archives that same project with passwor
     await dialog.getByLabel('Account password', { exact: true }).fill(required(process.env, 'TEST_ADMIN_PASSWORD'));
     assertOwnedProject(project!, userId);
     expect(await projectIsActive(client, project!, userId)).toBe(true);
-    const archived = page.waitForResponse(result => new URL(result.url()).origin === policy.baseURL &&
-      new URL(result.url()).pathname === '/api/sites/archive' && result.request().method() === 'POST');
     archiveAttempted = true;
     await archive.click();
-    const result = await archived;
-    expect(result.ok(), 'Password-confirmed archival must succeed').toBe(true);
-    expect(await result.json()).toEqual({ success: true });
+    await expect.poll(() => archivalResponse !== null, { timeout: 45_000 }).toBe(true);
+    const result = archivalResponse! as { ok: boolean; result: unknown };
+    expect(result.ok, 'Password-confirmed archival must succeed').toBe(true);
+    expect(result.result).toEqual({ success: true });
     archiveConfirmed = true;
     await page.waitForURL(url => url.origin === policy.baseURL && url.pathname === '/projects', { waitUntil: 'domcontentloaded' });
     await expect.poll(() => projectIsActive(client, project!, userId)).toBe(false);

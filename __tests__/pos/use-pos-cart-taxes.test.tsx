@@ -14,11 +14,13 @@ jest.mock("@/app/pos/hooks/use-pos-promo", () => ({
   usePosPromo: () => ({
     promoCode: "", setPromoCode: mockSetPromoCode, promoDiscount: 0,
     resetPromo: jest.fn(),
+    hydrateRecordedOrderPromo: mockHydratePromo, hydratePromoCode: mockSetPromoCode,
   }),
 }));
 jest.mock("sonner", () => ({ toast: { error: jest.fn(), warning: jest.fn() } }));
 
 const mockSetPromoCode = jest.fn();
+const mockHydratePromo = jest.fn();
 const item = {
   id: "sku", site_id: "site", name: "Product", status: "active", kind: "product",
   availability_mode: "always", target_sale_price: 10, currency: "USD",
