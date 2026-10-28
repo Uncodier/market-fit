@@ -20,6 +20,8 @@ interface ChatToggleProps {
   onNewConversation?: () => void
   onNewLeadConversation?: () => void
   onNewAgentConversation?: () => void
+  onNewCustomerSupportConversation?: () => void
+  isCreatingCustomerSupportConversation?: boolean
   onPrivateDiscussion?: () => void
   showNewConversationButton?: boolean
   /** Use in conversation toolbar (flex row); default overlay used absolute + full width when expanded */
@@ -38,6 +40,8 @@ export function ChatToggle({
   onNewConversation, 
   onNewLeadConversation,
   onNewAgentConversation,
+  onNewCustomerSupportConversation,
+  isCreatingCustomerSupportConversation = false,
   onPrivateDiscussion,
   showNewConversationButton = true,
   variant = "overlay",
@@ -54,6 +58,7 @@ export function ChatToggle({
   
   // Determine if any action is available
   const hasAvailableActions = canCreateAgentConversation || 
+                             onNewCustomerSupportConversation ||
                              canCreateLeadConversation || 
                              onNewConversation;
   
@@ -164,6 +169,17 @@ export function ChatToggle({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-72 z-[1001]" sideOffset={8} forceMount>
               <DropdownMenuLabel className="text-xs text-muted-foreground py-2">Create new conversation</DropdownMenuLabel>
+              {onNewCustomerSupportConversation && (
+                <DropdownMenuItem
+                  onClick={onNewCustomerSupportConversation}
+                  disabled={isCreatingCustomerSupportConversation}
+                  className="cursor-pointer py-3 hover:bg-muted/60 focus:bg-muted/60 rounded-md"
+                >
+                  {isCreatingCustomerSupportConversation
+                    ? "Creating conversation…"
+                    : "New conversation with Customer Support"}
+                </DropdownMenuItem>
+              )}
               
               {onNewLeadConversation && (
                 <DropdownMenuItem 

@@ -18,6 +18,7 @@ import { ChevronLeft } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
 import type { ParticipantIdentity } from "@/lib/chat/participant-identity"
 import { getChannelLabel } from "@/lib/site-channels"
+import { useNewCustomerSupportConversation } from "@/app/hooks/useNewCustomerSupportConversation"
 
 interface ChatHeaderProps {
   agentId: string
@@ -59,6 +60,7 @@ export function ChatHeader({
   onBack
 }: ChatHeaderProps) {
   const { currentSite } = useSite()
+  const customerSupportConversation = useNewCustomerSupportConversation()
   const { isLayoutCollapsed } = useLayout()
   const [windowWidth, setWindowWidth] = useState(
     typeof window !== "undefined" ? window.innerWidth : 1024
@@ -182,6 +184,8 @@ export function ChatHeader({
           onNewConversation={startNewConversation}
           onNewLeadConversation={handleNewLeadConversation}
           onNewAgentConversation={handleNewAgentConversation}
+          onNewCustomerSupportConversation={customerSupportConversation.startConversation}
+          isCreatingCustomerSupportConversation={customerSupportConversation.isCreating}
           onPrivateDiscussion={handlePrivateDiscussion}
           showNewConversationButton={true}
           isLead={isLead}
