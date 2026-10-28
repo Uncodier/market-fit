@@ -11,6 +11,7 @@ import { FileText, Repeat, Archive, Home, Sun, Moon, Globe, Monitor, ShoppingCar
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { CommerceShellHeader, shellClasses } from "@/app/components/commerce/CommerceShellHeader"
 import { CartButton } from "@/app/components/commerce/CartButton"
+import { TopBarPrimaryActionsSlot } from "@/app/components/navigation/topbar-primary-actions"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import {
@@ -28,7 +29,7 @@ type BuyerShellProps = {
 
 export function BuyerShell({ children, requireAuth = true }: BuyerShellProps) {
   const { user, isLoading } = useAuth()
-  const session = user ? { user } : null
+  const session = React.useMemo(() => user ? { user } : null, [user])
   const router = useRouter()
   const pathname = usePathname()
   const { setTheme } = useTheme()
@@ -37,7 +38,7 @@ export function BuyerShell({ children, requireAuth = true }: BuyerShellProps) {
   const [cartCount, setCartCount] = React.useState(0)
 
   const { data: summaryData } = useSWR(
-    session ? { key: "buyer-portal-summary", scope: "personal" as const } : null,
+    session ? { key: "buyer-portal-summary", userId: user?.id, scope: "personal" as const } : null,
     async (params) => {
       const res = await getBuyerPortalSummary({ scope: params.scope })
       if (res.error) throw new Error(res.error)
@@ -52,8 +53,9 @@ export function BuyerShell({ children, requireAuth = true }: BuyerShellProps) {
         const key = localStorage.key(i)
         if (key && key.startsWith("market-cart-")) {
           try {
-            const cart = JSON.parse(localStorage.getItem(key) || "[]")
-            count += cart.reduce((s: any, c: any) => s + (c.cartQty || 0), 0)
+            const cart: unknown = JSON.parse(localStorage.getItem(key) || "[]")
+            if (Array.isArray(cart)) count += cart.reduce((sum: number, item: { cartQty?: unknown }) =>
+              sum + (typeof item?.cartQty === "number" && Number.isFinite(item.cartQty) ? item.cartQty : 0), 0)
           } catch {
             // ignore malformed cart entries
           }
@@ -81,11 +83,13 @@ export function BuyerShell({ children, requireAuth = true }: BuyerShellProps) {
   const isMiniExperience = Boolean(
     pathname?.match(/^\/buyer\/(reservations|course|ticket|book|downloads)\//)
   )
-  const homeHref = session ? "/buyer" : "/marketplace"
+  const unified = pathname === "/home" || pathname?.startsWith("/home/")
+  const portalBase = unified ? "/home" : "/buyer"
+  const homeHref = session ? portalBase : "/marketplace"
   const signInLabel = t("signIn") || "Sign In"
   const signInHref = `/auth?returnTo=${encodeURIComponent(pathname || "/buyer")}`
 
-  let navItems = [
+  let navItems: { label: string; href: string; icon: React.ReactNode; exact?: boolean; count?: number }[] = [
     { label: t("buyer.layout.home") || "Home", href: "/buyer", icon: <Home size={16} />, exact: true },
     { label: t("buyer.layout.purchases") || "Purchases", href: "/buyer/orders", icon: <ShoppingCart size={16} />, count: summaryData?.counts?.orders },
     { label: t("buyer.layout.subscriptions") || "Subscriptions", href: "/buyer/subscriptions", icon: <Repeat size={16} />, count: summaryData?.counts?.subscriptions },
@@ -97,6 +101,9 @@ export function BuyerShell({ children, requireAuth = true }: BuyerShellProps) {
   if (summaryData) {
     navItems = navItems.filter(item => item.exact || (item.count !== undefined && item.count > 0))
   }
+  if (unified) navItems = navItems.map(item => ({ ...item, href: item.href.replace(/^\/buyer/, "/home") }))
+  navItems.push({ label: "Supplier activity", href: "/home/submissions", icon: <FileText size={16} /> })
+  navItems.push({ label: "Credentials", href: "/home/profile", icon: <User size={16} /> })
 
   const initial =
     user?.user_metadata?.first_name?.charAt(0) ||
@@ -159,6 +166,7 @@ export function BuyerShell({ children, requireAuth = true }: BuyerShellProps) {
             }
             actions={
               <div className="flex items-center gap-1 md:gap-3">
+                <TopBarPrimaryActionsSlot />
                 <div className="hidden md:flex items-center gap-1 md:gap-3">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -218,7 +226,7 @@ export function BuyerShell({ children, requireAuth = true }: BuyerShellProps) {
                     <div className="w-9 h-9 min-w-9 rounded-full bg-muted flex items-center justify-center border border-border shadow-sm animate-pulse shrink-0" />
                   ) : session ? (
                     <Link
-                      href="/buyer/profile"
+                      href={`${portalBase}/profile`}
                       className="flex items-center gap-2 outline-none hover:opacity-80 transition-opacity rounded-full focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ml-1 shrink-0"
                     >
                       {user?.user_metadata?.avatar_url || user?.user_metadata?.picture ? (

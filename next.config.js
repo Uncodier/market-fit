@@ -94,6 +94,8 @@ const nextConfig = {
       { source: '/api/marketplace/products', destination: `${app}/api/marketplace/products` },
       ...page('/cart'),
       ...page('/buyer'),
+      ...page('/home'),
+      ...page('/tenders'),
       ...page('/book'),
       ...page('/so'),
       ...page('/q'),

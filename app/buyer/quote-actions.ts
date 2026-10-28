@@ -45,6 +45,7 @@ export async function getBuyerQuotation(quotationId: string) {
   const { data, error } = await serviceClient
     .from("quotations")
     .select(BUYER_QUOTE_SELECT)
+    .not("site_id", "is", null)
     .eq("id", quotationId)
     .eq("buyer_user_id", user.id)
     .single()

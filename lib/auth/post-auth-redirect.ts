@@ -9,7 +9,7 @@ const APP_HOSTS = new Set(['app.makinari.com'])
 
 type HeaderReader = { get(name: string): string | null }
 
-const SHOP_AUTH_PATH_PREFIXES = ['/shop', '/marketplace', '/buyer', '/cart'] as const
+const SHOP_AUTH_PATH_PREFIXES = ['/shop', '/marketplace', '/buyer', '/home', '/tenders', '/cart'] as const
 
 /**
  * Accept only same-origin relative paths that are not auth flows

@@ -6,6 +6,7 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { BuyerOrdersView } from "@/app/buyer/components/BuyerOrdersView"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { ShoppingCart } from "@/app/components/ui/icons"
+import { ProcurementOrdersPanel } from "@/app/purchases/procurement/commerce/ProcurementOrdersPanel"
 
 export default function PurchasesOrdersPage() {
   const { currentSite } = useSite()
@@ -32,6 +33,7 @@ export default function PurchasesOrdersPage() {
 
   return (
     <div className="flex-1 flex flex-col min-h-[calc(100vh-var(--topbar-height,64px))] bg-muted/30">
+      <ProcurementOrdersPanel siteId={currentSite.id} />
       <BuyerOrdersView scope="site" ownerSiteId={currentSite.id} basePath="/purchases" />
     </div>
   )

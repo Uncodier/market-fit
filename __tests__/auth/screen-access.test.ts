@@ -30,6 +30,8 @@ describe('screen-access', () => {
     expect(getNavKeyForPath('/leads', new URLSearchParams())).toBe('leads')
     expect(getNavKeyForPath('/pos/check-in', new URLSearchParams())).toBe('checkIn')
     expect(getNavKeyForPath('/settings', new URLSearchParams('tab=team'))).toBe('team')
+    expect(getNavKeyForPath('/settings/procurement', new URLSearchParams())).toBe('procurementSettings')
+    expect(getNavKeyForPath('/settings/procurement', new URLSearchParams('tab=team'))).toBe('procurementSettings')
     expect(getNavKeyForPath('/dashboard', new URLSearchParams('tab=sales'))).toBe('reportSales')
     expect(getNavKeyForPath('/robots', new URLSearchParams('mode=imprenta'))).toBe('contentCreator')
     expect(getNavKeyForPath('/profile', new URLSearchParams())).toBeNull()

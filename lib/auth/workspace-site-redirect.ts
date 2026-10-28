@@ -1,5 +1,7 @@
 const COMMERCE_PREFIXES = [
   "/buyer",
+  "/home",
+  "/tenders",
   "/marketplace",
   "/shop",
   "/book",
@@ -29,7 +31,9 @@ export function getWorkspaceSiteRedirect(input: {
   if (!input.hasValidSession) return null
   if (input.pathname === "/") return null
   if (NO_REDIRECT_PREFIXES.some((prefix) => input.pathname.startsWith(prefix))) return null
-  if (COMMERCE_PREFIXES.some((prefix) => input.pathname.startsWith(prefix))) return null
+  if (COMMERCE_PREFIXES.some((prefix) => prefix.endsWith("/")
+    ? input.pathname.startsWith(prefix)
+    : input.pathname === prefix || input.pathname.startsWith(`${prefix}/`))) return null
 
   // If a user is on a workspace page without a site, bounce them to the picker.
   // We NEVER default to /create-site or /buyer from a workspace page.
@@ -57,9 +61,11 @@ export function unauthorizedSitesLoadAction(input: {
 /** Public storefronts should drop the demo cookie; /buyer must keep it. */
 export function shouldClearDemoCookieOnPath(pathname: string): boolean {
   if (pathname.startsWith("/buyer")) return false
+  if (pathname === "/home" || pathname.startsWith("/home/")) return false
   return (
     pathname.startsWith("/shop") ||
     pathname.startsWith("/marketplace") ||
+    pathname === "/tenders" || pathname.startsWith("/tenders/") ||
     pathname.startsWith("/cart") ||
     pathname.startsWith("/book") ||
     pathname.startsWith("/q/") ||

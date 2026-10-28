@@ -1,9 +1,12 @@
 # Procurement Certifications and Tender Evidence
 
-**Status:** agreed design extension, 2026-10-16; not implemented functionality.
+**Status:** agreed design extension, updated 2026-10-27; not implemented functionality.
 This is part of the [procurement and tenders design][main-design], not a separate app.
 Basic profile credentials, tender requirements, and submitted evidence are included
 in the initial tender workflow. Automated issuer verification is a later integration.
+Provisional AI document review is included in the agreed initial design; it is not
+automated issuer verification. The same requirements may apply to direct purchases
+under [procurement policies](PROCUREMENT_POLICIES_DESIGN.md), without a tender.
 
 ## 1. Purpose and ownership
 
@@ -13,6 +16,12 @@ organization; the **uploader** is the authorized account performing the action.
 These identities must not be conflated. An employee uploading an organization's ISO
 certificate does not become its holder, and a named contact is not automatically
 authorized to manage that organization's credentials.
+
+Legal representation evidence (incorporation act, power of attorney or permission)
+is required only when configured as a purchase/tender requirement. Suppliers can
+upload it to their profile and explicitly share the relevant revision. This optional
+documentary requirement does not remove account/organization access authorization:
+selecting an organization ID or matching an email address is not membership.
 
 Credentials are structured, reusable records, not untyped profile attachments or
 comma-separated certification names. A tender specifies which credentials qualify,
@@ -81,6 +90,8 @@ rules. Application and database validation must enforce the applicable revision.
 
 Checklist states must distinguish **missing evidence**, **holder/scope mismatch**,
 **expired/not valid at required date**, **pending review**, **accepted**, and **rejected**.
+Display provisional AI assessment separately from the authorized acceptance decision
+and any verified-authenticity status; include findings and evidence references.
 A submission confirmation records the exact quotation, requirements, and evidence
 versions received, with a server timestamp.
 
@@ -92,18 +103,43 @@ versions received, with a server timestamp.
    indefinite validity. Unknown or malformed dates require correction/review.
 3. **Authenticity verification:** record the reviewer or trusted issuer/registry source,
    method, evidence, result and time. A supplier's own assertion or PDF is not verification.
-4. **Tender acceptance:** the buyer determines whether that evidence satisfies this
-   requirement; acceptance by Buyer A is not automatic approval by Buyer B.
+4. **Provisional AI review:** the agent assesses documentary compliance and records
+   findings, limitations and a recommendation; this alone does not verify authenticity.
+5. **Purchase/tender acceptance:** an authorized human or explicitly delegated AI
+   determines compliance under the buyer's rules. Acceptance by Buyer A is not automatic
+   approval by Buyer B. Supervisor decisions are required for configured exceptions.
 
-Pending human review is not the same as missing evidence. Published rules determine
+Pending review is not the same as missing evidence. Published rules determine
 whether submission is allowed pending review and whether award requires acceptance.
 Equivalence decisions need explicit reasons and must follow the published criteria.
 
 Renewing, archiving, or editing a profile credential must not rewrite or delete prior
 submission evidence. Later expiry/revocation can trigger a new review at award or
 execution; preserve the historical submission and append the current assessment.
-The final retention/deletion policy must distinguish unused drafts from submitted
-evidence and comply with applicable obligations; do not promise unrestricted deletion.
+Retention is a Makinari platform responsibility and suppliers manage their profile
+documents; it is not a separate retention setting for each buyer. Makinari preserves
+submitted versions independently of later profile renewals/removals. Exact retention
+periods and deletion obligations remain to be defined. Distinguish unused drafts from
+submitted evidence and applicable obligations; do not promise unrestricted deletion.
+
+### Provisional AI assessment contract
+
+The AI reviews holder/requirement correspondence, scope, dates, legibility, missing
+evidence and inconsistencies within or between the shared documents. Record possible
+alteration/forgery indicators with supporting passages/pages, uncertainty and limitations;
+an indicator is not a proven accusation. No detected anomaly is not proof of authenticity.
+The report proposes provisional compliance, remediation or supervisor review.
+
+Pin each assessment to the exact credential/file and requirement revisions, actor/model
+identity, time, findings and recommendation. Preserve it even if a supervisor disagrees.
+Acceptance and exception records are separate from the report. AI may decide ordinary
+acceptance only under explicit delegated policy; it cannot waive mandatory evidence or
+grant itself exception authority. Processing errors must remain pending/blocked, not pass.
+
+Read only selectively shared evidence after the applicable opening gate, including for
+AI review. Treat document text as untrusted evidence, never instructions to the agent.
+Do not expose sealed assessments through summaries, notifications or logs. Issuer checks
+require a trusted source and method; provisional PDF analysis is not such verification.
 
 ## 6. Security and selective sharing
 
@@ -158,6 +194,14 @@ states and read-only states. Use existing icons and typed presentation adapters.
   expiry append review history rather than rewriting the original submission.
 - Acceptance in one tender neither verifies authenticity globally nor approves all
   supplier relationships. No standalone certification app or duplicate quote is created.
+- Legal representation uploads are required only by configured rules; account access
+  remains authorized even when no documentary representation requirement applies.
+- AI findings identify missing evidence, inconsistencies and suspected alterations
+  without presenting them as proven forgery or verified authenticity.
+- Provisional review, delegated acceptance and supervisor exception decisions are
+  distinct, revision-bound records; failure or document prompt injection cannot approve.
+- Direct-purchase evidence follows the same selective sharing and review controls.
+- Profile removal/renewal does not erase submitted evidence or its assessment history.
 
 This documentation does not claim implemented verification, database constraints, or
 passing feature tests. Implement authorization, storage, lifecycle and UI tests when

@@ -98,10 +98,13 @@ environment variables before changing production configuration.
 
 ## Product designs
 
-- [Procurement settings and rules](PROCUREMENT_POLICIES_DESIGN.md) — general workspace settings and a separate Rules screen for product/category requirements, approvals, participation and deadlines; design only.
+- [Procurement implementation](PROCUREMENT_IMPLEMENTATION.md) — local operational routes, security, migration prerequisites, validation and remaining workflows.
+- [Procurement delivery checklist](PROCUREMENT_DELIVERY_CHECKLIST.md) — full agreed scope tracked independently of route availability.
+- [Procurement UI reuse](PROCUREMENT_UI_REUSE.md) — prescribed screen references, shared components, verification evidence and visual acceptance limits.
+- [Procurement settings and rules](PROCUREMENT_POLICIES_DESIGN.md) — direct purchases and tenders, net thresholds, cumulative requirements, human/AI approvals, supervisor exceptions, urgent presets and deadlines; design only, with remaining decisions tracked explicitly.
 - [Team Settings location-scoped access](LOCATION_ACCESS_DESIGN.md) — target restricted-location model and module matrix; implementation, supported boundaries, limitations, and deployment steps are in the enforcement guide.
 - [Suppliers, procurement, tenders, and the unified account portal](/Users/prado/Desktop/Proyectos/Uncodie/Code/market-fit/docs/PROCUREMENT_AND_TENDERS_DESIGN.md) — planned model, screens, Marketplace-style global `/tenders`, UI/UX reuse references, and `/buyer` to `/home` migration; not implemented behavior.
-- [Procurement certifications and tender evidence](/Users/prado/Desktop/Proyectos/Uncodie/Code/market-fit/docs/PROCUREMENT_CERTIFICATIONS_DESIGN.md) — companion design for profile credentials, tender-specific requirements, private versioned evidence, and scoped review; not implemented behavior.
+- [Procurement certifications and tender evidence](PROCUREMENT_CERTIFICATIONS_DESIGN.md) — profile credentials, optional representation evidence, provisional AI review, scoped acceptance and platform retention; not implemented behavior.
 
 ## Architecture reviews
 

@@ -1,0 +1,70 @@
+'use client'
+
+import { useRef, useState, type ReactNode } from 'react'
+import Link from 'next/link'
+import Image from 'next/image'
+import { useRouter } from 'next/navigation'
+import { CommerceShellHeader, shellClasses } from '@/app/components/commerce/CommerceShellHeader'
+import { CommerceSearchInput } from '@/app/components/commerce/CommerceSearchInput'
+import { MobileShellSearchExpanded, MobileShellSearchIconButton } from '@/app/components/commerce/MobileShellSearch'
+import { useCommerceSignInHref } from '@/app/components/commerce/use-commerce-sign-in-href'
+import { useAuthContext } from '@/app/components/auth/auth-provider'
+import { User } from '@/app/components/ui/icons'
+import { Button } from '@/app/components/ui/button'
+
+type Props = { siteSlug?: string; search?: string; primaryActions?: ReactNode }
+
+/** MarketplaceHeader/ShopHeader presentation, without their purchasing state. */
+export function TenderHeader({ siteSlug, search = '', primaryActions }: Props) {
+  const [query, setQuery] = useState(search)
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
+  const trigger = useRef<HTMLButtonElement>(null)
+  const router = useRouter()
+  const { user, isLoading } = useAuthContext()
+  const { href: signInHref, onClick: onSignInClick } = useCommerceSignInHref()
+  const base = siteSlug ? `/tenders/${siteSlug}` : '/tenders'
+  const closeSearch = (open: boolean) => {
+    setMobileSearchOpen(open)
+    if (!open) {
+      if (query !== search) router.push(`${base}?search=${encodeURIComponent(query.slice(0, 200))}`)
+      requestAnimationFrame(() => trigger.current?.focus())
+    }
+  }
+  return <>
+    <div className="h-4 w-full shrink-0" />
+    <CommerceShellHeader hideCenterOnMobile
+      mobileExpanded={mobileSearchOpen ? <form action={base} role="search" className="flex w-full items-center gap-2 min-w-0">
+        <input type="hidden" name="search" value={query.slice(0, 200)} />
+        <MobileShellSearchExpanded value={query} onChange={value => setQuery(value.slice(0, 200))} placeholder="Search published tenders" open={mobileSearchOpen} onOpenChange={closeSearch} />
+      </form> : undefined}
+      brand={<Link href="/marketplace" aria-label="Makinari marketplace" className="shrink-0 flex items-center hover:opacity-80 transition-opacity">
+        <Image src="/images/logo.png" alt="Makinari" width={24} height={24} className="h-6 w-6 object-contain dark:brightness-0 dark:invert md:hidden" />
+        <span className="hidden md:inline text-xl font-black tracking-tight text-primary">Makinari</span>
+      </Link>}
+      center={<form action={base} role="search" className="hidden md:flex w-full min-w-0">
+        <CommerceSearchInput name="search" aria-label="Search published tenders" placeholder="Search published tenders" maxLength={200} value={query} onChange={setQuery} />
+      </form>}
+      actions={<div className="flex items-center justify-end gap-1 md:gap-3 min-w-0">
+        <MobileShellSearchIconButton ref={trigger} value={query} label="Search published tenders" onOpen={() => setMobileSearchOpen(true)} />
+        <div data-commerce-shell-actions-core className="flex items-center justify-end gap-2 min-w-0">
+          {user && <Link href="/home/submissions" className={`hidden lg:inline-flex ${shellClasses.navItem} ${shellClasses.navItemInactive}`}>My submissions</Link>}
+          {primaryActions && <div data-commerce-page-primary-actions>{primaryActions}</div>}
+          {!isLoading && (user ? <Link href="/home" aria-label="My account" className="hover:opacity-80 transition-opacity shrink-0">
+            <span className="w-8 h-8 min-w-8 rounded-full bg-muted flex items-center justify-center border border-border shadow-sm"><User className="w-4 h-4 text-muted-foreground" /></span>
+          </Link> : <>
+            <Link href={signInHref} onClick={onSignInClick} className={`md:hidden ${shellClasses.iconButton}`} aria-label="Sign in"><User className="h-4 w-4" /></Link>
+            <div className="hidden md:inline-flex"><Button asChild variant={primaryActions ? 'ghost' : 'default'} className="h-9 !min-w-0 px-[15px] py-[7px] font-bold"><Link href={signInHref} onClick={onSignInClick}>Sign in</Link></Button></div>
+          </>)}
+        </div>
+      </div>} />
+  </>
+}
+
+export function TenderFooter() {
+  return <footer className="mt-auto border-t border-border/50 py-8">
+    <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-4 px-4 md:px-8 text-sm text-muted-foreground">
+      <p>Makinari · Published procurement opportunities</p>
+      <nav aria-label="Commerce navigation" className="flex flex-wrap gap-4"><Link href="/marketplace">Marketplace</Link><Link href="/tenders">All public tenders</Link><Link href="/home/submissions">My submissions</Link></nav>
+    </div>
+  </footer>
+}

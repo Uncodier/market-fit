@@ -1,0 +1,1 @@
+export { default } from '@/app/buyer/quotes/page'

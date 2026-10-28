@@ -1,5 +1,6 @@
 "use client"
 
+import { procurementRouteTitle } from '@/lib/navigation/procurement-route-title'
 import { usePathname, useSearchParams } from "next/navigation"
 import { Button } from "../ui/button"
 import { NavigationLink } from "./NavigationLink"
@@ -100,6 +101,8 @@ export function TopBarTitle({
 
   // Get the default title from the first route segment
   const getDefaultTitle = useCallback(() => {
+    const procurementTitle = procurementRouteTitle(pathname)
+    if (procurementTitle) return procurementTitle
     const pathSegments = pathname.split('/').filter(Boolean)
     if (pathSegments.length === 0) return "Dashboard"
     

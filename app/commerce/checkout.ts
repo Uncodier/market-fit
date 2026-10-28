@@ -163,6 +163,7 @@ export async function checkoutCart(params: CheckoutCartParams) {
       const { data: quote, error: quoteError } = await supabaseAdmin
         .from("quotations")
         .select("*, items:quotation_items(*)")
+        .not("site_id", "is", null)
         .eq("id", params.quotationId)
         .single()
       if (quoteError || !quote) throw new Error("Quotation not found")

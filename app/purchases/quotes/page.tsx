@@ -6,6 +6,7 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { BuyerQuotesView } from "@/app/buyer/components/BuyerQuotesView"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { FileText } from "@/app/components/ui/icons"
+import { ProcurementQuotesPanel } from "@/app/purchases/procurement/commerce/ProcurementQuotesPanel"
 
 export default function PurchasesQuotesPage() {
   const { currentSite } = useSite()
@@ -32,6 +33,7 @@ export default function PurchasesQuotesPage() {
 
   return (
     <div className="flex-1 flex flex-col min-h-[calc(100vh-var(--topbar-height,64px))] bg-muted/30">
+      <ProcurementQuotesPanel siteId={currentSite.id} />
       <BuyerQuotesView scope="site" basePath="/purchases" />
     </div>
   )

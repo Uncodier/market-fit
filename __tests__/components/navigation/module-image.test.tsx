@@ -1,7 +1,12 @@
-import { render, screen } from "@testing-library/react"
+import { fireEvent, render, screen } from "@testing-library/react"
 import { ModuleImage } from "@/app/components/navigation/ModuleImage"
 
 describe("ModuleImage", () => {
+  it("keeps a visible accessible icon when generated procurement artwork fails", () => {
+    render(<ModuleImage area="buying" itemKey="suppliers" title="Suppliers" />)
+    fireEvent.error(screen.getByRole("img", { name: "Suppliers app icon" }))
+    expect(screen.getByRole("img", { name: "Suppliers app icon" }).querySelector("svg")).not.toBeNull()
+  })
   it.each([
     ["assets", "/images/modules/makinari-2026-09-30/assets.webp"],
     ["promotions", "/api/public/image/prompt/"],

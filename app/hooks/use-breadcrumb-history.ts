@@ -1,5 +1,6 @@
 "use client"
 
+import { procurementRouteTitle } from '@/lib/navigation/procurement-route-title'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { usePathname, useSearchParams, useRouter } from 'next/navigation'
 import { reduceBreadcrumb, enforceInvariants, getScreenKey, hasId } from '@/lib/navigation/breadcrumb-engine'
@@ -119,6 +120,8 @@ function isDirectNavigation(): boolean {
  * Generate a label for a route based on path and query params
  */
 function generateLabel(pathname: string, searchParams: URLSearchParams | null): string {
+  const procurementTitle = procurementRouteTitle(pathname)
+  if (procurementTitle) return procurementTitle
   const pathSegments = pathname.split('/').filter(Boolean)
   
   if (pathSegments.length === 0) return 'Dashboard'

@@ -1,6 +1,6 @@
 # Suppliers, Procurement, Tenders, and the Unified Account Portal
 
-**Status:** agreed product direction; implementation design, not shipped behavior.
+**Status:** agreed design, not shipped; [local configuration slice](PROCUREMENT_IMPLEMENTATION.md).
 **Design baseline:** 2026-10-14; scope extended 2026-10-27. Existing behavior was inspected in the local repository;
 the deployed application and remote database schema were not verified.
 
@@ -384,9 +384,9 @@ without a current workspace site. Public `/tenders` and private `/home/tenders` 
 5. **Later:** split/lot awards, advanced weighted evaluation, supplier performance,
    contracts/renewals, automated sourcing, advanced search and global-directory recommendations.
 
-Configurable approval rules and remaining decisions are defined in [the policy extension](PROCUREMENT_POLICIES_DESIGN.md);
-they are not claims about existing database enums. Decide opening/withdrawal rules,
-supplier representation onboarding, tax/unit handling, and retention policy explicitly.
+The [policy extension](PROCUREMENT_POLICIES_DESIGN.md) defines direct purchases, net thresholds,
+cumulative rules, fallback, supervisor exceptions, urgent presets and human/AI decisions.
+It tracks remaining decisions; legal evidence is optional by rule and AI review provisional.
 Do not block the first vertical slice on replacing the entire CRM or building an ERP.
 
 ### Required acceptance checks

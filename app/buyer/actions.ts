@@ -48,7 +48,7 @@ export async function getBuyerPortalSummary({
 
   let ordersQ = supabaseService.from('sale_orders').select('created_at', { count: 'exact' })
   let subsQ = supabaseService.from('subscriptions').select('created_at', { count: 'exact' })
-  let quotesQ = supabaseService.from('quotations').select('created_at', { count: 'exact' })
+  let quotesQ = supabaseService.from('quotations').select('created_at', { count: 'exact' }).not('site_id', 'is', null)
   let libQ = supabaseService.from('entitlements').select('granted_at, catalog_item:catalog_items(digital_subtype)').eq('status', 'active')
   let recentQ = supabaseService.from('sale_orders').select('id, order_number, total, status, created_at, site:site_id(name, logo_url)').order('created_at', { ascending: false }).limit(3)
   let reservationsQ = supabaseService.from('reservations')
@@ -316,6 +316,7 @@ export async function listBuyerQuotes({
   let query = supabase
     .from('quotations')
     .select('*, site:site_id(id, name)', { count: 'exact' })
+    .not('site_id', 'is', null)
     .eq('buyer_user_id', session.user.id)
 
   if (status && status !== 'all') {
