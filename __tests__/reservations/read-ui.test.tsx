@@ -42,10 +42,10 @@ beforeEach(() => {
   ;(getCalendarBlocks as jest.Mock).mockResolvedValue({ data: [] })
 })
 
-it("provides explicit month picker, navigation and search scope", () => {
+it("provides month picker and navigation without the explanatory note", () => {
   const change = jest.fn()
   render(<ReservationListPeriod date={new Date(2026, 0, 31)} onChange={change} />)
-  expect(screen.getByText(/Search and filters apply to this period/)).toBeInTheDocument()
+  expect(screen.queryByText(/Showing all reservations and blocks/)).not.toBeInTheDocument()
   fireEvent.click(screen.getByRole("button", { name: "Next month" }))
   expect(change).toHaveBeenLastCalledWith(new Date(2026, 1, 28))
   fireEvent.change(screen.getByLabelText("Reservation month"), { target: { value: "2027-12" } })

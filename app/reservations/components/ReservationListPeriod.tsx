@@ -16,6 +16,5 @@ export function ReservationListPeriod({ date, onChange }: { date: Date; onChange
     </label>
     <Button variant="outline" size="sm" aria-label="Next month" onClick={() => move(1)}>Next</Button>
     <Button variant="ghost" size="sm" onClick={() => onChange(new Date())}>This month</Button>
-    <span className="w-full text-left sm:text-right">Showing all reservations and blocks overlapping this month. Search and filters apply to this period.</span>
   </div>
 }
