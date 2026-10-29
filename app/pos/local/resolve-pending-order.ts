@@ -80,6 +80,9 @@ export async function resolvePendingOrder(
         rows.filter((candidate) => candidate.clientMutationId === row.clientMutationId).length !== 1) {
         throw new Error(MISMATCH);
       }
+      if ((row.resultOrderId && isLocal(row.resultOrderId)) ||
+        (row.recoveryOrderId && isLocal(row.recoveryOrderId))) throw new Error(MISMATCH);
+      if (row.status === "failed" && row.recoveryState === "rejected") continue;
       if (row.recoveryState || (row.status !== "synced" &&
         (data.payments != null && (!Array.isArray(data.payments) || data.payments.length > 0)))) throw new Error(REVIEW);
       if (row.status !== "synced") {
@@ -88,8 +91,6 @@ export async function resolvePendingOrder(
           !Array.isArray(data.lines) || !data.lines.length || !data.lines.every((line) => line &&
             hasText(line.catalogItemId) && Number.isFinite(line.quantity) && line.quantity > 0)) throw new Error(MISMATCH);
       }
-      if ((row.resultOrderId && isLocal(row.resultOrderId)) ||
-        (row.recoveryOrderId && isLocal(row.recoveryOrderId))) throw new Error(MISMATCH);
       // The worker may synchronize a local creator dependency. Validate that
       // creator here too, before allowing it to dispatch any original checkout.
       if (data.existingOrderId && isLocal(data.existingOrderId) &&
@@ -99,12 +100,15 @@ export async function resolvePendingOrder(
     }
     const serverIds = [...evidence.ids].filter((id) => !isLocal(id));
     if (serverIds.length > 1) throw new Error(MISMATCH);
+    if (!serverIds.length && evidence.rows.every(row => row.status === "failed" && row.recoveryState === "rejected")) {
+      throw new Error("This local order was rejected or cancelled before creation. Its history is kept in the sync queue; start a new order.");
+    }
     return { ...evidence, serverId: serverIds[0] };
   };
 
   let evidence = await readEvidence();
   while (true) {
-    const pending = evidence.rows.find((row) => row.status !== "synced");
+    const pending = evidence.rows.find((row) => row.status !== "synced" && row.recoveryState !== "rejected");
     if (!pending) break;
     assertCurrent();
     await syncPosCheckout(siteId, pending.clientMutationId);
@@ -115,7 +119,7 @@ export async function resolvePendingOrder(
     if (!current || current.clientMutationId !== pending.clientMutationId || current.status !== "synced") throw new Error(SAVED);
   }
   assertCurrent();
-  if (!evidence.serverId || evidence.rows.some((row) => row.resultOrderId !== evidence.serverId &&
+  if (!evidence.serverId || evidence.rows.some((row) => row.recoveryState !== "rejected" && row.resultOrderId !== evidence.serverId &&
     !evidence.mappings.some((map) => map.serverId === evidence.serverId && orderIds(row).includes(map.localId)))) {
     throw new Error(MISMATCH);
   }

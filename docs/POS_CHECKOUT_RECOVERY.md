@@ -156,6 +156,16 @@ remain. A late processing status read cannot undo confirmed rejection.
 Rejected/cancelled attempts remain visible for audit but no longer count as active
 sync errors or block register closing. They are not reported as paid/synchronized.
 
+The local order selector filters a rejected creator draft only when every related
+local attempt is also rejected and there are no recorded server order/sale links.
+This also applies to legacy rows already rejected before this update: no hash
+backfill is needed. Queue history is retained. An unresolved dependent payment keeps
+the local draft visible. Selecting a stale rejected-only draft explains that it was
+cancelled before creation instead of reporting a payment conflict. Rejected attempts
+on an existing server order no longer block loading its freshly authorized snapshot.
+Cancellation conflicts distinguish missing admission evidence from started/completed
+writes; neither is presented as successful cancellation or removed from the selector.
+
 Only the original authorized cashier can cancel an existing attempt still before
 checkout writes (`processing`), or acknowledge one already `rejected`. Missing
 legacy attempts, completed payments, `writes_started`, and `review_required`

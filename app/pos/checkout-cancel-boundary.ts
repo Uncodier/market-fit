@@ -17,7 +17,7 @@ const outcomeSchema = z.object({
 });
 type CancelResult =
   | { status: 200; body: { data: PosCheckoutRecovery; error?: never } }
-  | { status: 400 | 401 | 403 | 409 | 500; body: { data?: never; error: string } };
+  | { status: 400 | 401 | 403 | 409 | 500; body: { data?: never; error: string; cancellationState?: string } };
 
 /** The actor is session-derived; the RPC reauthorizes and serializes cancellation. */
 export async function cancelPosCheckout(input: unknown): Promise<CancelResult> {
@@ -41,6 +41,7 @@ export async function cancelPosCheckout(input: unknown): Promise<CancelResult> {
       return { status: 403, body: { error: "Forbidden checkout cancellation." } };
     }
     if (outcome.state !== "rejected") return { status: 409, body: {
+      cancellationState: outcome.state,
       error: "This operation cannot be safely cancelled. Keep the original attempt and check payment status or ask a manager to review it.",
     } };
     return { status: 200, body: { data: {

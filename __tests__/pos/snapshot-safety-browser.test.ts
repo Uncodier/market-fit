@@ -57,7 +57,7 @@ suite("POS snapshot safety with real Chromium IndexedDB (isolated, no app server
     await page.addScriptTag({ path: path.join(process.cwd(), "node_modules/dexie/dist/dexie.js") });
     const modules = Object.fromEntries([
       "db", "location-permission-state", "remote-permission", "snapshot-pull", "sync-engine",
-      "sync-errors", "sync-policy", "catalog-sync-progress", "indexeddb-runtime", "storage-diagnostic",
+      "sync-errors", "sync-policy", "catalog-sync-progress", "indexeddb-runtime", "storage-diagnostic", "rejected-order-projection",
     ].map((name) => [`./${name}`, source(`app/pos/local/${name}.ts`)]));
     modules["@/app/pos/open-orders"] = source("app/pos/open-orders.ts");
     await page.addScriptTag({ content: `(() => {
@@ -94,6 +94,22 @@ suite("POS snapshot safety with real Chromium IndexedDB (isolated, no app server
     }, scope);
   });
   afterEach(async () => { await page?.close(); });
+
+  it("retires an already-rejected legacy draft on read and refresh without deleting queue history", async () => {
+    const result = await page.evaluate(async ({ draft, attempt, scope }) => {
+      const { db, snapshot, permission } = window.snapshotSafety;
+      const store = db.getPosDb();
+      await store.pendingOrders.put(draft);
+      await store.outbox.put({ ...attempt, status: "failed", recoveryState: "rejected" });
+      const before = await store.outbox.get(attempt.id);
+      const visible = await snapshot.readLocalPendingOrders(scope.siteId);
+      await snapshot.applyPosOpenOrders(scope.siteId, [], permission.getPosPermissionLease(scope.siteId)!);
+      return { visible, projection: await store.pendingOrders.toArray(), before, after: await store.outbox.get(attempt.id) };
+    }, { draft: order("local_original", "original"), attempt: checkout("original"), scope });
+    expect(result.visible).toEqual([]);
+    expect(result.projection).toEqual([]);
+    expect(result.after).toEqual(result.before);
+  });
 
   it.each(["browser-offline", "local-only", "reconnected"] as const)(
     "does not overwrite the local projection with an orders response after %s", async (transition) => {

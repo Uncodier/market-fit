@@ -53,6 +53,21 @@ describe("safe pending POS order resolution", () => {
     expect(rows[1].payload).toEqual(payload);
   });
 
+  it("explains a cancelled local creator instead of reporting an unresolvable payment conflict", async () => {
+    rows[0].status = "failed";
+    rows[0].recoveryState = "rejected";
+    await expect(resolvePendingOrder("site", "local_original")).rejects.toThrow("cancelled before creation");
+    expect(syncPosCheckout).not.toHaveBeenCalled();
+  });
+
+  it("does not replay rejected payment attempts when loading their existing server order", async () => {
+    rows = [{ ...checkout("payment", { existingOrderId: "server-order", payments: [{ method: "cash", amount: 5 }] }),
+      status: "failed", recoveryState: "rejected" }];
+    await expect(resolvePendingOrder("site", "server-order")).resolves.toBe("server-order");
+    expect(syncPosCheckout).not.toHaveBeenCalled();
+    expect(rows[0].recoveryState).toBe("rejected");
+  });
+
   it("synchronizes only related unpaid updates before using the latest server ID", async () => {
     rows.push(checkout("edit", { existingOrderId: "local_original" }), checkout("other"));
     await expect(resolvePendingOrder("site", "local_original")).resolves.toBe("server-order");

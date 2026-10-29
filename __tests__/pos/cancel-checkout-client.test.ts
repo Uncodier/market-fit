@@ -31,6 +31,14 @@ it.each([409, 500])("never unlocks local payments on HTTP %s", async (status) =>
   await expect(cancelPosCheckout("site", "row", "Mistake")).rejects.toThrow(/Cancellation/);
   expect(applyPosCheckoutRecovery).not.toHaveBeenCalled();
 });
+it.each([
+  ["not_found", "no admission record"], ["writes_started", "started checkout writes"],
+  ["review_required", "started checkout writes"], ["completed", "started checkout writes"],
+])("explains %s cancellation refusal without applying a local rejection", async (cancellationState, message) => {
+  jest.mocked(fetch).mockResolvedValue({ ok: false, status: 409, json: async () => ({ cancellationState }) } as Response);
+  await expect(cancelPosCheckout("site", "row", "Mistake")).rejects.toThrow(message);
+  expect(applyPosCheckoutRecovery).not.toHaveBeenCalled();
+});
 it.each([{ siteId: "other" }, { status: "synced" }, { payload: { kind: "checkout", data: { userId: "other" } } }])(
   "rejects changed ownership or completed operation %j", async (patch) => {
     get.mockResolvedValue({ ...row, ...patch });

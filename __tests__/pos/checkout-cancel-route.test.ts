@@ -133,7 +133,7 @@ it.each(['not_found', 'processing', 'writes_started', 'completed', 'review_requi
     rpc.mockResolvedValue({ data: { state }, error: null });
     const response = await POST(request());
     expect(response.status).toBe(409);
-    expect(await response.json()).toEqual({ error: expect.any(String) });
+    expect(await response.json()).toEqual({ error: expect.any(String), cancellationState: state });
   },
 );
 it.each([{ data: { state: 'identity_conflict' } }, { error: { code: '42501', message: 'private SQL' } }])(
