@@ -7,7 +7,8 @@ export type ReadIssue = {
   contentType?: string; bodyLength?: number; bodyHash?: string;
   parseClassification?: 'invalid-json'; bodyRepresentation?: 'response-text-utf8';
 };
-type Observation = { issues: ReadIssue[]; pending: Set<Promise<void>>; inFlight: Set<import('@playwright/test').Request>; expectedActionErrors: Map<string, string>; stop: () => void };
+type Observation = { issues: ReadIssue[]; pending: Set<Promise<void>>; inFlight: Set<import('@playwright/test').Request>;
+  unavailableBodies: Map<Request, ReadIssue>; expectedActionErrors: Map<string, string>; stop: () => void };
 const observations = new WeakMap<Page, Observation>();
 
 export function safeEndpoint(value: string): { origin: string; path: string } {
@@ -20,7 +21,8 @@ export function safeEndpoint(value: string): { origin: string; path: string } {
 
 export function isUnexpectedHttp(status: number, url: string): boolean {
   const { pathname } = new URL(url);
-  return status >= 500 || (status >= 400 && (pathname.startsWith('/api/') || pathname.startsWith('/rest/v1/')));
+  return status >= 500 || (status >= 400 && (pathname.startsWith('/api/') || pathname.startsWith('/rest/v1/') ||
+    pathname.startsWith('/_next/static/')));
 }
 
 /** Speculative Next.js streams are not data reads needed by the current screen. */
@@ -75,6 +77,9 @@ export function startReadObservation(page: Page): void {
   const issues: ReadIssue[] = [];
   const pending = new Set<Promise<void>>();
   const inFlight = new Set<import('@playwright/test').Request>();
+  // Chromium may reject Response.text() before requestfailed updates failure().
+  // Defer only unavailable/empty bodies until terminal request state is known.
+  const unavailableBodies = new Map<Request, ReadIssue>();
   const expectedActionErrors = new Map<string, string>();
   const origins = new Set([
     process.env.TEST_BASE_URL,
@@ -96,7 +101,14 @@ export function startReadObservation(page: Page): void {
         // Chromium may resolve an aborted read to empty text instead of rejecting.
         // Require the same explicit cancellation proof as unavailable-body handling;
         // an empty successful JSON response without that proof remains a failure.
-        if (body === '' && result.request().failure()?.errorText.includes('ERR_ABORTED')) return;
+        if (body.length === 0) {
+          if (!result.request().failure()?.errorText.includes('ERR_ABORTED')) {
+            const diagnostics = invalidJsonDiagnostics(body, contentType);
+            unavailableBodies.set(result.request(), { kind: 'application', ...safeEndpoint(url), ...diagnostics,
+              ...(diagnostics.parseClassification ? { method: result.request().method(), status: result.status() } : {}) });
+          }
+          return;
+        }
         const expectedError = isAction ? expectedActionErrors.get(new URL(url).pathname) : undefined;
         if (hasApplicationError(body, contentType, expectedError)) {
           const diagnostics = invalidJsonDiagnostics(body, contentType);
@@ -107,7 +119,7 @@ export function startReadObservation(page: Page): void {
         // Chromium cannot supply a body for a fetch explicitly cancelled by the UI.
         // Match requestfailed's cancellation policy; HTTP failures were recorded above.
         if (!result.request().failure()?.errorText.includes('ERR_ABORTED')) {
-          issues.push({ kind: 'network', ...safeEndpoint(url) });
+          unavailableBodies.set(result.request(), { kind: 'network', ...safeEndpoint(url) });
         }
       });
       pending.add(check);
@@ -130,7 +142,10 @@ export function startReadObservation(page: Page): void {
         !isSpeculativeRead(request) && !url.pathname.startsWith('/realtime/') &&
         !url.pathname.includes('/assistant')) inFlight.add(request);
   };
-  const finished = (request: import('@playwright/test').Request) => { inFlight.delete(request); };
+  const finished = (request: import('@playwright/test').Request) => {
+    inFlight.delete(request);
+    if (request.failure()?.errorText.includes('ERR_ABORTED')) unavailableBodies.delete(request);
+  };
   page.on('request', started);
   page.on('requestfinished', finished);
   page.on('requestfailed', finished);
@@ -138,7 +153,7 @@ export function startReadObservation(page: Page): void {
   page.on('requestfailed', failed);
   page.on('pageerror', error);
   page.on('console', consoleError);
-  observations.set(page, { issues, pending, inFlight, expectedActionErrors, stop: () => {
+  observations.set(page, { issues, pending, inFlight, unavailableBodies, expectedActionErrors, stop: () => {
     page.off('request', started);
     page.off('requestfinished', finished);
     page.off('requestfailed', finished);
@@ -171,6 +186,9 @@ export async function assertReadObservation(page: Page): Promise<void> {
   if (!observation) throw new Error('Read observation was not started before navigation');
   try {
     await waitForObservedReads(page);
+    for (const [request, issue] of observation.unavailableBodies) {
+      if (!request.failure()?.errorText.includes('ERR_ABORTED')) observation.issues.push(issue);
+    }
     expect(observation.issues, 'Unexpected application/dependency failures; a rendered page is not a healthy read').toEqual([]);
   } finally {
     observation.stop();

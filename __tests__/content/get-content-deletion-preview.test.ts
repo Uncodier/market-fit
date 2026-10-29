@@ -45,6 +45,16 @@ const requestedIds = () => jest.mocked(fetch).mock.calls.map(([url]) => new URL(
 const linked = (count: number) => Array.from({ length: count }, (_, index) => `outstand_id_post-${index}`)
 const successfulFetch = async (url: Parameters<typeof fetch>[0]) => Response.json(snapshot(new URL(String(url)).pathname.split("/").pop()))
 
+function authorizedRpc(name: string, args: { p_site_id: string; p_command?: string }) {
+  if (args.p_site_id === siteId) {
+    if (name === "current_user_site_role") return { data: "owner", error: null }
+    if (name === "user_can" && ["delete", "select"].includes(args.p_command ?? "")) return { data: true, error: null }
+    // This RPC reports restrictions, not a capability: only false allows access.
+    if (name === "current_user_has_site_location_restrictions") return { data: false, error: null }
+  }
+  throw new Error(`Unexpected permission RPC: ${name}`)
+}
+
 function expectFailure(result: unknown, status: number) {
   expect(result).toEqual({ success: false, status, error: expect.any(String) })
   expect(result).not.toHaveProperty("data")
@@ -57,7 +67,7 @@ beforeEach(() => {
   process.env.SERVICE_API_KEY = serviceKey
   getUser.mockReset().mockResolvedValue({ data: { user: { id: userId } }, error: null })
   getSession.mockReset().mockResolvedValue({ data: { session: { user: { id: userId }, access_token: userToken } }, error: null })
-  rpc.mockReset().mockImplementation(async (name: string) => ({ data: name === "current_user_site_role" ? "owner" : true, error: null }))
+  rpc.mockReset().mockImplementation(async (name, args) => authorizedRpc(name, args))
   load.mockReset().mockResolvedValue({ data: record(), error: null })
   jest.mocked(createClient).mockReset().mockResolvedValue({ auth: { getUser, getSession }, rpc, from })
   jest.mocked(fetch).mockReset().mockImplementation(successfulFetch)
@@ -94,6 +104,7 @@ it("returns only the minimal preview from a real GET snapshot after delete and s
     ["user_can", { p_site_id: siteId, p_command: "delete" }],
     ["current_user_site_role", { p_site_id: siteId }],
     ["user_can", { p_site_id: siteId, p_command: "select" }],
+    ["current_user_has_site_location_restrictions", { p_site_id: siteId }],
   ])
   expect(getUser).toHaveBeenCalledTimes(2)
   expect(getSession).toHaveBeenCalledTimes(1)
@@ -164,7 +175,8 @@ it.each([
 
 it("authorizes the persisted foreign site rather than trusting the content ID or guessed tenant", async () => {
   load.mockResolvedValue({ data: { ...record(), site_id: otherSite }, error: null })
-  rpc.mockImplementation(async (_name, args) => ({ data: args.p_site_id === siteId, error: null }))
+  rpc.mockImplementation(async (name, args) => name === "user_can" && args.p_site_id === otherSite && args.p_command === "delete"
+    ? { data: false, error: null } : authorizedRpc(name, args))
   expectFailure(await invoke(), 403)
   expect(rpc).toHaveBeenCalledWith("user_can", { p_site_id: otherSite, p_command: "delete" })
   expect(fetch).not.toHaveBeenCalled()
@@ -174,17 +186,51 @@ describe.each(["delete", "select"])("%s capability", command => {
   it.each([false, null, "true", "rpc-error"])("fails closed on %j", async capability => {
     rpc.mockImplementation(async (name, args) => name === "user_can" && args.p_command === command
       ? { data: capability === "rpc-error" ? true : capability, error: capability === "rpc-error" ? { message: privateDetail } : null }
-      : { data: name === "current_user_site_role" ? "owner" : true, error: null })
+      : authorizedRpc(name, args))
     expectFailure(await invoke(), 403)
+    expect(rpc).toHaveBeenLastCalledWith("user_can", { p_site_id: siteId, p_command: command })
     expect(getSession).not.toHaveBeenCalled()
     expect(fetch).not.toHaveBeenCalled()
   })
 })
 
-it.each([null, "outsider", "viewer", "rpc-error"])("rejects invalid site membership: %j", async role => {
-  rpc.mockImplementation(async name => ({ data: name === "current_user_site_role" ? role : true,
-    error: name === "current_user_site_role" && role === "rpc-error" ? { message: privateDetail } : null }))
+it.each([[null, 403], ["outsider", 403], ["viewer", 403], ["rpc-error", 503]])("fails closed on invalid or unavailable site membership: %j", async (role, status) => {
+  rpc.mockImplementation(async (name, args) => name === "current_user_site_role"
+    ? { data: role, error: role === "rpc-error" ? { message: privateDetail } : null } : authorizedRpc(name, args))
+  expectFailure(await invoke(), status as number)
+  expect(rpc.mock.calls).toEqual([
+    ["user_can", { p_site_id: siteId, p_command: "delete" }],
+    ["current_user_site_role", { p_site_id: siteId }],
+  ])
+  expect(getSession).not.toHaveBeenCalled()
+  expect(fetch).not.toHaveBeenCalled()
+})
+
+it.each([
+  [true, null], [null, null], [undefined, null], ["false", null], [{}, null], [[], null],
+  [false, { message: privateDetail }],
+])("denies preview for restricted or unknown location access (%#)", async (data, error) => {
+  rpc.mockImplementation(async (name, args) => name === "current_user_has_site_location_restrictions"
+    ? { data, error } : authorizedRpc(name, args))
   expectFailure(await invoke(), 403)
+  expect(rpc.mock.calls).toEqual([
+    ["user_can", { p_site_id: siteId, p_command: "delete" }],
+    ["current_user_site_role", { p_site_id: siteId }],
+    ["user_can", { p_site_id: siteId, p_command: "select" }],
+    ["current_user_has_site_location_restrictions", { p_site_id: siteId }],
+  ])
+  expect(getSession).not.toHaveBeenCalled()
+  expect(fetch).not.toHaveBeenCalled()
+})
+
+it("fails closed when the location restriction lookup throws", async () => {
+  rpc.mockImplementation(async (name, args) => {
+    if (name === "current_user_has_site_location_restrictions") throw new Error(privateDetail)
+    return authorizedRpc(name, args)
+  })
+  expectFailure(await invoke(), 403)
+  expect(rpc).toHaveBeenLastCalledWith("current_user_has_site_location_restrictions", { p_site_id: siteId })
+  expect(getSession).not.toHaveBeenCalled()
   expect(fetch).not.toHaveBeenCalled()
 })
 
@@ -389,8 +435,20 @@ it("reloads persisted links and reauthorizes every preview instead of caching pr
   load.mockResolvedValue({ data: record(["outstand_id_new-link"]), error: null })
   expect(await invoke()).toMatchObject({ success: true })
   expect(requestedIds()).toEqual(["post-one", "new-link"])
-  rpc.mockResolvedValue({ data: false, error: null })
+  rpc.mockImplementation(async (name, args) => name === "user_can" && args.p_command === "delete"
+    ? { data: false, error: null } : authorizedRpc(name, args))
   expectFailure(await invoke(), 403)
   expect(load).toHaveBeenCalledTimes(3)
   expect(fetch).toHaveBeenCalledTimes(2)
+})
+
+it("denies a subsequent preview when location restrictions are added", async () => {
+  expect(await invoke()).toMatchObject({ success: true })
+  rpc.mockImplementation(async (name, args) => name === "current_user_has_site_location_restrictions"
+    ? { data: true, error: null } : authorizedRpc(name, args))
+  expectFailure(await invoke(), 403)
+  expect(rpc).toHaveBeenLastCalledWith("current_user_has_site_location_restrictions", { p_site_id: siteId })
+  expect(load).toHaveBeenCalledTimes(2)
+  expect(getSession).toHaveBeenCalledTimes(1)
+  expect(fetch).toHaveBeenCalledTimes(1)
 })

@@ -9,6 +9,7 @@ import {
   readThroughJsonCache,
 } from '@/lib/redis/json-cache'
 import { z } from 'zod'
+import { readRedditListing, requestRedditAccessToken, RedditProviderError } from './provider-response'
 import {
   decodeRequestBody,
   readLimitedRequestBody,
@@ -30,36 +31,14 @@ const requestSchema = z.object({
   keywords: z.array(z.string().trim().max(80).transform(value => value.toLowerCase())).max(12).default([]),
 })
 
-interface RedditPost {
-  title: string
-  score: number
-  ups: number
-  num_comments: number
-  created_utc: number
-  subreddit: string
-  permalink: string
-  url: string
-  selftext?: string
-}
-
-interface RedditApiResponse {
-  data: {
-    children: Array<{
-      data: RedditPost
-    }>
-  }
-}
-
-class RedditProviderError extends Error {}
-
 // Dynamic subreddit selection based on segment keywords
-function selectSubredditFromSegments(segments: any[]): string {
+function selectSubredditFromSegments(segments: Array<{ name: string; description?: string }>): string {
   if (!segments || segments.length === 0) return 'entrepreneur+business+startups'
   
   console.log('🎯 [Reddit] Selecting subreddits for segments:', segments.map(s => s.name))
   
   // Extract key terms from all segments
-  const allSegmentText = segments.map((s: any) => `${s.name} ${s.description || ''}`).join(' ').toLowerCase()
+  const allSegmentText = segments.map(s => `${s.name} ${s.description || ''}`).join(' ').toLowerCase()
   
   // Universal business subreddits that work for most segments
   const businessSubreddits = ['entrepreneur', 'business', 'startups', 'smallbusiness']
@@ -107,10 +86,11 @@ async function getRedditAccessToken(): Promise<string | null> {
   const clientId = process.env.REDDIT_CLIENT_ID
   const clientSecret = process.env.REDDIT_CLIENT_SECRET
   
-  if (!clientId || !clientSecret) {
+  if (!clientId && !clientSecret) {
     console.log('🔓 [Reddit API] No credentials found, using public API')
     return null
   }
+  if (!clientId || !clientSecret) throw new RedditProviderError('authorization', 'payload')
 
   try {
     console.log('🔑 [Reddit API] Authenticating with Reddit...')
@@ -119,36 +99,15 @@ async function getRedditAccessToken(): Promise<string | null> {
     const cachedToken = await getCachedJson<string>(tokenCacheKey)
     if (cachedToken) return cachedToken
 
-    const authString = Buffer.from(`${clientId}:${clientSecret}`).toString('base64')
-    
-    const response = await fetch('https://www.reddit.com/api/v1/access_token', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Basic ${authString}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'User-Agent': process.env.REDDIT_USER_AGENT || 'MarketFit/1.0'
-      },
-      body: 'grant_type=client_credentials',
-      signal: AbortSignal.timeout(10_000),
-    })
-
-    if (!response.ok) {
-      console.error('❌ [Reddit API] Auth failed:', response.status)
-      return null
-    }
-
-    const authData = await response.json() as {
-      access_token?: string
-      expires_in?: number
-    }
-    if (!authData.access_token) return null
+    const authData = await requestRedditAccessToken(clientId, clientSecret, process.env.REDDIT_USER_AGENT || 'MarketFit/1.0')
     const ttl = Math.max(60, Math.min((authData.expires_in || 3600) - 60, 3600))
     await setCachedJson(tokenCacheKey, authData.access_token, ttl)
     console.log('✅ [Reddit API] Authentication successful')
     return authData.access_token
   } catch (error) {
-    console.error('❌ [Reddit API] Auth error:', error)
-    return null
+    // A configured OAuth failure must not silently switch to anonymous access.
+    if (error instanceof RedditProviderError) throw error
+    throw new RedditProviderError('authorization', 'transport')
   }
 }
 
@@ -177,17 +136,7 @@ async function loadRedditTrends(input: z.infer<typeof requestSchema>) {
   console.log('📊 [Reddit API] Target subreddits:', targetSubreddit)
   console.log('🔍 [Reddit API] Filtering for segments:', segments.map(segment => segment.name).join(', ') || 'None')
 
-  const response = await fetch(redditUrl, {
-    headers,
-    signal: AbortSignal.timeout(10_000),
-  })
-
-  if (!response.ok) {
-    console.warn(`Reddit API error: ${response.status}`)
-    throw new RedditProviderError()
-  }
-
-  const data: RedditApiResponse = await response.json()
+  const data = await readRedditListing(redditUrl, headers)
   let relevantPosts = data.data.children
 
   if (segments.length > 0 && keywords.length > 0) {
@@ -327,6 +276,7 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     if (error instanceof RedditProviderError) {
+      console.warn('Reddit provider unavailable', { phase: error.phase, kind: error.kind, status: error.status })
       return NextResponse.json(
         { success: false, error: 'Reddit provider request failed' },
         { status: 502 }
@@ -344,12 +294,11 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    console.error('Reddit Trends API error:', error)
+    console.error('Reddit Trends API request failed')
     return NextResponse.json(
       {
         success: false,
-        error: 'Failed to fetch Reddit trends data',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        error: 'Failed to fetch Reddit trends data'
       },
       { status: 500 }
     )

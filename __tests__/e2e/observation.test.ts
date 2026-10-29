@@ -12,6 +12,10 @@ describe('read observations do not mistake UI visibility for dependency health',
     expect(isUnexpectedHttp(400, 'https://db.example.com/rest/v1/records')).toBe(true);
     expect(isUnexpectedHttp(200, 'https://app.makinari.com/api/data')).toBe(false);
   });
+  it('requires actual Next static assets rather than relying on a console error to detect missing chunks', () => {
+    expect(isUnexpectedHttp(404, 'http://127.0.0.1:3000/_next/static/chunks/workspace.js')).toBe(true);
+    expect(isUnexpectedHttp(200, 'http://127.0.0.1:3000/_next/static/chunks/workspace.js')).toBe(false);
+  });
   it('does not expose tokens, query strings, fragment identities or UUIDs', () => {
     expect(safeEndpoint('https://app.makinari.com/q/private-token?email=a%40b.com#secret')).toEqual({ origin: 'https://app.makinari.com', path: '/public-document/[redacted]' });
     expect(safeEndpoint('https://app.makinari.com/api/records/11111111-1111-4111-8111-111111111111').path).toBe('/api/records/[id]');

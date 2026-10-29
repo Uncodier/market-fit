@@ -66,11 +66,12 @@ statements:
     js: |-
       testContext.set('dealUrl', page.url());
       await require(process.cwd() + '/tests/support/mutation-fixtures').remember(testContext, 'deal');
-  - description: Click the deal name heading to start inline edit
-    js: "await page.getByRole('heading', { name: `${testContext.get('dealName')}` }).click();"
+  - intent: Click Edit deal name to start inline edit
+    action: click
+    locator: "getByRole('button', { name: 'Edit deal name', exact: true })"
   - intent: Replace the deal name with the edited value
     action: fill
-    locator: locator('input.h-8')
+    locator: "getByRole('textbox', { name: 'Deal name', exact: true })"
     value: "{{dealEditedName}}"
   - intent: Save the inline name edit
     action: press

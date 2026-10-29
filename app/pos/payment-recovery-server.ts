@@ -71,7 +71,13 @@ export async function inspectPosPayment(client: Client, request: PaymentRecovery
         };
       }
     }
+    if (receipts.length) return { state: "review_required", ...linked,
+      message: "Payment evidence is incomplete or inconsistent. Preserve this attempt; do not collect again.",
+    };
   }
+  if (mutation) return { state: "review_required", ...linked,
+    message: "An original operation exists without a verified complete result. Preserve it for review.",
+  };
   return { state: attempt?.state === "writes_started" ? "processing" : attempt ? "review_required" : "not_found", ...linked,
     message: "Payment outcome is not confirmed. Preserve this attempt and review it before collecting again.",
   };

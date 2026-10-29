@@ -1,6 +1,12 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { TrendsTable } from '@/app/components/trends/TrendsTable'
 import type { TrendItem } from '@/app/types/trends'
+import { LocalizationProvider } from '@/app/context/LocalizationContext'
+import type { ReactNode } from 'react'
+
+function EnglishLocalization({ children }: { children: ReactNode }) {
+  return <LocalizationProvider preferredLocale="en">{children}</LocalizationProvider>
+}
 
 const trends: TrendItem[] = Array.from({ length: 11 }, (_, index) => ({
   id: `trend-${index}`, platform: 'google', title: `<b>Trend ${index}</b>`, timestamp: '',
@@ -14,7 +20,7 @@ const trends: TrendItem[] = Array.from({ length: 11 }, (_, index) => ({
 
 it('preserves successful table formatting, signals, row selection and pagination', () => {
   const onTrendClick = jest.fn()
-  render(<TrendsTable trends={trends} onTrendClick={onTrendClick} />)
+  render(<TrendsTable trends={trends} onTrendClick={onTrendClick} />, { wrapper: EnglishLocalization })
   expect(screen.getByText('Trend 0')).toHaveAttribute('title', 'Trend 0')
   expect(screen.getByText('1.5K')).toBeInTheDocument()
   expect(screen.getByText('12.3%')).toBeInTheDocument()
@@ -34,7 +40,7 @@ it('preserves successful table formatting, signals, row selection and pagination
 })
 
 it('clamps the selected page when partial results shrink instead of showing a stale empty page', () => {
-  const { rerender } = render(<TrendsTable trends={trends} onTrendClick={jest.fn()} />)
+  const { rerender } = render(<TrendsTable trends={trends} onTrendClick={jest.fn()} />, { wrapper: EnglishLocalization })
   fireEvent.click(screen.getByRole('button', { name: 'Next page' }))
   fireEvent.click(screen.getByRole('button', { name: 'Next page' }))
   rerender(<TrendsTable trends={trends.slice(0, 2)} onTrendClick={jest.fn()} />)

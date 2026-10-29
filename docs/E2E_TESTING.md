@@ -54,6 +54,20 @@ npm run test:e2e:report -- --run-id RUN_ID
 npm test -- --runInBand __tests__/e2e
 ```
 
+Installer `qa results --id <exact-id>` now exports `test-evidence.json` in addition
+to safe summaries: per-case outcomes, attempts, step indexes, classification and
+reviewed source file/line/column locations. It excludes raw messages/titles,
+payloads, headers, bearer URLs and logs. Validate its extraction status before
+destroying QA; missing reports/count mismatches are explicit errors, not guessed
+test failures. Previous environments whose individual reports were not exported
+cannot be reconstructed from summary counts alone.
+
+Read observation waits for request termination before deciding whether an empty
+or unavailable response body was explicitly cancelled. Cancellation is bound to
+the exact request; genuine empty JSON, nonempty error data, HTTP failures and
+missing Next static assets still fail. Completed browser navigation is never
+equivalent to healthy dependencies.
+
 No production build is part of test validation. Use the installed CLI and committed
 npm lockfile. Generated `*.yaml.spec.ts` remain ignored and must not be hand-edited.
 After strict transpilation, the runner invokes Playwright directly with the

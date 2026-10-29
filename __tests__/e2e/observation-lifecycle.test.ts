@@ -175,4 +175,40 @@ describe('read observer lifecycle', () => {
     p.emit('response', { url: r.url, status: () => 500, headers: () => ({}), request: () => r, ok: () => false });
     await expect(assertReadObservation(p)).rejects.toThrow();
   });
+  it.each(['unavailable-body', 'empty-json'] as const)(
+    'waits for same-request terminal cancellation before classifying %s', async mode => {
+      const p = page();
+      startReadObservation(p);
+      let terminal: { errorText: string } | null = null;
+      const r = { ...request('/api/notifications'), failure: () => terminal };
+      p.emit('request', r);
+      p.emit('response', { url: r.url, status: () => 200,
+        headers: () => ({ 'content-type': 'application/json' }), request: () => r, ok: () => true,
+        text: async () => { if (mode === 'empty-json') return ''; throw new Error('No data found for resource'); } });
+      // CDP body rejection can precede Playwright's requestfailed event.
+      await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+      terminal = { errorText: 'net::ERR_ABORTED' };
+      p.emit('requestfailed', r);
+      await expect(assertReadObservation(p)).resolves.toBeUndefined();
+    },
+  );
+  it('does not apply one request cancellation to a different unavailable response', async () => {
+    const p = page();
+    startReadObservation(p);
+    const actual = request('/api/notifications');
+    const aborted = { ...request('/api/skills'), failure: () => ({ errorText: 'net::ERR_ABORTED' }) };
+    p.emit('response', { url: actual.url, status: () => 200,
+      headers: () => ({ 'content-type': 'application/json' }), request: () => actual, ok: () => true,
+      text: async () => { throw new Error('No data found for resource'); } });
+    p.emit('requestfailed', aborted);
+    await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+    await expect(assertReadObservation(p)).rejects.toThrow();
+  });
+  it('retains missing JavaScript chunks as HTTP failures even after cancellation', async () => {
+    const p = page();
+    startReadObservation(p);
+    const r = { ...request('/_next/static/chunks/workspace.js'), failure: () => ({ errorText: 'net::ERR_ABORTED' }) };
+    p.emit('response', { url: r.url, status: () => 404, headers: () => ({}), request: () => r, ok: () => false });
+    await expect(assertReadObservation(p)).rejects.toThrow();
+  });
 });

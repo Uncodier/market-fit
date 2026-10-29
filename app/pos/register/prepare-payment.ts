@@ -9,8 +9,9 @@ import { throwPaymentRegisterError } from "./payment-register-required"
 import { assertPosRemotePermission } from "../local/remote-permission"
 
 function paymentFingerprint(data: CheckoutOutboxPayload, sameAttempt = false) {
+  // Queue-only metadata must not make an unchanged UI payment look like a new collection.
   return JSON.stringify(data, (key, value) =>
-    (["clientMutationId", "registerSessionId", "paymentId"].includes(key) ||
+    (["clientMutationId", "registerSessionId", "paymentId", "posOperationIdentity"].includes(key) ||
       (sameAttempt && ["leadId", "localLeadId"].includes(key))) ? undefined : value)
 }
 

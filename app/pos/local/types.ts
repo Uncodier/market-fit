@@ -56,6 +56,9 @@ export type PosOutboxRow = {
   payload: OutboxPayload;
   status: OutboxStatus;
   attempts: number;
+  /** Durable cooldown for automatic recovery; not evidence of payment outcome. */
+  checkoutRetryAfter?: number;
+  checkoutRecoveryChecks?: number;
   lastError?: string | null;
   /** Local cart identity only; never sent to checkout as authorization. */
   checkoutCartSessionId?: string;

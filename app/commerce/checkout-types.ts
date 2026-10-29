@@ -19,6 +19,13 @@ export interface CheckoutLine {
   modifiers?: CheckoutLineModifier[]
 }
 
+/** Client metadata, not authorization or operation uniqueness (clientMutationId owns that). */
+export interface PosOperationIdentity {
+  version: 1
+  deviceId: string
+  createdAt: string
+}
+
 export interface CheckoutCartParams {
   siteId: string
   /** Public kiosk location; the server derives the tenant and all payment state. */
@@ -56,6 +63,8 @@ export interface CheckoutCartParams {
   paymentMethod?: string
   scheduledFor?: string
   clientMutationId?: string
+  /** Persisted once by the POS outbox; absent on legacy operations. */
+  posOperationIdentity?: PosOperationIdentity
   quotationId?: string
   publicAccessToken?: string
   notes?: string

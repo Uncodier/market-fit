@@ -2,6 +2,42 @@
 
 ## Operational behavior
 
+### Device-stamped automatic resend
+
+New checkout queue rows retain `posOperationIdentity` (version 1, a browser-profile
+device UUID, and the original local creation timestamp). The server includes these
+fields in its canonical SHA-256 fingerprint. The existing `(site_id,
+client_mutation_id)` primary key remains the atomic admission identity; a hash is
+not a replacement for authorization or a unique business-order identifier.
+The queue does not stamp or rewrite existing legacy attempts. Retry preserves the
+original mutation, device, timestamp and receipt IDs, even after browser reload.
+
+For new rows containing payments, background synchronization checks failed/uncertain
+attempts. Only `not_found` permits a resend through the original checkout admission lock.
+A delayed original request and a resend cannot both acquire that same attempt.
+Completed results are recovered; processing, rejection, recorded payments and
+partial/inconsistent evidence never authorize replay. Failed evidence reads also
+stop replay. The persisted resend cooldown grows from five seconds to five minutes;
+the ordinary sync cycle performs retries when connected and authorized.
+
+Unpaid device-stamped retries can query the same checkout admission directly rather
+than the payment-status endpoint, which is restricted to cashier roles. Admission
+returns the original outcome or refuses an existing unresolved claim before checkout
+writes; this does not grant payment permissions. Explicit local rejection or recorded
+payment evidence still blocks dispatch. Never-dispatched pending work does not accrue
+recovery cooldown while waiting for dependencies. A rolled-back unsent claim restores
+its previous cooldown together with its status and attempt count.
+
+This closes the lost-before-admission transport case, not all partial checkout
+failures. It does not take over abandoned processing claims, rearm rejected or
+cancelled attempts, or replay reservations/inventory/finalization. Legacy incidents
+still require reconciliation. No new migration is needed for this bounded protocol;
+the existing durable-admission migration must be installed. Deploy matching server
+and browser code before using the new metadata, and reload existing POS tabs.
+
+Partial or mismatched receipts and incomplete legacy mutation records now return
+`review_required`, not `not_found`. An absent usable result is not absent evidence.
+
 ### Device storage access failures
 
 `POS_STORAGE_REFERENCE:DB_OPEN:INDEXEDDB` can originate from Dexie 4.4.4's

@@ -88,6 +88,106 @@ describe("targeted POS checkout scheduling", () => {
 
   afterEach(() => { jest.clearAllTimers(); jest.useRealTimers(); });
 
+  const identified = (payments = true): PosOutboxRow => ({
+    ...payment("retry", { ...(payments ? {} : { payments: [] }), posOperationIdentity: {
+      version: 1, deviceId: "22222222-2222-4222-8222-222222222222", createdAt: "2026-10-28T10:00:00.000Z",
+    } }), status: "failed", attempts: 1, recoveryState: "review_required",
+  });
+
+  it.each([true, false])("automatically resends a missing identified operation (payment: %s) with unchanged identities", async (paid) => {
+    rows = [identified(paid)];
+    const original = JSON.parse(JSON.stringify(rows[0].payload));
+    recovery.mockResolvedValue({ state: "not_found", message: "Not admitted" });
+    await engine.drainPosOutbox(SITE);
+    if (paid) expect(recovery).toHaveBeenCalledWith(SITE, "row-retry");
+    else expect(recovery).not.toHaveBeenCalled();
+    expect(checkout).toHaveBeenCalledWith(expect.objectContaining(original.data));
+    expect(rows[0].payload).toEqual(original);
+    expect(rows[0].status).toBe("synced");
+  });
+
+  it.each(["processing", "payment_recorded", "review_required", "rejected", "completed"])(
+    "does not resend identified operations with %s evidence", async (state) => {
+      rows = [identified()];
+      recovery.mockResolvedValue({ state, message: "Evidence" });
+      await engine.syncPosCheckout(SITE, "retry");
+      expect(checkout).not.toHaveBeenCalled();
+    },
+  );
+
+  it("never resends legacy payments on absent evidence", async () => {
+    rows = [{ ...payment("retry"), status: "failed" }];
+    recovery.mockResolvedValue({ state: "not_found", message: "Unknown legacy operation" });
+    await engine.syncPosCheckout(SITE, "retry");
+    expect(checkout).not.toHaveBeenCalled();
+  });
+
+  it("persists the retry cooldown and backs off after another failure", async () => {
+    rows = [identified()];
+    recovery.mockResolvedValue({ state: "not_found", message: "Not admitted" });
+    checkout.mockResolvedValue({ error: "Transport unavailable" });
+    await engine.syncPosCheckout(SITE, "retry");
+    expect(checkout).toHaveBeenCalledTimes(1);
+    expect(rows[0].checkoutRetryAfter).toBe(Date.now() + 10_000);
+    await engine.syncPosCheckout(SITE, "retry");
+    expect(checkout).toHaveBeenCalledTimes(1);
+    await jest.advanceTimersByTimeAsync(10_000);
+    await engine.syncPosCheckout(SITE, "retry");
+    expect(checkout).toHaveBeenCalledTimes(2);
+    expect(rows[0].checkoutRetryAfter).toBe(Date.now() + 20_000);
+  });
+
+  it("backs off evidence checks even when no resend is permitted", async () => {
+    rows = [identified()];
+    recovery.mockResolvedValue({ state: "processing", message: "Still processing" });
+    await engine.syncPosCheckout(SITE, "retry");
+    expect(rows[0].checkoutRetryAfter).toBe(Date.now() + 5_000);
+    await jest.advanceTimersByTimeAsync(5_000);
+    await engine.syncPosCheckout(SITE, "retry");
+    expect(rows[0].checkoutRetryAfter).toBe(Date.now() + 10_000);
+    expect(rows[0].checkoutRecoveryChecks).toBe(2);
+    expect(checkout).not.toHaveBeenCalled();
+  });
+
+  it("does not resend after a failed or late evidence lookup", async () => {
+    rows = [identified()];
+    recovery.mockRejectedValueOnce(new Error("Unavailable"));
+    await engine.syncPosCheckout(SITE, "retry");
+    expect(checkout).not.toHaveBeenCalled();
+    await jest.advanceTimersByTimeAsync(5_000);
+    const lookup = deferred<{ state: string }>();
+    recovery.mockReturnValueOnce(lookup.promise);
+    const pending = engine.syncPosCheckout(SITE, "retry");
+    await jest.advanceTimersByTimeAsync(8_000);
+    await pending;
+    lookup.resolve({ state: "not_found" });
+    await flush();
+    expect(checkout).not.toHaveBeenCalled();
+  });
+
+  it("rechecks terminal local evidence before resending an absent attempt", async () => {
+    rows = [identified()];
+    recovery.mockImplementationOnce(async () => {
+      rows[0].recoveryState = "rejected";
+      return { state: "not_found", message: "Older status read" };
+    });
+    await engine.syncPosCheckout(SITE, "retry");
+    expect(checkout).not.toHaveBeenCalled();
+  });
+
+  it("does not regress a completed row committed before the transactional dispatch claim", async () => {
+    rows = [identified()];
+    recovery.mockResolvedValue({ state: "not_found", message: "Older lookup" });
+    transaction.mockImplementationOnce(async (_mode, _table, work) => work())
+      .mockImplementationOnce(async (_mode, _table, work) => {
+        rows[0].status = "synced";
+        return work();
+      });
+    await engine.syncPosCheckout(SITE, "retry");
+    expect(rows[0].status).toBe("synced");
+    expect(checkout).not.toHaveBeenCalled();
+  });
+
   it("finishes only its exact mutation while an unrelated background recovery hangs", async () => {
     rows = [{ ...payment("old"), status: "failed", recoveryState: "payment_recorded" }, payment("target"), payment("later")];
     recovery.mockReturnValue(new Promise(() => {}));
@@ -241,7 +341,8 @@ describe("targeted POS checkout scheduling", () => {
     const request = deferred<{ success: boolean; orderId: string }>();
     const write = deferred<void>();
     checkout.mockReturnValue(request.promise);
-    transaction.mockImplementationOnce(async (_mode, _table, work) => { await write.promise; await work(); });
+    transaction.mockImplementationOnce(async (_mode, _table, work) => work())
+      .mockImplementationOnce(async (_mode, _table, work) => { await write.promise; await work(); });
     const first = engine.syncPosCheckout(SITE, "target");
     await jest.advanceTimersByTimeAsync(45_000);
     request.resolve({ success: true, orderId: "confirmed" });
@@ -254,7 +355,8 @@ describe("targeted POS checkout scheduling", () => {
   it("bounds the caller even if both checkout and deadline persistence remain blocked", async () => {
     rows = [payment("target")];
     checkout.mockReturnValue(new Promise(() => {}));
-    transaction.mockReturnValue(new Promise(() => {}));
+    transaction.mockReturnValue(new Promise(() => {}))
+      .mockImplementationOnce(async (_mode, _table, work) => work());
     let settled = false;
     const pending = engine.syncPosCheckout(SITE, "target").then(() => { settled = true; });
     await flush();

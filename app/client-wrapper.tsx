@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useEffect } from "react"
+import { lazy, Suspense, useEffect } from "react"
 import dynamic from "next/dynamic"
 import { usePathname } from "next/navigation"
 import {
@@ -12,7 +12,9 @@ import VersionCheck from "./components/VersionCheck"
 import { rememberInternalPath } from "./documents/internal-back"
 import { GuidedTour } from "./components/onboarding/GuidedTour"
 
-const LayoutClient = dynamic(() => import("./layout-client"), { ssr: true })
+// React Suspense retains SSR and route-scoped loading without next/dynamic's
+// stale development react-loadable preloads for this shared workspace shell.
+const LayoutClient = lazy(() => import("./layout-client"))
 const ViewOnlyBanner = dynamic(
   () => import("./components/permissions/ViewOnlyBanner"),
   { ssr: false }

@@ -31,13 +31,23 @@ const record = (tags: string[] | null = ["outstand_id_post-one"]) => ({ id: cont
 const confirmation = (postId = "post-one") => ({ success: true, post_id: postId, delete_remote: true })
 const invoke = () => deleteContent(contentId, { deleteFromOutstand: true })
 
+function authorizedRpc(name: string, args: { p_site_id: string; p_command?: string }) {
+  if (args.p_site_id === siteId) {
+    if (name === "current_user_site_role") return { data: "owner", error: null }
+    if (name === "user_can" && args.p_command === "delete") return { data: true, error: null }
+    // This RPC reports restrictions, not a capability: only false allows access.
+    if (name === "current_user_has_site_location_restrictions") return { data: false, error: null }
+  }
+  throw new Error(`Unexpected permission RPC: ${name}`)
+}
+
 beforeEach(() => {
   jest.clearAllMocks()
   process.env.API_SERVER_URL = "https://api.example.test"
   process.env.SERVICE_API_KEY = "never-forward-this"
   getUser.mockResolvedValue({ data: { user: { id: userId } }, error: null })
   getSession.mockResolvedValue({ data: { session: { user: { id: userId }, access_token: "user-token" } }, error: null })
-  rpc.mockImplementation(async (name: string) => ({ data: name === "current_user_site_role" ? "owner" : true, error: null }))
+  rpc.mockReset().mockImplementation(async (name, args) => authorizedRpc(name, args))
   load.mockResolvedValue({ data: record(), error: null })
   remove.mockResolvedValue({ data: { id: contentId }, error: null })
   deleteQuery.eq.mockReturnValue(deleteQuery)
@@ -74,6 +84,12 @@ it("deletes every distinct persisted Outstand link before deleting local content
     headers: { Authorization: "Bearer user-token", Accept: "application/json" },
   })
   expect(getUser).toHaveBeenCalledTimes(2)
+  expect(rpc.mock.calls).toEqual([
+    ["user_can", { p_site_id: siteId, p_command: "delete" }],
+    ["current_user_site_role", { p_site_id: siteId }],
+    ["user_can", { p_site_id: siteId, p_command: "delete" }],
+    ["current_user_has_site_location_restrictions", { p_site_id: siteId }],
+  ])
   expect(deleteRow).toHaveBeenCalledTimes(1)
   expect(JSON.stringify(jest.mocked(fetch).mock.calls)).not.toContain(process.env.SERVICE_API_KEY)
 })
@@ -106,16 +122,60 @@ it("does not delete content hidden by cross-tenant RLS", async () => {
 })
 
 it.each([false, null, "true"])("rejects absent delete capability: %s", async capability => {
-  rpc.mockResolvedValue({ data: capability, error: null })
+  rpc.mockImplementation(async (name, args) => name === "user_can" && args.p_command === "delete"
+    ? { data: capability, error: null } : authorizedRpc(name, args))
   expect(await invoke()).toMatchObject({ success: false, status: 403 })
+  expect(rpc.mock.calls).toEqual([["user_can", { p_site_id: siteId, p_command: "delete" }]])
   expect(fetch).not.toHaveBeenCalled()
   expect(deleteRow).not.toHaveBeenCalled()
 })
 
 it("fails closed on permission RPC errors", async () => {
-  rpc.mockResolvedValue({ data: true, error: { message: "private DB detail" } })
+  rpc.mockImplementation(async (name, args) => name === "user_can" && args.p_command === "delete"
+    ? { data: true, error: { message: "private DB detail" } } : authorizedRpc(name, args))
   expect(await invoke()).toMatchObject({ success: false, status: 403 })
+  expect(rpc.mock.calls).toEqual([["user_can", { p_site_id: siteId, p_command: "delete" }]])
   expect(fetch).not.toHaveBeenCalled()
+  expect(deleteRow).not.toHaveBeenCalled()
+})
+
+it.each([
+  [true, null], [null, null], [undefined, null], ["false", null], [{}, null], [[], null],
+  [false, { message: "private DB detail" }],
+])("denies remote deletion for restricted or unknown location access (%#)", async (data, error) => {
+  rpc.mockImplementation(async (name, args) => name === "current_user_has_site_location_restrictions"
+    ? { data, error } : authorizedRpc(name, args))
+  const result = await invoke()
+  expect(result).toEqual({ success: false, status: 403,
+    error: "You do not have permission to access social posts in this site. Local content was not deleted." })
+  expect(JSON.stringify(result)).not.toContain("private DB detail")
+  expect(rpc.mock.calls).toEqual([
+    ["user_can", { p_site_id: siteId, p_command: "delete" }],
+    ["current_user_site_role", { p_site_id: siteId }],
+    ["user_can", { p_site_id: siteId, p_command: "delete" }],
+    ["current_user_has_site_location_restrictions", { p_site_id: siteId }],
+  ])
+  expect(getSession).not.toHaveBeenCalled()
+  expect(fetch).not.toHaveBeenCalled()
+  expect(deleteRow).not.toHaveBeenCalled()
+  expect(createServiceClient).not.toHaveBeenCalled()
+  expect(revalidatePath).not.toHaveBeenCalled()
+})
+
+it("fails closed when the location restriction lookup throws", async () => {
+  rpc.mockImplementation(async (name, args) => {
+    if (name === "current_user_has_site_location_restrictions") throw new Error("private DB detail")
+    return authorizedRpc(name, args)
+  })
+  const result = await invoke()
+  expect(result).toMatchObject({ success: false, status: 403 })
+  expect(JSON.stringify(result)).not.toContain("private DB detail")
+  expect(rpc).toHaveBeenLastCalledWith("current_user_has_site_location_restrictions", { p_site_id: siteId })
+  expect(getSession).not.toHaveBeenCalled()
+  expect(fetch).not.toHaveBeenCalled()
+  expect(deleteRow).not.toHaveBeenCalled()
+  expect(createServiceClient).not.toHaveBeenCalled()
+  expect(revalidatePath).not.toHaveBeenCalled()
 })
 
 it("requires a verified matching session before requesting remote deletion", async () => {
@@ -226,7 +286,23 @@ it.each(["headers", "body"])("times out stalled %s without retries or local dele
 
 it("rechecks permissions on subsequent deletion attempts", async () => {
   expect((await invoke()).success).toBe(true)
-  rpc.mockResolvedValue({ data: false, error: null })
+  rpc.mockImplementation(async (name, args) => name === "user_can" && args.p_command === "delete"
+    ? { data: false, error: null } : authorizedRpc(name, args))
   expect(await invoke()).toMatchObject({ success: false, status: 403 })
   expect(fetch).toHaveBeenCalledTimes(1)
+  expect(deleteRow).toHaveBeenCalledTimes(1)
+})
+
+it("denies a subsequent remote deletion when location restrictions are added", async () => {
+  expect((await invoke()).success).toBe(true)
+  rpc.mockImplementation(async (name, args) => name === "current_user_has_site_location_restrictions"
+    ? { data: true, error: null } : authorizedRpc(name, args))
+  expect(await invoke()).toMatchObject({ success: false, status: 403 })
+  expect(rpc).toHaveBeenLastCalledWith("current_user_has_site_location_restrictions", { p_site_id: siteId })
+  expect(load).toHaveBeenCalledTimes(2)
+  expect(getSession).toHaveBeenCalledTimes(1)
+  expect(fetch).toHaveBeenCalledTimes(1)
+  expect(deleteRow).toHaveBeenCalledTimes(1)
+  expect(revalidatePath).toHaveBeenCalledTimes(1)
+  expect(createServiceClient).not.toHaveBeenCalled()
 })

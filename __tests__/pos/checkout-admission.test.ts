@@ -14,6 +14,7 @@ import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { requirePosCheckoutAccess, withPosCheckoutAccessScope } from "@/app/pos/checkout-request-access";
 import { withPosServerTiming } from "@/app/pos/checkout-server-timing";
 import type { CheckoutCartParams } from "@/app/commerce/checkout-types";
+import { PosCheckoutRecoveryError } from "@/app/pos/checkout-recovery-types";
 
 jest.mock("server-only", () => ({}));
 jest.mock("@/lib/supabase/server", () => ({ createClient: jest.fn(async () => ({
@@ -107,6 +108,25 @@ describe("POS durable checkout admission and evidence ordering", () => {
     await expect(checkoutCart(payload)).resolves.toMatchObject({ error: "Order changed" });
     expect(transitionPosCheckout).toHaveBeenCalledWith(expect.anything(), claim, "rejected");
     expect(processCheckoutLines).not.toHaveBeenCalled();
+  });
+  it("checks durable fingerprint admission for device-stamped unpaid operations instead of the legacy shortcut", async () => {
+    const identified = { ...payload, payments: [], posOperationIdentity: {
+      version: 1 as const, deviceId: "22222222-2222-4222-8222-222222222222", createdAt: "2026-10-28T12:00:00.000Z",
+    } };
+    await checkoutCart(identified);
+    expect(findPosClientMutation).not.toHaveBeenCalled();
+    expect(claimPosCheckout).toHaveBeenCalledWith(expect.anything(), identified, "cashier");
+  });
+  it.each(["processing", "review_required", "rejected"] as const)("returns %s without repeating writes for unpaid admission retries", async (state) => {
+    jest.mocked(claimPosCheckout).mockRejectedValueOnce(new PosCheckoutRecoveryError({ state, message: "Original attempt" }));
+    const identified = { ...payload, payments: [], posOperationIdentity: {
+      version: 1 as const, deviceId: "22222222-2222-4222-8222-222222222222", createdAt: "2026-10-28T12:00:00.000Z",
+    } };
+    await expect(checkoutCart(identified)).resolves.toMatchObject({ recovery: { state } });
+    expect(prepareCheckoutEnvironment).not.toHaveBeenCalled();
+    expect(processCheckoutLines).not.toHaveBeenCalled();
+    expect(persistCheckoutRecords).not.toHaveBeenCalled();
+    expect(finalizeCheckout).not.toHaveBeenCalled();
   });
   it("never claims a post-write failure was unapplied", async () => {
     jest.mocked(finalizeCheckout).mockRejectedValueOnce(new Error("Finalization interrupted"));

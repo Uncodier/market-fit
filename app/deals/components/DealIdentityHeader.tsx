@@ -11,6 +11,7 @@ import { updateDeal } from "@/app/deals/actions"
 import { LinkTeamMemberDialog } from "./LinkTeamMemberDialog"
 import { dealWinProbability, formatDealCurrency } from "./deal-format"
 import { useDealCommerce } from "./use-deal-commerce"
+import { useInlineIdentityEdit } from "@/app/hooks/use-inline-identity-edit"
 
 export function DealIdentityHeader({
   deal,
@@ -20,9 +21,17 @@ export function DealIdentityHeader({
   onUpdate: (deal: Deal) => void
 }) {
   const commerce = useDealCommerce(deal, onUpdate)
-  const [editingName, setEditingName] = useState(false)
-  const [nameDraft, setNameDraft] = useState(deal.name)
   const [assignOpen, setAssignOpen] = useState(false)
+  const { editing, inputProps, buttonRef, startEditing, error, errorId } = useInlineIdentityEdit({
+    value: deal.name,
+    onSave: async (name) => {
+      const result = await updateDeal({ id: deal.id, name })
+      if (result.error || !result.deal) throw new Error(result.error || "Failed to update deal")
+      onUpdate(result.deal)
+    },
+    errorMessage: "Failed to update deal name. Press Enter to retry or Escape to cancel.",
+    onError: () => toast.error("Failed to update deal name"),
+  })
 
   const companyName = deal.companies?.name || deal.company?.name
   const amountLabel = formatDealCurrency(deal.amount, deal.currency) || "No amount"
@@ -41,54 +50,38 @@ export function DealIdentityHeader({
   const ownerName = primaryOwner?.user?.name || primaryOwner?.user?.email || "Owner"
   const extraOwners = Math.max(0, (deal.owners?.length || 0) - 1)
 
-  const saveName = async () => {
-    const next = nameDraft.trim()
-    if (!next || next === deal.name) {
-      setEditingName(false)
-      setNameDraft(deal.name)
-      return
-    }
-    const result = await updateDeal({ id: deal.id, name: next })
-    if (result.error) {
-      toast.error(result.error)
-      return
-    }
-    if (result.deal) onUpdate(result.deal)
-    setEditingName(false)
-  }
-
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex items-start gap-3 min-w-0">
           <EntityAvatar name={deal.name} className="h-11 w-11 text-sm" />
           <div className="min-w-0">
-            {editingName ? (
+            {editing ? (
               <Input
                 autoFocus
-                value={nameDraft}
-                onChange={(event) => setNameDraft(event.target.value)}
-                onBlur={() => void saveName()}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") void saveName()
-                  if (event.key === "Escape") {
-                    setNameDraft(deal.name)
-                    setEditingName(false)
-                  }
-                }}
+                aria-label="Deal name"
+                {...inputProps}
                 className="h-8 text-xl font-semibold max-w-sm"
               />
             ) : (
-              <h1
-                className="text-xl font-semibold leading-tight truncate cursor-text rounded-md px-1 -mx-1 hover:bg-muted/50"
-                onClick={() => {
-                  setNameDraft(deal.name)
-                  setEditingName(true)
-                }}
-                title={deal.name}
-              >
-                {deal.name}
+              <h1 className="text-xl font-semibold leading-tight" aria-label={deal.name}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  ref={buttonRef}
+                  aria-label="Edit deal name"
+                  onClick={startEditing}
+                  title={deal.name}
+                  className="block max-w-full text-xl font-semibold leading-tight text-left truncate cursor-text rounded-md border-0 bg-transparent px-1 py-0 -mx-1 hover:bg-muted/50 hover:text-inherit active:scale-100"
+                >
+                  {deal.name}
+                </Button>
               </h1>
+            )}
+            {error && (
+              <p id={errorId} role="alert" className="text-xs text-destructive mt-1">
+                {error}
+              </p>
             )}
             <p className="text-sm text-muted-foreground truncate mt-0.5">{subtitle}</p>
             <p className="text-xs text-muted-foreground/80 truncate mt-1">

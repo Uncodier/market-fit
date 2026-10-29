@@ -8,6 +8,9 @@ const id = z.string().uuid();
 const text = z.string().max(500);
 const identity = z.string().min(1).max(128);
 const date = z.string().max(64).datetime({ offset: true });
+export const posOperationIdentitySchema = z.object({
+  version: z.literal(1), deviceId: id, createdAt: date,
+}).strict();
 const money = z.number().finite().min(0).max(999999999);
 const paymentMoney = money.refine((value) => Math.abs(value * 100 - Math.round(value * 100)) < 0.00001);
 const quantity = z.number().finite().positive().max(1000);
@@ -30,6 +33,7 @@ const payment = z.object({
 /** POS-only input; public, staff override and account-owner fields are not accepted. */
 export const posOperationCheckoutSchema = z.object({
   siteId: id, source: z.literal("pos"), clientMutationId: identity,
+  posOperationIdentity: posOperationIdentitySchema.optional(),
   userId: id.optional(), sellerUserId: id.optional(), buyerUserId: id.optional(),
   lines: z.array(line).min(1).max(200),
   priceListId: id.optional(), leadId: id.optional(), promotionId: id.optional(),

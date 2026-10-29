@@ -21,6 +21,14 @@ widget observers are cancelled when the route changes. Explicit `tour=start`,
 resumed `showTour` steps, and the `tour:start` event retain manual navigation.
 The repair does not mark users' tours or onboarding tasks complete.
 
+The workspace shell uses `React.lazy` under its existing Suspense boundary rather
+than the development `next/dynamic` react-loadable preload path that emitted a
+missing chunk in fresh QA HTML. It still renders on the server and is not loaded
+on routes without a workspace layout. The credits-widget CSS is included by the
+root layout so removing dynamic CSS preloads does not delay its SSR styles.
+Component/compiler regressions cover the boundary; an isolated development
+fixture checks emitted assets and hydration without application/provider access.
+
 Onboarding detects saved workflows through user-scoped `instance_nodes` reads,
 filtered by site and the shared workflow definition node types. Generated results
 and unrelated media are not workflow definitions. A failed read cannot mark the
@@ -91,6 +99,15 @@ The UI shows these errors inline rather than repeatedly emitting error toasts,
 and hides old-context results after navigation or refresh failure. Provider
 transformations do not invent posts or random engagement metrics.
 
+Reddit distinguishes client input from upstream failures. Listing transport,
+non-success HTTP, malformed JSON and invalid payload shapes return the same
+sanitized 502 dependency error and cannot populate the response cache. Configured
+OAuth failure does not retry through anonymous access; missing both credential
+fields retains the explicit public-read path. Diagnostic logs contain only phase,
+classification and optional HTTP status, never provider payloads or credentials.
+A genuine provider rejection still fails QA: this repair does not provide OAuth
+access or fabricate successful empty trends.
+
 While site/segment context resolves, Trends retains the same existing table,
 cards or column skeleton used during the provider request. It does not replace
 that layout with a waiting/loading message. Requests and refresh remain gated
@@ -104,6 +121,13 @@ request or refresh cannot contact X. No X Trends credentials or paid access are
 required. Connected Twitter/X social publishing accounts are unaffected.
 
 ## Regression validation
+
+Campaign and deal title editors now expose exact keyboard-accessible edit
+buttons and labeled inputs. One edit session dispatches at most one save while
+Enter/blur overlap; failed drafts remain visible and require explicit Enter retry
+or Escape cancellation. UI failure never counts as a saved title. Their browser
+journeys keep exact DB persistence, reload and cleanup assertions and use the
+semantic controls rather than heading indexes or styling classes.
 
 ```sh
 npm test -- --runInBand __tests__/content/content-page-loading.test.tsx __tests__/content/use-content-data.test.tsx __tests__/content/content-item-load-error.test.tsx __tests__/trends __tests__/trends-ui __tests__/api/provider-response-cache.test.ts

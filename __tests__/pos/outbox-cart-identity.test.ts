@@ -17,6 +17,7 @@ const first = jest.fn();
 
 beforeEach(() => {
   jest.clearAllMocks();
+  localStorage.clear();
   first.mockResolvedValue(undefined);
   jest.mocked(getPosDb).mockReturnValue({
     outbox: { where: () => ({ equals: () => ({ first }) }), add },
@@ -26,7 +27,13 @@ beforeEach(() => {
 it("persists cart identity with the initial outbox write, outside the checkout payload", async () => {
   const row = await enqueueCheckout("site", payload, "new:cart-a");
   expect(add).toHaveBeenCalledWith(expect.objectContaining({ checkoutCartSessionId: "new:cart-a" }));
-  expect(row.payload).toEqual({ kind: "checkout", data: payload });
+  expect(row.payload).toEqual({ kind: "checkout", data: {
+    ...payload,
+    posOperationIdentity: {
+      version: 1, deviceId: localStorage.getItem("pos-device-id"), createdAt: row.createdAt,
+    },
+  } });
+  expect(payload).not.toHaveProperty("posOperationIdentity");
   expect(row.payload.data).not.toHaveProperty("checkoutCartSessionId");
 });
 

@@ -73,7 +73,7 @@ export async function checkoutCart(params: CheckoutCartParams) {
       if (params.payments?.length && !params.clientMutationId) return { error: "A stable checkout identity is required for POS payment." }
     }
     timing.stage("checkout_admission")
-    if (params.clientMutationId && params.source === "pos" && !params.payments?.length) {
+    if (params.clientMutationId && params.source === "pos" && !params.payments?.length && !params.posOperationIdentity) {
       const existing = await findPosClientMutation(
         params.siteId,
         params.clientMutationId

@@ -67,14 +67,21 @@ describe("POS read-only payment reconciliation", () => {
   });
   it.each(["actor_id", "session_id", "amount", "method", "tendered", "change"])("rejects mismatched receipt %s", async (key) => {
     reads.pos_register_receipts.data = [{ ...receipt, [key]: "wrong" }];
-    await expect(inspectPosPayment({ from }, request, "cashier")).resolves.toMatchObject({ state: "not_found" });
+    await expect(inspectPosPayment({ from }, request, "cashier")).resolves.toMatchObject({ state: "review_required" });
   });
   it("does not assign a receipt to a different order or accept partial receipts", async () => {
     reads.pos_register_receipts.data = [receipt];
     reads.sale_orders.data = [{ id: "foreign-order" }];
-    await expect(inspectPosPayment({ from }, request, "cashier")).resolves.toMatchObject({ state: "not_found" });
+    await expect(inspectPosPayment({ from }, request, "cashier")).resolves.toMatchObject({ state: "review_required" });
     await expect(inspectPosPayment({ from }, { ...request, payments: [...request.payments, { ...request.payments[0], paymentId: "another" }] }, "cashier"))
-      .resolves.toMatchObject({ state: "not_found" });
+      .resolves.toMatchObject({ state: "review_required" });
+  });
+  it("does not authorize resend from an incomplete original mutation", async () => {
+    reads.pos_client_mutations.data = { ...mutation, result: null };
+    await expect(inspectPosPayment({ from }, request, "cashier"))
+      .resolves.toMatchObject({ state: "review_required" });
+    await expect(inspectPosPayment({ from }, { ...request, payments: [] }, "cashier"))
+      .resolves.toMatchObject({ state: "review_required" });
   });
   it.each(["pos_checkout_attempts", "pos_client_mutations", "pos_register_receipts", "sale_orders"])("fails closed on %s read errors", async (table) => {
     reads.pos_register_receipts.data = [receipt]; reads[table].error = { message: "unavailable" };

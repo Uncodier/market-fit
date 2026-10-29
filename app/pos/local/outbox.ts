@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 import { getPosDb } from "./db";
+import { createPosOperationIdentity } from "./operation-identity";
 import { requirePosPermission, isPosPermissionCurrent } from "./location-permission-state";
 import type {
   CheckInOutboxPayload,
@@ -33,18 +34,23 @@ export async function enqueueOutbox(params: {
   if (!isPosPermissionCurrent(permission)) throw new Error("POS access changed");
   if (existing) return existing;
 
+  const createdAt = nowIso();
+  // Do not backfill queued rows or mutate the UI payload used to recognize retries.
+  const payload = params.payload.kind === "checkout" && params.payload.data.posOperationIdentity === undefined
+    ? { ...params.payload, data: { ...params.payload.data, posOperationIdentity: createPosOperationIdentity(createdAt) } }
+    : params.payload;
   const row: PosOutboxRow = {
     id: uuidv4(),
     siteId: params.siteId,
     kind: params.kind,
     clientMutationId: params.clientMutationId,
-    payload: params.payload,
+    payload,
     ...(params.checkoutCartSessionId ? { checkoutCartSessionId: params.checkoutCartSessionId } : {}),
     status: "pending",
     attempts: 0,
     lastError: null,
-    createdAt: nowIso(),
-    updatedAt: nowIso(),
+    createdAt,
+    updatedAt: createdAt,
   };
   beforeInsert?.();
   await db.outbox.add(row);

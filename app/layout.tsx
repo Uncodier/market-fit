@@ -3,6 +3,8 @@ import "./globals.css"
 import "./safari-fix.css"
 import "./styles/dark-theme.css"
 import "./styles/chat-input-surface.css"
+// Keep shell CSS available during SSR while ClientWrapper lazily loads JS.
+import "./components/navigation/credits-widget.module.css"
 import { Toaster } from "sonner"
 import ClientWrapper from './client-wrapper'
 import { Suspense } from 'react'

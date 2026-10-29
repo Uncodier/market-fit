@@ -192,8 +192,8 @@ suite('POS checkout attempt recovery in disposable socket-only PostgreSQL', () =
     expect(count()).toBe('0')
   })
 
-  it('serializes concurrent same-key retries to one claim without transferring ownership', async () => {
-    const results = await Promise.all([ownerToken, retryToken].map(owner => pg.concurrent(serviceSql(claimSql({ owner })))))
+  it.each([order, null])('serializes concurrent same-key retries for order %s to one claim without transferring ownership', async (requestedOrder) => {
+    const results = await Promise.all([ownerToken, retryToken].map(owner => pg.concurrent(serviceSql(claimSql({ owner, order: requestedOrder })))))
     const states = results.map(result => JSON.parse(result).state).sort()
     expect(states).toEqual(['claimed', 'processing'])
     expect(count()).toBe('1')

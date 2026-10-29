@@ -2,6 +2,7 @@ import "server-only";
 import { createHash, randomUUID } from "node:crypto";
 import type { CheckoutCartParams } from "@/app/commerce/checkout-types";
 import { PosCheckoutRecoveryError, type PosCheckoutRecovery } from "./checkout-recovery-types";
+import { posOperationIdentitySchema } from "./operation-schemas";
 
 type Client = { rpc: (name: string, args: Record<string, unknown>) => PromiseLike<{ data: unknown; error: unknown }> };
 export type PosCheckoutClaim = { siteId: string; mutationId: string; ownerToken: string };
@@ -15,6 +16,7 @@ function canonical(value: unknown): unknown {
 }
 
 export function posCheckoutFingerprint(params: CheckoutCartParams): string {
+  if (params.posOperationIdentity !== undefined) posOperationIdentitySchema.parse(params.posOperationIdentity);
   return createHash("sha256").update(JSON.stringify(canonical(params))).digest("hex");
 }
 

@@ -302,3 +302,119 @@ Final local repair validation on the current working tree: 606 tests passed in
 ESLint and `git diff --check` passed, and `npm run typecheck` passed. Concurrent
 unrelated frontend edits were preserved; the earlier checkout-promotion typing
 diagnostics no longer reproduce. These checks do not replace pending live retests.
+
+### Full regression terminal result and closure — 2026-10-28
+
+`qa-1793220482163-d601ed05-regression-0a3fd78f` finished at 22:14:41 UTC after
+starting at 21:18:35 UTC. **All 50 product cases were selected and produced
+results: 1 passed, 47 failed, 2 blocked; no flaky or skipped cases.** Separate
+login setup passed. Scope is full, missing/unexpected counts are zero, but
+`complete=false` because prerequisite-blocked cases remain. `healthGreen=false`
+and exit code 1. This is an actual step-executing baseline, not a successful
+regression certificate and not the earlier model-configuration failure.
+
+At 22:15 UTC the private controller exported final safe evidence and uploaded
+reviewed runtime/test files. It then failed its exact-supervisor safety check
+before corrected-runtime readiness or any new retest launch. It did not bypass
+that check or infer success. **Corrected-proxy account/project/smoke/buyer/roles
+retests did not run.** The failure was recorded and closure continued with safe
+evidence export, final summaries, and exact-group destruction request. Resource
+absence was subsequently confirmed at approximately 22:19 UTC: Azure returned
+`ResourceGroupNotFound` and installer status returned **`groupExists=false`**.
+No infrastructure remains for this exact QA group. Safe reports/journals were
+exported before destruction; earlier pre-destruction account journals correctly
+retain `cleanup.completed=false` as historical records.
+
+Earlier Buyer read and roles passes remain valid product results for the baseline,
+not proof of signup/recovery, paid checkout, subscription delivery or full
+reservation cleanup. The latter journeys still require authored positive tests
+and verified provider/fixture prerequisites. No production mutations, commit or
+push were performed; eight-hour lifetime extension was not approved or applied.
+
+The requested environment/run/cleanup cycle is finished, but product coverage is
+not green. A new approved QA would be needed to live-verify the local logout/proxy
+and capture fixes and author/execute the missing paid/reservation/provider flows.
+
+## Result-driven repair batch — 2026-10-28 (local only)
+
+The user requested repairs to tests and application using the QA results. The
+previous group remains deleted. No new cloud resources, deployments, migrations,
+commits, or provider mutations were authorized in this repair batch.
+
+Evidence boundary: the 1-pass/47-fail/2-blocked full regression summary was saved,
+but its per-test Playwright report and traces were not exported before destruction.
+The individual 47 causes cannot be recovered from counts; do not present inferred
+bugs as observed regression failures. Two exact smoke traces and recorded
+account/project checkpoints remain available privately.
+
+Implemented, verifiable corrections:
+
+- Observer: unavailable/empty response bodies are classified after same-request
+  terminal state, fixing the documented CDP cancellation/event ordering race.
+  Nonempty application failures, real malformed/empty JSON, other-request
+  cancellation and actual HTTP failures still fail. Missing `/_next/static/`
+  files are explicit HTTP failures, not dependent on console capture.
+- Workspace shell: use supported `React.lazy` + existing Suspense instead of the
+  SSR `next/dynamic` react-loadable preload path. SSR and no-workspace route lazy
+  boundaries remain intact. Root layout carries credits-widget CSS so initial
+  shell styles are not delayed. Real installed compiler, rendering, and isolated
+  Next dev checks verify emitted JS/CSS 200s and browser hydration in both
+  Turbopack and webpack; they do not call application APIs or providers.
+- Reddit: upstream transport, HTTP, malformed JSON and shape failures are typed
+  sanitized dependency 502s, not client-JSON 400s or cached empty successes.
+  Configured OAuth failure does not retry anonymously; public reads are retained
+  only when both OAuth fields are absent. Logs retain phase/kind/status, not raw
+  provider details. Actual provider access remains an unresolved prerequisite.
+- Unit fixtures: Content deletion/preview use precise permission/role/location
+  RPC semantics, including strict `false` for no location restrictions and
+  distinct fail-closed lookup errors. Trends table uses the real localization
+  provider. The 95 stale-fixture failures were reproduced before fixing tests;
+  product authorization and persistence assertions are not weakened.
+- Installer evidence: `qa results` exports allowlisted per-test outcomes,
+  attempts, nested step indexes and source locations privately, revalidated
+  locally. Missing reports/count mismatches/extraction failures are explicit;
+  raw messages/titles, passwords, bearer URLs, bodies/headers and logs cannot
+  enter safe JSON. This enables a future diagnostic rerun; it does not recover
+  deleted evidence.
+
+Initial batch validation: 1,124 frontend tests pass in 48 relevant suites,
+including previously failing Content/Trends fixtures; two additional isolated
+Next dev/browser tests pass (Turbopack + webpack). Exact provider/cache regressions
+pass and targeted ESLint is clean. Final consolidated checks are recorded below
+after the remaining title-editor and runtime-control repairs finish.
+
+Live acceptance remains NOT RUN for this repair batch. Earlier QA results remain
+unchanged and cannot be relabeled green from local Jest/compiler validation.
+
+### Consolidated repair validation — 2026-10-29
+
+The title-editor and local runtime-control repairs are now implemented:
+
+- Campaign/deal rename uses keyboard-accessible edit buttons and labeled inputs,
+  with same-tick Enter/blur save serialization, retained failed drafts, explicit
+  retry, Escape cancellation and IME handling. The two YAML journeys retain real
+  reload/DB persistence and cleanup assertions; their strict transpilation passes.
+- `./install.sh --stop` controls only its canonical local supervisor through its
+  owner-only Unix socket, verifies running instance identity and waits for graceful
+  child/public-port closure. It never matches arbitrary PID command strings or
+  unlinks a live socket. Wrong roots, symlinks, replaced sockets, unexpected
+  arguments and unconfirmed shutdown fail closed. This is a tested replacement
+  for the brittle ad-hoc restart preflight, not a claim that its deleted QA retest
+  was recovered.
+
+Final checks:
+
+- **1,155 frontend tests passed in 51 relevant suites**, including actual isolated
+  development server/browser asset and hydration checks with Turbopack and webpack.
+- **186 installer tests passed in 10 suites**; the final dispatch/helper focused
+  rerun additionally passed 21 tests after strict extra-argument forwarding.
+- `npm run typecheck` passes. Initial newly authored test typing diagnostics were
+  repaired rather than suppressed. Targeted ESLint and both repos' diff checks pass.
+- The fixture servers were stopped and their temporary directories removed.
+  No QA/app server, browser suite or teammate remains active from this repair.
+
+Remaining acceptance boundary: no full repaired app run occurred on disposable
+Azure QA. The 47 failed baseline scenarios cannot all be diagnosed from saved
+counts; the newly repaired per-case export must be used on the next approved run.
+Reddit provider access, Robot/OAuth prerequisites and complete paid/reservation
+journeys remain unresolved. Do not report the application or release as green.
