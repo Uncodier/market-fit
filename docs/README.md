@@ -32,6 +32,7 @@ Use the guides below before relying on older implementation notes.
   scoped requirement tests and a read-only local cron observer; separate from browser suites.
 
 ## Integration guides
+- [Time zone selection](TIMEZONE_SELECTION.md)
 
 - [Native Rappi and Uber Eats orders](MARKETPLACE_ORDERS.md)
 - [Public marketplace sorting and featured rankings](MARKETPLACE_SORTING.md)

@@ -2,6 +2,7 @@
 
 import { Clock, PenTool } from "@/app/components/ui/icons"
 import { useLocalization } from "@/app/context/LocalizationContext"
+import { VisitTimezoneField } from "./VisitTimezoneField"
 
 export function VisitFormAside({
   siteName,
@@ -10,6 +11,8 @@ export function VisitFormAside({
   summaryLine,
   title,
   hint,
+  startTime,
+  endTime,
 }: {
   siteName: string
   siteLogo?: string | null
@@ -17,6 +20,8 @@ export function VisitFormAside({
   summaryLine?: string | null
   title?: string
   hint?: string
+  startTime?: string
+  endTime?: string
 }) {
   const { t } = useLocalization()
 
@@ -45,6 +50,7 @@ export function VisitFormAside({
         </p>
         {summaryLine && <p className="text-sm font-medium">{summaryLine}</p>}
         <p className="text-muted-foreground text-sm">{hint || t("visits.sidebarHint")}</p>
+        <VisitTimezoneField startTime={startTime} endTime={endTime} />
       </div>
     </aside>
   )

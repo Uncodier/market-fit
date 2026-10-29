@@ -74,6 +74,7 @@ export function VisitRegistrationForm({
   const [resourceLabel, setResourceLabel] = useState("")
   const [identityTouched, setIdentityTouched] = useState(false)
   const [attestPrefillDone, setAttestPrefillDone] = useState(false)
+  const [registeredRange, setRegisteredRange] = useState<{ start: string; end: string } | null>(null)
 
   const { data: settingsData, isLoading: settingsLoading } = useSWR(
     siteId ? ["visits-settings", siteId] : null,
@@ -276,6 +277,7 @@ export function VisitRegistrationForm({
       return
     }
     setActiveStep("identity")
+    setRegisteredRange(null)
     setVisitorName(buyerName || "")
     setVisitorEmail(buyerEmail || "")
     setVisitorPhone("")
@@ -333,6 +335,7 @@ export function VisitRegistrationForm({
       toast.error(res.error)
       return
     }
+    if (res.data) setRegisteredRange({ start: res.data.start_time, end: res.data.end_time })
     setActiveStep("success")
   }
 
@@ -383,6 +386,8 @@ export function VisitRegistrationForm({
           summaryLine={summaryLine}
           title={isAttest ? t("visits.attest.title") : undefined}
           hint={isAttest ? t("visits.attest.hint") : undefined}
+          startTime={registeredRange?.start || reservation?.start_time}
+          endTime={registeredRange?.end || reservation?.end_time}
         />
 
         <div className="md:col-span-2 relative w-full overflow-visible z-0">

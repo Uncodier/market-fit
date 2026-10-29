@@ -11,7 +11,7 @@ it("provides a labeled, searchable zone selector", () => {
   const onChange = jest.fn()
   render(<ReservationTimezoneField value="UTC" onChange={onChange} />)
   fireEvent.change(screen.getByLabelText("Time zone"), { target: { value: "Mexico" } })
-  fireEvent.click(screen.getByText("America/Mexico City"))
+  fireEvent.click(screen.getByText(/Mexico.*America\/Mexico City/))
   expect(onChange).toHaveBeenCalledWith("America/Mexico_City")
 })
 

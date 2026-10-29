@@ -14,6 +14,7 @@ import { Input } from "@/app/components/ui/input"
 export interface ComboboxOption {
   value: string
   label: string
+  searchText?: string
 }
 
 interface ComboboxProps {
@@ -55,9 +56,10 @@ export function Combobox({
   const filteredOptions = React.useMemo(() => {
     if (!searchQuery) return options
     
-    const lowerCaseQuery = searchQuery.toLowerCase()
+    const normalize = (text: string) => text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+    const lowerCaseQuery = normalize(searchQuery)
     return options.filter(option => 
-      option.label.toLowerCase().includes(lowerCaseQuery)
+      normalize(option.searchText || option.label).includes(lowerCaseQuery)
     )
   }, [options, searchQuery])
 
