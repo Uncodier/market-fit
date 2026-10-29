@@ -19,6 +19,7 @@ import { type ReservationSortBy } from "../reservation-helpers"
 import { groupTimelineByLocalDate } from "../calendar-block-helpers"
 
 interface ReservationsByDateListProps {
+  footer?: React.ReactNode
   reservations: Reservation[]
   blocks?: CalendarBlock[]
   sortBy: ReservationSortBy
@@ -38,6 +39,7 @@ export function ReservationsByDateList({
   onEdit,
   onEditBlock,
   onRegisterPayment,
+  footer,
 }: ReservationsByDateListProps) {
   const { t } = useLocalization()
   const [updating, setUpdating] = useState<string | null>(null)
@@ -69,11 +71,11 @@ export function ReservationsByDateList({
   const grouped = groupTimelineByLocalDate(reservations, blocks, sortBy)
 
   if (reservations.length === 0 && blocks.length === 0) {
-    return <ReservationsEmpty />
+    return <ReservationsEmpty footer={footer} />
   }
 
   return (
-    <ReservationsTableFrame count={reservations.length} blocksCount={blocks.length}>
+    <ReservationsTableFrame count={reservations.length} blocksCount={blocks.length} footer={footer}>
       {grouped.map(([dayStr, items]) => {
         const dateObj = new Date(items[0].start_time)
         return (

@@ -16,6 +16,7 @@ import {
 import { compareReservationStartTime, sortReservationGroups, sortReservations, type ReservationSortBy } from "../reservation-helpers"
 
 interface ReservationsListProps {
+  footer?: React.ReactNode
   reservations: Reservation[]
   blocks?: CalendarBlock[]
   sortBy: ReservationSortBy
@@ -35,6 +36,7 @@ export function ReservationsList({
   onEdit,
   onEditBlock,
   onRegisterPayment,
+  footer,
 }: ReservationsListProps) {
   const { t } = useLocalization()
   const [updating, setUpdating] = useState<string | null>(null)
@@ -107,11 +109,11 @@ export function ReservationsList({
   }, [reservations, blocks, sortBy, t])
 
   if (reservations.length === 0 && blocks.length === 0) {
-    return <ReservationsEmpty />
+    return <ReservationsEmpty footer={footer} />
   }
 
   return (
-    <ReservationsTableFrame count={reservations.length} blocksCount={blocks.length}>
+    <ReservationsTableFrame count={reservations.length} blocksCount={blocks.length} footer={footer}>
       {grouped.map((group) => (
         <React.Fragment key={group.key}>
           <ReservationGroupHeader

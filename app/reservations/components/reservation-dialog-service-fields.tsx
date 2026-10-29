@@ -15,6 +15,7 @@ import type { CatalogItem, VariantAxis } from "@/app/types"
 import type { ModifierGroupWithItems } from "@/app/catalog/modifier-types"
 import type { CartModifier } from "@/app/commerce/cart-modifiers"
 import { resolveProductCurrency } from "@/app/commerce/checkout-currency"
+import { ReservationTimezoneField } from "./reservation-timezone-field"
 
 export function ReservationDialogFormSkeleton() {
   return (
@@ -77,8 +78,12 @@ export function ReservationServiceFields({
   notes,
   setNotes,
   siteCurrency,
+  timezone,
+  setTimezone,
 }: {
   items: { id: string; name: string }[]
+  timezone: string
+  setTimezone: (value: string) => void
   catalogItemValue: RelationSelectValue
   setCatalogItemValue: (value: RelationSelectValue) => void
   catalogItemId: string
@@ -203,15 +208,17 @@ export function ReservationServiceFields({
       </div>
       {selectedSlot && !sellableItem ? (
         <p className="text-sm text-muted-foreground">
-          {t("reservations.slot.selected") || "Selected:"} {formatSlotDateTime(selectedSlot.start, selectedSlot.timezone, "PPP p", "system")} – {formatSlotDateTime(selectedSlot.end, selectedSlot.timezone, "p", "system")}
+          {t("reservations.slot.selected") || "Selected:"} {formatSlotDateTime(selectedSlot.start, timezone, "PPP p")} – {formatSlotDateTime(selectedSlot.end, timezone, "p")} ({timezone})
         </p>
       ) : null}
+      <ReservationTimezoneField value={timezone} onChange={setTimezone} />
       {sellableItem ? (
         <div className="space-y-2">
           <Label>{t("reservations.field.timeSlot") || "Time slot"}</Label>
           <ReservationSlotPicker
             key={`${sellableItem.id}-${reservationId || "new"}-${initialSlotStart || ""}`}
             catalogItemId={sellableItem.id}
+            displayTimezone={timezone}
             hideDetailsStep
             ignoreReservationId={reservationId}
             selectedStartIso={selectedSlot?.start}
@@ -222,7 +229,7 @@ export function ReservationServiceFields({
           />
           {selectedSlot ? (
             <p className="text-sm text-muted-foreground">
-              {t("reservations.slot.selected") || "Selected:"} {formatSlotDateTime(selectedSlot.start, selectedSlot.timezone, "PPP p", "system")} – {formatSlotDateTime(selectedSlot.end, selectedSlot.timezone, "p", "system")}
+              {t("reservations.slot.selected") || "Selected:"} {formatSlotDateTime(selectedSlot.start, timezone, "PPP p")} – {formatSlotDateTime(selectedSlot.end, timezone, "p")} ({timezone})
             </p>
           ) : null}
         </div>

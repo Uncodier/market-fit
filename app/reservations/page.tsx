@@ -321,8 +321,6 @@ function ReservationsPageContent() {
         </div>
       </StickyHeader>
 
-      {viewType === "list" && viewMode !== "schedules" && <ReservationListPeriod date={selectedDate} onChange={setPeriodDate} />}
-
       <div
         className={
           viewType === "calendar" && viewMode !== "schedules"
@@ -353,6 +351,7 @@ function ReservationsPageContent() {
           </div>
         ) : viewMode === "service" ? (
           <ReservationsList
+            footer={<ReservationListPeriod date={selectedDate} onChange={setPeriodDate} />}
             reservations={filteredReservations}
             blocks={calendarBlocks}
             sortBy={sortBy}
@@ -363,6 +362,7 @@ function ReservationsPageContent() {
             onRegisterPayment={setPayingReservation} />
         ) : (
           <ReservationsByDateList
+            footer={<ReservationListPeriod date={selectedDate} onChange={setPeriodDate} />}
             reservations={filteredReservations}
             blocks={calendarBlocks}
             sortBy={sortBy}

@@ -215,10 +215,12 @@ export function ReservationsTableFrame({
   children,
   count,
   blocksCount = 0,
+  footer,
 }: {
   children: React.ReactNode
   count: number
   blocksCount?: number
+  footer?: React.ReactNode
 }) {
   const { t } = useLocalization()
   const reservationLabel = t("reservations.table.reservations") || "reservations"
@@ -238,8 +240,8 @@ export function ReservationsTableFrame({
         </TableHeader>
         <TableBody>{children}</TableBody>
       </Table>
-      <div className="flex items-center justify-between border-t border-border/60 px-4 py-3">
-        <p className="text-xs text-muted-foreground">
+      <footer className="flex flex-wrap items-start justify-between gap-3 border-t border-border/60 px-4 py-3">
+        <p className="shrink-0 py-2 text-xs text-muted-foreground">
           <span className="font-medium text-foreground">{count}</span>
           {" "}
           {reservationLabel}
@@ -252,19 +254,29 @@ export function ReservationsTableFrame({
             </>
           ) : null}
         </p>
-      </div>
+        {footer}
+      </footer>
     </div>
   )
 }
 
-export function ReservationsEmpty() {
+export function ReservationsEmpty({ footer }: { footer?: React.ReactNode }) {
   const { t } = useLocalization()
-  return (
+  const empty = (
     <EmptyCard
       icon={<CalendarIcon className="h-10 w-10 text-muted-foreground" />}
       title={t("reservations.empty.title") || "No reservations found"}
       description={t("reservations.empty.description") || "When customers book your services, they will appear here."}
     />
+  )
+  if (!footer) return empty
+  return (
+    <div className={documentListShellClassName()}>
+      {empty}
+      <footer className="flex flex-wrap items-center gap-3 border-t border-border/60 px-4 py-3">
+        {footer}
+      </footer>
+    </div>
   )
 }
 

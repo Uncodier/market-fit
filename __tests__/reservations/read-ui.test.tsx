@@ -6,6 +6,7 @@ import useSWR from "swr"
 import { getReservations } from "@/app/reservations/actions"
 import { getCalendarBlocks } from "@/app/reservations/calendar-blocks-actions"
 import { calendarReadWindow, listReadWindow } from "@/app/reservations/read-window"
+import { ReservationsEmpty, ReservationsTableFrame } from "@/app/reservations/components/reservation-table"
 
 let mockParams = new URLSearchParams("date=2026-10-14&viewType=list")
 let mockReadError: Error | undefined
@@ -26,15 +27,15 @@ jest.mock("swr", () => ({ __esModule: true, default: jest.fn((key, fetcher) => {
 jest.mock("@/app/reservations/components/CreateReservationDialog", () => ({ CreateReservationDialog: () => null }))
 jest.mock("@/app/reservations/components/ReservationPaymentDialog", () => ({ ReservationPaymentDialog: () => null }))
 jest.mock("@/app/reservations/components/CreateCalendarBlockDialog", () => ({ CreateCalendarBlockDialog: () => null }))
-jest.mock("@/app/reservations/components/ReservationsList", () => ({ ReservationsList: () => <div>Service records</div> }))
-jest.mock("@/app/reservations/components/ReservationsByDateList", () => ({ ReservationsByDateList: () => <div>Date records</div> }))
+jest.mock("@/app/reservations/components/ReservationRowActions", () => ({ ReservationRowActions: () => null }))
+jest.mock("@/app/reservations/components/ReservationsList", () => ({ ReservationsList: ({ footer }: { footer: React.ReactNode }) => <div>Service records<footer>{footer}</footer></div> }))
+jest.mock("@/app/reservations/components/ReservationsByDateList", () => ({ ReservationsByDateList: ({ footer }: { footer: React.ReactNode }) => <div>Date records<footer>{footer}</footer></div> }))
 jest.mock("@/app/reservations/components/SchedulesList", () => ({ SchedulesList: () => <div>Schedules</div> }))
-jest.mock("@/app/reservations/components/reservation-table", () => ({ ReservationsTableSkeleton: () => <div>Loading</div> }))
 jest.mock("@/app/reservations/components/ReservationCalendar", () => ({ ReservationCalendar: () => <div>Calendar records</div> }))
-jest.mock("@/app/components/ui/sticky-header", () => ({ StickyHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div> }))
+jest.mock("@/app/components/ui/sticky-header", () => ({ StickyHeader: ({ children }: { children: React.ReactNode }) => <div data-testid="sticky-header">{children}</div> }))
 
 beforeEach(() => {
-  Object.defineProperty(window, "matchMedia", { configurable: true, value: jest.fn(() => ({ matches: false, addEventListener: jest.fn(), removeEventListener: jest.fn() })) })
+  window.matchMedia = jest.fn().mockImplementation(() => ({ matches: false, addEventListener: jest.fn(), removeEventListener: jest.fn() }))
   mockReadError = undefined; mockParams = new URLSearchParams("date=2026-10-14&viewType=list")
   jest.clearAllMocks(); mockFetchers.length = 0
   ;(getReservations as jest.Mock).mockResolvedValue({ data: [] })
@@ -49,6 +50,21 @@ it("provides explicit month picker, navigation and search scope", () => {
   expect(change).toHaveBeenLastCalledWith(new Date(2026, 1, 28))
   fireEvent.change(screen.getByLabelText("Reservation month"), { target: { value: "2027-12" } })
   expect(change).toHaveBeenLastCalledWith(new Date(2027, 11, 1))
+})
+
+it.each(["calendar", "service"])("places the %s list month controls in the footer, outside the sticky header", (viewMode) => {
+  mockParams.set("viewMode", viewMode)
+  render(<ReservationsPage />)
+  expect(screen.getByLabelText("Reservation month").closest("footer")).not.toBeNull()
+  expect(screen.getByTestId("sticky-header")).not.toContainElement(screen.getByLabelText("Reservation month"))
+})
+
+it.each([false, true])("keeps month navigation in the shared table footer (empty: %s)", (empty) => {
+  const footer = <ReservationListPeriod date={new Date(2026, 9, 14)} onChange={jest.fn()} />
+  render(empty ? <ReservationsEmpty footer={footer} /> : <ReservationsTableFrame count={2} footer={footer}><tr><td>Record</td></tr></ReservationsTableFrame>)
+  const tableFooter = screen.getByLabelText("Reservation month").closest("footer")
+  expect(tableFooter).toHaveClass("border-t", "border-border/60", "px-4", "py-3")
+  expect(screen.getByRole("button", { name: "Next month" })).toBeEnabled()
 })
 
 it("keys and fetches list month, changes URL with picker, then matches calendar navigation", async () => {

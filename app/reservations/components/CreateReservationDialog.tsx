@@ -23,7 +23,7 @@ import { getLeads } from "@/app/leads/actions"
 import { listCatalogItems } from "@/app/catalog/actions"
 import { filterReservablePickerItems } from "@/app/catalog/storefront-availability"
 import { RelationSelectValue } from "@/app/components/ui/relation-select"
-import { ConfirmDialog } from "@/app/components/ui/confirm-dialog"
+import { ReservationDialogConfirmations } from "./reservation-dialog-confirmations"
 import { useDirtyDialogClose } from "@/app/components/ui/use-dirty-dialog-close"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { isModifierSelectionValid } from "@/app/components/commerce/ModifierPickerPanel"
@@ -44,6 +44,7 @@ import {
 } from "./reservation-dialog-task-fields"
 import { ReservationDialogFooter } from "./reservation-dialog-footer"
 import { assignableSiteMembers } from "@/lib/auth/assignable-site-members"
+import { browserTimeZone } from "@/lib/calendar/timezone"
 
 interface CreateReservationDialogProps {
   open: boolean
@@ -83,6 +84,7 @@ export function CreateReservationDialog({
   const [taskAssignee, setTaskAssignee] = useState<string>("")
   const [taskDate, setTaskDate] = useState<Date | undefined>(undefined)
   const [taskTime, setTaskTime] = useState("09:00")
+  const [timezone, setTimezone] = useState("UTC")
   const [taskCalendarValue, setTaskCalendarValue] = useState<RelationSelectValue>(null)
   const [taskType, setTaskType] = useState("meeting")
   const [children, setChildren] = useState<CatalogItem[]>([])
@@ -155,6 +157,7 @@ export function CreateReservationDialog({
     setTaskAssignee("")
     setTaskDate(undefined)
     setTaskTime("09:00")
+    setTimezone(browserTimeZone())
     setTaskCalendarValue(null)
   }
 
@@ -170,6 +173,7 @@ export function CreateReservationDialog({
       setTaskCalendarValue(next.taskCalendarValue)
       setTaskDate(next.taskDate)
       setTaskTime(next.taskTime)
+      setTimezone(next.timezone)
       setLeadValue(next.leadValue)
       setCatalogItemValue(next.catalogItemValue)
       setSelectedSlot(next.selectedSlot)
@@ -246,6 +250,7 @@ export function CreateReservationDialog({
   )
 
   const dirty = isReservationDialogDirty({
+    timezone, taskTime,
     isEdit,
     mode,
     reservation,
@@ -306,6 +311,7 @@ export function CreateReservationDialog({
           taskTitle,
           taskDate,
           taskTime,
+          timezone,
           taskType,
           taskAssignee,
           leadValue,
@@ -389,6 +395,7 @@ export function CreateReservationDialog({
                 taskDate={taskDate}
                 setTaskDate={setTaskDate}
                 taskTime={taskTime}
+                timezone={timezone} setTimezone={setTimezone}
                 setTaskTime={setTaskTime}
                 leads={leads}
                 leadValue={leadValue}
@@ -435,6 +442,7 @@ export function CreateReservationDialog({
                 taskAssignee={taskAssignee}
                 setTaskAssignee={setTaskAssignee}
                 selectedSlot={selectedSlot}
+                timezone={timezone} setTimezone={setTimezone}
                 setSelectedSlot={setSelectedSlot}
                 sellableItem={sellableItem}
                 resolvedChild={resolvedChild}
@@ -470,27 +478,9 @@ export function CreateReservationDialog({
           />
         </DialogContent>
       </Dialog>
-      <ConfirmDialog
-        open={discardOpen}
-        onOpenChange={setDiscardOpen}
-        title={t("reservations.dialog.discardTitle") || "Discard changes?"}
-        description={t("reservations.dialog.discardDescription") || "Your changes will be lost."}
-        confirmLabel={t("reservations.dialog.discard") || "Discard"}
-        variant="destructive"
-        onConfirm={confirmDiscard}
-        dataPermission="allow"
-      />
-      <ConfirmDialog
-        open={cancelConfirmOpen}
-        onOpenChange={setCancelConfirmOpen}
-        title={t("reservations.dialog.cancelConfirmTitle") || "Cancel this reservation?"}
-        description={t("reservations.dialog.cancelConfirmDescription") || "The time slot will become available again."}
-        confirmLabel={t("reservations.dialog.cancelReservation") || "Cancel reservation"}
-        variant="destructive"
-        loading={isCancelling}
-        onConfirm={handleCancelReservation}
-        dataPermission="allow"
-      />
+      <ReservationDialogConfirmations discardOpen={discardOpen} setDiscardOpen={setDiscardOpen}
+        confirmDiscard={confirmDiscard} cancelOpen={cancelConfirmOpen} setCancelOpen={setCancelConfirmOpen}
+        cancelling={isCancelling} cancel={handleCancelReservation} t={t} />
     </>
   )
 }

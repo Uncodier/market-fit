@@ -7,6 +7,7 @@ import type { CartModifier } from "@/app/commerce/cart-modifiers"
 import { isRoundRobinPassOrParent } from "@/app/commerce/pass-round-robin"
 import { validateReservationSlot, updateReservationStatus, resolveRoundRobinService } from "../actions"
 import { saveServiceReservation } from "../sale-order-actions"
+import { zonedTaskInstant } from "@/lib/calendar/timezone"
 
 export async function submitTeamTaskReservation(params: {
   siteId: string
@@ -15,6 +16,7 @@ export async function submitTeamTaskReservation(params: {
   taskTitle: string
   taskDate: Date
   taskTime: string
+  timezone: string
   taskType: string
   taskAssignee: string
   leadValue: RelationSelectValue
@@ -47,7 +49,7 @@ export async function submitTeamTaskReservation(params: {
     return { error: "Task title is required" }
   }
 
-  const taskStartIso = new Date(`${taskDate.toISOString().split("T")[0]}T${taskTime}:00`).toISOString()
+  const taskStartIso = zonedTaskInstant(taskDate, taskTime, params.timezone, isEdit ? reservation?.start_time : undefined)
   let resolvedLeadId = null
   if (leadValue) {
     const { id, error: leadError } = await resolveRelationId("lead", leadValue, siteId)
@@ -79,7 +81,7 @@ export async function submitTeamTaskReservation(params: {
     assignee: taskAssignee || undefined,
     lead_id: resolvedLeadId,
     site_id: siteId,
-    metadata: {},
+    metadata: { ...(reservation?.original_task_metadata || {}), timezone: params.timezone },
   }
 
   if (taskCalendarSchedule) {
@@ -88,17 +90,19 @@ export async function submitTeamTaskReservation(params: {
       startDateObj.getTime() + (taskCalendarSchedule.duration_minutes || 30) * 60000,
     )
     taskPayload.metadata = {
+      ...taskPayload.metadata,
       _calendar_context: {
         origin: parsedExistingNotes?.origin || "reservations_modal",
         catalog_item_id: taskCalendarSchedule.id,
         catalog_item_name: taskCalendarSchedule.name || "Team Calendar",
         duration: `${taskCalendarSchedule.duration_minutes || 30} min`,
         end_time: endDateObj.toISOString(),
+        timezone: params.timezone,
         location: taskCalendarSchedule.location || parsedExistingNotes?.location || null,
       },
     }
   } else if (parsedExistingNotes) {
-    taskPayload.metadata = { _calendar_context: parsedExistingNotes }
+    taskPayload.metadata._calendar_context = { ...parsedExistingNotes, timezone: params.timezone }
   }
 
   if (isEdit && reservation?.original_task_id) {

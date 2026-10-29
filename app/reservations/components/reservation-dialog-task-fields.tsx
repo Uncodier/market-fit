@@ -12,6 +12,7 @@ import { TimeSelect } from "@/app/components/ui/time-select"
 import { Combobox } from "@/app/components/ui/combobox"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { TASK_TYPES } from "@/app/leads/types"
+import { ReservationTimezoneField } from "./reservation-timezone-field"
 
 const TASK_TYPE_OPTIONS = TASK_TYPES.filter((type) =>
   [
@@ -52,6 +53,8 @@ export function ReservationTaskFields({
   setTaskDate,
   taskTime,
   setTaskTime,
+  timezone,
+  setTimezone,
   leads,
   leadValue,
   setLeadValue,
@@ -75,6 +78,8 @@ export function ReservationTaskFields({
   taskDate: Date | undefined
   setTaskDate: (date: Date | undefined) => void
   taskTime: string
+  timezone: string
+  setTimezone: (value: string) => void
   setTaskTime: (value: string) => void
   leads: any[]
   leadValue: RelationSelectValue
@@ -152,6 +157,8 @@ export function ReservationTaskFields({
           />
         </div>
       </div>
+
+      <ReservationTimezoneField value={timezone} onChange={setTimezone} />
 
       <div className="space-y-2">
         <Label>{t("reservations.task.customerOptional") || "Customer (Optional)"}</Label>

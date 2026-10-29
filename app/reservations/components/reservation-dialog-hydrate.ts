@@ -1,5 +1,7 @@
 import type { CatalogItem, Reservation } from "@/app/types"
 import type { RelationSelectValue } from "@/app/components/ui/relation-select"
+import { taskTimeZone } from "@/lib/calendar/timezone"
+import { calendarDateFromIso, formatSlotDateTime } from "@/app/components/commerce/reservation-slot-utils"
 
 export function existingRelationValue(
   id: string | null | undefined,
@@ -67,7 +69,8 @@ export function hydrateReservationForm(reservation: Reservation) {
       }
     }
     if (contextData) extractedCalendarId = extractedCalendarId || contextData.catalog_item_id
-    const start = reservation.start_time ? new Date(reservation.start_time) : undefined
+    const timezone = taskTimeZone({ ...rawMetadata, _calendar_context: contextData })
+    const start = reservation.start_time ? calendarDateFromIso(reservation.start_time, timezone) : undefined
     return {
       mode: "task" as const,
       taskTitle: (reservation as any).original_task_title || reservation.catalog_item?.name || "",
@@ -78,7 +81,8 @@ export function hydrateReservationForm(reservation: Reservation) {
         ? existingRelationValue(extractedCalendarId, "Calendar")
         : null,
       taskDate: start,
-      taskTime: start ? start.toTimeString().slice(0, 5) : "09:00",
+      timezone,
+      taskTime: start ? formatSlotDateTime(reservation.start_time, timezone, "HH:mm") : "09:00",
       leadValue: existingRelationValue(
         reservation.lead_id,
         reservation.lead?.name || reservation.lead?.email || reservation.lead_id,
@@ -90,6 +94,7 @@ export function hydrateReservationForm(reservation: Reservation) {
 
   return {
     mode: "service" as const,
+    timezone: taskTimeZone(),
     catalogItemValue: existingRelationValue(
       reservation.catalog_item_id,
       reservation.catalog_item?.name || reservation.catalog_item_id || "",
@@ -136,6 +141,8 @@ export function isReservationDialogDirty(params: {
   catalogItemId: string
   selectedSlot: { start: string; end: string } | null
   taskDate?: Date
+  timezone?: string
+  taskTime?: string
   catalogItemValue: unknown
   leadValue: unknown
 }) {
@@ -155,7 +162,11 @@ export function isReservationDialogDirty(params: {
   } = params
   if (isEdit) {
     if (mode === "task") {
+      const original = reservation ? hydrateReservationForm(reservation) : null
       return (
+        (params.timezone !== undefined && params.timezone !== original?.timezone) ||
+        (params.taskTime !== undefined && params.taskTime !== original?.taskTime) ||
+        taskDate?.getTime() !== original?.taskDate?.getTime() ||
         taskTitle.trim() !== (reservation?.catalog_item?.name || "") ||
         taskAssignee !== (reservation?.assignee_user_id || "") ||
         notes.trim() !== (reservation?.notes || "") ||
