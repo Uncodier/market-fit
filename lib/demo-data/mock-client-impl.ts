@@ -1,5 +1,5 @@
 import { getDemoData } from "./index";
-import { applyNotFilter, applySelectEmbeds, getRowValue } from "./mock-query";
+import { applyNotFilter, applySelectEmbeds, getRowValue, matchesOrFilter } from "./mock-query";
 import { getDemoSiteRole } from "./site-role";
 import {
   mutateDemoOrderLineUnits,
@@ -133,23 +133,17 @@ export async function createDemoMockClientImpl(demoSiteId: string) {
       ) => {
         if (options?.referencedTable) {
           const relation = options.referencedTable
-          const alternatives = condition.split(",").map((part) => {
-            const [column, operator, ...rawValue] = part.split(".")
-            return { column, operator, value: rawValue.join(".") }
-          })
 
           result = result.map((item) => {
             const embeddedRows = Array.isArray(item[relation])
               ? item[relation]
               : []
             const filteredRows = embeddedRows.filter((embeddedItem: any) =>
-              alternatives.some(({ column, operator, value }) =>
-                operator === "eq" && getRowValue(embeddedItem, column) === value
-              )
+              matchesOrFilter(embeddedItem, condition)
             )
             return { ...item, [relation]: filteredRows }
           })
-        }
+        } else result = result.filter(item => matchesOrFilter(item, condition));
         return queryBuilder;
       },
       in: (column: string, values: any[]) => {
@@ -249,6 +243,10 @@ export async function createDemoMockClientImpl(demoSiteId: string) {
         return queryBuilder;
       },
       csv: () => queryBuilder,
+      abortSignal: (signal: AbortSignal) => {
+        if (signal.aborted) throw new DOMException("Demo read aborted", "AbortError");
+        return queryBuilder;
+      },
       then: (resolve: any) =>
         resolve({
           data: result,

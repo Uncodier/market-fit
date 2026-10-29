@@ -1,6 +1,17 @@
-import { applyNotFilter, applySelectEmbeds, getRowValue, parseSelectEmbeds } from "@/lib/demo-data/mock-query"
+import { applyNotFilter, applySelectEmbeds, getRowValue, matchesOrFilter, parseSelectEmbeds } from "@/lib/demo-data/mock-query"
 
 describe("demo mock query embeds", () => {
+  it("resolves JSON paths and nullable status predicates", () => {
+    const row = { custom_data: { status: "pending", nested: { count: 2 } } }
+    expect(getRowValue(row, "custom_data->>status")).toBe("pending")
+    expect(getRowValue(row, "custom_data->nested->>count")).toBe("2")
+    expect(getRowValue({}, "custom_data->>status")).toBeUndefined()
+    const condition = "custom_data->>status.neq.pending,custom_data->>status.is.null"
+    expect(matchesOrFilter(row, condition)).toBe(false)
+    expect(matchesOrFilter({}, condition)).toBe(true)
+    expect(matchesOrFilter({ custom_data: { status: "completed" } }, condition)).toBe(true)
+  })
+
   it("parses alias, inner, fk hint, and nested embeds", () => {
     const embeds = parseSelectEmbeds(`
       *,

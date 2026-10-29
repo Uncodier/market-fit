@@ -110,8 +110,25 @@ export function parseSelectEmbeds(select: string): EmbedSpec[] {
 }
 
 export function getRowValue(item: Record<string, any>, column: string) {
-  if (!column || !column.includes(".")) return item?.[column]
-  return column.split(".").reduce((acc, key) => acc?.[key], item)
+  const path = column.split(/->>?|\./)
+  const value = path.reduce((acc, key) => acc?.[key], item)
+  if (column.includes("->>") && value != null) {
+    return typeof value === "object" ? JSON.stringify(value) : String(value)
+  }
+  return value
+}
+
+/** OR predicates used by demo reads, including nullable JSON message status. */
+export function matchesOrFilter(item: Record<string, unknown>, condition: string): boolean {
+  return condition.split(",").some(part => {
+    const [column, operator, ...parts] = part.split(".")
+    const expected = parts.join(".")
+    const value = getRowValue(item, column)
+    if (operator === "is") return expected === "null" ? value == null : String(value) === expected
+    if (operator === "eq") return value != null && String(value) === expected
+    if (operator === "neq") return value != null && String(value) !== expected
+    return false
+  })
 }
 
 function pickFk(

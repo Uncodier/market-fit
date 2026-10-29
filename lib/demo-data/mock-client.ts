@@ -23,14 +23,21 @@ export function createDemoMockClient(demoSiteId: string) {
     },
     from: (table: string) => {
       // Create a chainable proxy for the query builder
-      const createChainProxy = (path: string[], argsList: any[][]): any => {
+      const createChainProxy = (path: string[], argsList: any[][], signal?: AbortSignal): any => {
+         const checkAbort = () => {
+             if (signal?.aborted) throw new DOMException('Demo read aborted', 'AbortError');
+         };
          const executor = async () => {
+             checkAbort();
              const client = await getClient();
+             checkAbort();
              let current: any = client.from(table);
              for (let i = 0; i < path.length; i++) {
                  current = current[path[i]](...argsList[i]);
              }
-             return current;
+             const result = await current;
+             checkAbort();
+             return result;
          };
 
          return new Proxy({}, {
@@ -38,9 +45,7 @@ export function createDemoMockClient(demoSiteId: string) {
                  if (prop === 'then') {
                      return async (resolve: any, reject: any) => {
                          try {
-                             // executor() returns the builder promise from real client
-                             const builder = await executor();
-                             const result = await builder;
+                             const result = await executor();
                              return resolve ? resolve(result) : result;
                          } catch (e) {
                              if (reject) return reject(e);
@@ -55,10 +60,14 @@ export function createDemoMockClient(demoSiteId: string) {
                      return (cb: any) => executor().then(builder => builder).finally(cb);
                  }
                  
+                 // Cancellation belongs to the lazy read, including terminal single-row methods.
+                 if (prop === 'abortSignal') {
+                     return (nextSignal: AbortSignal) => createChainProxy(path, argsList, nextSignal);
+                 }
                  // If prop is a string and not a promise method, we add it to the chain
                  if (typeof prop === 'string') {
                      return (...args: any[]) => {
-                         return createChainProxy([...path, prop], [...argsList, args]);
+                         return createChainProxy([...path, prop], [...argsList, args], signal);
                      }
                  }
                  return undefined;
