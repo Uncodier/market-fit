@@ -7,6 +7,7 @@ export function buildCartFromSaleOrderItems(
   saleOrderItems: any[],
   catalogItems: CatalogItem[],
   orderCurrency?: string | null,
+  localCheckoutSnapshot = false,
 ): PosCartItem[] {
   const rows = (saleOrderItems || []).filter((line) => line && line.status !== "cancelled")
   const catalogById = new Map(catalogItems.map((item) => [item.id, item]))
@@ -34,8 +35,8 @@ export function buildCartFromSaleOrderItems(
         name: child.name,
         cartQty: perUnitQty,
         cartPrice: Number(child.unit_price) || 0,
-        currency: orderCurrency || catalogItem?.currency,
-        saleOrderItemId: child.id,
+        currency: localCheckoutSnapshot ? child.metadata?.local_currency : orderCurrency || catalogItem?.currency,
+        saleOrderItemId: child.id?.startsWith("local_") ? undefined : child.id,
         backorderQty: Number(child.metadata?.backorder_quantity) || 0,
       }
     })
@@ -46,9 +47,13 @@ export function buildCartFromSaleOrderItems(
       name: oi.name || catalogItem?.name,
       cartQty: hostQty,
       cartPrice: Number(oi.unit_price) || 0,
-      saleOrderItemId: oi.id,
+      saleOrderItemId: oi.id?.startsWith("local_") ? undefined : oi.id,
       // Persisted line prices are already expressed in the order currency.
-      currency: orderCurrency || catalogItem?.currency,
+      currency: localCheckoutSnapshot ? oi.metadata?.local_currency : orderCurrency || catalogItem?.currency,
+      ...(localCheckoutSnapshot ? {
+        reservationStart: oi.metadata?.reservation_start,
+        reservationEnd: oi.metadata?.reservation_end,
+      } : {}),
       backorderQty: Number(oi.metadata?.backorder_quantity) || 0,
       lineKey,
       modifiers,

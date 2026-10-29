@@ -56,11 +56,13 @@ export function posSyncBadgeView(status: SyncStatus, t: (key: string) => string)
   }
 
   const Icon =
-    hasError
-      ? AlertTriangle
-      : busy
-        ? Loader2
-        : !status.lastPulledAt ? Clock : CheckCircle2;
+    !status.online
+      ? Clock
+      : hasError
+        ? AlertTriangle
+        : busy
+          ? Loader2
+          : !status.lastPulledAt ? Clock : CheckCircle2;
 
   return { label, tone, Icon, busy, expanded };
 }
@@ -102,7 +104,7 @@ export function PosSyncBadge({
             expanded ? "gap-1.5 px-3" : "w-8 px-0 justify-center",
             tone,
           )}
-          title={status.lastError || visibleLabel}
+          title={status.online ? status.lastError || visibleLabel : visibleLabel}
         >
           {progress && <Progress
             aria-hidden="true"

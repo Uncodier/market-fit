@@ -251,11 +251,30 @@ Selecting **New Order** can start another customer while an old confirmation wai
 a late response cannot clear the new cart or unlock its active submission. A cart
 changed while waiting for register admission is checked again before enqueueing.
 
-Selecting a local pending order resolves only its original unpaid checkout and
-dependencies, then loads the current server order before accepting payment. It
+When online, selecting a local pending order resolves only its original unpaid
+checkout and dependencies, then loads the current server order before accepting payment. It
 does not create a replacement order or accept local totals as payment evidence.
 Uncertain collected payments, missing evidence, and rejected attempts still require
 review. Server snapshot and inventory validation remain mandatory at confirmation.
+
+Offline selection (browser connectivity or a restored offline permission lease)
+takes precedence over pending or in-flight synchronization,
+including forced refreshes and connection loss during selection. It opens the
+device's saved snapshot or reconstructs a legacy summary from the original queued
+checkout and cached catalog, without dispatching or changing queue entries.
+Missing local data, revoked access, and foreign-site data still fail safely.
+Local line placeholders are not server IDs, and reconstructed snapshots are not
+server order versions or proof of payment. Payment collection continues to require
+verified online access; opening the ticket offline does not confirm a receipt.
+
+Queued-cart reconstruction preserves each host/modifier currency separately:
+new lines use catalog currencies, while persisted references require the saved
+server order currency. It also restores reservation start/end times and existing
+or queued customer identities without creating replacement customers. New local
+summaries retain the applied promotion preview. Legacy summaries restore only
+the originally requested promotion from the local catalog, with current local
+eligibility checks; missing or invalid promotions stop selection rather than
+silently remove the discount. Server-side promotion validation remains mandatory.
 
 New queued payments retain their cart-session ID outside the server payload.
 Changing a payment in the same new-order cart cannot evade the unresolved-payment

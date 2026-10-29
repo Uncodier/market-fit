@@ -66,6 +66,21 @@ describe("POS payment preparation", () => {
   });
   afterEach(() => { Object.defineProperty(navigator, "onLine", { configurable: true, value: true }); });
 
+  it.each(["SAVE20", null])("persists the promotion preview for offline reopening: %s", async (code) => {
+    const input = { ...args(), activeOrderId: "local_original", expectedOrderVersion: undefined,
+      total: 80, promoCode: code || "", appliedPromo: { promotionId: "promo", code,
+        byConditions: !code, discount: 20, orderSubtotal: 100, promotionName: "Saved offer" } };
+    const { result } = renderHook(() => usePosCheckout(input));
+    await act(async () => { await result.current.handleSendOrder(); });
+    expect(enqueueCheckout).toHaveBeenCalledWith("site", expect.objectContaining({
+      existingOrderId: "local_original", promotionId: "promo", promotionCode: code || undefined, payments: [],
+    }));
+    expect(pendingPut).toHaveBeenCalledWith(expect.objectContaining({ raw: expect.objectContaining({
+      promotion_id: "promo", discount_total: 20, subtotal: 100,
+      promotions: { name: "Saved offer", code },
+    }) }));
+  });
+
   it("opens immediately with only the selected ID while detail loading prevents confirmation", async () => {
     const input = { ...args(), cart: [], orderPreparing: true };
     const { result } = renderHook(() => usePosCheckout(input));

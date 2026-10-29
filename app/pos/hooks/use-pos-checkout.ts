@@ -251,6 +251,10 @@ export function usePosCheckout({
           seller_user_id: sellerUserId || userId,
           seller_name: sellerName || null,
           pending_sync: true,
+          // Preserve the original discount preview; the server still verifies redemption.
+          ...(appliedPromo?.discount != null && appliedPromo.orderSubtotal != null ? { promotion_id: appliedPromo.promotionId,
+            discount_total: appliedPromo.discount, subtotal: appliedPromo.orderSubtotal,
+            promotions: { name: appliedPromo.promotionName, code: appliedPromo.code } } : {}),
         },
       });
       if (!isCurrent()) return;

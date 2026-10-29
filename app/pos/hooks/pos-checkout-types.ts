@@ -29,6 +29,9 @@ export type UsePosCheckoutArgs = {
     promotionId: string;
     code: string | null;
     byConditions: boolean;
+    discount?: number;
+    orderSubtotal?: number;
+    promotionName?: string;
   } | null;
   activeOrderId: string;
   orderPreparing?: boolean;

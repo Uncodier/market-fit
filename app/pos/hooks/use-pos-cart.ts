@@ -42,6 +42,7 @@ import { normalizePosPromoFingerprint, posPromoCartFingerprint, posPromoOrderCon
 import { toast } from "sonner";
 import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext";
 import { resolveSiteCurrency } from "@/app/commerce/checkout-currency";
+import { offlineOrderPromotion } from "../local/offline-order-promotion";
 import {
   pendingSendDeltaCount,
   type SentLineQuantities,
@@ -367,6 +368,12 @@ export function usePosCart({
   const populateFromOrder = useCallback((order: Parameters<typeof posSessionFromOrder>[0], includeCart: boolean) => {
     const session = posSessionFromOrder(includeCart ? order : { ...order, sale_order_items: [] }, catalogItems);
     if (!session) return false;
+    const restoredCurrency = typeof order.currency === "string" && order.currency.trim()
+      ? resolveSiteCurrency(order.currency) : undefined;
+    const restoredPromo = order.pending_sync && order.local_checkout_snapshot
+      ? offlineOrderPromotion(order, session.cart || [], promotions,
+        restoredCurrency || resolvePosCartCurrency(session.cart || [], siteCurrency), rates, siteTimezone)
+      : session.recordedOrderPromo;
     setLeadValue(session.leadValue);
     setFulfillment(session.fulfillment);
     setOriginLocationId(session.originLocationId);
@@ -378,14 +385,14 @@ export function usePosCart({
     setShippingAddress(session.shippingAddress);
     setSentLineQuantities(session.sentLineQuantities);
     setExistingPaymentTotal(session.existingPaymentTotal);
-    setExpectedOrderVersion(includeCart ? posOrderVersion(order) : undefined);
-    setOrderCurrency(typeof order.currency === "string" && order.currency.trim()
-      ? resolveSiteCurrency(order.currency) : undefined);
+    const version = includeCart ? (order.pending_sync ? order.expected_order_version : posOrderVersion(order)) : undefined;
+    setExpectedOrderVersion(version);
+    setOrderCurrency(restoredCurrency);
     if (includeCart && session.cart) setCart(session.cart);
-    hydrateRecordedOrderPromo(session.recordedOrderPromo, posPromoCartFingerprint(session.cart || [],
-      posPromoOrderContext({ ...session, expectedOrderVersion: includeCart ? posOrderVersion(order) : undefined })));
+    hydrateRecordedOrderPromo(restoredPromo, posPromoCartFingerprint(session.cart || [],
+      posPromoOrderContext({ ...session, expectedOrderVersion: version })));
     return true;
-  }, [catalogItems, hydrateRecordedOrderPromo]);
+  }, [catalogItems, hydrateRecordedOrderPromo, promotions, siteCurrency, rates, siteTimezone]);
   const { handleOrderSelect } = usePosOrderSelection({
     siteId, pendingOrders, sequence: orderSelectionSequence, populateFromOrder,
     clearOrderFields, resetToNewOrder, setActiveOrderId, setLoadingOrder,

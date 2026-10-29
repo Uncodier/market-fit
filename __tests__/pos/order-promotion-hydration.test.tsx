@@ -12,6 +12,7 @@ jest.mock("@/app/pos/local/cart-session", () => ({
   loadCartSession: jest.fn(), saveCartSession: jest.fn(), clearCartSession: jest.fn(),
 }));
 jest.mock("@/app/pos/local/location-permission-state", () => ({
+  getPosPermissionLease: () => ({ siteId: "site", userId: "cashier", generation: 1 }),
   requirePosPermission: () => ({ siteId: "site", userId: "cashier", generation: 1 }),
   isPosPermissionCurrent: () => true,
 }));

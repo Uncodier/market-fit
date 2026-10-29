@@ -15,15 +15,17 @@ jest.mock("@/app/pos/operation-client", () => ({ fetchPosOrder: jest.fn() }));
 jest.mock("@/app/pos/local/resolve-pending-order", () => ({ resolvePendingOrder: jest.fn() }));
 jest.mock("@/app/pos/local/snapshot-pull", () => ({ readLocalPendingOrders: jest.fn() }));
 jest.mock("@/app/pos/local/location-permission-state", () => ({
+  getPosPermissionLease: () => ({ offline: !navigator.onLine }),
   requirePosPermission: (siteId: string) => {
-    if (!navigator.onLine) throw new Error("POS requires verified online access");
-    return { siteId, userId: "cashier", generation: 1 };
+    return { siteId, userId: "cashier", generation: 1, offline: !navigator.onLine };
   },
   isPosPermissionCurrent: jest.fn(() => true),
 }));
 jest.mock("@/app/pos/local/cart-session", () => ({
   loadCartSession: jest.fn(), saveCartSession: jest.fn(), clearCartSession: jest.fn(),
 }));
+jest.mock("@/app/pos/local/outbox", () => ({ listOutbox: jest.fn(async () => []) }));
+jest.mock("@/app/pos/local/db", () => ({ getPosDb: jest.fn() }));
 jest.mock("@/app/pos/hooks/use-pos-promo", () => ({
   usePosPromo: () => ({
     promoCode: "", setPromoCode: mockSetPromoCode, promoDiscount: 0, resetPromo: mockResetPromo,
@@ -382,7 +384,7 @@ describe("instant POS order selection", () => {
     expect(result.current.activeOrderId).toBe("new");
   });
 
-  it("preserves genuine synced cache selection offline but never prepares a pending order offline", async () => {
+  it("preserves synced cache selection offline and refuses a missing local snapshot", async () => {
     Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
     const { result } = await ready([order("synced"), { id: "local_original", pending_sync: true }]);
     await act(async () => { expect(await result.current.handleOrderSelect("synced")).toBe(true); });
@@ -391,6 +393,32 @@ describe("instant POS order selection", () => {
     expect(result.current.cart).toEqual([]);
     expect(resolvePendingOrder).not.toHaveBeenCalled();
     expect(fetchPosOrder).not.toHaveBeenCalled();
+  });
+
+  it.each(["local_original", "server"])("selects pending %s offline even on force refresh", async (id) => {
+    Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
+    const { result } = await ready([{ ...order(id), pending_sync: true }]);
+    await act(async () => { expect(await result.current.handleOrderSelect(id, true)).toBe(true); });
+    expect(result.current.activeOrderId).toBe(id);
+    expect(result.current.cart).toHaveLength(1);
+    expect(result.current.expectedOrderVersion).toBeUndefined();
+    expect(resolvePendingOrder).not.toHaveBeenCalled();
+    expect(fetchPosOrder).not.toHaveBeenCalled();
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  it("falls back to local selection when connectivity drops during sync", async () => {
+    jest.mocked(resolvePendingOrder).mockImplementation(async () => {
+      Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
+      throw new Error("This order is still saved in the sync queue.");
+    });
+    const { result } = await ready([{ ...order("local_original"), pending_sync: true }]);
+    await act(async () => { expect(await result.current.handleOrderSelect("local_original")).toBe(true); });
+    expect(result.current.activeOrderId).toBe("local_original");
+    expect(result.current.cart).toHaveLength(1);
+    expect(result.current.loadingOrder).toBe(false);
+    expect(fetchPosOrder).not.toHaveBeenCalled();
+    expect(toast.error).not.toHaveBeenCalled();
   });
 
   it("reads a genuine synced IndexedDB snapshot offline and refuses a forced pending-cache refresh", async () => {

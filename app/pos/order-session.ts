@@ -94,7 +94,8 @@ export function posSessionFromOrder(
 
   return {
     cart: order.sale_order_items
-      ? buildCartFromSaleOrderItems(order.sale_order_items, catalogItems, order.currency)
+      ? buildCartFromSaleOrderItems(order.sale_order_items, catalogItems, order.currency,
+        order.pending_sync === true && order.local_checkout_snapshot === true)
       : null,
     sentLineQuantities: sentLineQuantitiesFromSaleOrderItems(
       order.sale_order_items || [],

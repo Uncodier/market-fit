@@ -1,5 +1,6 @@
 import { posSyncBadgeView } from "@/app/pos/components/PosSyncBadge";
 import type { SyncStatus } from "@/app/pos/local/sync-engine";
+import { Clock } from "@/app/components/ui/icons";
 
 const baseStatus: SyncStatus = {
   online: true,
@@ -41,6 +42,14 @@ describe("posSyncBadgeView", () => {
     expect(view.expanded).toBe(true);
     expect(view.label).toContain("pos.sync.offline");
     expect(view.label).toContain("2");
+  });
+
+  it("prioritizes offline over in-flight sync and retained errors", () => {
+    const view = posSyncBadgeView({ ...baseStatus, online: false, syncing: true,
+      pulling: true, pendingCount: 1, failedCount: 1, lastError: "Network error" }, t);
+    expect(view.label).toBe("pos.sync.offline · 2");
+    expect(view.busy).toBe(false);
+    expect(view.Icon).toBe(Clock);
   });
 
   it("shows a pull error and returns to synced after recovery", () => {

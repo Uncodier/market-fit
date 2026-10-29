@@ -4,7 +4,7 @@ import { useCallback, useEffect, type MutableRefObject } from "react";
 import { toast } from "sonner";
 import { fetchPosOrder } from "@/app/pos/operation-client";
 import { hasPosOrderCartSnapshot, posSessionFromOrder } from "@/app/pos/order-session";
-import { requirePosPermission, isPosPermissionCurrent, type PosPermissionLease } from "../local/location-permission-state";
+import { getPosPermissionLease, requirePosPermission, isPosPermissionCurrent, type PosPermissionLease } from "../local/location-permission-state";
 
 type Order = Parameters<typeof posSessionFromOrder>[0];
 
@@ -41,14 +41,31 @@ export function usePosOrderSelection({
       return true;
     }
     if (!siteId) return false;
+    const isEffectivelyOffline = () => !navigator.onLine || !!getPosPermissionLease(siteId)?.offline;
 
     // Never display or charge the previous ticket under the newly selected ID.
     clearOrderFields();
     setActiveOrderId(id);
     const cached = pendingOrders.find((order) => order?.id === id &&
       (!order.site_id || order.site_id === siteId));
+    let offlineAttempted = false;
+    const loadOffline = async () => {
+      offlineAttempted = true;
+      setLoadingOrder(true);
+      const { readOfflineOrder } = await import("@/app/pos/local/read-offline-order");
+      if (!isCurrent()) return false;
+      const local = await readOfflineOrder(siteId, id, cached, isCurrent);
+      if (!isCurrent()) return false;
+      if (!hasPosOrderCartSnapshot(local) || !populateFromOrder(local, true)) {
+        throw new Error("This order is not available on this device while offline.");
+      }
+      setActiveOrderId(id);
+      return true;
+    };
     try {
-      let pending = id.startsWith("local_") || !!cached?.pending_sync;
+      // Connectivity takes precedence over pending/in-flight synchronization.
+      if (isEffectivelyOffline()) return await loadOffline();
+      const pending = id.startsWith("local_") || !!cached?.pending_sync;
       let resolvedId = id;
       let permission: PosPermissionLease | undefined;
       if (!pending && cached && !forceRefresh) {
@@ -56,26 +73,20 @@ export function usePosOrderSelection({
         if (populateFromOrder(cached, complete) && complete) return true;
       }
       setLoadingOrder(true);
-      if (!pending && !navigator.onLine) {
-        const { readLocalPendingOrders } = await import("@/app/pos/local/snapshot-pull");
-        const orders = await readLocalPendingOrders(siteId);
-        if (!isCurrent()) return false;
-        const local = orders.find((order) => order.id === id && order.site_id === siteId)?.raw;
-        if (local?.site_id && local.site_id !== siteId) throw new Error("This order belongs to another site.");
-        pending = !!local?.pending_sync;
-        if (!pending && !forceRefresh && hasPosOrderCartSnapshot(local) && populateFromOrder(local, true)) return true;
-      }
       if (pending) {
         permission = requirePosPermission(siteId);
         const { resolvePendingOrder } = await import("@/app/pos/local/resolve-pending-order");
         if (!isCurrent()) return false;
+        if (isEffectivelyOffline()) return await loadOffline();
         resolvedId = await resolvePendingOrder(siteId, id, isCurrent);
         if (!isCurrent()) return false;
+        if (isEffectivelyOffline()) return await loadOffline();
         if (!isPosPermissionCurrent(permission)) throw new Error("POS access changed");
       }
       permission ??= requirePosPermission(siteId);
       const result = await fetchPosOrder(siteId, resolvedId);
       if (!isCurrent()) return false;
+      if (isEffectivelyOffline()) return await loadOffline();
       if (permission && !isPosPermissionCurrent(permission)) throw new Error("POS access changed");
       if (result.error) throw new Error(result.error);
       if (result.data?.id !== resolvedId || (result.data?.site_id && result.data.site_id !== siteId) ||
@@ -89,6 +100,10 @@ export function usePosOrderSelection({
       return true;
     } catch (error) {
       if (!isCurrent()) return false;
+      if (isEffectivelyOffline() && !offlineAttempted) {
+        try { return await loadOffline(); } catch (offlineError) { error = offlineError; }
+        if (!isCurrent()) return false;
+      }
       await resetToNewOrder();
       toast.error(error instanceof Error ? error.message : "Failed to load order");
       return false;
