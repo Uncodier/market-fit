@@ -8,13 +8,13 @@ function fixtureId(runId, name) {
 }
 function cases(runId) {
   const root = `.harness-e2e/${runId}`;
-  const common = `Synthetic harness test. Work only under ${root}/. Do not push, deploy, install packages, provision services, contact anyone, or change files outside that directory. Use only local Python/standard library if needed. Do not fabricate command results. Finish with finish_task when the requested work is saved.`;
+  const common = `Synthetic harness test. Work only under ${root}/. Do not push, deploy, install packages, provision services, contact anyone, or change files outside that directory. Use only local Python/standard library if needed. Every requested trailing newline means one actual LF byte (decimal 10), not the two literal characters backslash and n. Verify the final bytes independently of the write expression before finishing. Do not fabricate command results. Finish with finish_task when the requested work is saved.`;
   const specs = [
     { id: '01-file', title: 'Write one exact file',
       request: `Create ${root}/hello.txt with exactly "hello harness\\n" (one trailing newline).`,
       files: { 'hello.txt': 'hello harness\n' }, deadlineSeconds: 300, requiredFailure: null, minimumCycles: 1 },
     { id: '02-repair', title: 'Fix addition after a failing test',
-      request: `Write ${root}/sum.py initially as "def add(a, b): return a - b\\n". Run a Python assertion add(2,3)==5 and observe its failure. Replace the file with exactly "def add(a, b): return a + b\\n" and rerun the same assertion successfully.`,
+      request: `Write ${root}/sum.py as "def add(a, b): return a - b\\n". Separately exec with cwd=/vercel/sandbox/${root}: python3 -B -c 'from sum import add; assert add(2,3)==5'. Observe failure. Separately replace the file with "def add(a, b): return a + b\\n". Repeat the identical exec command/cwd successfully. Neither assertion call may include writes or extra checks.`,
       files: { 'sum.py': 'def add(a, b): return a + b\n' }, deadlineSeconds: 420, requiredFailure: 'assertion', minimumCycles: 1 },
     { id: '03-continue', title: 'Continue after a command error',
       request: `Run "python3 -c 'import sys; sys.exit(7)'" once. Despite exit 7, create ${root}/continued.txt with exactly "continued\\n". Do not repair or retry the intentionally failing command.`,

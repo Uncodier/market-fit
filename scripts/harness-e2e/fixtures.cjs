@@ -8,11 +8,12 @@ function repository(value) {
   const [org, repo] = url.pathname.slice(1, -4).split('/');
   return { url: url.href, org, repo, kind: 'custom', default_branch: 'main' };
 }
-function makeRun({ id, settings, userId, repoUrl, sourceSha, apiSourceSha }) {
+function makeRun({ id, settings, userId, repoUrl, sourceSha, apiSourceSha, maxCredits = 2 }) {
   if (!uuid.test(userId)) throw new Error('Invalid authenticated identity');
+  if (!Number.isInteger(maxCredits) || maxCredits < 2 || maxCredits > 6) throw new Error('Invalid approved credit limit');
   return { schemaVersion: 1, marker: MARKER, id, siteId: settings.siteId, userId, backend: settings.url,
     startedAt: new Date().toISOString(), sourceSha, apiSourceSha, deployedSha: settings.deployedSha,
-    repository: repository(repoUrl), cases: cases(id), state: 'prepared', maxCredits: 2, maxSeconds: 1500 };
+    repository: repository(repoUrl), cases: cases(id), state: 'prepared', maxCredits, maxSeconds: 1500 };
 }
 function payloads(run, spec) {
   const metadata = { harness_e2e: { marker: MARKER, run_id: run.id, case_id: spec.id },

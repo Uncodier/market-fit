@@ -28,6 +28,18 @@ that directory. Use an explicitly approved test repository, never a customer rep
 The evaluator checks actual persisted tool-call/result pairs and SDK file reads,
 not an assistant's claim of success. A failing test is expected in cases 02/03,
 not a reason to fail unless the agent cannot continue. Status alone is insufficient.
+New requests explicitly define trailing newlines as LF byte 10, not literal
+backslash/n characters. Existing manifests retain their original definitions and
+must not be rewritten or reactivated after this instruction change.
+Automatic sandbox suspension can make the terminal file read unavailable. The
+evaluator retains an earlier independent read only for the same session, mapping
+and workspace, with an unchanged transcript prefix, no pending calls at that read,
+and no later workspace-capable operations. Later missing/mismatching reads take
+precedence. Exact hashes and byte lengths remain mandatory; no VM is resumed.
+Canonical failure receipts can wrap command output in a second `output` envelope;
+the evaluator extracts the exit code only when both envelopes explicitly fail.
+The repair request requires separate writes and identical assertion command/cwd
+before and after repair, rather than guessing equivalence between Python programs.
 For case 02 the identical assertion may be the final invocation after a literal
 source repair in the same command. The evaluator recognizes that bounded Python
 heredoc shape, requiring matching working directories and a prior AssertionError;
@@ -101,6 +113,13 @@ npm run test:harness:e2e -- run --run-id "$RUN_ID" --site-id "$SITE_ID" --ack-pr
 # Exact run-owned stop; does not delete evidence or change customer work.
 npm run test:harness:e2e -- stop --run-id "$RUN_ID" --site-id "$SITE_ID" --ack-production-canary --ack-observer-service-role
 ```
+
+The default observed-credit watchdog remains 2. An operator-approved integer
+budget from 2 through 6 may be selected with `--max-credits 6` on **both** prepare
+and run; activation rejects a different or missing acknowledgement. The approved
+value is persisted before fixture creation and each requirement receives one fifth
+of that budget. This does not change the 25-minute watchdog, per-case deadlines,
+ownership checks or fail-fast behavior, and is not an atomic spending ceiling.
 
 No automatic rerun creates more requirements. IDs are deterministic per run and
 case, collision checks verify ownership, and a manifest is saved before inserts.
@@ -211,3 +230,38 @@ Before another run, fund the configured synthetic site, supply a token authorize
 for the intended Vercel sandbox project, verify the API deployment SHA and select
 the approved repository explicitly. Do not bypass either preflight failure to
 force a result.
+
+### October 29 verification
+
+Production deployment `dpl_F9VLuyfd6zS4vAfwwHTz1VZ9ZGRg` was independently verified
+as API commit `21d67fcc95ec34954499460707aac38a2a8a813d`. The configured observer
+token returned 403; the already authenticated Vercel CLI credential passed the
+same scoped probe using the explicit process-only sandbox token override.
+No credentials were persisted or permissions changed.
+
+Run `canary-prod-20261029-verified-01` stopped on the first case because the terminal
+workspace was suspended. Existing independent reads match the expected 14-byte
+file; reevaluation with the guarded evidence retention passes that case.
+Run `canary-prod-20261029-verified-02` passes case 01. Case 02 completed with actual
+AssertionError/exit-1, repaired source, exit-0 and matching final bytes, but its
+assertion command changed and its failing receipt was nested. The strict evaluator
+blocked the suite; stop was confirmed and cases 03–05 were not activated.
+These two runs do not establish five-case health green. Observed model costs were
+approximately 0.67 and 1.69 credits respectively, excluding possible sandbox cost.
+
+With an explicitly approved six-credit watchdog, run 03 reproduced a runtime bug:
+the known exit-1 receipt was incorrectly fenced as an unknown write, preventing
+the identical assertion after repair. It was stopped with confirmation at about
+4.26 observed credits. The API repair distinguishes a completed local command
+failure from an unknown effect and was deployed as
+`dpl_7tE83rtRkN2BPVL4YBduh2JX7o4K` (`api-5l6akwzla-uncodie.vercel.app`). This is an
+uncommitted patch over `21d67fcc`, not a clean new Git SHA; provenance is not green.
+
+Run 04 paused before inference with `execution_check_failed` and zero model cost;
+it was stopped with confirmation, without clearing the existing ownership fence.
+Run 05 then **passed cases 01, 02 and 03** with independent file and receipt checks.
+Case 02 reran the identical command after repair, validating the deployed fix.
+The six-credit polling watchdog stopped case 04 at **6.26640875 observed credits**;
+stop was confirmed and case 05 was not activated. Overshoot occurred between
+samples. Cases 04/05 remain unverified, and `healthGreen` is false. No further run
+was started. No fixtures or historical uncertain-operation fences were erased.

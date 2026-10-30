@@ -6,6 +6,7 @@ import { Folder, FileText, ChevronRight, ChevronDown, Download, Loader, Archive 
 import { Skeleton } from '@/app/components/ui/skeleton'
 import Editor, { loader } from '@monaco-editor/react'
 import { useTheme } from '@/app/context/ThemeContext'
+import { archiveRequestUrl } from '@/lib/cloud-file-url'
 
 interface ZipViewerProps {
   url: string
@@ -14,7 +15,12 @@ interface ZipViewerProps {
 }
 
 
-export const ZipViewer: React.FC<ZipViewerProps & { className?: string }> = ({ url, isDarkMode: propIsDarkMode, className, onFileSelect }) => {
+// Keep every piece of viewer state bound to one archive revision.
+export const ZipViewer: React.FC<ZipViewerProps & { className?: string }> = (props) => (
+  <ArchiveRevisionViewer key={props.url} {...props} />
+)
+
+const ArchiveRevisionViewer: React.FC<ZipViewerProps & { className?: string }> = ({ url, isDarkMode: propIsDarkMode, className, onFileSelect }) => {
   const { isDarkMode: contextIsDarkMode } = useTheme()
   const isDarkMode = propIsDarkMode ?? contextIsDarkMode
 
@@ -139,12 +145,7 @@ export const ZipViewer: React.FC<ZipViewerProps & { className?: string }> = ({ u
   }
 
   const handleDownload = () => {
-    let finalUrl = url;
-    if (url.startsWith('/')) {
-        finalUrl = window.location.origin + url;
-    }
-    const proxyUrl = `/api/assets/proxy-zip?url=${encodeURIComponent(finalUrl)}`;
-    window.open(proxyUrl, '_blank');
+    window.open(archiveRequestUrl(url, window.location.origin), '_blank', 'noopener,noreferrer');
   }
 
   const renderTree = (node: FileNode, level: number = 0) => {
@@ -278,7 +279,8 @@ export const ZipViewer: React.FC<ZipViewerProps & { className?: string }> = ({ u
                       height="100%"
                       path={selectedFile.path}
                       theme={isDarkMode ? 'vs-dark' : 'light'}
-                      value={editedContents[selectedFile.path] ?? (selectedFile.content || '')}
+                      value={Object.prototype.hasOwnProperty.call(editedContents, selectedFile.path)
+                        ? editedContents[selectedFile.path] : (selectedFile.content || '')}
                       onChange={(value) => {
                         if (value !== selectedFile.content) {
                           setEditedContents(prev => ({ ...prev, [selectedFile.path]: value || '' }));

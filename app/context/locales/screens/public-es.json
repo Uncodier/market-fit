@@ -62,6 +62,7 @@
   "public.demo.current": "Actual",
   "public.demo.account": "Cuenta de demostración",
   "public.demo.selected": "Seleccionada",
+  "public.demo.reenter": "Reingresar",
   "public.demo.load": "Cargar demostración",
   "public.oauth.title": "Autenticación de red social",
   "public.oauth.networkTitle": "Autenticación de {{network}}",

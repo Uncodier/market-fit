@@ -43,6 +43,16 @@ it('rejects tampered manifests, foreign scope and changed test definitions', () 
   r.cases[0].files['.env'] = 'unsafe'; expect(() => validateManifest(r, settings, r.userId)).toThrow();
   const other = run(); other.maxCredits = 200; expect(() => validateManifest(other, settings, other.userId)).toThrow();
 });
+it('keeps two credits by default and requires bounded explicit budget options', () => {
+  expect(run().maxCredits).toBe(2);
+  const args = ['prepare', '--run-id', 'canary-offline-123', '--repository', 'https://github.com/example/canary.git', '--site-id', settings.siteId, '--ack-observer-service-role', '--ack-production-canary'];
+  expect(options([...args, '--max-credits', '6'])['max-credits']).toBe('6');
+  for (const value of ['0', '7', 'Infinity', '2.5', '06']) expect(() => options([...args, '--max-credits', value])).toThrow();
+  const r = makeRun({ id: 'canary-offline-123', settings, userId: randomUUID(), repoUrl: 'https://github.com/example/canary.git', maxCredits: 6 });
+  expect(r.maxCredits).toBe(6); expect(payloads(r, r.cases[0]).requirement.budget).toBe(1.2);
+  expect(() => validateManifest(r, settings, r.userId)).not.toThrow();
+  expect(() => makeRun({ ...r, maxCredits: 7 })).toThrow();
+});
 it('does not touch a foreign or repurposed requirement during stop/activation', async () => {
   const r = run(), spec = r.cases[0], row = payloads(r, spec).requirement;
   expect(() => assertFixture(row, r, spec)).not.toThrow(); row.user_id = randomUUID();

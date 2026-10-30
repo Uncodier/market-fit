@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react"
 
 import { useIframeUrl } from "@/app/hooks/use-iframe-url"
+import { cloudRevisionFormat } from "@/lib/cloud-file-url"
 
 import { type BrowserTab } from "./instance-workspace-state"
 import { deleteInstanceArtifacts } from "./delete-instance-artifacts"
@@ -67,6 +68,8 @@ export function useBrowserPresentation(input: ReturnType<typeof useBrowserWorksp
       
       const artifact = artifacts.find(a => a.screen === activeBrowserTab.screen)
       if (artifact?.url) {
+        // Downloads are not embedded app pages; preserve the exact revision query.
+        if (cloudRevisionFormat(artifact.url)) return artifact.url
         try {
           const url = new URL(artifact.url, window.location.origin)
           url.searchParams.set('theme', theme === 'dark' ? 'dark' : 'light')

@@ -62,6 +62,7 @@
   "public.demo.current": "Current",
   "public.demo.account": "Demo Account",
   "public.demo.selected": "Selected",
+  "public.demo.reenter": "Re-enter",
   "public.demo.load": "Load Demo",
   "public.oauth.title": "Social Network Authentication",
   "public.oauth.networkTitle": "{{network}} Authentication",

@@ -2,6 +2,7 @@
 
 // Pure offline evaluation. Never return transcript text, arguments, file contents or errors.
 const { createHash } = require('node:crypto');
+const { fileEvidence } = require('./file-evidence.cjs');
 const CASE_IDS = ['01-file', '02-repair', '03-continue', '04-resume', '05-plan'];
 const hash = value => createHash('sha256').update(value).digest('hex');
 const array = value => Array.isArray(value) ? value : [];
@@ -43,6 +44,8 @@ function transcript(observations) {
   return { calls: [...calls.values()], malformed, messageCount };
 }
 const exitCode = call => Number.isInteger(call.result?.output?.exitCode) ? call.result.output.exitCode :
+  call.result?.ok === false && call.result?.output?.ok === false &&
+    Number.isInteger(call.result.output.output?.exitCode) ? call.result.output.output.exitCode :
   Number.isInteger(call.result?.error?.exitCode) ? call.result.error.exitCode : null;
 const success = call => call.result?.ok === true && (call.name !== 'exec' || exitCode(call) === 0);
 const command = call => typeof call.args?.command === 'string' ? call.args.command : '';
@@ -131,8 +134,11 @@ function evaluateCase(spec, observations, nowMs = Date.now()) {
   const expired = elapsedMs !== null && deadlineMs !== null && elapsedMs > deadlineMs;
   const budget = sessions.some(session => /budget|credit|limit_exhausted/i.test(session.reason || ''));
   const paths = Object.keys(spec.files || {});
-  const matchedFiles = paths.filter(path => fileMatches(spec, last, path)).length;
-  const unavailableFiles = paths.filter(path => !fileAt(last, path) || fileAt(last, path).state === 'unavailable').length;
+  const matchedFiles = paths.filter(path => fileMatches(spec, fileEvidence(obs, path), path)).length;
+  const unavailableFiles = paths.filter(path => {
+    const file = fileAt(fileEvidence(obs, path), path);
+    return !file || file.state === 'unavailable';
+  }).length;
   const external = calls.filter(call => forbiddenTool(call.name)).length;
   const forbiddenShell = executions.filter(call => forbiddenCommand(command(call))).length;
   const monotonic = ['turns', 'allocatedTokens', 'activeMs'].every(field => sessions.every((session, index) =>

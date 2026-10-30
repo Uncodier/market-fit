@@ -6,6 +6,7 @@ import { InstanceLog, StructuredOutputResponse } from './types'
 import { getToolResult, getStructuredStyle, isBase64Image, formatBase64Image } from './utils'
 import { StructuredOutputStylesLight } from './types'
 import { SessionNeededComponent } from './components/SessionNeededComponent'
+import { cloudRevisionFormat } from '@/lib/cloud-file-url'
 
 const ZipViewer = dynamic(
   () => import('./components/ZipViewer').then((m) => m.ZipViewer),
@@ -99,7 +100,12 @@ export const renderObjectWithImages = (obj: any, depth: number = 0, isBrowserVis
       )
     }
 
-    if (obj.startsWith('http') && (obj.endsWith('.zip') || obj.includes('.zip?'))) {
+    const cloudFormat = cloudRevisionFormat(obj)
+    if (cloudFormat === 'text') {
+      return <a href={obj} download className="text-primary underline">Download cloud revision</a>
+    }
+
+    if (cloudFormat === 'zip' || (obj.startsWith('http') && (obj.endsWith('.zip') || obj.includes('.zip?')))) {
       return (
         <div className="mt-2">
           <ZipViewer url={obj} />

@@ -6,6 +6,7 @@ import Image from "next/image";
 import { Card, CardContent } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
 import { Badge } from "@/app/components/ui/badge";
+import { Check } from "@/app/components/ui/icons";
 import { useSearchParams } from "next/navigation";
 import { useLocalization } from "@/app/context/LocalizationContext";
 
@@ -181,19 +182,22 @@ function DemoSelectorContent() {
                         <div className="flex items-center gap-2">
                           <h3 className="font-semibold truncate">{demo.name}</h3>
                           {isSelected && (
-                            <Badge variant="secondary" className="h-5 px-2 text-xs bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 border-0">{t("public.demo.current")}</Badge>
+                            <Badge variant="secondary" className="h-5 gap-1 px-2 text-xs bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 border-0">
+                              <Check className="h-3 w-3" aria-hidden="true" />
+                              {t("public.demo.current")}
+                            </Badge>
                           )}
                         </div>
                         <p className="text-sm text-muted-foreground truncate">{demo.description || t("public.demo.account")}</p>
                       </div>
                       <Button 
-                        variant={isSelected ? "default" : "secondary"} 
+                        variant="secondary"
                         onClick={(e) => { 
                           e.stopPropagation(); 
                           selectDemo(demo.id); 
                         }}
                       >
-                        {isSelected ? t("public.demo.selected") : t("public.demo.load")}
+                        {isSelected ? t("public.demo.reenter") : t("public.demo.load")}
                       </Button>
                     </div>
                   </CardContent>

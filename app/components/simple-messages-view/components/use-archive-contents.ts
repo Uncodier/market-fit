@@ -1,6 +1,7 @@
 import { useEffect, type Dispatch, type SetStateAction } from "react"
 import JSZip from "jszip"
 import { gunzipSync } from "fflate"
+import { archiveRequestUrl } from '@/lib/cloud-file-url'
 
 export interface FileNode {
   name: string
@@ -13,42 +14,39 @@ export interface FileNode {
 type Setter<T> = Dispatch<SetStateAction<T>>
 export function useArchiveContents({ url, setLoading, setError, setRawZip, setFileTree, setExpandedDirs }: { url: string; setLoading: Setter<boolean>; setError: Setter<string | null>; setRawZip: Setter<Blob | null>; setFileTree: Setter<FileNode | null>; setExpandedDirs: Setter<Set<string>> }) {
   useEffect(() => {
-    const fetchAndParseZip = async () => {
-      setLoading(true)
-      setError(null)
-      try {
-        // Construir la URL completa correctamente asegurando que sea un GET normal
-        // Eliminar transformaciones en la url que pudieran dañar la firma si las tiene
-        let finalUrl = url;
-        if (url.startsWith('/')) {
-            finalUrl = window.location.origin + url;
-        }
+    let cancelled = false
+    setLoading(Boolean(url))
+    setError(null)
+    setRawZip(null)
+    setFileTree(null)
+    setExpandedDirs(new Set(['/']))
 
-        // Si es una URL de Supabase, usualmente viene con tokens o query params en storage
-        // Dejamos la URL intacta porque supabase storage usa ?token=... a veces.
-        // Solo eliminamos parámetros que el bot haya inyectado como # o parecidos
-        const proxyUrl = `/api/assets/proxy-zip?url=${encodeURIComponent(finalUrl)}`
-        console.log("Fetching ZIP from proxy:", proxyUrl)
+    const fetchAndParseZip = async () => {
+      try {
+        const proxyUrl = archiveRequestUrl(url, window.location.origin)
         
         const response = await fetch(proxyUrl)
+        if (cancelled) return
         
         if (!response.ok) {
           throw new Error(`Failed to download zip: ${response.statusText}`)
         }
 
         const blob = await response.blob()
+        if (cancelled) return
         setRawZip(blob)
         
         const rootNode: FileNode = {
           name: 'root',
           path: '/',
           isDir: true,
-          children: {}
+          children: Object.create(null)
         }
 
         // Si es un archivo tar.gz o tar, lo parseamos con fflate y tar-stream
         if (url.includes('.tar.gz') || url.endsWith('.tar.gz') || url.includes('.tar') || url.endsWith('.tar')) {
           const arrayBuffer = await blob.arrayBuffer();
+          if (cancelled) return
           let tarBuffer = new Uint8Array(arrayBuffer);
           
           // Descomprimir si es .gz
@@ -58,9 +56,10 @@ export function useArchiveContents({ url, setLoading, setError, setRawZip, setFi
           
           // Importar tar-stream dinámicamente
           const tar = await import('tar-stream');
+          if (cancelled) return
           const extract = tar.extract();
           
-          return new Promise<void>((resolve, reject) => {
+          await new Promise<void>((resolve, reject) => {
             extract.on('entry', (header, stream, next) => {
               const path = header.name;
               
@@ -78,12 +77,12 @@ export function useArchiveContents({ url, setLoading, setError, setRawZip, setFi
                 const isLast = i === parts.length - 1;
                 const isDir = isLast ? (header.type === 'directory' || path.endsWith('/')) : true;
                 
-                if (!currentNode.children[part]) {
+                if (!Object.prototype.hasOwnProperty.call(currentNode.children, part)) {
                   currentNode.children[part] = {
                     name: part,
                     path: parts.slice(0, i + 1).join('/'),
                     isDir,
-                    children: {}
+                    children: Object.create(null)
                   };
                 }
                 currentNode = currentNode.children[part];
@@ -129,21 +128,7 @@ export function useArchiveContents({ url, setLoading, setError, setRawZip, setFi
               }
             });
             
-            extract.on('finish', () => {
-              // Simplificar la raíz si solo tiene una carpeta
-              let displayRoot = rootNode
-              while (
-                Object.keys(displayRoot.children).length === 1 && 
-                Object.values(displayRoot.children)[0].isDir
-              ) {
-                displayRoot = Object.values(displayRoot.children)[0]
-                setExpandedDirs(prev => new Set(prev).add(displayRoot.path))
-              }
-
-              setFileTree(displayRoot)
-              setLoading(false)
-              resolve()
-            });
+            extract.on('finish', resolve);
             
             extract.on('error', (err) => {
               reject(err);
@@ -158,13 +143,12 @@ export function useArchiveContents({ url, setLoading, setError, setRawZip, setFi
           const isZipMime = blob.type === 'application/zip' || blob.type === 'application/x-zip-compressed';
           
           if (!isZipExtension && !isZipMime) {
-            setError('El archivo no parece ser un formato ZIP o TAR válido. Por favor descárgalo.');
-            setLoading(false);
-            return;
+            throw new Error('The file does not appear to be a valid ZIP or TAR archive. Please download it.');
           }
           
           const zip = new JSZip()
           const contents = await zip.loadAsync(blob)
+          if (cancelled) return
 
           // Construir el árbol de archivos
           for (const [path, zipEntry] of Object.entries(contents.files)) {
@@ -181,12 +165,12 @@ export function useArchiveContents({ url, setLoading, setError, setRawZip, setFi
               const isLast = i === parts.length - 1
               const isDir = isLast ? zipEntry.dir : true
 
-              if (!currentNode.children[part]) {
+              if (!Object.prototype.hasOwnProperty.call(currentNode.children, part)) {
                 currentNode.children[part] = {
                   name: part,
                   path: parts.slice(0, i + 1).join('/'),
                   isDir,
-                  children: {}
+                  children: Object.create(null)
                 }
               }
               currentNode = currentNode.children[part]
@@ -205,6 +189,7 @@ export function useArchiveContents({ url, setLoading, setError, setRawZip, setFi
               
               if (isText) {
                 currentNode.content = await zipEntry.async('text')
+                if (cancelled) return
               } else {
                 currentNode.content = 'Binary file or unsupported format. Please download the archive to view.'
               }
@@ -212,29 +197,34 @@ export function useArchiveContents({ url, setLoading, setError, setRawZip, setFi
           }
         }
 
-        // Simplificar la raíz si solo tiene una carpeta
+        // Publish only the active revision, including after TAR stream callbacks.
+        if (cancelled) return
+        const expandedDirs = new Set(['/'])
         let displayRoot = rootNode
         while (
           Object.keys(displayRoot.children).length === 1 && 
           Object.values(displayRoot.children)[0].isDir
         ) {
           displayRoot = Object.values(displayRoot.children)[0]
-          setExpandedDirs(prev => new Set(prev).add(displayRoot.path))
+          expandedDirs.add(displayRoot.path)
         }
 
+        setExpandedDirs(expandedDirs)
         setFileTree(displayRoot)
 
       } catch (err) {
+        if (cancelled) return
         console.error('Error in ZipViewer:', err)
         setError(err instanceof Error ? err.message : 'Error loading archive file')
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     }
 
     if (url) {
-      fetchAndParseZip()
+      void fetchAndParseZip()
     }
-  }, [url])
+    return () => { cancelled = true }
+  }, [url, setLoading, setError, setRawZip, setFileTree, setExpandedDirs])
 
 }

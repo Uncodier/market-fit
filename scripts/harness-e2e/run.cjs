@@ -11,13 +11,14 @@ function options(args) {
   for (let i = 1; i < args.length; i++) {
     const flag = args[i]; if (seen.has(flag)) throw new Error('Duplicate option'); seen.add(flag);
     if (['--ack-production-canary', '--ack-observer-service-role', '--watch', '--diagnostic-no-files'].includes(flag)) result[flag.slice(2)] = true;
-    else if (['--run-id', '--repository', '--site-id'].includes(flag) && args[i + 1] && !args[i + 1].startsWith('--')) result[flag.slice(2)] = args[++i];
+    else if (['--run-id', '--repository', '--site-id', '--max-credits'].includes(flag) && args[i + 1] && !args[i + 1].startsWith('--')) result[flag.slice(2)] = args[++i];
     else throw new Error('Unknown or incomplete canary option');
   }
   if (result.mode !== 'list' && !result['ack-observer-service-role']) throw new Error('Explicit --ack-observer-service-role is required for private read-only execution evidence');
   if (!['list', 'preflight'].includes(result.mode)) host.paths(result['run-id']);
   if (['prepare', 'run', 'stop'].includes(result.mode) && (!result['ack-production-canary'] || !result['site-id'])) throw new Error('Mutation requires --ack-production-canary --site-id UUID');
   if (result.mode === 'prepare' && !result.repository) throw new Error('Explicit --repository is required');
+  if (result['max-credits'] !== undefined && (!['prepare', 'run'].includes(result.mode) || !/^[2-6]$/.test(result['max-credits']))) throw new Error('Explicit credit limit must be an integer from 2 through 6 for prepare/run');
   return result;
 }
 const git = (cwd, ...args) => { const result = spawnSync('git', args, { cwd, encoding: 'utf8' }); return result.status === 0 ? result.stdout.trim() : null; };
@@ -45,7 +46,7 @@ function validateManifest(run, settings, userId) {
   host.assertRun(run, settings, userId);
   const expected = cases(run.id);
   if (JSON.stringify(run.cases.map(spec => { const copy = { ...spec }; delete copy.activatedAt; return copy; })) !== JSON.stringify(expected)) throw new Error('Manifest test definitions changed; use a new run');
-  if (JSON.stringify(run.repository) !== JSON.stringify(fixtures.repository(run.repository.url)) || run.maxCredits !== 2 || run.maxSeconds !== 1500) throw new Error('Manifest safety limits changed');
+  if (JSON.stringify(run.repository) !== JSON.stringify(fixtures.repository(run.repository.url)) || !Number.isInteger(run.maxCredits) || run.maxCredits < 2 || run.maxCredits > 6 || run.maxSeconds !== 1500) throw new Error('Manifest safety limits changed');
 }
 async function observe(run, connection, settings, p) {
   const { observeCase } = require('./observe.cjs'); const { evaluateCase, summarize } = require('./evaluate.cjs');
@@ -107,7 +108,7 @@ async function main(args = process.argv.slice(2)) {
       const ready = await preflight(settings, connection);
       if (!canActivate(ready, opts['diagnostic-no-files'])) { host.write(p.report, { state: 'blocked', preflight: ready, healthGreen: false }); throw new Error('Canary prerequisites unavailable; no fixtures created'); }
       run = fixtures.makeRun({ id: opts['run-id'], settings, userId: connection.userId, repoUrl: opts.repository,
-        sourceSha: git(host.root, 'rev-parse', 'HEAD'), apiSourceSha: git(settings.apiRoot, 'rev-parse', 'HEAD') });
+        sourceSha: git(host.root, 'rev-parse', 'HEAD'), apiSourceSha: git(settings.apiRoot, 'rev-parse', 'HEAD'), maxCredits: Number(opts['max-credits'] || 2) });
       run.sourceDirty = !!git(host.root, 'status', '--porcelain');
       run.diagnosticNoFiles = opts['diagnostic-no-files'] === true;
       host.write(p.manifest, run); host.write(p.report, { state: 'preparing', healthGreen: false });
@@ -117,6 +118,7 @@ async function main(args = process.argv.slice(2)) {
     run = JSON.parse(fs.readFileSync(p.manifest, 'utf8')); validateManifest(run, settings, connection.userId);
     if (opts.mode === 'stop') { await stop(run, connection.client); run.state = 'stopped'; host.write(p.manifest, run); console.log('Run-owned requirements stopped; no records deleted'); return; }
     if (opts.mode === 'run') {
+      if (run.maxCredits !== Number(opts['max-credits'] || 2)) throw new Error('Activation requires explicit acknowledgement of the prepared credit limit');
       if (run.state !== 'ready') throw new Error('Only a prepared run can be activated; use observe or stop after interruption');
       if (run.diagnosticNoFiles && !opts['diagnostic-no-files']) throw new Error('Diagnostic run requires explicit --diagnostic-no-files acknowledgement');
       const ready = await preflight(settings, connection); if (!canActivate(ready, run.diagnosticNoFiles)) throw new Error('Preflight failed before activation');
@@ -155,7 +157,7 @@ async function main(args = process.argv.slice(2)) {
   } catch (error) {
     let stopped = null;
     if (supervising && run) { try { await stop(run, connection.client); stopped = true; } catch { stopped = false; } }
-    if (run) { run.state = 'blocked'; host.write(p.manifest, run); }
+    if (run && (supervising || run.state !== 'ready')) { run.state = 'blocked'; host.write(p.manifest, run); }
     const previous = fs.existsSync(p.report) ? JSON.parse(fs.readFileSync(p.report, 'utf8')) : {};
     host.write(p.report, { ...previous, state: 'blocked', healthGreen: false, failure: settings.redact(error.message), stopConfirmed: stopped });
     throw error;
