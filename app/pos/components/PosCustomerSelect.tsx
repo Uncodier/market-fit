@@ -7,8 +7,10 @@ import {
 } from "@/app/components/ui/relation-select";
 import { User } from "@/app/components/ui/icons";
 import { PosLeadDetailsDialog } from "./PosLeadDetailsDialog";
+import { usePosCustomerSearch } from "../hooks/use-pos-customer-search";
+import type { PosCustomer } from "../customer-search";
 
-function getLeadDisplayName(lead: any): string {
+function getLeadDisplayName(lead: PosCustomer): string {
   // Extract name and company name
   const leadName = lead.name?.trim() || "";
   let companyName = "";
@@ -50,7 +52,7 @@ export function PosCustomerSelect({
   clearable = true,
   placeholder,
 }: {
-  leads: any[];
+  leads: PosCustomer[];
   leadValue: RelationSelectValue | string | null;
   setLeadValue: (value: RelationSelectValue) => void;
   siteId?: string;
@@ -65,6 +67,8 @@ export function PosCustomerSelect({
   placeholder?: string;
 }) {
   const [leadDetailsOpen, setLeadDetailsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const customerSearch = usePosCustomerSearch(siteId, searchQuery, leads);
   const selectedLeadId = getSelectedLeadId(leadValue);
   const getTrans = (key: string, fallback: string) =>
     t(key) === key ? fallback : t(key);
@@ -75,7 +79,7 @@ export function PosCustomerSelect({
   return (
     <>
       <RelationSelect
-        options={leads.map((l) => {
+        options={customerSearch.leads.map((l) => {
           const displayName = getLeadDisplayName(l);
           
           let companySearchStr = "";
@@ -105,7 +109,10 @@ export function PosCustomerSelect({
           };
         })}
         value={typeof leadValue === "string" ? null : leadValue}
+        onSearchChange={setSearchQuery}
+        allowCreate={!customerSearch.searching}
         onValueChange={(val) => {
+          setSearchQuery("");
           setLeadValue(val);
           if (val && typeof val === 'object' && val.mode === "create") {
             setLeadDetailsOpen(true);
@@ -136,6 +143,7 @@ export function PosCustomerSelect({
           </button>
         }
       />
+      {customerSearch.status && <p role="status" className="text-xs text-muted-foreground">{customerSearch.status}</p>}
 
       {siteId && (
         <PosLeadDetailsDialog

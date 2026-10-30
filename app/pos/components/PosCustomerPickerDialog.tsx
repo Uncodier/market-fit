@@ -1,6 +1,8 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
+import { usePosCustomerSearch } from "../hooks/use-pos-customer-search"
+import type { PosCustomer } from "../customer-search"
 import { toast } from "sonner"
 import { createLead } from "@/app/leads/actions"
 import { Button } from "@/app/components/ui/button"
@@ -18,12 +20,7 @@ import type { RelationSelectValue } from "@/app/components/ui/relation-select"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Check, PlusCircle, Search, User } from "@/app/components/ui/icons"
 
-type Lead = {
-  id: string
-  name?: string | null
-  email?: string | null
-  phone?: string | null
-}
+type Lead = PosCustomer
 
 interface PosCustomerPickerDialogProps {
   open: boolean
@@ -67,25 +64,21 @@ export function PosCustomerPickerDialog({
 
   useEffect(() => {
     if (!open) return
-    setTab("search")
-    setQuery("")
-    setName("")
-    setEmail("")
-    setPhone("")
-    setError(null)
+    let current = true
+    queueMicrotask(() => {
+      if (!current) return
+      setTab("search")
+      setQuery("")
+      setName("")
+      setEmail("")
+      setPhone("")
+      setError(null)
+    })
+    return () => { current = false }
   }, [open])
 
-  const filteredLeads = useMemo(() => {
-    const normalized = query.trim().toLowerCase()
-    if (!normalized) return leads.slice(0, 30)
-    return leads
-      .filter((lead) =>
-        [lead.name, lead.email, lead.phone]
-          .filter(Boolean)
-          .some((field) => String(field).toLowerCase().includes(normalized)),
-      )
-      .slice(0, 30)
-  }, [leads, query])
+  const customerSearch = usePosCustomerSearch(siteId, query, leads, open && tab === "search")
+  const filteredLeads = customerSearch.leads.slice(0, 30)
 
   const selectLead = (lead: Lead) => {
     onSelect({
@@ -192,6 +185,7 @@ export function PosCustomerPickerDialog({
                   className="pl-9"
                 />
               </div>
+              {customerSearch.status && <p role="status" className="text-xs text-muted-foreground">{customerSearch.status}</p>}
               <div className="max-h-72 space-y-1 overflow-y-auto">
                 {filteredLeads.length ? (
                   filteredLeads.map((lead) => (
@@ -217,7 +211,7 @@ export function PosCustomerPickerDialog({
                       ) : null}
                     </button>
                   ))
-                ) : (
+                ) : customerSearch.searching ? null : (
                   <p className="py-8 text-center text-sm text-muted-foreground">
                     {label("pos.cart.noCustomers", "No customers found")}
                   </p>

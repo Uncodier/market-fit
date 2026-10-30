@@ -45,6 +45,7 @@ Use the guides below before relying on older implementation notes.
 - [Accounting integrity and rollout](ACCOUNTING.md)
 - [Financial due dates and subscription terms](FINANCIAL_DUE_DATES.md)
 - [POS inventory availability and backorder markers](POS_INVENTORY.md)
+- [POS customer search and offline fallback](POS_CUSTOMER_SEARCH.md)
 - [POS cash register shifts and closing history](POS_REGISTER.md)
 - [POS checkout conflicts and payment recovery](POS_CHECKOUT_RECOVERY.md)
 - [Location self-service Shop ordering and payment release](SHOP_SELF_SERVICE.md)

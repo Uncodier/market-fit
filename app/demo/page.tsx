@@ -183,7 +183,7 @@ function DemoSelectorContent() {
                           <h3 className="font-semibold truncate">{demo.name}</h3>
                           {isSelected && (
                             <Badge variant="secondary" className="h-5 gap-1 px-2 text-xs bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 border-0">
-                              <Check className="h-3 w-3" aria-hidden="true" />
+                              <Check className="h-3 w-3" aria-hidden={true} />
                               {t("public.demo.current")}
                             </Badge>
                           )}
