@@ -51,6 +51,7 @@ it.each(['turbopack', 'webpack'] as const)('serves emitted shell JS/CSS and hydr
   // Reuse the authored lazy boundary/routes/styles; stub only data-bearing leaf
   // components. This tests the compiler/runtime, not fabricated API responses.
   write('app/client-wrapper.tsx', fs.readFileSync(path.join(root, 'app/client-wrapper.tsx'), 'utf8'))
+  write('app/components/PrivateTypography.tsx', fs.readFileSync(path.join(root, 'app/components/PrivateTypography.tsx'), 'utf8'))
   write('app/config/routes.ts', fs.readFileSync(path.join(root, 'app/config/routes.ts'), 'utf8'))
   write('app/documents/internal-back.ts', 'export function rememberInternalPath(_pathname: string) {}')
   for (const name of ['DemoBanner', 'VersionCheck', 'permissions/ViewOnlyBanner']) {
