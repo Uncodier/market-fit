@@ -1,5 +1,6 @@
 import type { WorkspaceArea } from "./navigation-areas"
 import { MAKINARI_MODULE_IMAGE_OVERRIDES } from "./module-image-overrides"
+import { isSharedModuleImageKey } from "./shared-module-images"
 
 /** Short object noun so the model is not literal with screen names like "leads". */
 export const MODULE_IMAGE_HINTS: Record<string, string> = {
@@ -303,6 +304,7 @@ export function getModuleImageUrl(
 ): string {
   const approvedIcon = MAKINARI_MODULE_IMAGE_OVERRIDES[itemKey]
   if (approvedIcon) return approvedIcon
+  if (isSharedModuleImageKey(itemKey)) return `/api/images/modules/${itemKey}`
 
   // Makinari owns these shared icons. Preserve their original platform cache URLs
   // instead of sending them through the current-site image generation proxy.

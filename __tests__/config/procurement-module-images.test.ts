@@ -30,12 +30,9 @@ describe("procurement module images", () => {
       expect(getModuleImagePrompt(area, itemKey, "Translated title")).toBe(prompt)
       expect(getModuleImagePrompt(area, itemKey, "")).toBe(prompt)
 
-      const url = new URL(getModuleImageUrl(area, itemKey, "Original title"))
-      expect(decodeURIComponent(url.pathname)).toBe(`/api/public/image/prompt/${prompt}`)
-      expect(url.searchParams.get("width")).toBe("256")
-      expect(url.searchParams.get("height")).toBe("256")
-      expect(url.searchParams.has("site_id")).toBe(false)
-      expect(getModuleImageUrl(area, itemKey, "Translated title")).toBe(url.href)
+      const url = getModuleImageUrl(area, itemKey, "Original title")
+      expect(url).toBe(`/api/images/modules/${itemKey}`)
+      expect(getModuleImageUrl(area, itemKey, "Translated title")).toBe(url)
     },
   )
 

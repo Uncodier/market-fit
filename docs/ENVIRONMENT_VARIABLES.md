@@ -98,6 +98,11 @@ The API server owns robot/workflow orchestration and selected external
 integrations. `SERVICE_API_KEY` authenticates server-to-server calls. Do not
 expose provider credentials through the public API URL.
 
+Shared procurement and Inventory Minimums icons also require `SERVICE_API_KEY`
+and Redis admission on cache misses. `/api/images/modules/{itemKey}` generates
+only fixed server-owned prompts against Makinari's `SUPPORT_SITE_ID`; selected
+workspace sites are not billed. Cached Makinari image reads need no service key.
+
 Support chat identity uses this trusted API URL and the signed-in user's
 server-validated Supabase session, not `SERVICE_API_KEY`. Its signing secret
 belongs only in the API deployment. See [Support chat identity](CHAT_IDENTITY.md)

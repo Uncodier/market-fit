@@ -9,6 +9,7 @@ import {
   type WorkspaceArea,
 } from "@/app/config/navigation-areas"
 import { MAKINARI_MODULE_IMAGE_OVERRIDES } from "@/app/config/module-image-overrides"
+import { isSharedModuleImageKey } from "@/app/config/shared-module-images"
 
 describe("module image visuals", () => {
   it("uses a short object hint for every app instead of the raw screen name", () => {
@@ -374,7 +375,7 @@ describe("module image visuals", () => {
 
       for (const area of Object.keys(NAVIGATION_AREAS) as WorkspaceArea[]) {
         for (const item of NAVIGATION_AREAS[area].items) {
-          if (MAKINARI_MODULE_IMAGE_OVERRIDES[item.key]) continue
+          if (MAKINARI_MODULE_IMAGE_OVERRIDES[item.key] || isSharedModuleImageKey(item.key)) continue
           const prompt = getModuleImagePrompt(area, item.key, "Ignored Title")
           expect(getModuleImageUrl(area, item.key, "Ignored Title")).toBe(
             `https://images.example.com/api/public/image/prompt/${encodeURIComponent(prompt.trim())}?width=256&height=256`,

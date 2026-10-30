@@ -78,7 +78,21 @@ Reports, Database, Code (`applicationsRepositories`), and Billing. These images
 load directly from static files for every site, without credentials, database
 lookups, generation requests, or site-credit charges.
 
-For every other module, `getModuleImageUrl` preserves the shared icon-set URLs
+Procurement modules and Inventory Minimums use `/api/images/modules/{itemKey}`.
+The route accepts only seven fixed module keys, derives the prompt and 256px
+dimensions on the server, and uses Makinari's existing `SUPPORT_SITE_ID`, never
+the selected site's cookies or a caller-supplied tenant. Public cached bytes are
+read first. Cache misses require a real authenticated same-origin workspace
+session (not a demo identity); that session authorizes only this finite shared
+asset set. The server-only `SERVICE_API_KEY` then generates against Makinari's
+site, consuming Makinari credits. No browser token, Origin, Referer or caller API
+key is forwarded. Requests are coalesced in-process, with fail-closed Redis
+limits of 30 misses/user/minute and 20 generation admissions/hour; the backend's
+distributed lock remains authoritative. Failed or uncertain generations are not
+automatically retried. Cached responses are public; newly generated responses
+and failures are private and not stored by shared HTTP caches.
+
+For all remaining modules, `getModuleImageUrl` preserves the shared icon-set URLs
 from commit `8ce0124f`: the unchanged prompt and 256-by-256 dimensions go directly to the configured API's
 `/api/public/image/prompt/...` endpoint, without `site_id` or credentials. Requests
 from `app.makinari.com` therefore use the API's existing platform image cache.
