@@ -42,6 +42,11 @@ describe('navigation-areas', () => {
     expect(NAVIGATION_MENU_AREA_ORDER).toContain('settings')
   })
 
+  it('shows Procurement immediately after General in Settings', () => {
+    expect(getNavigationMenuItems('settings').slice(0, 3).map(item => item.key))
+      .toEqual(['settingsGeneral', 'procurementSettings', 'company'])
+  })
+
   it('treats Configuration screens as settings nav keys', () => {
     expect(isSettingsNavKey('settingsGeneral')).toBe(true)
     expect(isSettingsNavKey('billing')).toBe(true)

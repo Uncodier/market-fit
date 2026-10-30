@@ -34,6 +34,11 @@ export const MODULE_IMAGE_HINTS: Record<string, string> = {
   inventoryMinimums: "level sliders",
   printers: "thermal printer",
 
+  suppliers: "supplier building",
+  purchaseRequests: "request clipboard",
+  procurementApprovals: "approval stamp",
+  procurementTenders: "sealed envelope",
+  procurementRules: "rule book",
   bills: "invoice",
   transactions: "payment card",
   purchasesOrders: "shopping cart",
@@ -68,6 +73,7 @@ export const MODULE_IMAGE_HINTS: Record<string, string> = {
   reportSales: "sales chart",
   reportSocial: "heart",
 
+  procurementSettings: "procurement gear",
   settingsGeneral: "gear",
   company: "building",
   marketplace: "storefront",
@@ -150,6 +156,18 @@ const COMPACT_FULL_SIZE_COMPOSITION =
   "Use the Apple iOS Calendar, Notes, Contacts, and Reminders icons as references for visual polish, spacing discipline, and clarity rather than copying their symbols or outer app tiles: one recognizable object, full-size at 88 to 92 percent of the canvas, optically centered, evenly balanced, with a narrow consistent safe margin and softly rounded geometry; no app tile, iOS-style squircle, rounded-square container, badge, frame, floor, scenery, or secondary icon"
 
 const MODULE_IMAGE_CLARIFIERS: Partial<Record<string, string>> = {
+  suppliers:
+    "Show one compact supplier office building with a broad centered entrance and a few large windows; no warehouse scene, people, parcels, storefront awning, text, logos, or extra objects",
+  purchaseRequests:
+    "Show one upright purchase request clipboard with a substantial top clip and three broad embossed horizontal lines; no checkmark, approval stamp, currency symbol, text, numbers, or extra objects",
+  procurementApprovals:
+    "Show one substantial approval stamp with a rounded handle and a large raised checkmark integrated into its visible front base; no document, ink pad, text, letters, numbers, or extra objects",
+  procurementTenders:
+    "Show one sealed bid envelope with a clear folded flap and one large round seal integrated into its center; no letter, mailbox, gavel, currency symbol, text, numbers, or extra objects",
+  procurementRules:
+    "Show one substantial closed procurement rule book with a large embossed shield integrated into its front cover and clearly visible page edges; no loose paper, clipboard, gavel, text, letters, numbers, or extra objects",
+  procurementSettings:
+    "Show one substantial gear with thick rounded teeth and a simple shopping bag silhouette integrated into its center; no separate objects, clipboard, book, text, letters, numbers, or extra symbols",
   salesHome:
     "Show one welcoming detached house with a broad roof, centered front door, and two simple windows; no dashboard, chart, sales board, storefront, office building, garden, street, text, or extra objects",
   financeReports:

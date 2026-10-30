@@ -161,8 +161,8 @@ export const NAVIGATION_AREAS: Record<
   settings: {
     categoryKey: "layout.category.settings",
     items: [
-      { key: "procurementSettings", href: "/settings/procurement" },
       { key: "settingsGeneral", href: "/settings", settingsTab: "general" },
+      { key: "procurementSettings", href: "/settings/procurement" },
       { key: "company", href: "/settings", settingsTab: "company" },
       { key: "marketplace", href: "/settings", settingsTab: "marketplace" },
       { key: "settingsVisits", href: "/settings", settingsTab: "visits" },
