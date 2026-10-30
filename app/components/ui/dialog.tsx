@@ -6,6 +6,8 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { X } from "@/app/components/ui/icons"
 import { buttonVariants } from "@/app/components/ui/button"
 import { cn } from "@/lib/utils"
+import { normalizeLocale, readStoredLocale, subscribeLocale, type SupportedLocale } from '@/app/context/locale-preferences'
+import { localeMessages } from '@/app/context/locale-catalog'
 import {
   dialogContentOverflowClassName,
   dialogContentZClassName,
@@ -38,15 +40,15 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
 const dialogContentVariants = cva(
   [
-    "fixed flex w-full flex-col border bg-background shadow-lg outline-none duration-200",
+    "fixed flex w-full min-w-0 flex-col border bg-background shadow-lg outline-none duration-200",
     dialogContentZClassName,
     dialogContentOverflowClassName,
-    "max-h-[min(90vh,720px)] p-0",
+    "max-h-[min(90dvh,720px)] p-0",
     "inset-x-0 bottom-0 top-auto translate-x-0 translate-y-0 rounded-t-2xl",
     "data-[state=open]:animate-in data-[state=closed]:animate-out",
     "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
     "data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
-    "sm:inset-auto sm:bottom-auto sm:left-[50%] sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-xl",
+    "sm:inset-auto sm:bottom-auto sm:left-[50%] sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-xl sm:w-[calc(100%-2rem)]",
     "sm:data-[state=closed]:slide-out-to-left-1/2 sm:data-[state=closed]:slide-out-to-top-[48%]",
     "sm:data-[state=open]:slide-in-from-left-1/2 sm:data-[state=open]:slide-in-from-top-[48%]",
     "sm:data-[state=closed]:zoom-out-95 sm:data-[state=open]:zoom-in-95",
@@ -69,6 +71,7 @@ interface DialogContentProps
     VariantProps<typeof dialogContentVariants> {
   size?: DialogSize
   showClose?: boolean
+  closeLabel?: string
   busy?: boolean
 }
 
@@ -82,6 +85,7 @@ const DialogContent = React.forwardRef<
       children,
       size = "md",
       showClose = true,
+      closeLabel,
       busy = false,
       flush = false,
       onEscapeKeyDown,
@@ -92,6 +96,7 @@ const DialogContent = React.forwardRef<
     },
     ref
   ) => {
+    const locale = React.useSyncExternalStore<SupportedLocale>(subscribeLocale, () => normalizeLocale(document.documentElement.lang) ?? readStoredLocale() ?? 'en', () => 'en')
     const guardDismiss = (
       event: { target: EventTarget | null; preventDefault: () => void }
     ) => {
@@ -131,13 +136,14 @@ const DialogContent = React.forwardRef<
           {showClose ? (
             <DialogPrimitive.Close
               data-slot="dialog-close"
+              disabled={busy}
               className={cn(
                 buttonVariants({ variant: "ghost", size: "icon" }),
-                "absolute right-3 top-3 opacity-70 hover:opacity-100"
+                "!absolute right-3 top-3 opacity-70 hover:opacity-100"
               )}
             >
               <X className="h-4 w-4" />
-              <span className="sr-only">Close</span>
+              <span className="sr-only">{closeLabel ?? localeMessages[locale]['procurement.navigation.closeDialog']}</span>
             </DialogPrimitive.Close>
           ) : null}
         </DialogPrimitive.Content>
@@ -154,7 +160,7 @@ const DialogHeader = ({
   <div
     data-slot="dialog-header"
     className={cn(
-      "flex shrink-0 flex-col space-y-1.5 border-b bg-background px-6 py-4 pr-12 text-left",
+      "flex min-h-16 min-w-0 shrink-0 flex-col space-y-1.5 border-b bg-background px-6 py-4 pr-16 text-left [overflow-wrap:anywhere]",
       className
     )}
     {...props}
@@ -168,7 +174,7 @@ const DialogBody = ({
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     data-slot="dialog-body"
-    className={cn("min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-4", className)}
+    className={cn("min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain px-6 py-4 [overflow-wrap:anywhere] [scroll-padding-block:1rem] [&_fieldset]:min-w-0", className)}
     {...props}
   />
 )
@@ -181,7 +187,7 @@ const DialogFooter = ({
   <div
     data-slot="dialog-footer"
     className={cn(
-      "flex shrink-0 flex-col-reverse gap-2 border-t bg-background px-6 py-4 sm:flex-row sm:justify-end",
+      "flex min-w-0 shrink-0 flex-col-reverse gap-2 border-t bg-background px-6 py-4 sm:flex-row sm:flex-wrap sm:justify-end [&_button]:h-auto [&_button]:min-w-0 [&_button]:whitespace-normal [&_button]:break-words [&_button]:text-center [&>.btn-primary-well]:min-w-0 [&>.btn-primary-well]:max-w-full",
       className
     )}
     {...props}
@@ -197,7 +203,7 @@ const DialogForm = React.forwardRef<
     ref={ref}
     data-slot="dialog-form"
     className={cn(
-      "flex min-h-0 max-h-[inherit] flex-1 flex-col overflow-hidden",
+      "flex min-h-0 min-w-0 max-h-[inherit] w-full flex-1 flex-col overflow-hidden",
       className
     )}
     onKeyDown={(event) => {

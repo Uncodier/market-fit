@@ -1,32 +1,37 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
+import { toast } from 'sonner';
 import { defaultPolicyDocument, policyDocumentSchema, type PolicyDocument } from '../domain';
-import { isDemoModeActive } from '@/lib/demo-utils';
+import { isDemoModeActive, isDemoSiteId } from '@/lib/demo-utils';
+import { demoProcurementPolicy } from '@/lib/demo-data/procurement-suppliers';
+import { useProcurementI18n } from '@/app/purchases/procurement/i18n/use-procurement-i18n';
+import { PolicyFeedbackError, policyFeedback, validationFeedback, type PolicyFeedback } from './policy-presentation';
+import { ruleSaveDocument, mergeRuleSave } from './rule-save';
 
 const responseSchema = z.object({ revision: z.number().int().nonnegative(), document: policyDocumentSchema.nullable() })
   .refine(value => (value.revision === 0) === (value.document === null), 'Revision and document must agree');
 type Snapshot = { revision: number; document: PolicyDocument };
 
-async function responseError(response: Response): Promise<string> {
-  if (response.status === 401) return 'Your session expired. Sign in again to manage procurement.';
-  if (response.status === 403) return 'Only workspace owners and administrators can manage procurement.';
-  if (response.status === 409) return 'This policy changed in another session. Your draft has not been saved. Reload the latest policy and reapply your changes.';
-  if (response.status === 503) return 'Procurement storage is unavailable. The required migration may not be installed. No changes have been confirmed.';
+async function responseError(response: Response): Promise<PolicyFeedback> {
+  const keys: Record<number, string> = { 401: 'session', 403: 'permission', 409: 'conflict', 503: 'storage' };
+  if (keys[response.status]) return { key: `procurement.policy.feedback.${keys[response.status]}` };
   try {
     const data = await response.json();
-    if (Array.isArray(data.issues)) return data.issues.map((issue: { path: string | string[]; message: string }) => `${Array.isArray(issue.path) ? issue.path.join('.') : issue.path}: ${issue.message}`).join('; ');
+    if (Array.isArray(data.issues) && data.issues.every((issue: { path?: unknown; message?: unknown }) =>
+      issue && typeof issue.message === 'string' && (typeof issue.path === 'string' || Array.isArray(issue.path)))) return { issues: data.issues };
   } catch { /* Use a safe error if a gateway returns non-JSON. */ }
-  return 'The policy request failed. No changes have been confirmed. Reload to check the current revision before retrying.';
+  return { key: 'procurement.policy.feedback.request' };
 }
 
 /** Mount under a site key: no prior workspace data is rendered during a switch. */
 export function usePolicyDocument(siteId: string) {
+  const i18n = useProcurementI18n();
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [draft, setDraft] = useState<PolicyDocument | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
+  const [savingRuleId, setSavingRuleId] = useState<string | null>(null);
+  const [error, setError] = useState<PolicyFeedback | null>(null);
   const [conflict, setConflict] = useState(false);
   const active = useRef(true);
   const request = useRef<AbortController | null>(null);
@@ -34,21 +39,26 @@ export function usePolicyDocument(siteId: string) {
 
   const load = useCallback(async () => {
     request.current?.abort();
+    if (isDemoSiteId(siteId)) {
+      const document = demoProcurementPolicy();
+      setSnapshot({ revision: 4, document }); setDraft(document); setLoading(false); setError(null); setConflict(false); return;
+    }
+    if (isDemoModeActive()) { setLoading(false); return; }
     const controller = new AbortController();
     request.current = controller;
-    setLoading(true); setError(''); setNotice(''); setSnapshot(null); setDraft(null); setConflict(false);
+    setLoading(true); setError(''); setSnapshot(null); setDraft(null); setConflict(false);
     try {
       const response = await fetch(`/api/procurement/policy?site_id=${encodeURIComponent(siteId)}`, {
         signal: controller.signal, cache: 'no-store', credentials: 'same-origin',
       });
-      if (!response.ok) throw new Error(await responseError(response));
+      if (!response.ok) throw new PolicyFeedbackError(await responseError(response));
       const parsed = responseSchema.safeParse(await response.json());
-      if (!parsed.success) throw new Error('The saved policy response is invalid. Editing is blocked to protect the existing configuration.');
+      if (!parsed.success) throw new PolicyFeedbackError({ key: 'procurement.policy.feedback.invalidResponse' });
       if (controller.signal.aborted || !active.current) return;
       const document = parsed.data.document === null ? defaultPolicyDocument() : parsed.data.document;
       setSnapshot({ revision: parsed.data.revision, document }); setDraft(document);
     } catch (failure) {
-      if (!controller.signal.aborted && active.current) setError(failure instanceof Error ? failure.message : 'Could not load procurement policy.');
+      if (!controller.signal.aborted && active.current) setError(failure instanceof PolicyFeedbackError ? failure.feedback : { key: 'procurement.policy.feedback.load' });
     } finally { if (!controller.signal.aborted && active.current) setLoading(false); }
   }, [siteId]);
 
@@ -66,14 +76,16 @@ export function usePolicyDocument(siteId: string) {
     return () => window.removeEventListener('beforeunload', warn);
   }, [dirty]);
 
-  const save = async () => {
-    if (!snapshot || !draft || inFlight.current || conflict || isDemoModeActive()) return;
-    const parsed = policyDocumentSchema.safeParse(draft);
+  const save = async (ruleId?: string) => {
+    if (!snapshot || !draft || inFlight.current || conflict || isDemoSiteId(siteId) || isDemoModeActive()) return;
+    const candidate = ruleId ? ruleSaveDocument(snapshot.document, draft, ruleId) : draft;
+    if (!candidate) return;
+    const parsed = policyDocumentSchema.safeParse(candidate);
     if (!parsed.success) {
-      setError(parsed.error.issues.map((issue) => `${issue.path.join('.')}: ${issue.message}`).join('; '));
+      setError(validationFeedback(parsed.error.issues));
       return;
     }
-    inFlight.current = true; setSaving(true); setError(''); setNotice('');
+    inFlight.current = true; setSaving(true); setSavingRuleId(ruleId ?? null); setError('');
     const controller = new AbortController();
     request.current?.abort(); request.current = controller;
     try {
@@ -84,25 +96,27 @@ export function usePolicyDocument(siteId: string) {
       });
       if (!response.ok) {
         if (response.status === 409 && !controller.signal.aborted && active.current) setConflict(true);
-        throw new Error(await responseError(response));
+        throw new PolicyFeedbackError(await responseError(response));
       }
       const result = responseSchema.safeParse(await response.json());
       if (!result.success || result.data.document === null || result.data.revision <= snapshot.revision) {
-        throw new Error('The save response could not be confirmed. Reload the latest policy before retrying.');
+        throw new PolicyFeedbackError({ key: 'procurement.policy.feedback.unconfirmed' });
       }
       if (controller.signal.aborted || !active.current) return;
       setSnapshot({ revision: result.data.revision, document: result.data.document });
-      setDraft(result.data.document); setNotice(`Policy saved as revision ${result.data.revision}. Configuration only; no live enforcement has started.`);
+      setDraft(ruleId ? mergeRuleSave(draft, result.data.document, ruleId) : result.data.document);
+      toast.success(policyFeedback({ key: 'procurement.policy.feedback.saved', params: { number: result.data.revision } }, i18n));
     } catch (failure) {
-      if (!controller.signal.aborted && active.current) setError(failure instanceof Error ? failure.message : 'Could not save procurement policy.');
+      if (!controller.signal.aborted && active.current) setError(failure instanceof PolicyFeedbackError ? failure.feedback : { key: 'procurement.policy.feedback.save' });
     } finally {
       inFlight.current = false;
-      if (!controller.signal.aborted && active.current) setSaving(false);
+      if (!controller.signal.aborted && active.current) { setSaving(false); setSavingRuleId(null); }
     }
   };
   const edit = (document: PolicyDocument) => {
-    if (inFlight.current || isDemoModeActive()) return;
-    setDraft(document); setNotice('');
+    if (inFlight.current || isDemoSiteId(siteId) || isDemoModeActive()) return;
+    setDraft(document);
   };
-  return { draft, edit, revision: snapshot?.revision, loading, saving, error, notice, conflict, dirty, save, reload: load };
+  const isRuleDirty = (id: string) => JSON.stringify(draft?.rules.find(rule => rule.id === id)) !== JSON.stringify(snapshot?.document.rules.find(rule => rule.id === id));
+  return { draft, edit, revision: snapshot?.revision, loading, saving, savingRuleId, isRuleDirty, error: policyFeedback(error, i18n), conflict, dirty, save, reload: load };
 }

@@ -11,6 +11,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
+import { TenderQuotationBadge } from "@/app/quotations/components/TenderQuotationBadge"
 import { formatCurrency } from "@/app/lib/formatters"
 import {
   DocumentListHead,
@@ -27,9 +28,15 @@ export type QuoteListItem = {
   entityEmail?: string | null
   status: string
   validUntil?: string | null
-  total: number
+  total: number | null
+  net?: number
   currency?: string
   createdAt: string
+  tenderUrl?: string
+  tenderTitle?: string
+  statusLabel?: string
+  reference?: string
+  sourceLabel?: string
 }
 
 function quoteAccent(status: string, validUntil?: string | null): "due" | "cancelled" | "none" {
@@ -64,6 +71,9 @@ interface QuotesTableProps {
   entityColumnLabel: string
   emptyTitle: string
   emptyDescription: string
+  keepEmptyTable?: boolean
+  showTenderBadge?: boolean
+  toolbar?: React.ReactNode
   onPageChange: (page: number) => void
   onRowClick: (id: string) => void
 }
@@ -76,15 +86,19 @@ export function QuotesTable({
   entityColumnLabel,
   emptyTitle,
   emptyDescription,
+  keepEmptyTable = false,
+  showTenderBadge = true,
+  toolbar,
   onPageChange,
   onRowClick,
 }: QuotesTableProps) {
   const { t } = useLocalization()
   const totalPages = Math.ceil(totalCount / pageSize)
   const indexOfFirstItem = (page - 1) * pageSize
-  const pageTotal = rows.reduce((sum, row) => sum + (Number(row.total) || 0), 0)
+  const hasPendingTaxes = rows.some(row => row.total == null)
+  const pageTotal = hasPendingTaxes ? null : rows.reduce((sum, row) => sum + Number(row.total), 0)
 
-  if (rows.length === 0) {
+  if (rows.length === 0 && !keepEmptyTable) {
     return (
       <EmptyCard
         icon={<FileText size={24} className="text-muted-foreground" />}
@@ -97,6 +111,7 @@ export function QuotesTable({
   return (
     <TooltipProvider delayDuration={200}>
       <div className={documentListShellClassName()}>
+        {toolbar && <div className="border-b border-border/60 px-4">{toolbar}</div>}
         <Table className="min-w-[780px]">
           <TableHeader className="sticky top-0 z-10 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
             <TableRow className="hover:bg-transparent">
@@ -108,12 +123,18 @@ export function QuotesTable({
             </TableRow>
           </TableHeader>
           <TableBody>
+            {rows.length === 0 && <TableRow className="hover:bg-transparent">
+              <TableCell colSpan={5} className="h-40 text-center">
+                <p className="text-sm text-muted-foreground">{emptyTitle}</p>
+                {emptyDescription && <p className="mt-1 text-sm text-muted-foreground">{emptyDescription}</p>}
+              </TableCell>
+            </TableRow>}
             {rows.map((row) => {
               const statusKey = (row.status || "").toLowerCase()
-              const statusLabel = t(`status.${statusKey}`) || t(`quotations.status.${statusKey}`) || row.status || "—"
+              const statusLabel = row.statusLabel || t(`status.${statusKey}`) || t(`quotations.status.${statusKey}`) || row.status || "—"
               const cancelled = statusKey === "rejected" || statusKey === "expired"
               const expiredWindow = isPast(row.validUntil) && statusKey === "sent"
-              const amount = Number(row.total) || 0
+              const amount = row.total
               const currency = row.currency || "USD"
               const created = formatDate(row.createdAt)
               const validUntil = formatDate(row.validUntil)
@@ -127,9 +148,11 @@ export function QuotesTable({
                   <TableCell className="py-3.5">
                     <EntityCell
                       name={row.entityName}
-                      secondary={`#${row.id.slice(0, 8).toUpperCase()}`}
+                      secondary={row.reference || `#${row.id.slice(0, 8).toUpperCase()}`}
                       meta={created}
                     />
+                    {showTenderBadge && row.tenderUrl && <div className="mt-1"><TenderQuotationBadge href={row.tenderUrl} title={row.tenderTitle} /></div>}
+                    {row.sourceLabel && <p className="mt-1 text-xs text-muted-foreground">{row.sourceLabel}</p>}
                   </TableCell>
                   <TableCell className="py-3.5">
                     <StatusDot status={statusKey} label={statusLabel} />
@@ -151,9 +174,11 @@ export function QuotesTable({
                   </TableCell>
                   <TableCell className="py-3.5">
                     <MoneyCell
-                      amountLabel={formatCurrency(amount, currency)}
+                      amountLabel={amount == null ? t("procurement.common.taxesPending") : formatCurrency(amount, currency)}
                       dueLabel={
-                        expiredWindow
+                        row.total == null && row.net != null
+                          ? `${t("procurement.portal.checkout.netTotal")}: ${formatCurrency(row.net, currency)}`
+                          : expiredWindow
                           ? t("quotations.status.expired") || "Expired"
                           : statusKey === "draft"
                             ? t("status.draft") || "Draft"
@@ -183,20 +208,20 @@ export function QuotesTable({
               )
             })}
           </TableBody>
-          <tfoot>
+          {rows.length > 0 && <tfoot>
             <tr className="bg-muted/30">
               <TableCell className="py-3 text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
                 {t("quotations.list.table.total") || "Total"}
               </TableCell>
               <TableCell colSpan={2} />
               <TableCell className="py-3">
-                <MoneyCell amountLabel={formatCurrency(pageTotal, rows[0]?.currency || "USD")} />
+                <MoneyCell amountLabel={pageTotal == null ? t("procurement.common.taxesPending") : formatCurrency(pageTotal, rows[0]?.currency || "USD")} />
               </TableCell>
               <TableCell />
             </tr>
-          </tfoot>
+          </tfoot>}
         </Table>
-        <div className="flex items-center justify-between border-t border-border/60 px-4 py-3">
+        {totalCount > 0 && <div className="flex items-center justify-between border-t border-border/60 px-4 py-3">
           <p className="text-xs text-muted-foreground">
             <span className="font-medium text-foreground">{Math.min(indexOfFirstItem + 1, totalCount)}</span>
             {" – "}
@@ -209,7 +234,7 @@ export function QuotesTable({
           {totalPages > 1 && (
             <Pagination currentPage={page} totalPages={totalPages} onPageChange={onPageChange} />
           )}
-        </div>
+        </div>}
       </div>
     </TooltipProvider>
   )

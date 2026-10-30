@@ -1,7 +1,6 @@
 import { getEntitlementById } from "@/app/buyer/entitlement-queries"
 import { notFound } from "next/navigation"
-import { TicketPdpLayout } from "@/app/components/commerce/pdp/TicketPdpLayout"
-import { BuyerExperienceShell } from "@/app/components/commerce/pdp/BuyerExperienceShell"
+import { BuyerLibraryExperience } from "@/app/buyer/components/BuyerLibraryExperience"
 import { PdpExperience } from "@/app/components/commerce/pdp/pdp-experience"
 import { getPdpCatalogItem } from "@/app/commerce/pdp-actions"
 
@@ -38,8 +37,6 @@ export default async function BuyerTicketPage(props: {
   }
 
   return (
-    <BuyerExperienceShell backUrl={backUrl} variant="ticket">
-      <TicketPdpLayout item={item} backUrl={backUrl} experience={experience} />
-    </BuyerExperienceShell>
+    <BuyerLibraryExperience item={item} experience={experience} subtype="ticket" />
   )
 }

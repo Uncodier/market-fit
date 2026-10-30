@@ -122,6 +122,7 @@ export function PropertyRow<T = string>({
               {renderEditor?.(draft, setDraft)}
             </div>
             <Button
+              type="button"
               size="sm"
               variant="ghost"
               className="h-7 w-7 shrink-0 p-0"
@@ -132,6 +133,7 @@ export function PropertyRow<T = string>({
               <Check className="h-3.5 w-3.5" />
             </Button>
             <Button
+              type="button"
               size="sm"
               variant="ghost"
               className="h-7 w-7 shrink-0 p-0"
@@ -163,12 +165,12 @@ export function PropertyRow<T = string>({
             {(copyValue || linkHref) && (
               <div className="flex shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                 {copyValue && (
-                  <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={handleCopy}>
+                  <Button type="button" size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={handleCopy}>
                     <Copy className="h-3 w-3" />
                   </Button>
                 )}
                 {linkHref && (
-                  <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={handleLink}>
+                  <Button type="button" size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={handleLink}>
                     <ExternalLink className="h-3 w-3" />
                   </Button>
                 )}

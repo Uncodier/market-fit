@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, within } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation'
 jest.mock('@/app/components/auth/auth-provider', () => ({ useAuthContext: jest.fn(() => ({ user: null, isLoading: false })) }))
 jest.mock('@/app/context/LocalizationContext', () => ({ useLocalization: () => ({ t: (key: string) => key, locale: 'en' }) }))
 jest.mock('@/app/tenders/public-data', () => ({ loadPublicTenders: jest.fn(), participationClosed: jest.fn(() => true) }))
+jest.mock('@/app/tenders/site-identity', () => ({ loadTenderSiteIdentity: jest.fn(async () => ({ slug: 'buyer-workspace', name: 'Buyer Workspace', portalSlug: 'buyer-workspace' })) }))
 jest.mock('@/app/tenders/public-header', () => ({ TenderHeader: ({ primaryActions }: { primaryActions?: ReactNode }) => <header data-testid="commerce-header">Public tenders{primaryActions}</header>, TenderFooter: () => <footer>Public information</footer> }))
 beforeEach(() => {
   global.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} } as typeof ResizeObserver
@@ -26,7 +27,7 @@ it('renders published opportunity cards with real document navigation, not check
   jest.mocked(loadPublicTenders).mockResolvedValue({ rows: [publication], error: null } as never)
   render(await TenderDirectory({ page: 0, search: 'maintenance' }))
   expect(loadPublicTenders).toHaveBeenCalledWith(undefined, undefined, 0, 'maintenance')
-  expect(screen.getByRole('link', { name: 'View tender' })).toHaveAttribute('href', '/tenders/buyer-workspace/tender')
+  expect(screen.getByRole('link', { name: 'View tender: Maintenance services' })).toHaveAttribute('href', '/tenders/buyer-workspace/tender')
   expect(screen.queryByText(/checkout|add to cart/i)).not.toBeInTheDocument()
 })
 
@@ -37,24 +38,25 @@ it('keeps closed public documents readable without offering submission', async (
   expect(screen.queryByRole('link', { name: 'Submit proposal' })).not.toBeInTheDocument()
 })
 
-it('places the open publication proposal action only in the commerce header', async () => {
+it('opens a proposal sheet from the document action without leaving the tender', async () => {
   jest.mocked(participationClosed).mockReturnValue(false)
   jest.mocked(loadPublicTenders).mockResolvedValue({ rows: [publication], error: null } as never)
   render(await PublicDetail({ params: Promise.resolve({ siteSlug: 'buyer-workspace', tenderSlug: 'tender' }) }))
-  const action = screen.getByRole('link', { name: 'Submit proposal' })
-  expect(screen.getByTestId('commerce-header')).toContainElement(action)
-  expect(action).toHaveAttribute('href', '/home/submissions?publication=publication')
-  expect(screen.getByRole('main')).not.toContainElement(action)
+  const action = within(screen.getByRole('main')).getByRole('button', { name: 'Submit proposal' })
+  expect(screen.queryByRole('link', { name: 'Submit proposal' })).not.toBeInTheDocument()
+  fireEvent.click(action)
+  expect(screen.getByRole('dialog')).toHaveAttribute('data-submission-checkout')
+  expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/auth?returnTo=%2Ftenders%2Fbuyer-workspace%2Ftender%3Fsubmit%3D1')
 })
 
 it('filters only actual publications and explains the current-page scope', async () => {
   jest.mocked(loadPublicTenders).mockResolvedValue({ rows: [publication], error: null } as never)
   render(await TenderDirectory({ page: 0, search: '' }))
   fireEvent.click(screen.getAllByRole('button', { name: 'Participation open' })[0])
-  expect(screen.queryByRole('link', { name: 'View tender' })).not.toBeInTheDocument()
-  expect(screen.getByText('No publications match this participation filter.')).toBeInTheDocument()
+  expect(screen.queryByRole('link', { name: 'View tender: Maintenance services' })).not.toBeInTheDocument()
+  expect(screen.getByText('No publications match these filters.')).toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: 'Show all publications on this page' }))
-  expect(screen.getByRole('link', { name: 'View tender' })).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: 'View tender: Maintenance services' })).toBeInTheDocument()
   expect(screen.getByTitle('Sort this page')).toBeInTheDocument()
 })
 

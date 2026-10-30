@@ -1,16 +1,63 @@
-import Link from 'next/link'
-import { Button } from '@/app/components/ui/button'
+'use client'
+
 import { BuyerHomeView } from '@/app/buyer/components/BuyerHomeView'
-import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card'
+import { FileText, Search, ShieldCheck } from '@/app/components/ui/icons'
+import { useProcurementI18n } from '@/app/purchases/procurement/i18n/use-procurement-i18n'
+import useSWR from 'swr'
+import { useAuthContext } from '@/app/components/auth/auth-provider'
+import { readPortalJson, type Opportunity, type SavedDraft, type Submission } from './submissions/types'
+import { useMemo } from 'react'
+import { usePortalDemo } from './demo-context'
+import { getDemoHomeSummary } from './demo-summary'
+import { GlobalSearchInput } from './search/global-search-input'
+import { demoPortalDrafts, demoPortalOpportunities, demoPortalSubmissions } from '@/lib/demo-data/procurement-portal'
 
 export default function HomePage() {
+  const { t } = useProcurementI18n()
+  const { user } = useAuthContext()
+  const demo = usePortalDemo()
+  const demoSummary = useMemo(() => demo ? getDemoHomeSummary() : undefined, [demo])
+  const submissions = useSWR(!demo && user ? ['supplier-submissions', user.id] : null, async () => {
+    const result = await readPortalJson('/api/procurement/commerce/submissions') as { data: Submission[] }
+    return { submissions: result.data }
+  })
+  const opportunities = useSWR(!demo && user ? ['supplier-opportunities', user.id] : null,
+    () => readPortalJson('/api/procurement/credentials/participation') as Promise<{ opportunities: Opportunity[] }>)
+  const savedDrafts = useSWR(!demo && user ? ['supplier-drafts', user.id] : null,
+    () => readPortalJson('/api/procurement/credentials/drafts/list') as Promise<{ drafts: SavedDraft[] }>)
+  const hasSubmissions = !!user && !submissions.error && !submissions.isLoading &&
+    (submissions.data?.submissions?.length ?? 0) > 0
+  const hasInvitations = !!user && !opportunities.error && !opportunities.isLoading &&
+    (opportunities.data?.opportunities ?? []).some(row => row.directly_invited === true)
+  const hasDrafts = !!user && !savedDrafts.error && !savedDrafts.isLoading && (savedDrafts.data?.drafts?.length ?? 0) > 0
   return <div className="space-y-6">
-    <header><h1 className="text-3xl font-semibold">Your account</h1><p className="text-muted-foreground">Buying and supplier activity in one account. No workspace is required.</p></header>
-    <div className="grid gap-4 sm:grid-cols-3">
-      <Card><CardHeader><CardTitle>Credentials</CardTitle></CardHeader><CardContent><p className="mb-3">Manage private personal evidence and immutable renewals.</p><Button variant="outline" asChild><Link href="/home/profile">Profile and credentials</Link></Button></CardContent></Card>
-      <Card><CardHeader><CardTitle>Supplier activity</CardTitle></CardHeader><CardContent><p className="mb-3">Participate through explicit supplier representation grants.</p><Button variant="outline" asChild><Link href="/home/submissions">View participation</Link></Button></CardContent></Card>
-      <Card><CardHeader><CardTitle>Discover tenders</CardTitle></CardHeader><CardContent><p className="mb-3">Browse published opportunities and their terms.</p><Button variant="outline" asChild><Link href="/tenders">Browse tenders</Link></Button></CardContent></Card>
-    </div>
-    <BuyerHomeView />
+    <GlobalSearchInput />
+    <BuyerHomeView basePath="/home" demoSummary={demoSummary} additionalCards={[
+      {
+        title: t('procurement.portal.home.products'),
+        description: t('procurement.portal.home.productsDescription'),
+        icon: <Search className="w-6 h-6 text-foreground/70" />,
+        href: '/marketplace',
+      },
+      {
+        title: t('procurement.portal.home.credentials'),
+        description: t('procurement.portal.home.credentialsDescription'),
+        icon: <ShieldCheck className="w-6 h-6 text-foreground/70" />,
+        href: '/home/profile',
+      },
+      ...(demo || hasSubmissions || hasInvitations || hasDrafts ? [{
+        title: t('procurement.portal.activity.title'),
+        description: t('procurement.portal.home.activityDescription'),
+        icon: <FileText className="w-6 h-6 text-foreground/70" />,
+        href: '/home/submissions',
+        count: demo ? demoPortalSubmissions.length + demoPortalDrafts.length + demoPortalOpportunities.filter(row => row.directly_invited).length : undefined,
+      }] : []),
+      {
+        title: t('procurement.portal.home.discover'),
+        description: t('procurement.portal.home.tendersDescription'),
+        icon: <Search className="w-6 h-6 text-foreground/70" />,
+        href: '/tenders',
+      },
+    ]} />
   </div>
 }

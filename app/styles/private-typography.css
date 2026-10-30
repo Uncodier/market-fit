@@ -1,0 +1,6 @@
+/* Scope the brand font token at the document level so body portals, headings,
+   font-sans utilities and toolbar overrides all retain Inter on private routes.
+   The rendered marker follows SPA navigation without changing public surfaces. */
+html:has([data-private-typography]) {
+  --font-museo-moderno: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}

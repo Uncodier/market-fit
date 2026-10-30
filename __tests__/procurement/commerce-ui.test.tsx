@@ -26,12 +26,64 @@ it('shows access failure rather than a misleading empty successful order list', 
   render(<ProcurementOrdersPanel siteId="buyer-a" />)
   expect(await screen.findByRole('alert')).toHaveTextContent('Forbidden')
 })
+it('recovers the order table after a failed load followed by a successful refresh', async () => {
+  jest.mocked(fetch).mockResolvedValueOnce({ ok: false, json: async () => ({ error: 'Temporary failure' }) } as Response)
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ data: [] }) } as Response)
+  render(<ProcurementOrdersPanel siteId="buyer-a" />)
+  expect(await screen.findByRole('alert')).toHaveTextContent('Temporary failure')
+  fireEvent.click(screen.getByRole('button', { name: 'Refresh' }))
+  expect(await screen.findByText('No approved procurement orders.')).toBeInTheDocument()
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+})
 it('does not carry a prior buyer workspace quotation into a new workspace', async () => {
   jest.mocked(fetch).mockResolvedValue({ ok: true, json: async () => ({ data: [] }) } as Response)
   const view = render(<ProcurementQuotesPanel siteId="buyer-a" />)
   await screen.findByText('No procurement quotations recorded.')
   view.rerender(<ProcurementQuotesPanel siteId="buyer-b" />)
   await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/procurement/commerce/quotes?site_id=buyer-b', expect.any(Object)))
+})
+
+it.each([400, 409, 422])('allows correcting a first definitively rejected receipt (%s)', async status => {
+  const order = { id: 'order-a', supplier_name: 'Approved supplier', currency: 'USD', net_amount_minor: 500,
+    created_at: '2026-10-01T00:00:00Z', lines: [{ id: 'line-a', name: 'Service', quantity: 2, received_quantity: 0 }] }
+  jest.mocked(fetch).mockImplementation(async (_url, options) => ({
+    ok: options?.method !== 'POST', status: options?.method === 'POST' ? status : 200,
+    json: async () => options?.method === 'POST' ? { error: 'Quantity rejected' } : { data: [order] },
+  }) as Response)
+  render(<ProcurementOrdersPanel siteId="buyer-a" />)
+  fireEvent.click(await screen.findByRole('button', { name: 'Items and acceptance' }))
+  fireEvent.change(screen.getByLabelText(/Service —/), { target: { value: '3' } })
+  fireEvent.change(screen.getByLabelText('Acceptance note'), { target: { value: 'Check' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Record non-stock acceptance' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent('Quantity rejected')
+  expect(screen.getByLabelText('Acceptance note')).toBeEnabled()
+  fireEvent.change(screen.getByLabelText(/Service —/), { target: { value: '1' } })
+  expect(screen.getByLabelText(/Service —/)).toHaveValue('1')
+  expect(screen.getByRole('button', { name: 'Record non-stock acceptance' })).toBeEnabled()
+})
+
+it('validates the receipt quantity bound before locking and preserves prior ambiguous retries on later validation errors', async () => {
+  const order = { id: 'order-a', supplier_name: 'Approved supplier', currency: 'USD', net_amount_minor: 500,
+    created_at: '2026-10-01T00:00:00Z', lines: [{ id: 'line-a', name: 'Service', quantity: 2, received_quantity: 0 }] }
+  let posts = 0
+  jest.mocked(fetch).mockImplementation(async (_url, options) => {
+    if (options?.method === 'POST') { posts++; return { ok: false, status: posts === 1 ? 503 : 422, json: async () => ({ error: 'Not confirmed' }) } as Response }
+    return { ok: true, json: async () => ({ data: [order] }) } as Response
+  })
+  render(<ProcurementOrdersPanel siteId="buyer-a" />)
+  fireEvent.click(await screen.findByRole('button', { name: 'Items and acceptance' }))
+  fireEvent.change(screen.getByLabelText(/Service —/), { target: { value: '1000001' } })
+  fireEvent.change(screen.getByLabelText('Acceptance note'), { target: { value: 'Check' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Record non-stock acceptance' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent('1,000,000')
+  expect(posts).toBe(0)
+  expect(screen.getByLabelText(/Service —/)).toBeEnabled()
+  fireEvent.change(screen.getByLabelText(/Service —/), { target: { value: '1' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Record non-stock acceptance' }))
+  await screen.findByText('Not confirmed')
+  fireEvent.click(screen.getByRole('button', { name: 'Retry identical receipt' }))
+  await waitFor(() => expect(posts).toBe(2))
+  expect(screen.getByLabelText('Acceptance note')).toBeDisabled()
 })
 
 it('uses document rows and retains an identical failed receipt across dialog dismissal', async () => {

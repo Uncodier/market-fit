@@ -15,6 +15,7 @@ export const importQuotationSchema = z.object({
 }).strict()
 
 export const supplierSubmissionSchema = importQuotationSchema.extend({
+  proposal_revision_id: uuid.optional(),
   evidence: z.array(z.object({ requirement_id: uuid, revision_id: uuid }).strict()).max(100).default([]),
 }).strict()
 
@@ -34,7 +35,8 @@ export interface CommerceLine {
   quantity: number
   unit_net_minor: number
   net_amount_minor: number
-  tax_amount_minor: number
+  tax_amount_minor: number | null
+  catalog_item_id?: string | null
   received_quantity?: number
 }
 
@@ -49,7 +51,7 @@ export interface ProcurementQuotation {
   procurement_revision: number
   currency: string
   net_amount_minor: number
-  tax_amount_minor: number
+  tax_amount_minor: number | null
   recorded_at: string
   reference: string
   source: "buyer_recorded" | "supplier_submitted"
@@ -66,7 +68,7 @@ export interface ProcurementOrder {
   net_amount_minor: number
   tax_amount_minor: number
   created_at: string
-  lines: CommerceLine[]
+  lines: (CommerceLine & { tax_amount_minor: number })[]
 }
 
 export interface ImportOption {

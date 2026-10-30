@@ -17,10 +17,11 @@ beforeEach(() => {
   document.body.appendChild(header)
 })
 afterEach(() => document.getElementById('page-primary-actions')?.remove())
-test('upload lives in the shared account header while the dialog submits from its footer', () => {
+test('upload lives beside the credentials title while the dialog submits from its footer', () => {
   render(<CredentialManager />)
   const upload = screen.getByRole('button', { name: 'Upload credential' })
-  expect(document.getElementById('page-primary-actions')).toContainElement(upload)
+  expect(screen.getByRole('heading', { name: 'Private credentials' }).closest('header')).toContainElement(upload)
+  expect(document.getElementById('page-primary-actions')).not.toContainElement(upload)
   fireEvent.click(upload)
   expect(screen.getByRole('dialog')).toContainElement(screen.getByRole('button', { name: 'Save revision' }))
   expect(document.getElementById('page-primary-actions')).not.toContainElement(screen.getByRole('button', { name: 'Save revision' }))

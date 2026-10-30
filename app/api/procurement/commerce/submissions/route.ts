@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { supplierSubmissionSchema } from "@/app/purchases/procurement/commerce/contracts"
-import { commerceBody, commerceResult, procurementError, privateHeaders } from "../http"
+import { commerceBody, commerceResult, commerceWriteAccess, procurementError, privateHeaders } from "../http"
 import { uuid } from "../../http"
 
 async function authenticatedClient(request: Request) {
@@ -19,6 +19,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const originError = commerceWriteAccess(request)
+  if (originError) return originError
   const client = await authenticatedClient(request)
   if (!client) return procurementError("Authentication required", 401)
   const params = new URL(request.url).searchParams
@@ -28,8 +30,14 @@ export async function POST(request: Request) {
     return procurementError("A buyer workspace, publication and complete quotation are required", 400)
   }
   // This is an external actor, not a buyer-site member. The user-scoped RPC
-  // validates a current explicit supplier representation grant atomically.
+   // validates explicit representation or publication-scoped self participation atomically.
   const { data, error } = await client.rpc("submit_procurement_quotation", { p_site: site.data, p_document: body.data })
-  if (error) return commerceResult(null, error)
+   if (error) {
+     // Only this known validation diagnostic is safe to expose; never return raw SQL errors.
+     if (error.code === '22023' && error.message === 'Active same-currency catalog mapping required') {
+       return procurementError('A catalog item linked to this tender is unavailable or uses a different currency. Ask the buyer to correct the linked item. Your quotation was not submitted.', 422)
+     }
+     return commerceResult(null, error)
+   }
   return NextResponse.json({ data: { quotation_id: data } }, { headers: privateHeaders })
 }

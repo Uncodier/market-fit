@@ -41,7 +41,7 @@ const PUBLIC_QUOTE_SELECT = `
     )
   ),
   lead:leads(name, email),
-  site:sites(id, name, logo_url, url)
+  site:sites!site_id(id, name, logo_url, url)
 `
 
 function publicTokenSchemaError(message?: string | null) {

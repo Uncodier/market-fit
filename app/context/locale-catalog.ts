@@ -12,6 +12,7 @@ import { flattenMessages, type MessageTree } from './locale-messages';
 import type { SupportedLocale } from './locale-preferences';
 import { spanishWorkspaceMessages } from './locales/workspace/es';
 import { screenMessages } from './locales/screens';
+import { procurementMessages } from './locales/procurement';
 
 /** Raw feature messages, without legacy or English fallback. */
 export const commerceMessages: Record<SupportedLocale, Record<string, string>> = {
@@ -28,6 +29,7 @@ function ownMessages(locale: SupportedLocale, legacy: MessageTree): Record<strin
     ...(locale === 'es' ? spanishWorkspaceMessages : {}),
     ...screenMessages[locale],
     ...commerceMessages[locale],
+    ...procurementMessages[locale],
   };
 }
 

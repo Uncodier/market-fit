@@ -9,13 +9,18 @@ import { DateOnlyField, Toggle } from '@/app/purchases/procurement/components/fo
 import { DocumentDialog } from '@/app/purchases/procurement/commerce/document-ui'
 import { DialogForm, DialogBody, DialogFooter } from '@/app/components/ui/dialog'
 import type { Credential, CredentialMetadata } from '@/app/purchases/procurement/evidence/schema'
+import { useProcurementI18n } from '@/app/purchases/procurement/i18n/use-procurement-i18n'
+import { usePortalDemo } from '../demo-context'
 
 const empty: CredentialMetadata = { holder_kind: 'person', holder_name: '', title: '', type: 'professional_license',
   issuer: '', reference: '', scope: '', issued_on: null, expires_on: null, non_expiring: false }
 
-export function CredentialForm({ credential, onSaved, onCancel, open = true }: {
-  credential?: Credential; onSaved: () => void; onCancel: () => void; open?: boolean
+export function CredentialForm({ credential, onSaved, onCancel, open = true, demo: explicitDemo = false }: {
+  credential?: Credential; onSaved: (result: { revision_id: string }) => void; onCancel: () => void; open?: boolean; demo?: boolean
 }) {
+  const portalDemo = usePortalDemo()
+  const demo = explicitDemo || portalDemo
+  const { t, message } = useProcurementI18n()
   const latest = credential?.revisions.reduce((a, b) => a.revision > b.revision ? a : b)
   const [metadata, setMetadata] = useState<CredentialMetadata>(latest?.metadata ?? empty)
   const [file, setFile] = useState<File | null>(null)
@@ -23,6 +28,7 @@ export function CredentialForm({ credential, onSaved, onCancel, open = true }: {
   const [error, setError] = useState('')
   async function submit(event: React.FormEvent) {
     event.preventDefault()
+    if (demo) return
     if (!file) return
     setBusy(true); setError('')
     try {
@@ -32,7 +38,7 @@ export function CredentialForm({ credential, onSaved, onCancel, open = true }: {
       const response = await fetch('/api/procurement/credentials', { method: 'POST', body: form })
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || 'Upload failed')
-      onSaved()
+      onSaved(data)
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Upload failed') }
     finally { setBusy(false) }
   }
@@ -40,20 +46,22 @@ export function CredentialForm({ credential, onSaved, onCancel, open = true }: {
     return <div className="space-y-1"><Label htmlFor={`credential-${key}`}>{label}</Label><Input id={`credential-${key}`} required={required}
       maxLength={key === 'type' ? 80 : 200} value={String(metadata[key] ?? '')} onChange={event => setMetadata({ ...metadata, [key]: event.target.value })} /></div>
   }
-  return <DocumentDialog open={open} onClose={onCancel} busy={busy} title={credential ? 'Add immutable revision' : 'Upload personal credential'} description="Private profile evidence, shared only by explicit revision selection.">
-    <DialogForm onSubmit={submit}><DialogBody className="space-y-4"><fieldset disabled={busy} className="space-y-4">
-    <p className="text-sm text-muted-foreground">You are the account holder and uploader. Organization-owned credentials are not supported. Legal representation documents are evidence, not account access grants.</p>
-    <div className="grid gap-4 md:grid-cols-2">{field('holder_name', 'Your legal name')}{field('title', 'Credential title')}
-      {field('type', 'Type identifier (for example professional_license or legal_representation)')}{field('issuer', 'Issuer')}{field('reference', 'Certificate reference', false)}</div>
-    <Label htmlFor="credential-scope">Covered activities, locations or specialties</Label>
+  return <DocumentDialog open={open} onClose={onCancel} busy={busy} title={t(credential ? 'procurement.portal.credentials.addImmutable' : 'procurement.portal.credentials.uploadPersonal')} description={t('procurement.portal.credentials.dialogDescription')}>
+    <DialogForm onSubmit={submit}><DialogBody className="space-y-4">
+    {demo && <p role="status">Read-only demo credential. Uploading and saving are disabled; no file is stored.</p>}
+    <fieldset disabled={demo || busy} className="space-y-4">
+    <p className="text-sm text-muted-foreground">{t('procurement.portal.credentials.holderHint')}</p>
+    <div className="grid gap-4 md:grid-cols-2">{field('holder_name', t('procurement.portal.credentials.legalName'))}{field('title', t('procurement.portal.credentials.title'))}
+      {field('type', t('procurement.portal.credentials.type'))}{field('issuer', t('procurement.portal.credentials.issuer'))}{field('reference', t('procurement.portal.credentials.reference'), false)}</div>
+    <Label htmlFor="credential-scope">{t('procurement.portal.credentials.scope')}</Label>
     <Textarea id="credential-scope" maxLength={2000} value={metadata.scope} onChange={event => setMetadata({ ...metadata, scope: event.target.value })} />
-    <div className="grid gap-4 md:grid-cols-2">{(['issued_on', 'expires_on'] as const).map(key => <DateOnlyField key={key} label={key === 'issued_on' ? 'Issue date (optional)' : 'Expiry date (optional)'}
+    <div className="grid gap-4 md:grid-cols-2">{(['issued_on', 'expires_on'] as const).map(key => <DateOnlyField key={key} label={t(key === 'issued_on' ? 'procurement.portal.credentials.issueDate' : 'procurement.portal.credentials.expiryDate')}
       disabled={busy || (key === 'expires_on' && metadata.non_expiring)} value={metadata[key] ?? ''} onChange={value => setMetadata({ ...metadata, [key]: value || null })} />)}</div>
-    <Toggle label="Explicitly non-expiring" checked={metadata.non_expiring} onChange={checked => setMetadata({ ...metadata, non_expiring: checked, expires_on: checked ? null : metadata.expires_on })} />
-    <Label htmlFor="credential-file">Private file (PDF, PNG or JPEG, maximum 8 MiB)</Label>
+    <Toggle label={t('procurement.portal.credentials.nonExpiring')} checked={metadata.non_expiring} onChange={checked => setMetadata({ ...metadata, non_expiring: checked, expires_on: checked ? null : metadata.expires_on })} />
+    <Label htmlFor="credential-file">{t('procurement.portal.credentials.file')}</Label>
     <Input id="credential-file" type="file" accept="application/pdf,image/png,image/jpeg" required={!file} onChange={event => setFile(event.target.files?.[0] ?? null)} />
-    {file && <p className="text-sm text-muted-foreground">Selected file: {file.name}</p>}
-    </fieldset>{error && <p role="alert" className="text-destructive">{error}</p>}
-    </DialogBody><DialogFooter><Button type="button" variant="outline" disabled={busy} onClick={onCancel}>Close and keep draft</Button><Button disabled={busy || !file}>{busy ? 'Uploading…' : 'Save revision'}</Button></DialogFooter></DialogForm>
+    {file && <p className="text-sm text-muted-foreground">{t('procurement.portal.credentials.selectedFile', { name: file.name })}</p>}
+    </fieldset>{error && <p role="alert" className="text-destructive">{message(error)}</p>}
+    </DialogBody><DialogFooter><Button type="button" variant="outline" disabled={busy} onClick={onCancel}>{t('procurement.portal.closeDraft')}</Button><Button disabled={demo || busy || !file}>{t(busy ? 'procurement.portal.credentials.uploading' : 'procurement.portal.credentials.saveRevision')}</Button></DialogFooter></DialogForm>
   </DocumentDialog>
 }

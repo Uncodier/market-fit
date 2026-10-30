@@ -50,6 +50,9 @@ interface ReservationSlotPickerProps {
   layout?: "dialog" | "page"
   /** system = browser clock (reservations/POS). venue = schedule TZ + label (book/PDP). */
   timeDisplay?: SlotTimeDisplay
+  /** Presentation-only availability; skips the live availability loader when provided. */
+  previewSlots?: ReservationSlotOption[]
+  displayTimezone?: string
 }
 
 export function ReservationSlotPicker({
@@ -62,8 +65,10 @@ export function ReservationSlotPicker({
   hideDetailsStep = false,
   layout = "dialog",
   timeDisplay,
+  previewSlots,
+  displayTimezone,
 }: ReservationSlotPickerProps) {
-  const display: SlotTimeDisplay = timeDisplay ?? (layout === "page" ? "venue" : "system")
+  const display: SlotTimeDisplay = displayTimezone ? "venue" : timeDisplay ?? (layout === "page" ? "venue" : "system")
   const { locale, t } = useLocalization()
   const dateLocale = getDateFnsLocale(locale)
   const { user } = useAuth()
@@ -95,11 +100,11 @@ export function ReservationSlotPicker({
 
   useEffect(() => {
     if (!selectedStartIso) return
-    const date = calendarDateFromIso(selectedStartIso, undefined, display)
+    const date = calendarDateFromIso(selectedStartIso, displayTimezone, display)
     setCurrentMonth(startOfMonth(date))
     setSelectedDate(date)
     setActiveStep("time")
-  }, [selectedStartIso, catalogItemId, display])
+  }, [selectedStartIso, catalogItemId, display, displayTimezone])
 
   useEffect(() => {
     if (!catalogItemId) return
@@ -110,10 +115,10 @@ export function ReservationSlotPicker({
       const monthStart = startOfMonth(currentMonth)
       const firstDayOfMonth = monthStart.getDay()
       const rangeStart = addDays(monthStart, -firstDayOfMonth)
-      const startStr = format(rangeStart, "yyyy-MM-dd")
-      const endStr = format(addDays(rangeStart, 41), "yyyy-MM-dd")
+      const startStr = format(addDays(rangeStart, displayTimezone ? -1 : 0), "yyyy-MM-dd")
+      const endStr = format(addDays(rangeStart, displayTimezone ? 42 : 41), "yyyy-MM-dd")
 
-      const { slots: available } = await getReservationSlotsLocalFirst({
+      const { slots: available } = previewSlots !== undefined ? { slots: previewSlots } : await getReservationSlotsLocalFirst({
         catalogItemId,
         startDate: startStr,
         endDate: endStr,
@@ -123,6 +128,7 @@ export function ReservationSlotPicker({
       if (cancelled) return
 
       const slots = mergeCurrentReservationSlot(available, selectedStartIso, selectedEndIso)
+        .map(slot => displayTimezone ? { ...slot, timezone: displayTimezone } : slot)
 
       setAllSlots(slots)
 
@@ -143,7 +149,7 @@ export function ReservationSlotPicker({
     return () => {
       cancelled = true
     }
-  }, [catalogItemId, monthKey, quantity, ignoreReservationId, selectedStartIso, selectedEndIso, display])
+  }, [catalogItemId, monthKey, quantity, ignoreReservationId, selectedStartIso, selectedEndIso, display, previewSlots, displayTimezone])
 
   const firstDayOfMonth = startOfMonth(currentMonth).getDay()
   const startDate = addDays(startOfMonth(currentMonth), -firstDayOfMonth)
@@ -221,7 +227,7 @@ export function ReservationSlotPicker({
                   const isCurrentMonth = isSameMonth(date, currentMonth)
                   const isAvailable = monthAvailability[dateStr] ?? false
                   const isCurrentReservationDate = Boolean(
-                    selectedStartIso && slotCalendarDate(selectedStartIso, undefined, display) === dateStr
+                    selectedStartIso && slotCalendarDate(selectedStartIso, displayTimezone, display) === dateStr
                   )
                   const shouldDisable = (isPast || !isAvailable) && !isCurrentReservationDate
 

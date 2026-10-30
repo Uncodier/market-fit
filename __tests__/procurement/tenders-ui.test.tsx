@@ -7,7 +7,7 @@ import { TenderEditor } from '@/app/purchases/tenders/tender-editor'
 import { TenderList } from '@/app/purchases/tenders/tender-list'
 import { TenderDetail } from '@/app/purchases/tenders/tender-detail'
 const site = '00000000-0000-4000-8000-000000000001'
-jest.mock('@/app/context/SiteContext', () => ({ useSite: () => ({ currentSite: { id: site } }) }))
+jest.mock('@/app/context/SiteContext', () => ({ useSite: () => ({ currentSite: { id: site, name: 'Test workspace' } }) }))
 
 beforeEach(() => {
   render(<TopBarPrimaryActionsSlot />)
@@ -19,6 +19,9 @@ test('creates a working tender without a client publisher or published state', a
   jest.mocked(fetch).mockImplementation(async (_url, init) => ({ ok: true, json: async () => init?.method === 'POST' ? { id: site } : { requests: [] } }) as Response)
   render(<TenderEditor />)
   expect(screen.getByRole('dialog', { name: 'Create tender' })).toBeInTheDocument()
+  expect(screen.getByRole('dialog').querySelector('[data-slot="dialog-body"]')).toHaveClass('text-sm')
+  expect(screen.getByRole('dialog').querySelector('legend')).toHaveClass('text-sm', 'font-medium')
+  expect(screen.getByRole('heading', { name: 'Structured requirements' })).toHaveClass('text-sm')
   expect(within(screen.getByRole('dialog')).getByRole('button', { name: 'Save working version' })).toBeInTheDocument()
   expect(document.getElementById('page-primary-actions')).toBeEmptyDOMElement()
   expect(screen.getByRole('combobox', { name: 'Visibility' })).toBeInTheDocument()

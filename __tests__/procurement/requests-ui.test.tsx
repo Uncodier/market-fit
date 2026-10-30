@@ -84,14 +84,58 @@ test('does not label hidden tender relationships as direct purchasing', async ()
   expect(screen.queryByRole('combobox', { name: 'Sourcing filter' })).not.toBeInTheDocument()
   expect(within(table).queryByText('No tender linked')).not.toBeInTheDocument()
 })
-test('detail tabs expose request lines and preserve the submit revision contract', async () => {
+test('detail shows a purchase-style document beside the workflow and submits from the toolbar', async () => {
   const request = { id: site, title: 'Office supplies', description: 'For the new office', status: 'draft', currency: 'USD', net_amount_minor: 1000, revision: 3, requester_id: site, resolved_plan: null }
   jest.mocked(fetch).mockImplementation(async (_url, init) => ({ ok: true, json: async () => init?.method === 'POST' ? {} : { request, actor_id: site, can_manage: true, items: [{ id: 'line', revision: 3, description: 'Paper', quantity: 2, catalog_item_id: site, unit_net_minor: 500, valuation_source: 'catalog', tax_snapshot: [] }], stages: [], audit: [] } }) as Response)
   render(<RequestDetail id={site} />)
   await screen.findByText('For the new office')
-  expect(within(document.getElementById('page-primary-actions')!).getByRole('button', { name: 'Submit for approval' })).toBeInTheDocument()
-  fireEvent.mouseDown(screen.getByRole('tab', { name: 'Lines' }), { button: 0, ctrlKey: false })
-  expect(screen.getByText('Paper')).toBeInTheDocument()
+  const toolbar = screen.getByRole('toolbar', { name: 'Purchase request' })
+  expect(within(toolbar).getByRole('button', { name: 'Submit for approval' })).toBeInTheDocument()
+  expect(document.getElementById('page-primary-actions')).toBeEmptyDOMElement()
+  const documentView = screen.getByRole('article', { name: 'Purchase request' })
+  expect(within(documentView).getByText('Paper')).toBeInTheDocument()
+  expect(within(documentView).getByText('For the new office')).toBeInTheDocument()
+  const sidebar = screen.getByRole('complementary', { name: 'Request information' })
+  expect(within(sidebar).getByRole('tab', { name: 'Approvals' })).toHaveAttribute('data-state', 'active')
+  fireEvent.mouseDown(within(sidebar).getByRole('tab', { name: 'Activity' }), { button: 0, ctrlKey: false })
+  expect(within(sidebar).getByText('No activity recorded.')).toBeInTheDocument()
+  expect(within(documentView).getByText('Paper')).toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: 'Submit for approval' }))
   await waitFor(() => expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/submit?'), expect.objectContaining({ method: 'POST', body: JSON.stringify({ expected_revision: 3 }) })))
+})
+
+test('eligible approval actions use the toolbar and retain the reason and stage revision contract', async () => {
+  const request = { id: site, title: 'Equipment', description: 'Review equipment', status: 'submitted', currency: 'USD', net_amount_minor: 1000, revision: 3, requester_id: site, resolved_plan: null }
+  const stage = { id: 'stage-1', revision: 3, status: 'pending', decisions: [], definition: {
+    name: 'Manager review', decisionMode: 'human', execution: 'parallel', approverIds: [site], mandatoryApproverIds: [],
+    quorum: { mode: 'any' }, rejectionBehavior: 'veto', resolvedDeadline: null,
+  } }
+  jest.mocked(fetch).mockImplementation(async (_url, init) => ({ ok: true, json: async () => init?.method === 'POST' ? {} : { request, actor_id: site, can_manage: false, items: [], stages: [stage, { ...stage, id: 'old-stage', revision: 2 }], audit: [] } }) as Response)
+  render(<RequestDetail id={site} />)
+  await screen.findByText('Review equipment')
+  const toolbar = screen.getByRole('toolbar')
+  const sidebar = screen.getByRole('complementary')
+  const approve = within(toolbar).getByRole('button', { name: 'Approve stage' })
+  expect(approve).toBeDisabled()
+  expect(within(sidebar).queryByRole('button', { name: 'Approve stage' })).not.toBeInTheDocument()
+  expect(within(toolbar).queryByRole('button', { name: 'Submit for approval' })).not.toBeInTheDocument()
+  fireEvent.change(within(sidebar).getByRole('textbox'), { target: { value: 'Equipment is required' } })
+  expect(approve).toBeEnabled()
+  fireEvent.click(approve)
+  await waitFor(() => expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/decisions?'), expect.objectContaining({
+    method: 'POST', body: JSON.stringify({ expected_revision: 3, stage_id: 'stage-1', decision: 'approve', reason: 'Equipment is required' }),
+  })))
+})
+
+test('non-eligible reviewers cannot see decision actions or a reason field', async () => {
+  jest.mocked(fetch).mockResolvedValue({ ok: true, json: async () => ({
+    request: { id: site, title: 'Equipment', description: 'Read-only request', status: 'submitted', currency: 'USD', net_amount_minor: 0, revision: 1, requester_id: site, resolved_plan: null },
+    actor_id: site, can_manage: false, items: [], audit: [], stages: [{ id: 'stage-1', revision: 1, status: 'pending', decisions: [], definition: {
+      name: 'Other reviewer', decisionMode: 'human', execution: 'parallel', approverIds: ['other-user'], mandatoryApproverIds: [], quorum: { mode: 'any' }, rejectionBehavior: 'veto', resolvedDeadline: null,
+    } }],
+  }) } as Response)
+  render(<RequestDetail id={site} />)
+  await screen.findByText('Read-only request')
+  expect(within(screen.getByRole('toolbar')).queryByRole('button', { name: 'Approve stage' })).not.toBeInTheDocument()
+  expect(within(screen.getByRole('complementary')).queryByRole('textbox')).not.toBeInTheDocument()
 })

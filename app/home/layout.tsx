@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react'
-import { BuyerShell } from '@/app/buyer/components/BuyerShell'
+import { HomeShell } from './home-shell'
+import { PortalDemoProvider } from './demo-context'
+import { isProcurementPortalDemo } from '@/app/tenders/demo-mode'
 
-export default function HomeLayout({ children }: { children: ReactNode }) {
-  return <BuyerShell requireAuth>{children}</BuyerShell>
+export default async function HomeLayout({ children }: { children: ReactNode }) {
+  return <PortalDemoProvider demo={await isProcurementPortalDemo()}><HomeShell>{children}</HomeShell></PortalDemoProvider>
 }

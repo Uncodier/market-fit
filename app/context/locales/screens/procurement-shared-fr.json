@@ -1,0 +1,21 @@
+{
+  "layout.sidebar.leads": "Clients",
+  "layout.nav.leads.title": "Clients",
+  "layout.nav.leads.help": "Gérez et suivez vos clients",
+  "procurement.errors.submissionCatalogMapping": "Un article du catalogue lié à cet appel d’offres est indisponible ou utilise une autre devise. Demandez à l’acheteur de corriger l’article lié. Votre devis n’a pas été envoyé.",
+  "datePicker.selectDate": "Choisir une date",
+  "datePicker.selectDateTime": "Choisir la date et l’heure",
+  "datePicker.dateAtTime": "{{date}} à {{time}}",
+  "datePicker.selectDateRange": "Choisir une plage de dates",
+  "datePicker.selectEndDate": "Choisir la date de fin",
+  "datePicker.previousMonth": "Mois précédent",
+  "datePicker.nextMonth": "Mois suivant",
+  "datePicker.selectTime": "Choisir l’heure",
+  "datePicker.selectedTime": "Heure sélectionnée",
+  "datePicker.hours": "Heures",
+  "datePicker.minutes": "Minutes",
+  "datePicker.am": "AM",
+  "datePicker.pm": "PM",
+  "datePicker.to": "à",
+  "datePicker.customRange": "Plage personnalisée"
+}

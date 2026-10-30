@@ -5,7 +5,7 @@ import { addMonths, format, isSameDay, isValid, startOfMonth } from "date-fns"
 import { CalendarIcon, ChevronLeft } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/app/components/ui/popover"
-import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/app/components/ui/dialog"
+import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTrigger, DialogTitle } from "@/app/components/ui/dialog"
 import { useIsMobile } from "@/app/hooks/use-mobile-view"
 import { cn } from "@/lib/utils"
 import { useLocalization } from "@/app/context/LocalizationContext"
@@ -163,7 +163,7 @@ export function DatePicker({
       type="button" variant={mode === 'range' ? "secondary" : "outline"}
       className={cn(
         mode === 'range' ? "h-9" : "h-10", "text-left font-normal",
-        mode === 'range' ? "w-auto gap-2" : "w-full",
+        mode === 'range' ? "w-auto gap-2" : "w-full min-w-0 max-w-full",
         mode === 'range' ? "px-3" : "px-3 py-1 flex items-center justify-between",
         mode !== 'range' && "rounded-md border border-input bg-background",
         "focus:outline-none focus-visible:outline-none focus-visible:ring-0",
@@ -184,26 +184,27 @@ export function DatePicker({
   const resolvedTrigger = trigger || triggerButton
 
   return (
-    <div className={trigger ? "inline-flex w-auto h-auto shrink-0 flex-none" : "w-full"}>
+    <div className={trigger ? "inline-flex w-auto h-auto shrink-0 flex-none" : "w-full min-w-0"}>
       {isMobile ? (
         <Dialog open={open} onOpenChange={changeOpen}>
           <DialogTrigger asChild disabled={disabled}>{resolvedTrigger}</DialogTrigger>
           <DialogContent
             aria-describedby={undefined}
-            className="p-0 w-[95vw] max-w-[400px] gap-0 border-border bg-popover !fixed !inset-auto !left-1/2 !top-1/2 !-translate-x-1/2 !-translate-y-1/2 !rounded-xl"
+            flush
+            className="p-0 w-[calc(100%-2rem)] max-w-[400px] sm:max-w-[400px] gap-0 border-border bg-popover !fixed !inset-auto !left-1/2 !top-1/2 !-translate-x-1/2 !-translate-y-1/2 !rounded-xl"
             showClose={true}
           >
-            <div className="px-4 py-3 border-b border-border/50 flex items-center justify-between">
+            <DialogHeader className="border-border/50 px-4 py-3 pr-16">
               <DialogTitle className="text-base font-semibold">{t("datePicker.selectDate")}</DialogTitle>
-            </div>
-            {pickerContent}
+            </DialogHeader>
+            <DialogBody className="p-0">{pickerContent}</DialogBody>
           </DialogContent>
         </Dialog>
       ) : (
         <Popover open={open} onOpenChange={changeOpen}>
           <PopoverTrigger asChild disabled={disabled}>{resolvedTrigger}</PopoverTrigger>
           <PopoverContent
-            className="p-0 w-auto max-w-[calc(100vw-2rem)] sm:max-w-none" side={position} align="center"
+            className="p-0 w-auto max-w-[calc(100vw-2rem)] max-h-[var(--radix-popover-content-available-height)] overflow-y-auto" side={position} align="center"
             onInteractOutside={(event) => {
               const target = event.target as Element | null
               if (target?.closest?.("[data-time-select]")) event.preventDefault()

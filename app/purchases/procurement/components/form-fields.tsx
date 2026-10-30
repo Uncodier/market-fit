@@ -5,10 +5,11 @@ import { DatePicker } from '@/app/components/ui/date-picker';
 import { Button } from '@/app/components/ui/button';
 import { Checkbox } from '@/app/components/ui/checkbox';
 import { Label } from '@/app/components/ui/label';
+import { useProcurementI18n } from '../i18n/use-procurement-i18n';
 
 export function Field({ label, children }: { label: string; children: (id: string) => ReactNode }) {
   const id = useId();
-  return <div className="space-y-2"><Label htmlFor={id}>{label}</Label>{children(id)}</div>;
+  return <div className="min-w-0 space-y-2"><Label htmlFor={id}>{label}</Label>{children(id)}</div>;
 }
 
 export const humanize = (value: string) => value.replaceAll('_', ' ').replace(/^./, (letter) => letter.toUpperCase());
@@ -16,31 +17,34 @@ export const humanize = (value: string) => value.replaceAll('_', ' ').replace(/^
 export function Choice<T extends string>({ label, value, options, onChange, disabled = false }: {
   label: string; value: T; options: readonly T[]; onChange: (value: T) => void; disabled?: boolean;
 }) {
+  const { valueLabel } = useProcurementI18n();
   return <Field label={label}>{(id) => <Select disabled={disabled} value={value} onValueChange={next => { if (!disabled) onChange(next as T); }}>
     <SelectTrigger id={id} aria-label={label}><SelectValue /></SelectTrigger>
-    <SelectContent>{options.map(option => <SelectItem key={option} value={option}>{humanize(option)}</SelectItem>)}</SelectContent>
+    <SelectContent>{options.map(option => <SelectItem key={option} value={option}>{valueLabel(option)}</SelectItem>)}</SelectContent>
   </Select>}</Field>;
 }
 
 export function DateTimeField({ label, value, onChange, disabled = false }: {
   label: string; value: string; onChange: (value: string) => void; disabled?: boolean;
 }) {
+  const { t } = useProcurementI18n();
   const date = value && Number.isFinite(Date.parse(value)) ? new Date(value) : undefined;
-  return <Field label={label}>{id => <div className="flex items-center gap-2">
-    <DatePicker id={id} date={date} setDate={next => onChange(next.toISOString())} disabled={disabled} showEvents={false} showTimePicker placeholder="Select date and time" />
-    {value && <Button type="button" variant="ghost" size="sm" disabled={disabled} aria-label={`Clear ${label}`} onClick={() => onChange('')}>Clear</Button>}
+  return <Field label={label}>{id => <div className="flex min-w-0 items-center gap-2">
+    <div className="min-w-0 flex-1"><DatePicker id={id} date={date} setDate={next => onChange(next.toISOString())} disabled={disabled} showEvents={false} showTimePicker placeholder={t('procurement.common.selectDateTime')} /></div>
+    {value && <Button type="button" variant="ghost" size="sm" className="shrink-0" disabled={disabled} aria-label={t('procurement.common.clearField', { label })} onClick={() => onChange('')}>{t('procurement.common.clear')}</Button>}
   </div>}</Field>;
 }
 
 export function DateOnlyField({ label, value, onChange, disabled = false }: {
   label: string; value: string; onChange: (value: string) => void; disabled?: boolean;
 }) {
+  const { t } = useProcurementI18n();
   const date = value ? new Date(`${value}T12:00:00`) : undefined;
-  return <Field label={label}>{id => <div className="flex items-center gap-2">
-    <DatePicker id={id} date={date} disabled={disabled} showEvents={false} placeholder="Select date" setDate={next => {
+  return <Field label={label}>{id => <div className="flex min-w-0 items-center gap-2">
+    <div className="min-w-0 flex-1"><DatePicker id={id} date={date} disabled={disabled} showEvents={false} placeholder={t('procurement.common.selectDate')} setDate={next => {
       onChange(`${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}-${String(next.getDate()).padStart(2, '0')}`);
-    }} />
-    {value && <Button type="button" variant="ghost" size="sm" disabled={disabled} aria-label={`Clear ${label}`} onClick={() => onChange('')}>Clear</Button>}
+    }} /></div>
+    {value && <Button type="button" variant="ghost" size="sm" className="shrink-0" disabled={disabled} aria-label={t('procurement.common.clearField', { label })} onClick={() => onChange('')}>{t('procurement.common.clear')}</Button>}
   </div>}</Field>;
 }
 
@@ -70,11 +74,12 @@ export function currencyScale(currency: string) {
 export function AmountField({ label, value, currency, onChange }: {
   label: string; value: number; currency: string; onChange: (value: number) => void;
 }) {
+  const { t } = useProcurementI18n();
   const scale = currencyScale(currency);
   const [entry, setEntry] = useState<{ raw: string; value: number; currency: string } | null>(null);
   const rawValue = entry && Object.is(entry.value, value) && entry.currency === currency
     ? entry.raw : Number.isFinite(value) ? String(value / scale) : '';
-  return <Field label={`${label} (${currency}, net of tax)`}>{(id) => <Input id={id} type="text" inputMode="decimal"
+  return <Field label={t('procurement.common.amountLabel', { label, currency })}>{(id) => <Input id={id} type="text" inputMode="decimal"
     value={rawValue} onChange={(e) => {
       const raw = e.target.value;
       const match = /^(\d+)(?:\.(\d*))?$/.exec(raw);

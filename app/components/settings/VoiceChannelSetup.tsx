@@ -8,6 +8,7 @@ import { SectionCardFooter, SectionCardContent } from "@/app/components/ui/secti
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { RadioGroup, RadioGroupItem } from "@/app/components/ui/radio-group"
 import { Skeleton } from "@/app/components/ui/skeleton"
+import { SettingsSelectionLoading } from "./settings-loading"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { Badge } from "@/app/components/ui/badge"
 import { Alert, AlertTitle, AlertDescription } from "@/app/components/ui/alert"
@@ -263,13 +264,7 @@ export function VoiceChannelSetup({
           
           <TabsContent value="existing" className="mt-4 space-y-4">
             {isLoadingOwned ? (
-              <div className="space-y-3">
-                <Skeleton className="h-4 w-48 mb-2" />
-                <div className="space-y-3">
-                  <Skeleton className="h-[74px] w-full rounded-md" />
-                  <Skeleton className="h-[74px] w-full rounded-md" />
-                </div>
-              </div>
+              <SettingsSelectionLoading label="Loading Voice phone numbers" variant="phone" />
             ) : eligibleOwnedNumbers.length === 0 ? (
               <div className="text-center py-6 bg-muted/30 rounded-md">
                 <p className="text-sm text-muted-foreground">You don't have any phone numbers yet.</p>

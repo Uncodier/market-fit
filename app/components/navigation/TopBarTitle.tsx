@@ -1,6 +1,9 @@
 "use client"
 
 import { procurementRouteTitle } from '@/lib/navigation/procurement-route-title'
+import { localeMessages } from '@/app/context/locale-catalog'
+import { enforceInvariants, hasId } from '@/lib/navigation/breadcrumb-engine'
+import { workspaceScreenTitle } from '@/lib/navigation/workspace-screen'
 import { usePathname, useSearchParams } from "next/navigation"
 import { Button } from "../ui/button"
 import { NavigationLink } from "./NavigationLink"
@@ -48,10 +51,7 @@ export function TopBarTitle({
   const reportTitle = pathname === "/dashboard" && reportParam !== "onboarding"
     ? REPORTS[isReportId(reportParam) ? reportParam : "performance"].title
     : null
-  const [customTitle, setCustomTitle] = useState<string | null>(null)
-  const [customAgentId, setCustomAgentId] = useState<string | null>(null)
-  const [customAgentName, setCustomAgentName] = useState<string | null>(null)
-  const [parentInfo, setParentInfo] = useState<{title: string, path: string} | null>(null)
+  const [customTitle, setCustomTitle] = useState<{ path: string; title: string } | null>(null)
   
   // Use navigation history hook
   const { items: historyItems, navigateTo, hasHistory } = useNavigationHistory()
@@ -101,7 +101,9 @@ export function TopBarTitle({
 
   // Get the default title from the first route segment
   const getDefaultTitle = useCallback(() => {
-    const procurementTitle = procurementRouteTitle(pathname)
+    const screenTitle = workspaceScreenTitle(`${pathname}?${searchParams.toString()}`, t)
+    if (screenTitle && !hasId(`${pathname}?${searchParams.toString()}`)) return screenTitle
+    const procurementTitle = procurementRouteTitle(pathname, t)
     if (procurementTitle) return procurementTitle
     const pathSegments = pathname.split('/').filter(Boolean)
     if (pathSegments.length === 0) return "Dashboard"
@@ -117,37 +119,14 @@ export function TopBarTitle({
     
     const firstSegment = pathSegments[0]
     return getRouteTitle(firstSegment) || firstSegment.charAt(0).toUpperCase() + firstSegment.slice(1)
-  }, [pathname, t, getRouteTitle])
+  }, [pathname, searchParams, t, getRouteTitle])
 
-  // Set the default title when the pathname changes
+  // Scope loaded entity titles to the route that emitted them.
   useEffect(() => {
-    setCustomTitle(getDefaultTitle())
-  }, [pathname, getDefaultTitle])
-
-  // Escuchar eventos de actualización del breadcrumb
-  useEffect(() => {
-    const handleBreadcrumbUpdate = (event: any) => {
-      if (event.detail) {
-        // Si se proporciona un título personalizado
-        if (event.detail.title !== undefined) {
-          setCustomTitle(event.detail.title);
-        }
-        
-        // Si se proporcionan datos de agente para la página de chat
-        if (event.detail.agentId && event.detail.agentName) {
-          setCustomAgentId(event.detail.agentId);
-          setCustomAgentName(event.detail.agentName);
-        }
-        
-        // Si se proporciona información del padre (por ejemplo, para comandos de agentes)
-        if (event.detail.parent) {
-          setParentInfo({
-            title: event.detail.parent.title,
-            path: event.detail.parent.path
-          });
-        } else {
-          setParentInfo(null);
-        }
+    const handleBreadcrumbUpdate = (event: Event) => {
+      const detail = (event as CustomEvent<{ title?: string; path?: string }>).detail
+      if (typeof detail?.title === 'string') {
+        setCustomTitle({ path: detail.path || pathname, title: detail.title })
       }
     };
     
@@ -156,27 +135,37 @@ export function TopBarTitle({
     return () => {
       window.removeEventListener('breadcrumb:update', handleBreadcrumbUpdate as EventListener);
     };
-  }, []);
+  }, [pathname]);
 
   // Convert history items to breadcrumb format
-  const breadcrumbItems = hasHistory ? historyItems.map((item, index, array) => {
+  const fullPath = `${pathname}?${searchParams.toString()}`
+  const isScreenRoot = !hasId(fullPath)
+  const normalizedHistory = enforceInvariants(historyItems)
+  const breadcrumbItems = hasHistory && !isScreenRoot ? normalizedHistory.map((item, index, array) => {
     const [pathnameOnly, queryString] = item.path.split("?")
     const pathSegments = pathnameOnly.split("/").filter(Boolean)
     
     // Only translate bare roots (/chat).
     const isBareRoot = pathSegments.length === 1 && !queryString
-    const translatedRoot = isBareRoot ? getRouteTitle(pathSegments[0]) : undefined
+    const translatedRoot = !hasId(item.path)
+      ? workspaceScreenTitle(item.path, t) || (isBareRoot ? getRouteTitle(pathSegments[0]) : undefined)
+      : undefined
+    const procurementLabel = procurementRouteTitle(pathnameOnly, t)
+    const canonicalProcurementLabel = procurementRouteTitle(pathnameOnly)
+    const isDefaultProcurementLabel = item.label === canonicalProcurementLabel || Object.values(localeMessages).some(messages =>
+      Object.entries(messages).some(([key, value]) => key.startsWith('procurement.navigation.') && value === item.label))
+    const translatedProcurement = procurementLabel && isDefaultProcurementLabel ? procurementLabel : undefined
     
     return {
       href: item.path,
-      label: translatedRoot || item.label,
-      originalIndex: index,
+      label: translatedRoot || translatedProcurement || item.label,
+      originalIndex: historyItems.indexOf(item),
       isCurrent: index === array.length - 1
     }
   }) : null;
  
   return (
-    <div className={cn("flex items-center gap-4 min-w-0", className)}>
+    <div {...props} className={cn("flex items-center gap-4 min-w-0", className)}>
       {!hideSidebarToggle && (
         <Button
           variant="ghost"
@@ -238,9 +227,9 @@ export function TopBarTitle({
                       />
                     )}
                     {item.isCurrent ? (
-                      <span className={cn("font-semibold text-foreground transition-all duration-200 font-inter truncate block min-w-0", fontSize)}>
+                      <h1 aria-current="page" className={cn("font-semibold text-foreground transition-all duration-200 font-inter truncate block min-w-0", fontSize)}>
                         {item.label}
-                      </span>
+                      </h1>
                     ) : (
                       <button
                         onClick={() => {
@@ -263,7 +252,7 @@ export function TopBarTitle({
           </ol>
         </nav>
       ) : (
-        <h1 className="text-2xl font-semibold text-foreground font-inter truncate">{customTitle || getDefaultTitle()}</h1>
+        <h1 className="text-2xl font-semibold text-foreground font-inter truncate">{isScreenRoot ? getDefaultTitle() : (customTitle?.path === pathname ? customTitle.title : null) || getDefaultTitle() || title}</h1>
       )}
 
       {afterTitle ? <div className="shrink-0">{afterTitle}</div> : null}

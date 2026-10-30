@@ -46,13 +46,13 @@ const AlertDialogContent = React.forwardRef<
     <AlertDialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed grid w-full gap-4 border bg-background p-6 shadow-lg duration-200",
+        "fixed grid w-full min-w-0 max-h-[90dvh] gap-4 overflow-y-auto border bg-background p-6 shadow-lg duration-200 [overflow-wrap:anywhere]",
         dialogContentZClassName,
         "inset-x-0 bottom-0 top-auto translate-x-0 translate-y-0 rounded-t-2xl",
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
         "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
         "data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
-        "sm:inset-auto sm:bottom-auto sm:left-[50%] sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-xl",
+        "sm:inset-auto sm:bottom-auto sm:left-[50%] sm:top-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-xl sm:w-[calc(100%-2rem)]",
         "sm:data-[state=closed]:zoom-out-95 sm:data-[state=open]:zoom-in-95",
         dialogSizeClassName(size),
         className
@@ -72,7 +72,7 @@ const AlertDialogHeader = ({
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
-    className={cn("flex flex-col space-y-2 text-left", className)}
+    className={cn("flex min-w-0 flex-col space-y-2 text-left", className)}
     {...props}
   />
 )
@@ -84,7 +84,7 @@ const AlertDialogFooter = ({
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "flex flex-col-reverse gap-2 sm:flex-row sm:justify-end",
+      "flex min-w-0 flex-col-reverse gap-2 sm:flex-row sm:flex-wrap sm:justify-end [&_button]:h-auto [&_button]:min-w-0 [&_button]:whitespace-normal [&_button]:break-words [&_button]:text-center [&>.btn-primary-well]:min-w-0 [&>.btn-primary-well]:max-w-full",
       className
     )}
     {...props}

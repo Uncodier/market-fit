@@ -60,6 +60,16 @@ test('server-generated object path, private bucket and upload completion used on
   expect(upload).toHaveBeenCalledWith('server/opaque/path', expect.any(Uint8Array), { contentType: 'application/pdf', upsert: false })
   expect(rpc).toHaveBeenLastCalledWith('complete_procurement_credential', { p_revision: id })
 })
+test('existing upload accepts personal tender_proposal metadata and returns its revision ID', async () => {
+  const response = await POST(uploadRequest('%PDF-proposal', { metadata: { ...metadata, type: 'tender_proposal', title: 'Tender proposal' } }))
+  expect(response.status).toBe(201)
+  expect(await response.json()).toEqual({ credential_id: id, revision_id: id, version: 1 })
+  expect(rpc).toHaveBeenCalledWith('reserve_procurement_credential', expect.objectContaining({
+    p_metadata: expect.objectContaining({ holder_kind: 'person', holder_name: 'Holder', type: 'tender_proposal' }),
+    p_mime: 'application/pdf',
+  }))
+  expect((await POST(uploadRequest('%PDF-proposal', { metadata: { ...metadata, holder_name: '', type: 'tender_proposal' } }))).status).toBe(400)
+})
 test('storage failure cannot mark revision ready and foreign download does not reveal a path', async () => {
   upload.mockResolvedValue({ error: { message: 'secret' } })
   const response = await POST(uploadRequest())

@@ -15,6 +15,7 @@ import { LeadIdentityHeader } from "@/app/leads/components/LeadIdentityHeader"
 import { JourneyView } from "@/app/leads/components/JourneyView"
 import { ConversationsView } from "@/app/leads/components/ConversationsView"
 import { SalesView } from "@/app/leads/components/SalesView"
+import { CommerceView } from "@/app/leads/components/CommerceView"
 import { DigitalBehaviorView } from "@/app/leads/components/DigitalBehaviorView"
 import { DealsView } from "@/app/leads/components/DealsView"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
@@ -42,6 +43,7 @@ export default function LeadDetailPage(props: { params: Promise<{ id: string }> 
     { value: "conversations", label: "Conversations" },
     { value: "deals", label: "Deals" },
     { value: "sales", label: "Sales" },
+    { value: "commerce", label: "Commerce" },
     { value: "digital-behavior", label: "Digital Behavior" },
   ]
   
@@ -338,6 +340,9 @@ export default function LeadDetailPage(props: { params: Promise<{ id: string }> 
                 </TabsContent>
                 <TabsContent value="sales" className="mt-0 pt-0">
                   <SalesView leadId={lead.id} />
+                </TabsContent>
+                <TabsContent value="commerce" className="mt-0 pt-0">
+                  <CommerceView key={`${currentSite?.id}:${lead.id}`} leadId={lead.id} />
                 </TabsContent>
                 <TabsContent value="digital-behavior" className="mt-0 pt-0">
                   <DigitalBehaviorView leadId={lead.id} />

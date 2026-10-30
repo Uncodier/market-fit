@@ -213,7 +213,7 @@ export function TicketPdpLayout({ item, backUrl, experience, catalogSize = 0 }: 
 
             {experience?.kind === 'subscription' && experience.subscription && (
               <div className="pt-8 lg:pt-10 border-t">
-                <SubscriptionManagePanel subscription={experience.subscription} />
+            <SubscriptionManagePanel subscription={experience.subscription} demo={experience.demo} />
               </div>
             )}
           </div>

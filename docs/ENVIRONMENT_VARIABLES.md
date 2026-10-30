@@ -1,5 +1,15 @@
 # Environment Variables
 
+## Procurement replenishment worker
+
+`PROCUREMENT_REPLENISHMENT_WORKER_SECRET` is a server-only, securely generated
+secret of at least 32 characters. An approved external scheduler supplies it as
+a Bearer token on empty-body POSTs to `/api/procurement/replenishment/process`.
+It is never browser-visible. Without it, the worker fails closed. See
+[Inventory replenishment](PROCUREMENT_REPLENISHMENT.md) for migrations, queue
+semantics, authority checks and deployment prerequisites. No scheduler is
+installed automatically.
+
 ## API-owned worker scheduling
 
 Internal POST dispatch of marketplace recovery and credit auto-top-up workers

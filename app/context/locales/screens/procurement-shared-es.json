@@ -1,0 +1,21 @@
+{
+  "layout.sidebar.leads": "Clientes",
+  "layout.nav.leads.title": "Clientes",
+  "layout.nav.leads.help": "Gestiona y da seguimiento a los clientes",
+  "procurement.errors.submissionCatalogMapping": "Un artículo del catálogo vinculado a esta licitación no está disponible o usa una moneda diferente. Pide al comprador que corrija el artículo vinculado. Tu cotización no fue enviada.",
+  "datePicker.selectDate": "Seleccionar fecha",
+  "datePicker.selectDateTime": "Seleccionar fecha y hora",
+  "datePicker.dateAtTime": "{{date}} a las {{time}}",
+  "datePicker.selectDateRange": "Seleccionar rango de fechas",
+  "datePicker.selectEndDate": "Seleccionar fecha final",
+  "datePicker.previousMonth": "Mes anterior",
+  "datePicker.nextMonth": "Mes siguiente",
+  "datePicker.selectTime": "Seleccionar hora",
+  "datePicker.selectedTime": "Hora seleccionada",
+  "datePicker.hours": "Horas",
+  "datePicker.minutes": "Minutos",
+  "datePicker.am": "a. m.",
+  "datePicker.pm": "p. m.",
+  "datePicker.to": "a",
+  "datePicker.customRange": "Rango personalizado"
+}

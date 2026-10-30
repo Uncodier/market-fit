@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react"
 import { useSite } from "@/app/context/SiteContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
-import { listQuotations } from "./actions"
+import { listWorkspaceQuotations } from "./workspace-read-actions"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { MobileFiltersDrawer, FilterContainer, FilterSection, FilterSeparator } from "@/app/components/ui/mobile-filters-drawer"
 import { SearchInput } from "@/app/components/ui/search-input"
@@ -14,8 +14,15 @@ import { QuotesTable, QuotesTableSkeleton } from "@/app/components/documents/quo
 import { retryOnError, useOptimisticLoadState } from "@/app/hooks/use-optimistic-error"
 import { SortDropdown } from "@/app/components/ui/sort-dropdown"
 import { cn } from "@/lib/utils"
+import { useAuthContext } from "@/app/components/auth/auth-provider"
 
 export default function QuotationsPage() {
+  const { currentSite } = useSite()
+  const { user } = useAuthContext()
+  return currentSite && user ? <WorkspaceQuotations key={`${user.id}:${currentSite.id}`} /> : <QuotesTableSkeleton />
+}
+
+function WorkspaceQuotations() {
   const searchParams = useSearchParams()
   const urlSort = searchParams ? searchParams.get('sort') : null
   const defaultSort = urlSort === 'updated_at' ? 'updated_at' : (urlSort === 'created_at' || urlSort === 'newest' ? 'newest' : (urlSort === 'oldest' ? 'oldest' : 'newest'))
@@ -39,7 +46,7 @@ export default function QuotationsPage() {
     setIsLoading(true)
     try {
       const res = await retryOnError(async () => {
-        const result = await listQuotations({ siteId: currentSite.id, page, pageSize, q: searchQuery, status: statusFilter, sort: sortBy })
+        const result = await listWorkspaceQuotations({ siteId: currentSite.id, page, pageSize, q: searchQuery, status: statusFilter, sort: sortBy })
         if (result.error) throw new Error(result.error)
         return result
       })
@@ -86,6 +93,7 @@ export default function QuotationsPage() {
     total: Number(quote.total) || 0,
     currency: quote.currency || "USD",
     createdAt: quote.created_at,
+    tenderUrl: quote.purpose === "procurement" ? quote.tender_url : undefined,
   }))
 
   return (

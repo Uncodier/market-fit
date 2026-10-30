@@ -44,6 +44,10 @@ export function PassPdpLayout({ item, backUrl, experience, catalogSize = 0 }: { 
       setLoadingOwned(false)
       return
     }
+    if (experience?.demo) {
+      setLoadingOwned(false)
+      return
+    }
     async function checkOwnership() {
       try {
         const { entitlement, canBook: bookable } = await resolveBookableAccess(item.id, item.is_reservation || false)
@@ -92,6 +96,8 @@ export function PassPdpLayout({ item, backUrl, experience, catalogSize = 0 }: { 
           services={experience!.extras?.services || []}
           initialServiceId={experience!.extras?.initialServiceId}
           backUrl={experience!.backUrl || backUrl}
+          demo={experience!.demo}
+          previewSlots={experience!.extras?.previewSlots}
         />
       </div>
     )
@@ -213,7 +219,7 @@ export function PassPdpLayout({ item, backUrl, experience, catalogSize = 0 }: { 
 
           {experience?.kind === 'subscription' && experience.subscription && (
             <div className="pt-8 lg:pt-10 border-t mt-8 lg:mt-10">
-              <SubscriptionManagePanel subscription={experience.subscription} />
+              <SubscriptionManagePanel subscription={experience.subscription} demo={experience.demo} />
             </div>
           )}
         </div>

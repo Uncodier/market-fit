@@ -17,11 +17,13 @@ import { toast } from "sonner"
 export function ReservationManagePanel({ 
   reservation, 
   schedules = [],
-  merchNode
+  merchNode,
+  demo = false,
 }: { 
   reservation: any, 
   schedules?: any[],
   merchNode?: React.ReactNode 
+  demo?: boolean
 }) {
   const { t } = useLocalization()
   const router = useRouter()
@@ -38,6 +40,7 @@ export function ReservationManagePanel({
   const [selectedSlot, setSelectedSlot] = useState<{ startIso: string; endIso: string } | null>(null)
 
   const handleDownloadPass = async () => {
+    if (demo) return
     const svg = qrRef.current?.querySelector("svg")
     if (!svg) return
     setIsDownloading(true)
@@ -81,6 +84,7 @@ export function ReservationManagePanel({
   }
 
   const handleCancel = async () => {
+    if (demo) return
     setIsCancelling(true)
     const { success, error } = await cancelBuyerReservation(reservation.id)
     setIsCancelling(false)
@@ -95,6 +99,7 @@ export function ReservationManagePanel({
   }
 
   const handleReschedule = async () => {
+    if (demo) return
     if (!selectedSlot) return
     setIsRescheduling(true)
     const { success, error } = await rescheduleBuyerReservation({ 
@@ -154,7 +159,7 @@ export function ReservationManagePanel({
           <div className="flex flex-col items-center justify-center p-4 mb-6 bg-white dark:bg-background border rounded-2xl">
             <div ref={qrRef} className="relative bg-white p-3 rounded-xl shadow-sm border mb-3">
               <QRCode
-                value={reservation.id}
+                value={demo ? `DEMO-NOT-VALID:${reservation.id}` : reservation.id}
                 size={160}
                 level="H"
                 style={{ opacity: isCompleted ? 0.3 : 1 }}
@@ -175,7 +180,7 @@ export function ReservationManagePanel({
                 variant="outline"
                 className="w-full"
                 onClick={handleDownloadPass}
-                disabled={isDownloading}
+                disabled={demo || isDownloading}
               >
                 <Download className="w-4 h-4 mr-2" />
                 {isDownloading
@@ -192,6 +197,7 @@ export function ReservationManagePanel({
               variant="default" 
               className="w-full h-12 text-base font-semibold"
               onClick={() => setShowRescheduleDialog(true)}
+              disabled={demo}
             >
               {t("buyer.reservations.reschedule") || "Reschedule"}
             </Button>
@@ -199,6 +205,7 @@ export function ReservationManagePanel({
               variant="outline" 
               className="w-full h-12 text-base font-semibold text-destructive hover:text-destructive hover:bg-destructive/10"
               onClick={() => setShowCancelConfirm(true)}
+              disabled={demo}
             >
               {t("buyer.reservations.cancel") || "Cancel Reservation"}
             </Button>
@@ -219,7 +226,7 @@ export function ReservationManagePanel({
             <Button variant="outline" onClick={() => setShowCancelConfirm(false)} disabled={isCancelling}>
               {t("common.back") || "Back"}
             </Button>
-            <Button variant="destructive" onClick={handleCancel} disabled={isCancelling}>
+            <Button variant="destructive" onClick={handleCancel} disabled={demo || isCancelling}>
               {isCancelling ? "..." : t("buyer.reservations.cancel") || "Cancel Reservation"}
             </Button>
           </DialogFooter>
@@ -252,7 +259,7 @@ export function ReservationManagePanel({
             </Button>
             <Button 
               onClick={handleReschedule} 
-              disabled={!selectedSlot || isRescheduling}
+              disabled={demo || !selectedSlot || isRescheduling}
             >
               {isRescheduling ? "..." : t("buyer.reservations.save") || "Save Changes"}
             </Button>

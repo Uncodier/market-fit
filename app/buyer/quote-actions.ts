@@ -29,7 +29,7 @@ const BUYER_QUOTE_SELECT = `
     )
   ),
   lead:leads(name, email),
-  site:sites(id, name, logo_url, url)
+  site:sites!site_id(id, name, logo_url, url)
 `
 
 export async function getBuyerQuotation(quotationId: string) {

@@ -58,14 +58,14 @@ export function unauthorizedSitesLoadAction(input: {
   return "wait-for-session"
 }
 
-/** Public storefronts should drop the demo cookie; /buyer must keep it. */
+/** Paid storefronts drop demo mode; buyer and procurement previews retain it. */
 export function shouldClearDemoCookieOnPath(pathname: string): boolean {
   if (pathname.startsWith("/buyer")) return false
   if (pathname === "/home" || pathname.startsWith("/home/")) return false
+  if (pathname === "/tenders" || pathname.startsWith("/tenders/")) return false
   return (
     pathname.startsWith("/shop") ||
     pathname.startsWith("/marketplace") ||
-    pathname === "/tenders" || pathname.startsWith("/tenders/") ||
     pathname.startsWith("/cart") ||
     pathname.startsWith("/book") ||
     pathname.startsWith("/q/") ||

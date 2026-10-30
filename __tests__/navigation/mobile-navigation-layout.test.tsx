@@ -2,6 +2,10 @@ import { fireEvent, render, screen, within } from "@testing-library/react"
 import NavigationPage from "@/app/navigation/page"
 import { getModuleImageUrl } from "@/app/config/module-image-visuals"
 import { navigateOrAssign } from "@/lib/navigation/stale-router"
+import { rawLocaleMessages } from "@/app/context/locale-catalog"
+import type { SupportedLocale } from "@/app/context/locale-preferences"
+
+let mockLocale: SupportedLocale = "en"
 
 jest.mock("next/navigation", () => ({
   useRouter: () => ({
@@ -13,7 +17,8 @@ jest.mock("next/navigation", () => ({
 
 jest.mock("@/app/context/LocalizationContext", () => ({
   useLocalization: () => ({
-    t: (key: string) => key,
+    t: (key: string) => key.startsWith("layout.sidebar.leads")
+      ? rawLocaleMessages[mockLocale][key] : key,
   }),
 }))
 
@@ -30,19 +35,31 @@ jest.mock("@/lib/navigation/stale-router", () => ({
 }))
 
 describe("mobile navigation layout", () => {
-  it("shows and finds Contacts while keeping the leads destination", () => {
+  beforeEach(() => {
+    mockLocale = "en"
+    jest.clearAllMocks()
+  })
+
+  it.each([
+    ["en", "Customers"], ["es", "Clientes"], ["fr", "Clients"],
+    ["de", "Kunden"], ["ja", "顧客"],
+  ] as const)("shows and finds customers in %s while keeping the leads destination", (locale, title) => {
+    mockLocale = locale
+    expect(rawLocaleMessages[locale]["layout.sidebar.leads"]).toBe(title)
+    expect(rawLocaleMessages[locale]["layout.nav.leads.title"]).toBe(title)
     render(<NavigationPage />)
 
-    const contactsTile = screen.getByRole("button", { name: /Contacts/ })
-    expect(contactsTile).toHaveAttribute("id", "tour-app-leads")
-    expect(within(contactsTile).getByText("Contacts")).toBeInTheDocument()
+    const customersTile = screen.getByRole("button", { name: new RegExp(title) })
+    expect(customersTile).toHaveAttribute("id", "tour-app-leads")
+    expect(within(customersTile).getByText(title)).toBeInTheDocument()
 
     fireEvent.change(screen.getByPlaceholderText("Search..."), {
-      target: { value: "contacts" },
+      target: { value: title.toLowerCase() },
     })
 
-    expect(screen.getByRole("button", { name: /Contacts/ })).toBeInTheDocument()
-    fireEvent.click(contactsTile)
+    expect(screen.getByRole("button", { name: new RegExp(title) })).toBeInTheDocument()
+    expect(screen.queryByText("Contacts")).not.toBeInTheDocument()
+    fireEvent.click(customersTile)
     expect(navigateOrAssign).toHaveBeenCalledWith(expect.anything(), "/leads")
   })
 

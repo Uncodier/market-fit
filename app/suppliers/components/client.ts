@@ -1,4 +1,15 @@
 import { supplierInputSchema, type Supplier, type SupplierInput } from "../schema"
+import type { ZodIssue } from 'zod'
+
+type Translate = (key: string, params?: Record<string, string | number>) => string
+export function supplierIssueField(issue: ZodIssue, t: Translate, formatNumber: (number: number) => string) {
+  const [field, index, contactField] = issue.path
+  if (field === 'contacts' && typeof index === 'number') {
+    const contact = t('procurement.partners.contacts.numbered', { number: formatNumber(index + 1) })
+    return contactField ? `${contact} · ${t(`procurement.partners.contacts.fields.${contactField}`)}` : contact
+  }
+  return t(`procurement.partners.validation.${field ?? 'details'}`)
+}
 
 export async function supplierResponse<T>(response: Response): Promise<T> {
   if (response.ok) return response.json()

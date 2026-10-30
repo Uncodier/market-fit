@@ -1,9 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { procurementError } from '../http'
-import { isSameOriginApiRequest } from '@/lib/http/api-proxy-security'
+import { isProcurementRequestOrigin } from '../request-origin'
 
 export async function credentialAccess(request: Request) {
-  if (request.method !== 'GET' && !isSameOriginApiRequest(request)) {
+  if (request.method !== 'GET' && !isProcurementRequestOrigin(request)) {
     return { error: procurementError('Origin not allowed', 403) } as const
   }
   if (/(?:^|;\s*)market_fit_demo_site_id=/.test(request.headers.get('cookie') ?? '')) {

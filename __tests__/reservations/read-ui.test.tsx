@@ -34,7 +34,7 @@ jest.mock("@/app/reservations/components/ReservationCalendar", () => ({ Reservat
 jest.mock("@/app/components/ui/sticky-header", () => ({ StickyHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div> }))
 
 beforeEach(() => {
-  Object.defineProperty(window, "matchMedia", { configurable: true, value: jest.fn(() => ({ matches: false, addEventListener: jest.fn(), removeEventListener: jest.fn() })) })
+  window.matchMedia = jest.fn().mockImplementation(() => ({ matches: false, addEventListener: jest.fn(), removeEventListener: jest.fn() }))
   mockReadError = undefined; mockParams = new URLSearchParams("date=2026-10-14&viewType=list")
   jest.clearAllMocks(); mockFetchers.length = 0
   ;(getReservations as jest.Mock).mockResolvedValue({ data: [] })

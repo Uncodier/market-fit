@@ -10,13 +10,14 @@ import { toast } from "sonner"
 import { format } from "date-fns"
 import { useRouter } from "next/navigation"
 
-export function SubscriptionManagePanel({ subscription }: { subscription: any }) {
+export function SubscriptionManagePanel({ subscription, demo = false }: { subscription: any; demo?: boolean }) {
   const { t } = useLocalization()
   const router = useRouter()
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const [isCancelling, setIsCancelling] = useState(false)
 
   const handleCancel = async () => {
+    if (demo) return
     setIsCancelling(true)
     try {
       const res = await cancelBuyerSubscription(subscription.id)
@@ -54,6 +55,7 @@ export function SubscriptionManagePanel({ subscription }: { subscription: any })
               variant="destructive" 
               className="w-full sm:w-auto"
               onClick={() => setShowCancelConfirm(true)}
+              disabled={demo}
             >
               {t('buyer.subscriptions.cancelAction') || 'Cancel Subscription'}
             </Button>
@@ -75,7 +77,7 @@ export function SubscriptionManagePanel({ subscription }: { subscription: any })
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isCancelling}>{t('buyer.subscriptions.keepButton') || 'Keep'}</AlertDialogCancel>
-            <Button variant="destructive" onClick={handleCancel} disabled={isCancelling}>
+            <Button variant="destructive" onClick={handleCancel} disabled={demo || isCancelling}>
               {isCancelling ? '...' : (t('buyer.subscriptions.cancelButton') || 'Cancel')}
             </Button>
           </AlertDialogFooter>

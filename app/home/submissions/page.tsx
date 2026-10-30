@@ -1,6 +1,8 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+import { SubmissionsSkeleton } from '../portal-skeletons'
+
+import { Suspense, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import useSWR from 'swr'
 import Link from 'next/link'
@@ -8,19 +10,29 @@ import { useAuthContext } from '@/app/components/auth/auth-provider'
 import { Button } from '@/app/components/ui/button'
 import { DocumentToolbar, DocumentTable } from '@/app/purchases/procurement/commerce/document-ui'
 import { SubmissionForm } from './submission-form'
-import { type Opportunity, type Submission, readPortalJson } from './types'
+import { applicantKey } from './applicant-picker'
+import { groupOpportunities } from './opportunity-groups'
+import { OpportunityTable } from './opportunity-table'
+import { DraftTable } from './draft-table'
+import { type Opportunity, type SavedDraft, type Submission, readPortalJson } from './types'
+import { useProcurementI18n } from '@/app/purchases/procurement/i18n/use-procurement-i18n'
+import { usePortalDemo } from '../demo-context'
+import { ProcurementDemoNotice } from '@/app/purchases/procurement/ui/demo-notice'
+import { demoPortalOpportunities, demoPortalDrafts, demoPortalSubmissions } from '@/lib/demo-data/procurement-portal'
 
 export default function SubmissionsPage() {
   const { user } = useAuthContext()
-  return user ? <Suspense fallback={<p>Loading supplier activity…</p>}><AccountSubmissions key={user.id} /></Suspense> : <p>Sign in to view supplier activity.</p>
+  const demo = usePortalDemo()
+  return user || demo ? <Suspense fallback={<SubmissionsSkeleton />}><AccountSubmissions key={demo ? 'demo' : user?.id} demo={demo} /></Suspense> : <SubmissionsSkeleton />
 }
 
-function AccountSubmissions() {
+function AccountSubmissions({ demo }: { demo: boolean }) {
+  const { t, message, formatDate, formatMoney } = useProcurementI18n()
   const { user } = useAuthContext()
   const requestedPublication = useSearchParams().get('publication')
   const [drafts, setDrafts] = useState<Opportunity[]>([])
   const [selected, setSelected] = useState<string | null>(null)
-  const draftId = (row: Opportunity) => `${row.publication_id}:${row.supplier_id}`
+  const draftId = (row: Opportunity) => `${row.publication_id}:${row.version}:${applicantKey(row)}`
   function prepare(row: Opportunity) {
     setDrafts(current => current.some(item => draftId(item) === draftId(row)) ? current : [...current, row])
     setSelected(draftId(row)); setNotice('')
@@ -28,36 +40,65 @@ function AccountSubmissions() {
   const [tab, setTab] = useState('opportunities')
   const [search, setSearch] = useState('')
   const [notice, setNotice] = useState('')
-  const opportunities = useSWR(user ? ['supplier-opportunities', user.id] : null,
+  const opportunities = useSWR(!demo && user ? ['supplier-opportunities', user.id] : null,
     () => readPortalJson('/api/procurement/credentials/participation') as Promise<{ opportunities: Opportunity[] }>)
-  const submissions = useSWR(user ? ['supplier-submissions', user.id] : null,
+  const submissions = useSWR(!demo && user ? ['supplier-submissions', user.id] : null,
     async () => {
       const result = await readPortalJson('/api/procurement/commerce/submissions') as { data: Submission[] }
       return { submissions: result.data }
     })
-  const available = opportunities.data?.opportunities.filter(opportunity => !requestedPublication || opportunity.publication_id === requestedPublication)
+  const savedDrafts = useSWR(!demo && user ? ['supplier-drafts', user.id] : null,
+    () => readPortalJson('/api/procurement/credentials/drafts/list') as Promise<{ drafts: SavedDraft[] }>)
+  const available = (demo ? demoPortalOpportunities : opportunities.data?.opportunities)?.filter(opportunity => !requestedPublication || opportunity.publication_id === requestedPublication)
+  const grouped = groupOpportunities(available ?? [])
+  const openedPublication = useRef<string | null>(null)
+  useEffect(() => {
+    if (!requestedPublication || openedPublication.current === requestedPublication || !available?.length) return
+    const row = available.find(item => applicantKey(item) === 'personal') ?? available[0]
+    const timer = setTimeout(() => {
+      openedPublication.current = requestedPublication
+      setDrafts(current => current.some(item => draftId(item) === draftId(row)) ? current : [...current, row])
+      setSelected(draftId(row))
+    }, 0)
+    return () => clearTimeout(timer)
+  }, [requestedPublication, available])
   return <section className="space-y-6">
-    <header><h1 className="text-3xl font-semibold">Supplier activity</h1><p className="text-muted-foreground">Your explicitly authorized supplier relationships, opportunities and submitted quotations.</p></header>
-    <p className="text-sm">An invitation or matching contact email does not grant representation. Ask the buying workspace administrator to verify your account and authorize the supplier relationship. Your account ID: <code>{user?.id}</code></p>
-    {(opportunities.error || submissions.error) && <p role="alert" className="text-destructive">{opportunities.error?.message || submissions.error?.message}</p>}
-    {notice && <p role="status">{notice}</p>}
-    {drafts.map(draft => <SubmissionForm key={draftId(draft)} open={selected === draftId(draft)} opportunity={draft} onCancel={() => setSelected(null)} onSubmitted={() => {
-      setSelected(null); setDrafts(current => current.filter(row => draftId(row) !== draftId(draft))); setNotice('Quotation submitted. This is not an award or certification acceptance.'); void submissions.mutate()
+    {demo && <ProcurementDemoNotice />}
+    <header><h1 className="text-3xl font-semibold">{t('procurement.portal.activity.title')}</h1><p className="text-muted-foreground">{t('procurement.portal.activity.description')}</p></header>
+    {tab === 'opportunities' && opportunities.error && <div role="alert" className="space-y-2 text-destructive">
+      <p>{message(opportunities.error.message)}</p>
+      <Button variant="outline" onClick={() => void opportunities.mutate()}>{t('procurement.portal.activity.refresh')}</Button>
+    </div>}
+    {tab === 'drafts' && savedDrafts.error && <div role="alert" className="space-y-2 text-destructive">
+      <p>{t('procurement.portal.draft.loadFailed')}</p>
+      <Button variant="outline" onClick={() => void savedDrafts.mutate()}>{t('procurement.portal.activity.refresh')}</Button>
+    </div>}
+    {tab === 'submissions' && submissions.error && <div role="alert" className="space-y-2 text-destructive">
+      <p>{message(submissions.error.message)}</p>
+      <Button variant="outline" onClick={() => void submissions.mutate()}>{t('procurement.portal.activity.refresh')}</Button>
+    </div>}
+    {notice && <p role="status">{t(notice)}</p>}
+    {drafts.map(draft => <SubmissionForm key={draftId(draft)} demo={demo} open={selected === draftId(draft)} opportunity={draft}
+      applicantChoices={grouped.choices.get(draft.publication_id) ?? []} onChangeApplicant={prepare}
+      onSaved={() => { setSelected(null); setTab('drafts'); setNotice('procurement.portal.draft.saved'); void savedDrafts.mutate() }}
+      onCancel={() => setSelected(null)} onSubmitted={() => {
+      setSelected(null); setTab('submissions'); setDrafts(current => current.filter(row => draftId(row) !== draftId(draft))); setNotice('procurement.portal.activity.submittedNotice'); void submissions.mutate(); void savedDrafts.mutate()
     }} />)}
-    <DocumentToolbar tabs={[{ value: 'opportunities', label: 'Invitations and opportunities' }, { value: 'submissions', label: 'Submitted quotations' }]} value={tab} onChange={setTab} search={search} onSearch={setSearch}
-      actions={<Button variant="ghost" size="sm" asChild><Link href="/home/profile">Manage private credentials</Link></Button>} />
-    {requestedPublication && <p>Showing the requested publication only. <Button variant="link" asChild><Link href="/home/submissions">View all opportunities</Link></Button></p>}
-    {tab === 'opportunities' ? <DocumentTable loading={opportunities.isLoading} empty="No matching open opportunities for your authorized supplier relationships."
-      rows={(available ?? []).filter(row => `${row.title} ${row.supplier_name}`.toLowerCase().includes(search.toLowerCase())).map(row => ({ ...row, id: `${row.publication_id}:${row.supplier_id}` }))} columns={[
-        { label: 'Tender', render: row => <><p className="font-medium">{row.title}</p><p className="text-muted-foreground">Version {row.version} · {row.currency}</p></> },
-        { label: 'Representing', render: row => row.supplier_name },
-        { label: 'Closes', render: row => new Date(row.participation_deadline).toLocaleString() },
-        { label: 'Action', render: row => <Button variant="ghost" size="sm" disabled={!!opportunities.error} onClick={() => prepare(row)}>Prepare quotation</Button> },
-      ]} /> : <DocumentTable loading={submissions.isLoading} empty="No submitted quotations." rows={(submissions.data?.submissions ?? []).filter(row => `${row.tender_title} ${row.reference}`.toLowerCase().includes(search.toLowerCase()))} columns={[
-        { label: 'Tender / reference', render: row => <>{row.tender_title}<p>{row.reference}</p></> },
-        { label: 'Net / tax', render: row => `${row.currency} · Net ${(row.net_amount_minor / 100).toFixed(2)} · Tax ${(row.tax_amount_minor / 100).toFixed(2)}` },
-        { label: 'Submitted', render: row => new Date(row.submitted_at).toLocaleString() },
-        { label: 'Receipt', render: row => row.id },
+    <DocumentToolbar transparent tabs={[{ value: 'opportunities', label: t('procurement.portal.activity.opportunities') }, { value: 'drafts', label: t('procurement.portal.draft.list') }, { value: 'submissions', label: t('procurement.portal.activity.quotations') }]} value={tab} onChange={setTab} search={search} onSearch={setSearch}
+      actions={<Button variant="ghost" size="sm" asChild><Link href="/home/profile">{t('procurement.portal.activity.manageCredentials')}</Link></Button>} />
+    {requestedPublication && <p>{t('procurement.portal.activity.requestedOnly')} <Button variant="link" asChild><Link href="/home/submissions">{t('procurement.portal.activity.viewAll')}</Link></Button></p>}
+    {requestedPublication && !opportunities.isLoading && !opportunities.error && !available?.length && <p role="alert">{t('procurement.portal.activity.unavailable')} <Button variant="outline" onClick={() => void opportunities.mutate()}>{t('procurement.portal.activity.refresh')}</Button></p>}
+    {tab === 'opportunities' ? !opportunities.error && <div className="space-y-8">
+      <section className="space-y-3"><h2 className="text-xl font-semibold">{t('procurement.portal.activity.invitations')}</h2>
+        <p className="text-sm text-muted-foreground">{t('procurement.portal.activity.invitationsHint')}</p>
+        <OpportunityTable rows={(available ?? []).filter(row => row.directly_invited === true)} loading={opportunities.isLoading} search={search} onPrepare={prepare} />
+      </section>
+    </div> : tab === 'drafts' ? !savedDrafts.error && <DraftTable rows={demo ? demoPortalDrafts : savedDrafts.data?.drafts ?? []} loading={savedDrafts.isLoading} search={search} onResume={prepare} />
+      : !submissions.error && <DocumentTable loading={submissions.isLoading} empty={t('procurement.portal.activity.emptyQuotations')} rows={(demo ? demoPortalSubmissions : submissions.data?.submissions ?? []).filter(row => `${row.tender_title} ${row.reference}`.toLowerCase().includes(search.toLowerCase()))} columns={[
+        { label: t('procurement.portal.activity.tenderReference'), render: row => <>{row.tender_title}<p>{row.reference}</p></> },
+        { label: t('procurement.portal.activity.netTax'), render: row => t('procurement.portal.activity.amounts', { currency: row.currency, net: formatMoney(row.net_amount_minor, row.currency), tax: row.tax_amount_minor == null ? t('procurement.common.taxesPending') : formatMoney(row.tax_amount_minor, row.currency) }) },
+        { label: t('procurement.portal.activity.submitted'), render: row => formatDate(row.submitted_at) },
+        { label: t('procurement.portal.activity.receipt'), render: row => row.id },
       ]} />}
 
   </section>

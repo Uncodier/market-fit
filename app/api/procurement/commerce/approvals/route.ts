@@ -3,14 +3,17 @@ import { z } from "zod"
 import { createServiceClient } from "@/lib/supabase/server"
 import { evaluateProcurementPolicy, policyDocumentSchema } from "@/app/purchases/procurement/domain"
 import { validatePolicyReferences } from "../../policy/validate-references"
-import { commerceBody, commerceResult, procurementAccess, procurementError, privateHeaders } from "../http"
+import { inheritedPolicySchema, inheritRequestPolicy } from "../../policy/inherited-policy"
+import { commerceBody, commerceResult, commerceWriteAccess, procurementAccess, procurementError, privateHeaders } from "../http"
 
 const inputSchema = z.object({ target_id: z.string().uuid(), expected_version: z.number().int().positive(), event: z.enum(["award", "order"]) }).strict()
 const contextSchema = z.object({ currency: z.string(), net_amount_minor: z.number().int().nonnegative(), supplier_proposals: z.number().int().nonnegative(),
   lines: z.array(z.object({ id: z.string().uuid(), productId: z.string().uuid(), categoryIds: z.array(z.string().uuid()), netAmountMinor: z.number().int().nonnegative() })).min(1),
-})
+}).merge(inheritedPolicySchema)
 
 export async function POST(request: Request) {
+  const originError = commerceWriteAccess(request)
+  if (originError) return originError
   try {
     const access = await procurementAccess(request)
     if (access.error) return access.error
@@ -29,9 +32,9 @@ export async function POST(request: Request) {
       return procurementError("Policy references are no longer eligible", 409)
     }
     const now = new Date().toISOString()
-    const plan = evaluateProcurementPolicy(document.data, { event: body.data.event,
+    const plan = inheritRequestPolicy(evaluateProcurementPolicy(document.data, { event: body.data.event,
       currency: context.data.currency, netAmountMinor: context.data.net_amount_minor,
-      requesterId: access.userId, evaluatedAt: now, stageActivatedAt: now, lines: context.data.lines })
+      requesterId: access.userId, evaluatedAt: now, stageActivatedAt: now, lines: context.data.lines }), context.data)
     if (plan.status !== "ready" || plan.requirements.length || (plan.minimumSupplierProposals !== null && context.data.supplier_proposals < plan.minimumSupplierProposals)) {
       return procurementError("Policy requirements remain unresolved; no award or order was created", 409)
     }

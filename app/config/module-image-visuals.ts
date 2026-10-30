@@ -31,6 +31,7 @@ export const MODULE_IMAGE_HINTS: Record<string, string> = {
   visits: "visitor ID badge",
   checkIn: "signature",
   inventory: "crates",
+  inventoryMinimums: "level sliders",
   printers: "thermal printer",
 
   bills: "invoice",

@@ -26,7 +26,8 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     if (record.data.status !== 'draft' || record.data.revision !== parsed.data!.expected_revision) return procurementError('Request changed. Reload before submitting.', 409)
     const document = policyDocumentSchema.safeParse(policy.data?.document)
     if (!document.success) return procurementError('A valid saved procurement policy is required', 409)
-    if (!await validatePolicyReferences(access.supabase, access.siteId, document.data)) return procurementError('Policy references are no longer eligible', 409)
+    // Both values are the same validated database snapshot, never a client ignore list.
+    if (!await validatePolicyReferences(access.supabase, access.siteId, document.data, document.data)) return procurementError('Policy references are no longer eligible', 409)
     const { data: items, error } = await access.supabase.from('procurement_request_items').select('*')
       .eq('request_id', id.data).eq('revision', record.data.revision).order('position')
     if (error || !items?.length) return procurementError('Unable to verify request lines', 503)

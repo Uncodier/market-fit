@@ -97,6 +97,7 @@ export const NAVIGATION_AREAS: Record<
       { key: "visits", href: "/visits" },
       { key: "checkIn", href: "/pos/check-in" },
       { key: "inventory", href: "/inventory" },
+      { key: "inventoryMinimums", href: "/inventory/minimums" },
       { key: "printers", href: "/settings", settingsTab: "printers" },
     ],
   },
@@ -319,6 +320,13 @@ export function isConfigurationNavPath(
 }
 
 export function getNavItemTitle(item: AreaNavItem, t: (k: string) => string): string {
+  if (item.key === 'inventoryMinimums') return t('procurement.policy.page.minimums') === 'procurement.policy.page.minimums' ? 'Inventory minimums' : t('procurement.policy.page.minimums');
+  const procurementKeys: Record<string, string> = { procurementRules: 'rules', suppliers: 'suppliers', purchaseRequests: 'requests', procurementApprovals: 'approvals', procurementTenders: 'tenders', procurementSettings: 'procurement' }
+  if (procurementKeys[item.key]) {
+    const key = `procurement.navigation.${procurementKeys[item.key]}`
+    const translated = t(key)
+    if (translated !== key) return translated
+  }
   if (item.dashboardTab) {
     const key = `dashboard.tabs.${item.dashboardTab}`
     const translation = t(key)
@@ -327,6 +335,7 @@ export function getNavItemTitle(item: AreaNavItem, t: (k: string) => string): st
   const sidebarKey = `layout.sidebar.${item.key}`
   const sidebarTitle = t(sidebarKey)
   if (sidebarTitle !== sidebarKey) return sidebarTitle
+  if (item.key === "leads") return "Customers"
   if (item.key === "aiWorkspace") {
     const translation = t("layout.sidebar.agents")
     return translation === "layout.sidebar.agents" ? "AI Workspace" : translation

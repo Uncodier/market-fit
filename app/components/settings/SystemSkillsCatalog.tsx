@@ -11,6 +11,7 @@ import {
   SectionCard, SectionCardContent, SectionCardFooter, SectionCardHeader,
 } from "@/app/components/ui/section-card"
 import { skillRequest, skillsFromResponse, type ManagedSkill } from "./SkillManager"
+import { SettingsCardsLoading } from "./settings-loading"
 
 export function SystemSkillsCatalog({ onSectionsChange }: { onSectionsChange?: (sections: QuickNavSection[]) => void }) {
   const { currentSite } = useSite()
@@ -90,7 +91,7 @@ export function SystemSkillsCatalog({ onSectionsChange }: { onSectionsChange?: (
           </Button>
         </div>
       </form>
-      {loading && <p role="status" className="text-sm text-muted-foreground">Loading Makinari skills...</p>}
+      {loading && <SettingsCardsLoading kind="skills" />}
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
       {!loading && !error && <p className="text-sm text-muted-foreground" role="status">
         {visibleSkills.length} {visibleSkills.length === 1 ? "skill" : "skills"}

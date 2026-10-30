@@ -10,6 +10,7 @@ import { Badge } from "../ui/badge"
 import { licensePlanLabel } from "@/lib/license-entitlements"
 import { teamMembersInDisplayOrder } from "./team-types"
 import { TeamLocationAccess } from "./TeamLocationAccess"
+import { SettingsCardsLoading } from "./settings-loading"
 
 interface TeamSectionProps {
   active: boolean
@@ -79,11 +80,7 @@ export function TeamSection({ active, siteId }: TeamSectionProps) {
       </div>
 
       {isLoading ? (
-        <div className="space-y-4">
-          {[1, 2].map((i) => (
-            <div key={i} className="h-48 bg-muted/40 animate-pulse rounded-lg" />
-          ))}
-        </div>
+        <SettingsCardsLoading kind="team" />
       ) : teamList.length === 0 ? (
         <EmptyCard
           icon={<User className="h-10 w-10" />}

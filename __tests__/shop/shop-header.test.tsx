@@ -12,7 +12,7 @@ jest.mock("@/app/components/commerce/use-commerce-sign-in-href", () => ({
   }),
 }))
 
-jest.mock("@/app/components/commerce/CartButton", () => ({ CartButton: () => null }))
+jest.mock("@/app/components/commerce/CartButton", () => ({ CartButton: () => <button data-testid="cart">Cart</button> }))
 jest.mock("@/app/components/commerce/CommerceShareControl", () => ({ CommerceShareControl: () => null }))
 jest.mock("@/app/shop/[siteSlug]/CartSidebar", () => ({ CartSidebar: () => null }))
 jest.mock("@/app/context/LocalizationContext", () => ({
@@ -62,6 +62,23 @@ const props: ComponentProps<typeof ShopHeader> = {
 
 describe("ShopHeader sign-in", () => {
   beforeEach(() => mockSignInClick.mockClear())
+
+  it.each([null, { user: { user_metadata: {} } }])("only shows purchases for signed-in users and preserves the cart (%s)", (session) => {
+    render(<ShopHeader {...props} session={session} />)
+    const purchases = screen.queryByRole("link", { name: "My purchases" })
+    if (session) {
+      expect(purchases).toHaveAttribute("href", "/home/orders")
+      expect(purchases).toHaveClass("hidden", "lg:inline-flex")
+    } else expect(purchases).not.toBeInTheDocument()
+    expect(screen.getByTestId("cart")).toBeInTheDocument()
+  })
+
+  it("renders the shop title in lowercase with the toolbar MuseoModerno font", () => {
+    render(<ShopHeader {...props} />)
+    const title = screen.getByText("Example Shop")
+    expect(title).toHaveClass("lowercase")
+    expect(title.closest("[data-toolbar-font]")).toHaveAttribute("href", "/shop/example")
+  })
 
   it("uses the primary button while preserving compact dimensions and navigation", () => {
     render(<ShopHeader {...props} />)

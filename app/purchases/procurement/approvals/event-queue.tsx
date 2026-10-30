@@ -5,6 +5,7 @@ import { useSite } from '@/app/context/SiteContext'
 import { isRealSiteId } from '@/lib/demo-utils'
 import { EventApprovals } from './event-approvals'
 import { ProcurementState } from '../ui/workspace'
+import { useProcurementI18n } from '../i18n/use-procurement-i18n'
 
 export function EventApprovalQueue() {
   const { currentSite } = useSite()
@@ -12,6 +13,7 @@ export function EventApprovalQueue() {
   return <Queue key={currentSite.id} siteId={currentSite.id} />
 }
 function Queue({ siteId }: { siteId: string }) {
+  const { t, message } = useProcurementI18n()
   const [targets, setTargets] = useState<string[]>([])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
@@ -27,9 +29,9 @@ function Queue({ siteId }: { siteId: string }) {
     return () => controller.abort()
   }, [siteId])
   return <section className="space-y-6">
-    <h2 className="text-xl font-semibold">Publication and purchase commitments</h2>
-    <p className="text-sm text-muted-foreground">Pending approvals among the latest 100 visible events. These are independent of requisition approvals.</p>
-    <ProcurementState loading={loading} error={error} empty={!loading && !error && !targets.length} emptyTitle="No pending approvals" description="Publication and purchase commitment approvals assigned to you will appear here." />
+    <h2 className="text-xl font-semibold">{t('procurement.partners.approvals.queueTitle')}</h2>
+    <p className="text-sm text-muted-foreground">{t('procurement.partners.approvals.queueHint')}</p>
+    <ProcurementState loading={loading} error={message(error)} empty={!loading && !error && !targets.length} emptyTitle={t('procurement.partners.approvals.queueEmpty')} description={t('procurement.partners.approvals.queueEmptyHint')} />
     {targets.map(target => <EventApprovals key={target} siteId={siteId} targetId={target} />)}
   </section>
 }

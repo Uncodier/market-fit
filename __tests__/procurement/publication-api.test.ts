@@ -18,20 +18,30 @@ describe('tender publication authorization', () => {
   let document: ReturnType<typeof defaultPolicyDocument>
   let serviceRpc: jest.Mock
   let tender: Record<string,unknown>
+  let missingPolicy: boolean
+  let approvalStatus: string
+  let userRpc: jest.Mock
+  let ownerId: string
+  let adminIds: string[]
   beforeEach(() => {
     jest.clearAllMocks(); role='owner'
+    missingPolicy=false; approvalStatus='approved'
+    ownerId=actor
+    adminIds=[]
     document=defaultPolicyDocument(); document.settings.fallback={ mode:'none' }
     tender={ id:target, site_id:site, version:1, currency:'MXN', net_amount_minor:100,
       requirements:[{id:target,catalog_item_id:null,quantity:1,unit_net_minor:100}] }
     const from=jest.fn((table: string) => {
-      const result=()=>({ data:table==='procurement_tenders'?tender:table==='procurement_policy_versions'?{revision:1,document}: {id:target,status:'approved'},error:null })
+      const result=()=>({ data:table==='procurement_tenders'?tender:table==='procurement_policy_versions'?(missingPolicy?null:{revision:1,document}):table==='sites'?{user_id:ownerId}:table==='site_members'?adminIds.map(user_id=>({user_id})): {id:target,status:approvalStatus},error:null })
       const query:Record<string,jest.Mock>={}
-      for(const method of ['select','eq','order','limit']) query[method]=jest.fn(()=>query)
+      for(const method of ['select','eq','order','limit','in']) query[method]=jest.fn(()=>query)
       query.maybeSingle=jest.fn(async()=>result()); query.single=jest.fn(async()=>result())
+      query.then=jest.fn(resolve=>Promise.resolve(result()).then(resolve))
       return query
     })
+    userRpc=jest.fn(async(name:string, params?:{p_document?:unknown})=>({data:name==='save_procurement_policy'?{revision:1,document:params?.p_document}:name==='current_user_site_role'?role:name==='procurement_inherited_policy'?{inherited_requirements:[],minimum_supplier_proposals:0}:name==='user_can'?true:false,error:null}))
     jest.mocked(createClient).mockResolvedValue({auth:{getUser:async()=>({data:{user:{id:actor}},error:null})},from,
-      rpc:async(name:string)=>({data:name==='current_user_site_role'?role:name==='user_can'?true:false,error:null})} as never)
+      rpc:userRpc} as never)
     serviceRpc=jest.fn(async()=>({data:target,error:null}))
     jest.mocked(createServiceClient).mockResolvedValue({rpc:serviceRpc} as never)
   })
@@ -42,10 +52,36 @@ describe('tender publication authorization', () => {
       p_plan:expect.objectContaining({status:'ready',authorized:false})}))
     expect(await response.json()).toEqual({approval_id:target,status:'published'})
   })
+  test('an absent policy persists an owner decision fallback and waits for explicit approval',async()=>{
+    missingPolicy=true; approvalStatus='pending'
+    const response=await POST(request(),context)
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({approval_id:target,status:'pending'})
+    expect(userRpc).toHaveBeenCalledWith('save_procurement_policy',expect.objectContaining({
+      p_site_id:site,p_expected_revision:0,p_document:expect.objectContaining({rules:[],settings:expect.objectContaining({
+        fallback:expect.objectContaining({mode:'approval',stages:[expect.objectContaining({approverIds:[actor],allowSelfApproval:true})]}),
+      })}),
+    }))
+    expect(serviceRpc).toHaveBeenCalledWith('create_procurement_event_approval',expect.objectContaining({
+      p_policy_revision:1,p_plan:expect.objectContaining({authorized:false,stages:[expect.objectContaining({approverIds:[actor]})]}),
+    }))
+  })
   test.each([null,'collaborator'])('rejects unauthorized %s before privileged access',async value=>{
     role=value
+    missingPolicy=true
     expect((await POST(request(),context)).status).toBe(403)
     expect(createServiceClient).not.toHaveBeenCalled()
+    expect(userRpc.mock.calls.some(([name])=>name==='save_procurement_policy')).toBe(false)
+  })
+  test('an admin can be an alternative to the owner, with one explicit decision required',async()=>{
+    role='admin'; missingPolicy=true; approvalStatus='pending'; ownerId=site
+    adminIds=[actor]
+    expect((await POST(request(),context)).status).toBe(200)
+    expect(serviceRpc).toHaveBeenCalledWith('create_procurement_event_approval',expect.objectContaining({
+      p_actor:actor,p_plan:expect.objectContaining({stages:[expect.objectContaining({
+        approverIds:[ownerId,actor],mandatoryApproverIds:[],quorum:{mode:'first_response'},allowSelfApproval:true,
+      })]}),
+    }))
   })
   test('rejects anonymous, cross-origin and forged plans',async()=>{
     expect((await POST(request(undefined,{cookie:''}),context)).status).toBe(401)

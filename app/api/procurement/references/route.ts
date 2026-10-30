@@ -3,7 +3,7 @@ import { z } from "zod"
 import { privateHeaders, procurementAccess, procurementError } from "../http"
 
 const inputSchema = z.object({
-  kind: z.enum(["people", "products", "categories", "agents"]),
+  kind: z.enum(["people", "products", "categories", "agents", "locations"]),
   q: z.string().trim().max(100).default(""),
 })
 
@@ -39,7 +39,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ options: [...options.values()].slice(0, 50),
         has_more: (members.data?.length ?? 0) > 50 || options.size > 50 }, { headers: privateHeaders })
     }
-    const table = { products: "catalog_items", categories: "catalog_categories", agents: "agents" }[input.data.kind]
+    const table = { products: "catalog_items", categories: "catalog_categories", agents: "agents", locations: "locations" }[input.data.kind]
     let query = supabase.from(table).select("id, name").eq("site_id", siteId)
       .order("name").limit(51)
     if (search) query = query.ilike("name", `%${search}%`)

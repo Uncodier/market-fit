@@ -15,7 +15,8 @@ import {
   SectionCardFooter,
 } from "@/app/components/ui/section-card"
 import { Button } from "@/app/components/ui/button"
-import { CheckCircle, XCircle, Loader } from "@/app/components/ui/icons"
+import { CheckCircle, XCircle } from "@/app/components/ui/icons"
+import { SettingsSelectionLoading } from '@/app/components/settings/settings-loading'
 import { Checkbox } from "@/app/components/ui/checkbox"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { OAuthDiagnostics, OAUTH_TECHNICAL_VALUES, oauthErrorMessage, type OAuthMessage } from "./oauth-localization"
@@ -254,12 +255,7 @@ export default function SocialNetworkCallbackPage() {
               </SectionCardHeader>
               <SectionCardContent>
                 {status === "loading" && (
-                  <div className="flex flex-col items-center gap-4 py-8">
-                    <Loader className="h-8 w-8 text-primary" />
-                    <p className="text-sm text-muted-foreground text-center">
-                      {message || t("public.oauth.processing")}
-                    </p>
-                  </div>
+                  <SettingsSelectionLoading label={message || t("public.oauth.processing")} />
                 )}
 
                 {status === "selecting" && (

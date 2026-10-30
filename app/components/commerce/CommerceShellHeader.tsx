@@ -13,6 +13,7 @@ type Props = {
   /** When set, replaces brand/center/actions on mobile (e.g. expanded search). */
   mobileExpanded?: React.ReactNode
   className?: string
+  headerClassName?: string
 }
 
 function HeaderColumns({
@@ -107,6 +108,7 @@ export function CommerceShellHeader({
   hideCenterOnMobile = true,
   mobileExpanded,
   className,
+  headerClassName,
 }: Props) {
   return (
     <div className={cn("sticky top-4 z-40 w-full mb-4 md:mb-8 shrink-0", className)}>
@@ -114,7 +116,7 @@ export function CommerceShellHeader({
       <div className="px-4 md:px-8 w-full max-w-7xl mx-auto pointer-events-none">
         <header
           data-commerce-shell-header
-          className="pointer-events-auto relative rounded-full border dark:border-[#d8edaf]/15 border-black/5 bg-white/80 dark:bg-[#2c3523]/80 backdrop-blur-md supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-[#2c3523]/60 shadow-sm flex items-center px-3 md:px-6 py-2 w-full transition-all min-h-[56px] justify-between gap-1.5"
+          className={cn("pointer-events-auto relative rounded-full border dark:border-[#d8edaf]/15 border-black/5 bg-white/80 dark:bg-[#2c3523]/80 backdrop-blur-md supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-[#2c3523]/60 shadow-sm flex items-center px-3 md:px-6 py-2 w-full transition-all min-h-[56px] justify-between gap-1.5", headerClassName)}
         >
           {mobileExpanded ? (
             <>

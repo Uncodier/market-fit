@@ -1,7 +1,9 @@
 import { receiptSchema } from "@/app/purchases/procurement/commerce/contracts"
-import { commerceBody, commerceResult, procurementAccess, procurementError } from "../http"
+import { commerceBody, commerceResult, commerceWriteAccess, procurementAccess, procurementError } from "../http"
 
 export async function POST(request: Request) {
+  const originError = commerceWriteAccess(request)
+  if (originError) return originError
   const access = await procurementAccess(request)
   if (access.error) return access.error
   const body = receiptSchema.safeParse(await commerceBody(request))

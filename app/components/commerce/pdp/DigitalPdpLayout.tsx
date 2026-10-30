@@ -32,6 +32,7 @@ export function DigitalPdpLayout({ item, backUrl, experience, catalogSize = 0 }:
   const [loadingOwned, setLoadingOwned] = useState(true)
 
   useEffect(() => {
+    if (experience?.kind === 'entitlement' && experience.entitlement?.id) return
     async function checkOwnership() {
       // Import dynamically to avoid top-level import
       const { getActiveDigitalEntitlementForCatalogItem } = await import("@/app/buyer/entitlement-queries")
@@ -46,7 +47,7 @@ export function DigitalPdpLayout({ item, backUrl, experience, catalogSize = 0 }:
       setLoadingOwned(false)
     }
     checkOwnership()
-  }, [item.id])
+  }, [item.id, experience?.kind, experience?.entitlement?.id])
 
   const metadata = item.metadata || {}
   const attributes = metadata.attributes || {}
@@ -187,7 +188,7 @@ export function DigitalPdpLayout({ item, backUrl, experience, catalogSize = 0 }:
 
       {experience?.kind === 'subscription' && experience.subscription && (
         <div className="mt-12 pt-12 border-t">
-          <SubscriptionManagePanel subscription={experience.subscription} />
+          <SubscriptionManagePanel subscription={experience.subscription} demo={experience.demo} />
         </div>
       )}
 

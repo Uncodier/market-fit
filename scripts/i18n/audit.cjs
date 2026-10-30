@@ -38,6 +38,7 @@ function loadRawLocales(root) {
       ...filesBelow(path.join(directory, 'workspace', locale), /\.json$/),
       ...filesBelow(path.join(directory, 'screens'), new RegExp(`-${locale}\\.json$`)),
       path.join(directory, 'commerce', `${locale}.json`),
+      ...filesBelow(path.join(directory, 'procurement'), new RegExp(`-${locale}\\.json$`)),
     ];
     raw[locale] = Object.assign({}, ...filenames.map((filename) => flatten(JSON.parse(fs.readFileSync(filename, 'utf8')))));
   }

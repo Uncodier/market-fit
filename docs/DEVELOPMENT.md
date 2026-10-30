@@ -288,6 +288,20 @@ Regression coverage is in `__tests__/visits/lead-registration.test.ts`:
 npm test -- --runInBand __tests__/visits
 ```
 
+## Settings loading states
+
+Settings hydration selects a form/list skeleton for the active tab instead of
+rendering placeholders for every section at once. Tender settings use dedicated
+portal and policy form-card skeletons, with no nested sticky toolbar. Auxiliary
+settings loads reuse `app/components/settings/settings-loading.tsx` for list,
+table, field and card shapes. Loading announcements are accessible without visible
+loading paragraphs; error and empty states remain distinct. Save/connect/upload
+button progress labels are not initial data-loading placeholders.
+
+Regression suites: `__tests__/app/settings/settings-skeletons.test.tsx`,
+`__tests__/components/settings/loading-skeletons.test.tsx`, and
+`__tests__/procurement/portal-settings-ui.test.tsx`.
+
 ## Before handing off
 
 - Review the diff for unrelated edits and accidental secret exposure.

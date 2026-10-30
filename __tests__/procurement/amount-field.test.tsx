@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { AmountField } from '@/app/purchases/procurement/components/form-fields';
+jest.mock('@/app/context/LocalizationContext', () => ({ useLocalization: () => ({ locale: 'en', t: (key: string) => key }) }));
 
 function Editor({ currency = 'MXN' }: { currency?: string }) {
   const [amount, setAmount] = useState(0);

@@ -22,18 +22,23 @@ import publicEs from './public-es.json';
 import bookingFr from './booking-fr.json';
 import bookingDe from './booking-de.json';
 import bookingJa from './booking-ja.json';
+import procurementSharedEn from './procurement-shared-en.json';
+import procurementSharedEs from './procurement-shared-es.json';
+import procurementSharedFr from './procurement-shared-fr.json';
+import procurementSharedDe from './procurement-shared-de.json';
+import procurementSharedJa from './procurement-shared-ja.json';
 import type { SupportedLocale } from '../../locale-preferences';
 
 export const screenMessages: Record<SupportedLocale, Record<string, string>> = {
   en: {
     ...missingEn, ...systemEn, ...accountEn, ...authFlowsEn, ...commercePagesEn,
-    ...contentEn, ...detailsEn, ...operationsEn, ...publicEn,
+    ...contentEn, ...detailsEn, ...operationsEn, ...publicEn, ...procurementSharedEn,
   },
   es: {
     ...missingEs, ...systemEs, ...accountEs, ...authFlowsEs, ...commercePagesEs,
-    ...contentEs, ...detailsEs, ...operationsEs, ...publicEs,
+    ...contentEs, ...detailsEs, ...operationsEs, ...publicEs, ...procurementSharedEs,
   },
-  fr: { ...missingFr, ...bookingFr },
-  de: { ...missingDe, ...bookingDe },
-  ja: { ...missingJa, ...bookingJa },
+  fr: { ...missingFr, ...bookingFr, ...procurementSharedFr },
+  de: { ...missingDe, ...bookingDe, ...procurementSharedDe },
+  ja: { ...missingJa, ...bookingJa, ...procurementSharedJa },
 };

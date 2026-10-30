@@ -11,6 +11,7 @@ import DemoBanner from "./components/DemoBanner"
 import VersionCheck from "./components/VersionCheck"
 import { rememberInternalPath } from "./documents/internal-back"
 import { GuidedTour } from "./components/onboarding/GuidedTour"
+import { PrivateTypography } from "./components/PrivateTypography"
 
 const LayoutClient = dynamic(() => import("./layout-client"), { ssr: true })
 const ViewOnlyBanner = dynamic(
@@ -33,23 +34,25 @@ export default function ClientWrapper({
 
   if (useLayout) {
     return (
-      <Suspense fallback={<div className="min-h-[100dvh] bg-background" />}>
-        <LayoutClient>
-          {children}
-          <DemoBanner />
-          <ViewOnlyBanner />
-          <VersionCheck />
-        </LayoutClient>
-      </Suspense>
+      <PrivateTypography pathname={pathname}>
+        <Suspense fallback={<div className="min-h-[100dvh] bg-background" />}>
+          <LayoutClient>
+            {children}
+            <DemoBanner />
+            <ViewOnlyBanner />
+            <VersionCheck />
+          </LayoutClient>
+        </Suspense>
+      </PrivateTypography>
     )
   }
 
   return (
-    <>
+    <PrivateTypography pathname={pathname}>
       <GuidedTour />
       {wrapContentInMain ? <main>{children}</main> : children}
       <DemoBanner />
       <VersionCheck />
-    </>
+    </PrivateTypography>
   )
 }

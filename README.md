@@ -107,6 +107,19 @@ Keep changes focused, preserve unrelated work, add tests for changed behavior,
 and document new commands, configuration, routes, and security invariants.
 Follow `AGENTS.md` for repository-specific automation guidance.
 
-No license file or public vulnerability-reporting address is currently present
-in this repository. Do not infer or advertise either until the repository owner
-adds authoritative information.
+## Licensing
+
+Procurement and supplier modules are **source-available, not open source** under the
+[Makinari Internal-Use Source-Available License 1.0](licenses/MAKINARI-INTERNAL-USE-1.0.md).
+Internal use and modification, including production use, are permitted. Third-party
+SaaS and redistribution require a separate commercial license, subject to the narrow
+operational exceptions in the license.
+
+See [the repository licensing notice](LICENSE.md), the
+[covered-path manifest](licenses/procurement-scope.json), and the
+[licensing guide](docs/LICENSING.md). This branch does not establish a repository-wide
+open-source license for the remaining code. Existing third-party rights and licenses
+for earlier copies are not revoked by these terms.
+
+No public vulnerability-reporting address is currently documented in this repository.
+Do not advertise one until the repository owner adds authoritative information.

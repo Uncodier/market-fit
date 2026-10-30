@@ -4,6 +4,8 @@ export type PdpExperienceKind = 'reservation' | 'entitlement' | 'subscription'
 
 export interface PdpExperience {
   kind: PdpExperienceKind
+  /** Fictional presentation only; never grants access or permits mutations. */
+  demo?: boolean
   backUrl?: string
   // reservation manage
   reservation?: Reservation | any

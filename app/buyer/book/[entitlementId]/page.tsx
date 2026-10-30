@@ -1,7 +1,6 @@
 import { getEntitlementById } from "@/app/buyer/entitlement-queries"
 import { notFound } from "next/navigation"
-import { PassPdpLayout } from "@/app/components/commerce/pdp/PassPdpLayout"
-import { BuyerExperienceShell } from "@/app/components/commerce/pdp/BuyerExperienceShell"
+import { BuyerLibraryExperience } from "@/app/buyer/components/BuyerLibraryExperience"
 import { PdpExperience } from "@/app/components/commerce/pdp/pdp-experience"
 import { getPassRedeemableItems } from "@/app/catalog/pass-actions"
 import { getPdpCatalogItem } from "@/app/commerce/pdp-actions"
@@ -51,8 +50,6 @@ export default async function BuyerBookPage(props: {
   }
 
   return (
-    <BuyerExperienceShell backUrl={backUrl} variant="book">
-      <PassPdpLayout item={passItem} backUrl={backUrl} experience={experience} />
-    </BuyerExperienceShell>
+    <BuyerLibraryExperience item={passItem} experience={experience} subtype="pass" />
   )
 }

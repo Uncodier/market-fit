@@ -17,6 +17,7 @@ import { ReportSWRScope } from "./ReportSWRScope"
 import { REPORTS, getReportSection, isReportId, reportSectionUrl } from "./report-sections"
 import { defaultReportRange, reportRangeError } from "./report-range"
 import { useReportDateLimits } from "./use-report-date-limits"
+import DashboardLoading from "./loading"
 
 function DashboardPageContent() {
   const { t } = useLocalization()
@@ -118,5 +119,5 @@ function DashboardPageContent() {
 }
 
 export default function DashboardPage() {
-  return <ReportSWRScope><Suspense fallback={<div className="p-4 md:p-8"><ReportLoading /></div>}><DashboardPageContent /></Suspense></ReportSWRScope>
+  return <ReportSWRScope><Suspense fallback={<DashboardLoading />}><DashboardPageContent /></Suspense></ReportSWRScope>
 }

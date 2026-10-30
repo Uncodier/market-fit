@@ -93,10 +93,13 @@ it('integrates private journal with an exact site+ID read and accepts equivalent
   expect(loadManualJournal().cleanup.completed).toBe(false)
 })
 
-it.each([null, { ...row, id: foreignId }])('rejects absent or mismatched persisted identity', async data => {
+it.each(['absent', 'mismatched'] as const)('rejects %s persisted identity', async scenario => {
   journalManualActionResult({ data: row })
+  const data = scenario === 'absent' ? null : { ...row, id: foreignId }
   reads(data)
-  await expect(assertManualReservationPersisted()).rejects.toThrow()
+  await expect(assertManualReservationPersisted()).rejects.toThrow(
+    scenario === 'absent' ? /persisted read failed/ : /persisted reservation identity changed/,
+  )
 })
 
 it('does not interpret RLS/read denial as absence or success', async () => {

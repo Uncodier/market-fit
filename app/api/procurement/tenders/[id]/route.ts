@@ -12,13 +12,16 @@ export async function GET(request: Request, context: Context) {
     const { data, error } = await access.supabase.from('procurement_tenders').select(tenderColumns).eq('site_id', access.siteId).eq('id', id.data).maybeSingle()
     if (error) return tenderError(error)!
     if (!data) return procurementError('Tender not found', 404)
-    const [publications, participants, portal] = await Promise.all([
+    const [publications, participants, portal, pendingPublication, receipts] = await Promise.all([
       access.supabase.from('procurement_tender_publications').select('id,version,published_at,snapshot,visibility,global_visible').eq('site_id', access.siteId).eq('tender_id', id.data).order('version', { ascending: false }),
       access.supabase.from('procurement_tender_participants').select('id,supplier_id,status,created_at,suppliers(name)').eq('site_id', access.siteId).eq('tender_id', id.data).order('created_at'),
       access.supabase.from('procurement_tender_portals').select('slug,enabled').eq('site_id', access.siteId).maybeSingle(),
+      access.supabase.from('procurement_event_approvals').select('id').eq('site_id', access.siteId)
+        .eq('target_id', id.data).eq('target_version', data.version).eq('event', 'publication').eq('status', 'pending').limit(1),
+      access.supabase.rpc('list_procurement_receipt_activity', { p_site: access.siteId, p_tender: id.data }),
     ])
-    const childError = publications.error || participants.error || portal.error
-    return tenderError(childError) ?? resultJson({ tender: data, publications: publications.data, participants: participants.data, site_slug: portal.data?.slug, portal_enabled: portal.data?.enabled === true })
+    const childError = publications.error || participants.error || portal.error || pendingPublication.error || receipts.error
+    return tenderError(childError) ?? resultJson({ tender: data, publications: publications.data, receipt_activity: receipts.data, participants: participants.data, site_slug: portal.data?.slug, portal_enabled: portal.data?.enabled === true, publication_pending: Boolean(pendingPublication.data?.length) })
   } catch { return procurementError('Unable to load tender', 503) }
 }
 export async function PUT(request: Request, context: Context) {

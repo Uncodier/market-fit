@@ -3,9 +3,11 @@ import { z } from 'zod'
 import { procurementError, privateHeaders, uuid } from '../../../http'
 import { tenderAccess } from '../../http'
 import { requestBody, databaseError } from '../../../requests/http'
-import { policyDocumentSchema, evaluateProcurementPolicy } from '@/app/purchases/procurement/domain'
+import { evaluateProcurementPolicy } from '@/app/purchases/procurement/domain'
 import { validatePolicyReferences } from '../../../policy/validate-references'
 import { createServiceClient } from '@/lib/supabase/server'
+import { inheritedPolicySchema } from '../../../policy/inherited-policy'
+import { publicationPolicy } from '../../../policy/publication-default'
 
 const inputSchema = z.object({ expected_version: z.number().int().positive() }).strict()
 const lineSchema = z.object({ id: uuid, catalog_item_id: uuid.nullable(), quantity: z.number().int().positive(),
@@ -27,8 +29,17 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     if (tender.error || policy.error) return procurementError('Unable to verify tender and policy', 503)
     if (!tender.data) return procurementError('Tender not found', 404)
     if (tender.data.version !== parsed.data!.expected_version) return procurementError('Tender changed. Reload before publishing.', 409)
-    const doc = policyDocumentSchema.safeParse(policy.data?.document)
-    if (!doc.success) return procurementError('Save a valid procurement policy before publishing', 409)
+    const inherited = await access.supabase.rpc('procurement_inherited_policy', {
+      p_site: access.siteId, p_tender: id.data, p_event: 'publication',
+    })
+    if (inherited.error) return databaseError(inherited.error) ?? procurementError('Unable to verify request policy', 503)
+    const requestPolicy = inheritedPolicySchema.safeParse(inherited.data)
+    if (!requestPolicy.success || requestPolicy.data.inherited_requirements.length) {
+      return procurementError('Inherited request requirements must be resolved before publication', 409)
+    }
+    const snapshot = await publicationPolicy(access.supabase, access.siteId, policy.data)
+    if (!snapshot.success) return procurementError('Save a valid procurement policy before publishing', 409)
+    const doc = { data: snapshot.data.document }
     if (!await validatePolicyReferences(access.supabase, access.siteId, doc.data, doc.data)) {
       return procurementError('Policy references are no longer eligible', 409)
     }
@@ -61,7 +72,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const service = await createServiceClient(true)
     const saved = await service.rpc('create_procurement_event_approval', {
       p_site: access.siteId, p_target: id.data, p_version: tender.data.version, p_event: 'publication',
-      p_actor: access.userId, p_policy_revision: policy.data.revision, p_plan: plan,
+      p_actor: access.userId, p_policy_revision: snapshot.data.revision, p_plan: plan,
     })
     if (saved.error) return databaseError(saved.error) ?? procurementError('Unable to persist publication approval', 503)
     const approval = await access.supabase.from('procurement_event_approvals').select('id,status')

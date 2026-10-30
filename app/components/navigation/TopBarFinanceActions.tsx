@@ -15,7 +15,7 @@ export function TopBarFinanceActions({ isAccountingPage, isFinancePage, isJourna
   return (
     <>
       {/* New Purchase button in toolbar */}
-      {pathname.startsWith("/purchases/orders") && currentSite && (
+      {pathname === "/purchases/orders" && currentSite && (
         <Button
           size="default"
           className="flex items-center justify-center gap-2 transition-colors duration-200 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"

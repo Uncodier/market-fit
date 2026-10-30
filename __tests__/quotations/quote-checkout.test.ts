@@ -44,6 +44,13 @@ describe("quote checkout helpers", () => {
   })
 
   describe("assertQuotationCheckoutable", () => {
+    it("never turns free-text proposal lines into checkout items", () => {
+      const quote = { ...baseQuote, items: [{ ...baseQuote.items[0], catalog_item_id: null }] }
+      expect(assertQuotationCheckoutable(quote, { buyerUserId: 'buyer-1' }).ok).toBe(false)
+      expect(() => quotationItemsToCheckoutLines(quote.items)).toThrow(/linked to catalog products/)
+      expect(() => mapQuotationToCartItems(quote)).toThrow(/linked to catalog products/)
+    })
+
     it("allows a sent quote for the owning buyer", () => {
       const gate = assertQuotationCheckoutable(baseQuote, { buyerUserId: "buyer-1", siteId: "site-1" })
       expect(gate).toEqual({ ok: true })

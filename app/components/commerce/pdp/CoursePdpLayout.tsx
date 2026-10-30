@@ -17,21 +17,22 @@ import { afterAddToCartHref } from "./pdp-purchase-cta"
 import { PdpPriceBlock } from "./PdpPriceBlock"
 import { PdpMetricChips } from "./PdpMetricChips"
 import { PdpMobileBuyBar } from "./PdpMobileBuyBar"
-import { CheckCircle } from "@/app/components/ui/icons"
+import { CheckCircle, Clock, Globe, BookOpen, User } from "@/app/components/ui/icons"
 import { PdpExperience } from "./pdp-experience"
 import { CourseLessonPlayer } from "./CourseLessonPlayer"
 import { SubscriptionManagePanel } from "./SubscriptionManagePanel"
 import { PdpProductDetails } from "./PdpProductDetails"
 import { hasPdpProductDetails } from "./pdp-item-description"
 
-export function CoursePdpLayout({ item, backUrl, experience, catalogSize = 0 }: { item: CatalogItem & { _shop?: any }, backUrl: string, experience?: PdpExperience, catalogSize?: number }) {
+export function CoursePdpLayout({ item, backUrl, experience, catalogSize = 0 }: { item: CatalogItem, backUrl: string, experience?: PdpExperience, catalogSize?: number }) {
   const { t } = useLocalization()
   const router = useRouter()
   const { addToCartStorage, startBuyNow } = usePdpCart(item.site_id)
   
-  const [ownedEntitlement, setOwnedEntitlement] = useState<any>(null)
+  const [ownedEntitlement, setOwnedEntitlement] = useState<{ id: string } | null>(null)
   
   useEffect(() => {
+    if (experience?.demo || (experience?.kind === 'entitlement' && experience.entitlement?.id)) return
     async function checkOwnership() {
       // Import dynamically to avoid top-level import
       const { getActiveDigitalEntitlementForCatalogItem } = await import("@/app/buyer/entitlement-queries")
@@ -40,14 +41,14 @@ export function CoursePdpLayout({ item, backUrl, experience, catalogSize = 0 }: 
         if (ent) {
           setOwnedEntitlement(ent)
         }
-      } catch (e) {}
+      } catch { /* Ownership failures never grant course access. */ }
     }
     checkOwnership()
-  }, [item.id])
+  }, [item.id, experience?.kind, experience?.entitlement?.id, experience?.demo])
 
   const metadata = item.metadata || {}
   const attributes = metadata.attributes || {}
-  const videos = Array.isArray(metadata.videos) ? metadata.videos.filter((v: any) => v && v.url) : []
+  const videos = Array.isArray(metadata.videos) ? metadata.videos.filter(v => v && typeof v.url === 'string' && v.url.trim()) : []
   
   const instructor = resolveItemSpecDisplay(item, 'instructor')
   const author = resolveItemSpecDisplay(item, 'author')
@@ -63,41 +64,36 @@ export function CoursePdpLayout({ item, backUrl, experience, catalogSize = 0 }: 
   })
 
   const handleAdd = () => {
+    if (experience?.demo) return
     addToCartStorage(item)
     toast.success(`${item.name} ${t('marketplace.addedToCart') || 'added to cart'}`)
     router.push(afterAddToCartHref(backUrl))
   }
 
   const handleBuyNow = () => {
+    if (experience?.demo) return
     startBuyNow(item, 1, backUrl)
   }
 
   if (experience?.kind === 'entitlement' && experience.entitlement) {
     return (
-      <div className="pb-16 max-w-7xl mx-auto w-full px-4 md:px-8 space-y-8">
+      <div className="pb-12 pt-6 max-w-7xl mx-auto w-full px-4 md:px-8 space-y-6">
         <div>
-          <h1 className="text-3xl md:text-4xl lg:text-5xl font-black tracking-tight leading-tight mb-2">
+          <h1 className="text-2xl md:text-3xl lg:text-4xl font-black tracking-tight leading-tight mb-3">
             {item.name}
           </h1>
-          <div className="text-muted-foreground font-medium flex items-center gap-2">
-            {t("buyer.library.actions.course") || "Course"}
-            {attributes.level && (
-              <>
-                <span className="w-1 h-1 rounded-full bg-border" />
-                <span>{attributes.level}</span>
-              </>
-            )}
-            {attributes.duration && (
-              <>
-                <span className="w-1 h-1 rounded-full bg-border" />
-                <span>{attributes.duration}</span>
-              </>
-            )}
+          <div className="text-muted-foreground text-sm flex flex-wrap items-center gap-x-5 gap-y-2">
+            <span className="inline-flex items-center gap-2"><BookOpen size={16} />{videos.length} {t('pdp.course.lessons') || 'Lessons'}</span>
+            {attributes.level && <span>{attributes.level}</span>}
+            {attributes.duration && <span className="inline-flex items-center gap-2"><Clock size={16} />{attributes.duration}</span>}
+            {attributes.language && <span className="inline-flex items-center gap-2"><Globe size={16} />{attributes.language}</span>}
+            {primaryPerson && <span className="inline-flex items-center gap-2"><User size={16} />{primaryPerson.name}</span>}
           </div>
         </div>
 
         {videos.length > 0 ? (
           <CourseLessonPlayer
+            key={experience.entitlement.id}
             title={item.name}
             videos={videos}
             progress={experience.extras?.progress || { lastIndex: 0, completedIndexes: [] }}
@@ -116,6 +112,12 @@ export function CoursePdpLayout({ item, backUrl, experience, catalogSize = 0 }: 
             </div>
           </div>
         )}
+        {(item.description || hasExtraDetails) && <section aria-label={t('pdp.course.about') || 'About this course'}
+          className="rounded-2xl border border-border/50 bg-card p-5 sm:p-6">
+          <h2 className="mb-4 text-lg font-semibold">{t('pdp.course.about') || 'About this course'}</h2>
+          <PdpProductDetails description={item.description} showShortDescription attrFields={attrFields} attributes={attributes}
+            specGroups={specDisplay.groups} specs={specDisplay.rows} />
+        </section>}
       </div>
     )
   }
@@ -198,7 +200,7 @@ export function CoursePdpLayout({ item, backUrl, experience, catalogSize = 0 }: 
               <div className="pt-8 border-t">
                 <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">{t('marketplace.catalogDetails.videosTitle') || 'Course Content preview'}</h3>
                 <div className="grid gap-3 sm:gap-4">
-                  {videos.map((vid: any, i: number) => (
+                  {videos.map((vid, i) => (
                     <div key={vid.url + i} className="flex items-center justify-between p-4 rounded-2xl bg-card border hover:border-primary/30 transition-colors cursor-pointer" onClick={() => handleBuyNow()}>
                       <div className="flex items-center gap-4">
                         <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
@@ -251,7 +253,7 @@ export function CoursePdpLayout({ item, backUrl, experience, catalogSize = 0 }: 
 
       {experience?.kind === 'subscription' && experience.subscription && (
         <div className="mt-12 pt-12 border-t">
-          <SubscriptionManagePanel subscription={experience.subscription} />
+          <SubscriptionManagePanel subscription={experience.subscription} demo={experience.demo} />
         </div>
       )}
 

@@ -1,11 +1,14 @@
 'use client'
 
 import Link from 'next/link'
-import { EmptyState } from '@/app/components/ui/empty-state'
+import { EmptyCard } from '@/app/components/ui/empty-card'
+import { ClipboardList } from '@/app/components/ui/icons'
 import { Button } from '@/app/components/ui/button'
+import { useProcurementI18n } from '@/app/purchases/procurement/i18n/use-procurement-i18n'
 
 export function EmptyTenders({ href }: { href: string }) {
-  return <EmptyState variant="simple" title="No published tenders match this view."
-    description="Try another search or browse all public opportunities."
-    action={<Button variant="outline" asChild><Link href={href}>Clear search</Link></Button>} />
+  const { t } = useProcurementI18n()
+  return <EmptyCard icon={<ClipboardList size={24} />} title={t('procurement.portal.public.empty')}
+    description={t('procurement.portal.public.emptyHint')} showHint={false}
+    actionButton={<Button variant="outline" asChild><Link href={href}>{t('procurement.portal.public.clearSearch')}</Link></Button>} />
 }

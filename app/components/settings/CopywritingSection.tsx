@@ -7,7 +7,7 @@ import { Textarea } from "../ui/textarea"
 import { SectionCard, SectionCardHeader, SectionCardTitle, SectionCardContent, SectionCardFooter } from "@/app/components/ui/section-card"
 import { Button } from "../ui/button"
 
-import { CopywritingSkeleton, CopywritingItemsSkeleton } from "../skeletons/copywriting-skeleton"
+import { SettingsCardsLoading } from "./settings-loading"
 
 import { PlusCircle, Trash2, FileText, ChevronDown, ChevronUp } from "../ui/icons"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
@@ -28,9 +28,7 @@ export function CopywritingSection(props: CopywritingSectionProps) {
 
   // Show skeleton while loading
   if (isLoading) {
-    return copywritingList.length > 0 ? 
-      <CopywritingItemsSkeleton count={copywritingList.length} /> : 
-      <CopywritingSkeleton />
+    return <SettingsCardsLoading kind="copywriting" />
   }
 
   return (
@@ -54,14 +52,6 @@ export function CopywritingSection(props: CopywritingSectionProps) {
         </Button>
       </div>
 
-      {/* Loading State */}
-      {isLoading ? (
-        <div className="space-y-4">
-          {[1, 2].map(i => (
-            <div key={i} className="h-48 bg-muted/40 animate-pulse rounded-lg" />
-          ))}
-        </div>
-      ) : (
         <div className="space-y-6">
           {/* Copywriting Items */}
           {copywritingList.map((item, index) => {
@@ -342,7 +332,6 @@ export function CopywritingSection(props: CopywritingSectionProps) {
                 )
               })}
         </div>
-      )}
     </div>
   )
 }

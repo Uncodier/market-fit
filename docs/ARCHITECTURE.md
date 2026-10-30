@@ -25,6 +25,16 @@ external consumers. Its removal is not part of the frontend/API retirement.
 
 ## Repository map
 
+Public tender routes use the same name-derived site slug as Shop, via
+`app/book/site-slug.ts`. `app/tenders/site-identity.ts` reads only enabled,
+non-archived portal identity on the server. Legacy portal UUID URLs redirect to
+the readable URL; the stored portal slug remains the input to the RLS-scoped
+`public_procurement_tenders` RPC, preserving publication visibility checks.
+Public DTOs include the display name, including directories with no publications.
+Identity enrichment uses one batch for the RPC's bounded result set and never
+serializes site settings, ownership, or contact details. Name-collision behavior
+matches the existing Shop resolver. No database migration is required.
+
 - `app/` — routes, layouts, route handlers, Server Actions, and feature code.
 - `app/components/` — shared application components.
 - `app/commerce/` — checkout, entitlement, settlement, and post-payment logic.

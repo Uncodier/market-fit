@@ -5,15 +5,15 @@ import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider"
 import { useRouter, usePathname } from "next/navigation"
 import { useTheme } from "@/app/context/ThemeContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
-import useSWR from "swr"
-import { getBuyerPortalSummary } from "@/app/buyer/actions"
-import { FileText, Repeat, Archive, Home, Sun, Moon, Globe, Monitor, ShoppingCart, User } from "@/app/components/ui/icons"
-import { Skeleton } from "@/app/components/ui/skeleton"
+import { Sun, Moon, Globe, Monitor, ShoppingCart, User } from "@/app/components/ui/icons"
+import { AccountScreenLoading } from './AccountScreenLoading'
 import { CommerceShellHeader, shellClasses } from "@/app/components/commerce/CommerceShellHeader"
 import { CartButton } from "@/app/components/commerce/CartButton"
 import { TopBarPrimaryActionsSlot } from "@/app/components/navigation/topbar-primary-actions"
+import { AccountSearchActionsSlot, AccountSearchSlot } from "./AccountSearch"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
+import { isSafeInternalPath } from "@/lib/auth/post-auth-redirect"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,15 +36,6 @@ export function BuyerShell({ children, requireAuth = true }: BuyerShellProps) {
   const { setLocale, t } = useLocalization()
 
   const [cartCount, setCartCount] = React.useState(0)
-
-  const { data: summaryData } = useSWR(
-    session ? { key: "buyer-portal-summary", userId: user?.id, scope: "personal" as const } : null,
-    async (params) => {
-      const res = await getBuyerPortalSummary({ scope: params.scope })
-      if (res.error) throw new Error(res.error)
-      return res
-    }
-  )
 
   React.useEffect(() => {
     const checkCart = () => {
@@ -72,8 +63,10 @@ export function BuyerShell({ children, requireAuth = true }: BuyerShellProps) {
   React.useEffect(() => {
     if (!requireAuth) return
     if (!isLoading && !session) {
+      const currentPath = `${window.location.pathname}${window.location.search}`
+      const returnTo = isSafeInternalPath(currentPath) ? currentPath : "/buyer"
       router.push(
-        `/auth?returnTo=${encodeURIComponent(pathname === "/buyer" ? "/buyer" : pathname || "/buyer")}`
+        `/auth?returnTo=${encodeURIComponent(returnTo)}`
       )
     }
   }, [requireAuth, session, isLoading, router, pathname])
@@ -81,7 +74,8 @@ export function BuyerShell({ children, requireAuth = true }: BuyerShellProps) {
   const isAuthLoading = requireAuth && (isLoading || !session)
   const showNav = requireAuth && Boolean(session)
   const isMiniExperience = Boolean(
-    pathname?.match(/^\/buyer\/(reservations|course|ticket|book|downloads)\//)
+    pathname?.match(/^\/buyer\/(reservations|course|ticket|book|downloads)\//) ||
+    pathname?.match(/^\/home\/preview\/(library|reservations|subscriptions)\//)
   )
   const unified = pathname === "/home" || pathname?.startsWith("/home/")
   const portalBase = unified ? "/home" : "/buyer"
@@ -89,21 +83,8 @@ export function BuyerShell({ children, requireAuth = true }: BuyerShellProps) {
   const signInLabel = t("signIn") || "Sign In"
   const signInHref = `/auth?returnTo=${encodeURIComponent(pathname || "/buyer")}`
 
-  let navItems: { label: string; href: string; icon: React.ReactNode; exact?: boolean; count?: number }[] = [
-    { label: t("buyer.layout.home") || "Home", href: "/buyer", icon: <Home size={16} />, exact: true },
-    { label: t("buyer.layout.purchases") || "Purchases", href: "/buyer/orders", icon: <ShoppingCart size={16} />, count: summaryData?.counts?.orders },
-    { label: t("buyer.layout.subscriptions") || "Subscriptions", href: "/buyer/subscriptions", icon: <Repeat size={16} />, count: summaryData?.counts?.subscriptions },
-    { label: t("buyer.layout.quotations") || "Quotations", href: "/buyer/quotes", icon: <FileText size={16} />, count: summaryData?.counts?.quotes },
-    { label: t("buyer.layout.assets") || "Assets", href: "/buyer/library", icon: <Archive size={16} />, count: summaryData?.counts?.library },
-  ]
-
-  // Filter nav items based on counts, always keep Home
-  if (summaryData) {
-    navItems = navItems.filter(item => item.exact || (item.count !== undefined && item.count > 0))
-  }
-  if (unified) navItems = navItems.map(item => ({ ...item, href: item.href.replace(/^\/buyer/, "/home") }))
-  navItems.push({ label: "Supplier activity", href: "/home/submissions", icon: <FileText size={16} /> })
-  navItems.push({ label: "Credentials", href: "/home/profile", icon: <User size={16} /> })
+  const purchasesHref = `${portalBase}/orders`
+  const purchasesLabel = t("buyer.layout.purchases") || "Purchases"
 
   const initial =
     user?.user_metadata?.first_name?.charAt(0) ||
@@ -119,7 +100,9 @@ export function BuyerShell({ children, requireAuth = true }: BuyerShellProps) {
         <>
           <div className="h-4 w-full shrink-0" />
           <CommerceShellHeader
-            hideCenterOnMobile={!showNav}
+            headerClassName={pathname === '/home/submissions' || pathname === '/home/tenders' ? '!bg-transparent dark:!bg-transparent !backdrop-blur-none !shadow-none' : undefined}
+            hideCenterOnMobile
+            center={!isAuthLoading ? <AccountSearchSlot /> : undefined}
             brand={
               <Link href={homeHref} className="shrink-0 flex items-center hover:opacity-80 transition-opacity">
                 <img
@@ -134,38 +117,9 @@ export function BuyerShell({ children, requireAuth = true }: BuyerShellProps) {
                 />
               </Link>
             }
-            center={
-              showNav ? (
-                <div className="flex items-center justify-center overflow-x-auto no-scrollbar w-full min-w-0">
-                  <nav className="flex items-center space-x-0.5 lg:space-x-1">
-                    {navItems.map((item) => {
-                      const isActive = item.exact
-                        ? pathname === item.href
-                        : pathname.startsWith(item.href)
-                      return (
-                        <Link
-                          key={item.href}
-                          href={item.href}
-                          title={item.label}
-                          className={cn(
-                            shellClasses.navItem,
-                            "px-2.5 lg:px-3 text-xs lg:text-sm shrink-0",
-                            isActive ? shellClasses.navItemActive : shellClasses.navItemInactive
-                          )}
-                        >
-                          <span className="flex h-full items-center justify-center shrink-0">
-                            {item.icon}
-                          </span>
-                          <span className="hidden sm:inline-block leading-none">{item.label}</span>
-                        </Link>
-                      )
-                    })}
-                  </nav>
-                </div>
-              ) : undefined
-            }
             actions={
               <div className="flex items-center gap-1 md:gap-3">
+                {!isAuthLoading && <AccountSearchActionsSlot />}
                 <TopBarPrimaryActionsSlot />
                 <div className="hidden md:flex items-center gap-1 md:gap-3">
                   <DropdownMenu>
@@ -259,6 +213,25 @@ export function BuyerShell({ children, requireAuth = true }: BuyerShellProps) {
                     </>
                   )}
                 </div>
+                {showNav && !unified && (
+                  <nav className="-order-1 flex items-center">
+                    <Link
+                      href={purchasesHref}
+                      aria-label={purchasesLabel}
+                      aria-current={pathname.startsWith(purchasesHref) ? "page" : undefined}
+                      className={cn(
+                        shellClasses.navItem,
+                        "!px-3 lg:!px-4",
+                        pathname.startsWith(purchasesHref)
+                          ? shellClasses.navItemActive
+                          : shellClasses.navItemInactive
+                      )}
+                    >
+                      <ShoppingCart size={16} className="shrink-0" />
+                      <span className="hidden sm:inline-block leading-none">{purchasesLabel}</span>
+                    </Link>
+                  </nav>
+                )}
               </div>
             }
           />
@@ -274,12 +247,7 @@ export function BuyerShell({ children, requireAuth = true }: BuyerShellProps) {
         )}
       >
         {isAuthLoading ? (
-          <div className="w-full max-w-4xl mx-auto space-y-4 animate-in fade-in duration-500 mt-8 px-4 md:px-8">
-            <Skeleton className="h-20 w-full rounded-xl" />
-            <Skeleton className="h-20 w-full rounded-xl" />
-            <Skeleton className="h-20 w-full rounded-xl" />
-            <Skeleton className="h-20 w-full rounded-xl" />
-          </div>
+          <AccountScreenLoading pathname={pathname} />
         ) : (
           children
         )}

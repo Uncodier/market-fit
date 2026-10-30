@@ -1,4 +1,6 @@
 import { createServiceClient } from "@/lib/supabase/server";
+import { toSiteSlug } from './site-slug';
+export { toSiteSlug } from './site-slug';
 
 type SiteInfo = {
   id: string
@@ -10,13 +12,6 @@ type SiteInfo = {
 type SiteQueryResult<T> = {
   data: T | null
   error: { message?: string; details?: string; hint?: string; code?: string } | null
-}
-
-export function toSiteSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
 }
 
 function isTransientDbError(error: { message?: string; details?: string } | null | undefined): boolean {

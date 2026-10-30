@@ -19,10 +19,11 @@ const SheetPortal = SheetPrimitive.Portal
 
 const SheetOverlay = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Overlay>,
-  React.ComponentPropsWithoutRef<typeof SheetPrimitive.Overlay>
->(({ className, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof SheetPrimitive.Overlay> & { blur?: boolean }
+>(({ className, blur = true, ...props }, ref) => (
   <SheetPrimitive.Overlay
-    className={cn(overlayClassName, "z-[100000]", className)}
+    className={cn(blur ? overlayClassName : overlayClassName.replace('backdrop-blur-[2px]', ''), "z-[100000]", className)}
+    data-backdrop-blur={blur}
     {...props}
     ref={ref}
   />
@@ -52,14 +53,16 @@ interface SheetContentProps
   extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content>,
     VariantProps<typeof sheetVariants> {
   showClose?: boolean
+  overlayClassName?: string
+  overlayBlur?: boolean
 }
 
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ side = "right", className, children, showClose = true, ...props }, ref) => (
+>(({ side = "right", className, children, showClose = true, overlayClassName, overlayBlur = true, ...props }, ref) => (
   <SheetPortal>
-    <SheetOverlay />
+    <SheetOverlay className={overlayClassName} blur={overlayBlur} />
     <SheetPrimitive.Content
       ref={ref}
       className={cn(sheetVariants({ side }), className)}

@@ -1,6 +1,6 @@
 /** @jest-environment node */
 import { GET as list, POST as create } from '@/app/api/procurement/tenders/route'
-import { PUT as update, PATCH as transition } from '@/app/api/procurement/tenders/[id]/route'
+import { GET as detail, PUT as update, PATCH as transition } from '@/app/api/procurement/tenders/[id]/route'
 import { POST as participant } from '@/app/api/procurement/tenders/[id]/participants/route'
 import { POST as portal } from '@/app/api/procurement/tenders/portal/route'
 import { createClient } from '@/lib/supabase/server'
@@ -15,7 +15,7 @@ describe('tender API authorization and validation', () => {
   let rpc: jest.Mock, from: jest.Mock, role: string | null, restricted: boolean, permitted: boolean
   beforeEach(() => {
     jest.clearAllMocks(); role = 'owner'; restricted = false; permitted = true
-    rpc = jest.fn(async name => ({ data: name === 'current_user_site_role' ? role : name === 'user_can' ? permitted : name.includes('location_restrictions') ? restricted : ids.purchase, error: null }))
+    rpc = jest.fn(async name => ({ data: name === 'current_user_site_role' ? role : name === 'user_can' ? permitted : name.includes('location_restrictions') ? restricted : name === 'list_procurement_receipt_activity' ? [] : ids.purchase, error: null }))
     from = jest.fn(() => {
       const query: Record<string, jest.Mock> = {}
       for (const name of ['select', 'eq', 'order', 'range', 'ilike']) query[name] = jest.fn(() => query)
@@ -67,5 +67,43 @@ describe('tender API authorization and validation', () => {
     const response = await list(request({}, 'GET'))
     expect(response.status).toBe(200); expect(response.headers.get('cache-control')).toBe('private, no-store')
     expect((await list(new Request(`${request().url}&page=-1`, { headers: { cookie: 'session=fixture' } }))).status).toBe(400)
+  })
+  test.each([true, false])('detail reads current-version pending publication with tenant scope: %s', async pending => {
+    const approvalQuery: Record<string, jest.Mock> = {}
+    for (const name of ['select', 'eq', 'limit']) approvalQuery[name] = jest.fn(() => approvalQuery)
+    approvalQuery.then = jest.fn(resolve => Promise.resolve({ data: pending ? [{ id: ids.purchase }] : [], error: null }).then(resolve))
+    from.mockImplementation(table => {
+      if (table === 'procurement_event_approvals') return approvalQuery
+      const query: Record<string, jest.Mock> = {}
+      for (const name of ['select', 'eq', 'order']) query[name] = jest.fn(() => query)
+      const result = { data: table === 'procurement_tenders' ? { id: ids.purchase, version: 3 } : table === 'procurement_tender_portals' ? null : [], error: null }
+      query.maybeSingle = jest.fn(async () => result)
+      query.then = jest.fn(resolve => Promise.resolve(result).then(resolve))
+      return query
+    })
+    const result = await detail(request({}, 'GET'), context)
+    expect(result.status).toBe(200)
+    expect(await result.json()).toMatchObject({ publication_pending: pending })
+    expect(rpc).toHaveBeenCalledWith('list_procurement_receipt_activity', { p_site: ids.site, p_tender: ids.purchase })
+    for (const [column, value] of Object.entries({ site_id: ids.site, target_id: ids.purchase, target_version: 3, event: 'publication', status: 'pending' })) {
+      expect(approvalQuery.eq).toHaveBeenCalledWith(column, value)
+    }
+    expect(approvalQuery.limit).toHaveBeenCalledWith(1)
+  })
+  test('does not return a successful empty activity when receipt storage fails', async () => {
+    from.mockImplementation(table => {
+      const query: Record<string, jest.Mock> = {}
+      for (const name of ['select', 'eq', 'order', 'limit']) query[name] = jest.fn(() => query)
+      const result = { data: table === 'procurement_tenders' ? { id: ids.purchase, version: 3 } : [], error: null }
+      query.maybeSingle = jest.fn(async () => result)
+      query.then = jest.fn(resolve => Promise.resolve(result).then(resolve))
+      return query
+    })
+    const original = rpc.getMockImplementation()!
+    rpc.mockImplementation(name => name === 'list_procurement_receipt_activity'
+      ? { data: null, error: { code: '42883', message: 'private SQL detail' } } : original(name))
+    const result = await detail(request({}, 'GET'), context)
+    expect(result.status).toBe(503)
+    expect(await result.text()).not.toContain('private SQL detail')
   })
 })

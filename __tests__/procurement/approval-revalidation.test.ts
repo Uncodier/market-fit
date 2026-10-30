@@ -9,7 +9,10 @@ import { defaultPolicyDocument, approvalStageSchema, evaluateProcurementPolicy }
 jest.setTimeout(180000)
 ;(postgresAvailable ? describe : describe.skip)('approval revalidation forward migration', () => {
   const pg = isolatedPostgres()
-  const correction = () => pg.db(migration('20261028001000_procurement_approval_revalidation.sql'))
+  const correction = () => {
+    pg.db(migration('20261028001000_procurement_approval_revalidation.sql'))
+    pg.db(migration('20261029120000_procurement_deprecated_approvals.sql'))
+  }
   beforeAll(() => pg.start())
   afterAll(() => pg.stop())
 
