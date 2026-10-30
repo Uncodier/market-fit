@@ -4,31 +4,34 @@ import React, { useState, useEffect } from "react"
 import useSWR from "swr"
 import { listBuyerOrders, getUserSites } from "../actions"
 import { SearchInput } from "@/app/components/ui/search-input"
+import { AccountSearch, AccountSubheader } from "./AccountSearch"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Pagination } from "@/app/components/ui/pagination"
 import { EmptyCard } from "@/app/components/ui/empty-card"
-import { Skeleton } from "@/app/components/ui/skeleton"
+import { BuyerListSkeleton } from "./BuyerListSkeleton"
 import { LayoutGrid, Clock, CheckCircle2, ListOrdered, Search } from "@/app/components/ui/icons"
-import { format } from "date-fns"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { Button } from "@/app/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
-import { resolveItemImage } from "@/app/lib/image-utils"
-import { formatCurrency } from "@/app/lib/formatters"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useRouter } from "next/navigation"
 import { navigateToPurchaseOrder } from "@/lib/navigation/navigation-helpers"
-import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { StatusDot } from "@/app/components/documents/document-list"
+import { BuyerOrderListCard } from "./BuyerOrderListCard"
+import type { BuyerOrderDetail } from "../order-detail-display"
+import { demoAccountOrders, filterDemoAccountRows, demoAccountDetailPath } from '@/app/home/demo-commerce'
 
 export function BuyerOrdersView({
   scope = "personal",
   ownerSiteId,
-  basePath = "/buyer"
+  basePath = "/buyer",
+  navigation,
+  demo = false,
 }: {
   scope?: "personal" | "site"
   ownerSiteId?: string
   basePath?: string
+  navigation?: React.ReactNode
+  demo?: boolean
 }) {
   const { t } = useLocalization()
   const router = useRouter()
@@ -37,85 +40,47 @@ export function BuyerOrdersView({
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState('all')
   const [ownerFilter, setOwnerFilter] = useState('all')
-  const [sites, setSites] = useState<any[]>([])
+  const [sites, setSites] = useState<{ id: string; name: string }[]>([])
 
   useEffect(() => {
-    if (scope === 'personal') {
+    if (!demo && scope === 'personal') {
       getUserSites().then(res => {
         if (res.data) setSites(res.data)
       })
     }
-  }, [scope])
+  }, [scope, demo])
 
   const effectiveOwnerSiteId = scope === 'site' ? ownerSiteId : ownerFilter
 
-  const { data, error, isLoading, mutate } = useSWR(
-    ['buyer-orders', page, pageSize, searchQuery, statusFilter, effectiveOwnerSiteId, scope],
+  const live = useSWR(
+    demo ? null : ['buyer-orders', page, pageSize, searchQuery, statusFilter, effectiveOwnerSiteId, scope],
     async () => {
       const res = await listBuyerOrders({ page, pageSize, q: searchQuery, status: statusFilter, ownerSiteId: effectiveOwnerSiteId, scope })
       if (res.error) throw new Error(res.error)
       return res
-    }
+    },
+    { keepPreviousData: true }
   )
+  const data = demo ? filterDemoAccountRows(demoAccountOrders, { q: searchQuery, status: statusFilter, page, pageSize }) : live.data
+  const { mutate } = live
+  const error = !demo && live.error
+  const isLoading = !demo && live.isLoading
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value)
     setPage(1)
   }
-
-  const HeaderWrapper = scope === 'site' ? StickyHeader : ({ children }: any) => (
-    <div className="sticky top-[72px] z-30 bg-transparent h-[72px] flex items-center">
-      {children}
-    </div>
-  )
-
-  if (isLoading) {
-    return (
-      <div className="flex-1 flex flex-col min-h-full">
-        <HeaderWrapper>
-          <div className="flex items-center justify-between w-full">
-            <div className="flex items-center gap-4 flex-1 overflow-x-auto no-scrollbar">
-              <Skeleton className="h-8 w-[240px] rounded-full flex-shrink-0" />
-              <Skeleton className="h-9 w-48 rounded-md flex-shrink-0" />
-            </div>
-            
-            <div className="ml-auto flex items-center justify-end gap-3 flex-shrink-0">
-              <Skeleton className="h-9 w-[160px] rounded-md hidden sm:block" />
-            </div>
-          </div>
-        </HeaderWrapper>
-
-        <div className={`flex-1 overflow-auto ${scope === 'personal' ? 'py-4 md:py-6' : 'p-4 md:p-6 lg:p-8'}`}>
-          <div className="space-y-4">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="bg-card rounded-xl border p-5 flex flex-col md:flex-row gap-5">
-                <Skeleton className="h-20 w-20 rounded-md flex-shrink-0" />
-                <div className="flex-1 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Skeleton className="h-5 w-20 rounded-full" />
-                    <Skeleton className="h-4 w-32" />
-                  </div>
-                  <Skeleton className="h-5 w-48" />
-                  <Skeleton className="h-4 w-24" />
-                </div>
-                <div className="flex flex-col gap-2 md:w-56 mt-4 md:mt-0">
-                  <Skeleton className="h-10 w-full rounded-md" />
-                  <Skeleton className="h-10 w-full rounded-md" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    )
+  if (isLoading && !data) {
+    return <BuyerListSkeleton kind="orders" scope={scope} navigation={navigation} />
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-full">
+    <div className="flex-1 flex flex-col min-h-0 min-w-0">
       <Tabs value={statusFilter} onValueChange={(val) => { setStatusFilter(val); setPage(1); }} className="flex-1 flex flex-col w-full min-h-0">
-        <HeaderWrapper>
-          <div className="flex items-center justify-between w-full">
+        <AccountSubheader scope={scope}>
+          <div className="flex flex-wrap items-center justify-between gap-3 w-full">
               <div className="flex items-center gap-4 flex-1 overflow-x-auto no-scrollbar">
+                {navigation && <div className="shrink-0">{navigation}</div>}
                 <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full flex-shrink-0">
                   <TabsTrigger value="all" className="text-xs font-medium rounded-full flex items-center justify-center gap-1.5">
                     <LayoutGrid size={13} className="shrink-0 md:!hidden" />
@@ -129,24 +94,24 @@ export function BuyerOrdersView({
                     <CheckCircle2 size={13} className="shrink-0 md:!hidden" />
                     <span className="tab-label">{t('buyer.orders.filters.completed') || 'Completed'}</span>
                   </TabsTrigger>
+                  <TabsTrigger value="cancelled" className="text-xs font-medium rounded-full">{t('buyer.orders.status.cancelled')}</TabsTrigger>
                 </TabsList>
 
-                <div className="hidden md:block">
-                  <SearchInput
+                <div className={scope === 'site' ? 'hidden md:block' : 'contents'}>
+                  <AccountSearch
                     placeholder={t('buyer.orders.search') || "Search purchases..."} 
                     value={searchQuery}
                     onChange={handleSearchChange}
-                    className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
-                    alwaysExpanded={false}
+                    scope={scope}
                   />
                 </div>
               </div>
               
-              <div className="ml-auto flex items-center justify-end gap-3">
-                <div className="md:hidden">
+              <div className="ml-auto flex shrink-0 items-center justify-end gap-3">
+                {scope === 'site' && <div className="md:hidden">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <Button variant="ghost" size="icon" aria-label={t("buyer.orders.search")} className="h-8 w-8">
                         <Search className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
@@ -164,9 +129,9 @@ export function BuyerOrdersView({
                       </form>
                     </DropdownMenuContent>
                   </DropdownMenu>
-                </div>
+                </div>}
               {scope === 'personal' && sites.length > 1 && (
-                <Select value={ownerFilter} onValueChange={(val) => { setOwnerFilter(val); setPage(1); mutate(); }}>
+                <Select value={ownerFilter} onValueChange={(val) => { setOwnerFilter(val); setPage(1); }}>
                   <SelectTrigger className="w-auto min-w-[180px] h-9 whitespace-nowrap">
                     <SelectValue placeholder={t('buyer.orders.filters.allCollections') || "All Collections"} />
                   </SelectTrigger>
@@ -181,126 +146,33 @@ export function BuyerOrdersView({
               )}
             </div>
           </div>
-        </HeaderWrapper>
+        </AccountSubheader>
 
         <div className={`flex-1 overflow-auto ${scope === 'personal' ? 'py-4 md:py-6 px-4 md:px-0' : 'p-4 md:p-6 lg:p-8'}`}>
           <div className="w-full">
             {error ? (
-              <div className="text-center text-red-500 p-4 bg-card rounded-xl border shadow-sm">{t('buyer.orders.errorLoading') || 'Error loading orders'}</div>
+              <div role="alert" className="text-center p-6 bg-card rounded-xl border space-y-3">
+                <p className="text-muted-foreground">{t('buyer.orders.errorLoading')}</p>
+                <Button variant="outline" size="sm" onClick={() => void mutate()}>{t('buyer.orders.retry')}</Button>
+              </div>
             ) : (
               <>
-                <div className="space-y-6">
+                {data?.count !== undefined && <div className="flex flex-wrap items-center justify-between gap-3 mb-4 text-sm text-muted-foreground" aria-live="polite">
+                  <span>{t(data.count === 1 ? 'buyer.orders.resultCountOne' : 'buyer.orders.resultCount', { count: data.count })}</span>
+                  {(searchQuery || statusFilter !== 'all' || ownerFilter !== 'all') && <Button variant="ghost" size="sm" onClick={() => {
+                    setSearchQuery(''); setStatusFilter('all'); setOwnerFilter('all'); setPage(1)
+                  }}>{t('buyer.orders.resetFilters')}</Button>}
+                </div>}
+                <div className="space-y-4">
                   {data?.data && data.data.length > 0 ? (
-                    data.data.map((order: any) => {
-                      const status = (order.status || "").toLowerCase()
-                      const statusLabel = status
-                        ? (t(`status.${status}`) || status.replace(/_/g, " "))
-                        : (t("status.unknown") || "Unknown")
-                      const cancelled = status === "cancelled" || status === "canceled"
-                      return (
-                      <div key={order.id} className="overflow-hidden rounded-xl border border-border/70 bg-card">
-                        <div className="flex flex-col gap-2 border-b border-border/50 px-5 py-3 text-sm md:flex-row md:items-center md:justify-between">
-                          <div className="flex min-w-0 items-center gap-3">
-                            <StatusDot status={status || "pending"} label={statusLabel} />
-                            <span className="text-muted-foreground">
-                              {format(new Date(order.created_at), "MMM d, yyyy")}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-3 text-muted-foreground">
-                            <span className="truncate font-medium text-foreground">
-                              {order.site?.name || t("buyer.orders.unknown") || "Unknown"}
-                              {scope === "personal" && order.owner_site_id
-                                ? ` · ${t("buyer.orders.business") || "Business"}`
-                                : ""}
-                            </span>
-                            <span className="font-mono text-[11px] uppercase tracking-wider">
-                              {order.order_number}
-                            </span>
-                            <span
-                              className={`text-[15px] font-semibold tabular-nums tracking-tight text-foreground ${cancelled ? "text-muted-foreground line-through decoration-muted-foreground/60" : ""}`}
-                            >
-                              {formatCurrency(Number(order.total) || 0, order.currency || "USD")}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="divide-y">
-                          {order.sale_order_items && order.sale_order_items.length > 0 ? (
-                            order.sale_order_items.map((item: any) => (
-                              <div key={item.id} className="p-5 flex flex-col md:flex-row gap-5">
-                                <div className="h-20 w-20 bg-muted rounded-md flex-shrink-0 overflow-hidden border">
-                                  {resolveItemImage({ ...item.catalog_item, name: item.name }) ? (
-                                    <img src={resolveItemImage({ ...item.catalog_item, name: item.name })} alt={item.name} className="w-full h-full object-cover" />
-                                  ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                                      <LayoutGrid className="w-8 h-8 opacity-20" />
-                                    </div>
-                                  )}
-                                </div>
-                                
-                                <div className="flex-1 space-y-1.5">
-                                  <div className="font-medium text-foreground text-base leading-tight">
-                                    {item.name}
-                                  </div>
-                                  <div className="text-sm text-muted-foreground">
-                                    {item.quantity} {item.quantity === 1 ? (t('buyer.orders.unit') || 'unit') : (t('buyer.orders.units') || 'units')}
-                                    {status === 'completed' ? ` · ${t('buyer.orders.arrivedOn') || 'Arrived on'} ${format(new Date(order.created_at), 'MMM d')}` : ''}
-                                  </div>
-                                </div>
-
-                                <div className="flex flex-col gap-2 md:w-56 mt-4 md:mt-0">
-                                  <Button 
-                                    variant="outline"
-                                    onClick={() => navigateToPurchaseOrder({
-                                      orderId: order.id,
-                                      orderNumber: order.order_number,
-                                      basePath,
-                                      router
-                                    })}
-                                    className="w-full"
-                                  >
-                                    {t('buyer.orders.viewPurchase') || 'View Purchase'}
-                                  </Button>
-                                  <Button 
-                                    variant="secondary" 
-                                    className="w-full"
-                                    onClick={() => router.push(`/shop/${order.site?.id || ''}/${item.catalog_item_id || ''}`)}
-                                  >
-                                    {t('buyer.orders.buyAgain') || 'Buy Again'}
-                                  </Button>
-                                </div>
-                              </div>
-                            ))
-                          ) : (
-                            <div className="p-5 flex flex-col md:flex-row gap-5">
-                              <div className="flex-1">
-                                <div className="font-medium text-foreground">
-                                  {order.items?.length || 0} {order.items?.length === 1 ? (t('buyer.orders.item') || 'item') : (t('buyer.orders.items') || 'items')}
-                                </div>
-                                <div className="text-sm text-muted-foreground mt-1">
-                                  {formatCurrency(Number(order.total) || 0, order.currency || "USD")}
-                                </div>
-                              </div>
-                              <div className="flex flex-col gap-2 md:w-56">
-                                <Button 
-                                  variant="outline"
-                                  onClick={() => navigateToPurchaseOrder({
-                                    orderId: order.id,
-                                    orderNumber: order.order_number,
-                                    basePath,
-                                    router
-                                  })}
-                                  className="w-full"
-                                >
-                                  {t('buyer.orders.viewPurchase') || 'View Purchase'}
-                                </Button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      )
-                    })
+                    data.data.map((order: BuyerOrderDetail) => (
+                      <BuyerOrderListCard key={order.id} order={order} demo={demo}
+                        onView={() => demo ? router.push(demoAccountDetailPath('orders', order.id)) : navigateToPurchaseOrder({
+                          orderId: order.id, orderNumber: order.order_number || order.id, basePath, router,
+                        })}
+                        onBuyAgain={itemId => router.push(`/shop/${order.site!.id}${itemId ? `/${itemId}` : ''}`)}
+                      />
+                    ))
                   ) : (
                     <div className="bg-card rounded-xl border shadow-sm p-8 flex items-center justify-center min-h-[300px]">
                       <EmptyCard 

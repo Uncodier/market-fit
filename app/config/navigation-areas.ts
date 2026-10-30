@@ -97,12 +97,18 @@ export const NAVIGATION_AREAS: Record<
       { key: "visits", href: "/visits" },
       { key: "checkIn", href: "/pos/check-in" },
       { key: "inventory", href: "/inventory" },
+      { key: "inventoryMinimums", href: "/inventory/minimums" },
       { key: "printers", href: "/settings", settingsTab: "printers" },
     ],
   },
   buying: {
     categoryKey: "layout.category.buying",
     items: [
+      { key: "suppliers", href: "/suppliers" },
+      { key: "purchaseRequests", href: "/purchases/requests" },
+      { key: "procurementApprovals", href: "/purchases/procurement/approvals" },
+      { key: "procurementTenders", href: "/purchases/tenders" },
+      { key: "procurementRules", href: "/purchases/rules" },
       { key: "bills", href: "/bills" },
       { key: "transactions", href: "/transactions" },
       { key: "purchasesOrders", href: "/purchases/orders" },
@@ -155,6 +161,7 @@ export const NAVIGATION_AREAS: Record<
   settings: {
     categoryKey: "layout.category.settings",
     items: [
+      { key: "procurementSettings", href: "/settings/procurement" },
       { key: "settingsGeneral", href: "/settings", settingsTab: "general" },
       { key: "company", href: "/settings", settingsTab: "company" },
       { key: "marketplace", href: "/settings", settingsTab: "marketplace" },
@@ -245,7 +252,7 @@ export function isNavItemActive(
     return cur === item.dashboardTab
   }
   if (item.settingsTab) {
-    if (!pathname.startsWith("/settings")) return false
+    if (pathname !== "/settings") return false
     const cur = searchParams.get("tab")
     if (item.settingsTab === "general") {
       return !cur || cur === "general"
@@ -313,6 +320,13 @@ export function isConfigurationNavPath(
 }
 
 export function getNavItemTitle(item: AreaNavItem, t: (k: string) => string): string {
+  if (item.key === 'inventoryMinimums') return t('procurement.policy.page.minimums') === 'procurement.policy.page.minimums' ? 'Inventory minimums' : t('procurement.policy.page.minimums');
+  const procurementKeys: Record<string, string> = { procurementRules: 'rules', suppliers: 'suppliers', purchaseRequests: 'requests', procurementApprovals: 'approvals', procurementTenders: 'tenders', procurementSettings: 'procurement' }
+  if (procurementKeys[item.key]) {
+    const key = `procurement.navigation.${procurementKeys[item.key]}`
+    const translated = t(key)
+    if (translated !== key) return translated
+  }
   if (item.dashboardTab) {
     const key = `dashboard.tabs.${item.dashboardTab}`
     const translation = t(key)
@@ -321,11 +335,18 @@ export function getNavItemTitle(item: AreaNavItem, t: (k: string) => string): st
   const sidebarKey = `layout.sidebar.${item.key}`
   const sidebarTitle = t(sidebarKey)
   if (sidebarTitle !== sidebarKey) return sidebarTitle
+  if (item.key === "leads") return "Customers"
   if (item.key === "aiWorkspace") {
     const translation = t("layout.sidebar.agents")
     return translation === "layout.sidebar.agents" ? "AI Workspace" : translation
   }
   if (item.key === "salesHome") return "Home"
+  if (item.key === "procurementRules") return "Procurement Rules"
+  if (item.key === "suppliers") return "Suppliers"
+  if (item.key === "purchaseRequests") return "Purchase Requests"
+  if (item.key === "procurementApprovals") return "Approvals"
+  if (item.key === "procurementTenders") return "Tenders"
+  if (item.key === "procurementSettings") return "Procurement"
   if (item.key === "accountsReceivable") return "Accounts Receivable"
   if (item.settingsTab) {
     const tabKey = `settings.tabs.${item.settingsTab}`

@@ -1,0 +1,27 @@
+PRODUCT DESIGN FOUNDATIONS — DEMO PRACTICE WORKSHEET
+
+1. DISCOVER
+Who are you designing for?
+What are they trying to achieve?
+What have you observed, rather than assumed?
+
+2. DEFINE
+Write one problem statement:
+[Person] needs a way to [goal] because [observed obstacle].
+How will you know the experience has improved?
+
+3. EXPLORE
+Sketch three different solutions before choosing one.
+For each solution, name the assumption you need to validate.
+
+4. TEST
+Choose a realistic task for a participant.
+Observe without leading them toward the answer.
+Record what worked, what confused them, and what to change next.
+
+5. REFLECT
+What did you learn?
+What will you change?
+What is the smallest useful next experiment?
+
+This fictional demo resource is not a certificate or an accredited assignment.

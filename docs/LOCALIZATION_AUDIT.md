@@ -11,6 +11,10 @@ It combines:
 - Screen overlays in `app/context/locales/screens/`, registered explicitly in
   that directory's `index.ts`.
 - Commerce overlays in `app/context/locales/commerce/`, which retain precedence.
+- Procurement overlays in `app/context/locales/procurement/`, registered for all
+  five languages after the existing catalogs. See
+  [Procurement localization](PROCUREMENT_LOCALIZATION.md) for module scope and
+  validation that does not count English fallback.
 
 `rawLocaleMessages` exposes each language's own entries, without fallback.
 `localeMessages` retains the existing English fallback for incomplete languages.

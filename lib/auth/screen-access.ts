@@ -18,6 +18,8 @@ const ALWAYS_ALLOWED_PREFIXES = [
   "/notifications",
   "/navigation",
   "/buyer",
+  "/home",
+  "/tenders",
   "/shop",
   "/marketplace",
   "/cart",

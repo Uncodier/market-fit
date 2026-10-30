@@ -74,7 +74,7 @@ export async function getQuotation(id: string) {
       ),
       lead:leads(id, name, email, buyer_user_id),
       deal:deals!quotations_deal_id_fkey(id, name, amount),
-      site:sites(id, name, logo_url, url)
+      site:sites!site_id(id, name, logo_url, url)
     `)
     .eq('id', id)
     .single()
@@ -217,7 +217,7 @@ export async function sendQuotation(id: string) {
       *,
       items:quotation_items(*),
       lead:leads(id, name, email, buyer_user_id),
-      site:sites(id, name, logo_url, url)
+      site:sites!site_id(id, name, logo_url, url)
     `)
     .eq("id", id)
     .single()

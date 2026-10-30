@@ -9,6 +9,7 @@ import { FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessa
 import type { SiteFormValues } from "./form-schema"
 import { ICP_LIST_IDS_MAX, normalizeIcpLeadGenerationSettings } from "./icp-lead-generation-settings"
 import { useIcpMiningLists } from "./use-icp-mining-lists"
+import { SettingsSelectionLoading } from "./settings-loading"
 
 export function IcpMiningListSelector({ siteId }: { siteId?: string }) {
   const form = useFormContext<SiteFormValues>()
@@ -40,7 +41,7 @@ export function IcpMiningListSelector({ siteId }: { siteId?: string }) {
           ? "No lists selected — no mining work will run. Other lists will never be used as a fallback."
           : `${selected.length} lists selected. Only selected pending or running lists will be used; unavailable lists are ignored without fallback.`}</p>}
       {!siteId && <p className="text-sm text-muted-foreground">Select a site to view its mining lists.</p>}
-      {loading && <p role="status" className="text-sm text-muted-foreground">Loading pending mining lists...</p>}
+      {loading && <SettingsSelectionLoading label="Loading pending mining lists" variant="mining" />}
       {error && <div role="alert" className="text-sm text-destructive">{error} <Button type="button" variant="outline" size="sm" onClick={retry}>Retry lists</Button></div>}
       {loaded && <>
         {!lists.length && <p className="text-sm text-muted-foreground">This site has no pending or running mining lists.</p>}

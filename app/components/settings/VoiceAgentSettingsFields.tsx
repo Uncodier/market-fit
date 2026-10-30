@@ -1,6 +1,7 @@
 "use client"
 
 import { useId, useMemo } from "react"
+import { VoiceOptionsLoading } from "./settings-loading"
 import { Button } from "@/app/components/ui/button"
 import { Label } from "@/app/components/ui/label"
 import {
@@ -54,6 +55,8 @@ export function VoiceAgentSettingsFields({
     (voice) => voice.id === value.ttsVoiceId
   )
 
+  if (isLoading) return <VoiceOptionsLoading />
+
   return (
     <div className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-2">
@@ -74,7 +77,7 @@ export function VoiceAgentSettingsFields({
             }}
           >
             <SelectTrigger id={languageId} aria-label="Call language">
-              <SelectValue placeholder={isLoading ? "Loading languages..." : "Select language"} />
+              <SelectValue placeholder="Select language" />
             </SelectTrigger>
             <SelectContent>
               {languageOptions.map((language) => (
@@ -102,7 +105,7 @@ export function VoiceAgentSettingsFields({
             }}
           >
             <SelectTrigger id={voiceId} aria-label="Speaking voice">
-              <SelectValue placeholder={isLoading ? "Loading voices..." : "Select voice"} />
+              <SelectValue placeholder="Select voice" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value={DEFAULT_VOICE_VALUE}>

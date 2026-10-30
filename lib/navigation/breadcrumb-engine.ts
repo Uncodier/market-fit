@@ -1,3 +1,5 @@
+import { workspaceScreenRoot, workspaceScreenTitle } from './workspace-screen'
+
 export interface HistoryItem {
   path: string
   label: string
@@ -40,8 +42,21 @@ const SECTION_TITLES: Record<string, string> = {
   '/visits': 'Visits',
   '/applications/database': 'Database',
   '/applications/repositories': 'Code',
-  '/purchases': 'Purchases',
   '/buyer': 'Buyer',
+}
+
+/** Sidebar screens are roots even when their URLs contain grouping segments. */
+const NESTED_SECTION_TITLES: Record<string, string> = {
+  '/purchases/requests': 'Purchase Requests',
+  '/purchases/tenders': 'Tenders',
+  '/purchases/rules': 'Procurement Rules',
+  '/purchases/procurement/approvals': 'Approvals',
+  '/purchases/orders': 'Online purchases',
+  '/purchases/quotes': 'Quotations',
+  '/purchases/subscriptions': 'Subscriptions',
+  '/purchases/library': 'Library',
+  '/settings/procurement': 'Procurement Settings',
+  '/inventory/minimums': 'Inventory minimums',
 }
 
 export function getScreenKey(fullPath: string): string {
@@ -59,6 +74,11 @@ export function getScreenKey(fullPath: string): string {
 
 export function getSection(fullPath: string): string {
   const pathname = fullPath.split('?')[0]
+  const screenRoot = workspaceScreenRoot(pathname)
+  if (screenRoot) return screenRoot
+  const nestedSection = Object.keys(NESTED_SECTION_TITLES).find(section =>
+    pathname === section || pathname.startsWith(`${section}/`))
+  if (nestedSection) return nestedSection
   const segments = pathname.split('/').filter(Boolean)
   if (segments.length === 0) return '/'
   if (segments[0] === 'applications' && segments[1] === 'database') {
@@ -88,7 +108,7 @@ function sectionRootItem(item: HistoryItem, timestamp?: number): HistoryItem {
   const section = getSection(item.path)
   const label = !hasId(item.path) && item.label.trim()
     ? item.label
-    : (SECTION_TITLES[section] || item.label)
+    : (workspaceScreenTitle(section) || NESTED_SECTION_TITLES[section] || SECTION_TITLES[section] || item.label)
   return {
     path: section,
     label,
@@ -98,6 +118,14 @@ function sectionRootItem(item: HistoryItem, timestamp?: number): HistoryItem {
 
 export function enforceInvariants(items: HistoryItem[]): HistoryItem[] {
   if (items.length === 0) return items
+
+  const last = items[items.length - 1]
+  const section = getSection(last.path)
+  if (!hasId(last.path)) return [last]
+  // Repair persisted trails created when Purchases was treated as a real screen.
+  if (section.startsWith('/purchases/')) {
+    items = items.filter(entry => entry.path.split('?')[0] !== '/purchases')
+  }
 
   const result: HistoryItem[] = [items[0]]
   for (let i = 1; i < items.length; i++) {

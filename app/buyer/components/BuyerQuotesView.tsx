@@ -3,20 +3,23 @@
 import React, { useState } from "react"
 import useSWR from "swr"
 import { listBuyerQuotes } from "../actions"
-import { SearchInput } from "@/app/components/ui/search-input"
+import { AccountSearch, AccountSubheader } from "./AccountSearch"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { LayoutGrid, CheckCircle2, Send } from "@/app/components/ui/icons"
 import { useRouter } from "next/navigation"
 import { useLocalization } from "@/app/context/LocalizationContext"
-import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { QuotesTable, QuotesTableSkeleton } from "@/app/components/documents/quotes-table"
+import { QuotesTable } from "@/app/components/documents/quotes-table"
+import { BuyerListContentSkeleton } from "./BuyerListSkeleton"
+import { demoAccountQuotes, filterDemoAccountRows, demoAccountDetailPath } from '@/app/home/demo-commerce'
 
 export function BuyerQuotesView({
   scope = "personal",
   basePath = "/buyer",
+  demo = false,
 }: {
   scope?: "personal" | "site"
   basePath?: string
+  demo?: boolean
 }) {
   const { t } = useLocalization()
   const [page, setPage] = useState(1)
@@ -25,32 +28,30 @@ export function BuyerQuotesView({
   const [statusFilter, setStatusFilter] = useState("all")
   const router = useRouter()
 
-  const { data, error, isLoading } = useSWR(
-    ["buyer-quotes", page, pageSize, searchQuery, statusFilter, scope],
+  const live = useSWR(
+    demo ? null : ["buyer-quotes", page, pageSize, searchQuery, statusFilter, scope],
     async () => {
       const res = await listBuyerQuotes({ page, pageSize, status: statusFilter, scope })
       if (res.error) throw new Error(res.error)
       return res
     }
   )
+  const data = demo ? filterDemoAccountRows(demoAccountQuotes, { q: searchQuery, status: statusFilter, page, pageSize }) : live.data
+  const error = !demo && live.error
+  const isLoading = !demo && live.isLoading
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value)
     setPage(1)
   }
-
-  const HeaderWrapper = scope === "site" ? StickyHeader : ({ children }: any) => (
-    <div className="sticky top-[72px] z-30 bg-transparent h-[72px] flex items-center">
-      {children}
-    </div>
-  )
-
-  const rows = (data?.data || []).map((quote: any) => ({
+  const rows = (data?.data || []).filter((quote: { id: string; site?: { name?: string }; status?: string }) =>
+    `${quote.id} ${quote.site?.name ?? ''} ${quote.status ?? ''}`.toLowerCase().includes(searchQuery.toLowerCase())
+  ).map((quote: any) => ({
     id: quote.id,
     entityName: quote.site?.name || t("buyer.quotes.table.unknown") || "Unknown",
     status: quote.status || "",
     validUntil: quote.valid_until || null,
-    total: Number(quote.total) || 0,
+    total: quote.total == null ? null : Number(quote.total),
     currency: quote.currency || "USD",
     createdAt: quote.created_at,
   }))
@@ -58,7 +59,7 @@ export function BuyerQuotesView({
   return (
     <div className="flex-1 flex flex-col min-h-full">
       <Tabs value={statusFilter} onValueChange={(val) => { setStatusFilter(val); setPage(1); }} className="flex-1 flex flex-col w-full min-h-0">
-        <HeaderWrapper>
+        <AccountSubheader scope={scope}>
           <div className="flex items-center justify-between w-full">
             <div className="flex items-center gap-4 flex-1 overflow-x-auto no-scrollbar">
               <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full flex-shrink-0">
@@ -76,20 +77,19 @@ export function BuyerQuotesView({
                 </TabsTrigger>
               </TabsList>
 
-              <SearchInput
+              <AccountSearch
                 placeholder={t("buyer.quotes.search") || "Search quotations..."}
                 value={searchQuery}
                 onChange={handleSearchChange}
-                className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
-                alwaysExpanded={false}
+                scope={scope}
               />
             </div>
           </div>
-        </HeaderWrapper>
+        </AccountSubheader>
 
         <div className={`flex-1 overflow-auto ${scope === "personal" ? "py-4 md:py-6" : "p-4 md:p-6 lg:p-8"}`}>
           {isLoading ? (
-            <QuotesTableSkeleton />
+            <BuyerListContentSkeleton kind="quotes" />
           ) : error ? (
             <div className="text-center text-red-500 p-4">
               {t("buyer.quotes.errorLoading") || "Error loading quotations"}
@@ -108,7 +108,7 @@ export function BuyerQuotesView({
                   : (t("buyer.quotes.empty.descAll") || "You don't have any quotations from merchants.")
               }
               onPageChange={setPage}
-              onRowClick={(id) => router.push(`${basePath}/quotes/${id}`)}
+              onRowClick={(id) => router.push(demo ? demoAccountDetailPath('quotes', id) : `${basePath}/quotes/${id}`)}
             />
           )}
         </div>

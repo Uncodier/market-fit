@@ -3,20 +3,20 @@
 import React, { useState, useEffect } from "react"
 import useSWR from "swr"
 import { listBuyerLibrary, getUserSites } from "../actions"
-import { SearchInput } from "@/app/components/ui/search-input"
+import { AccountSearch, AccountSubheader } from "./AccountSearch"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Pagination } from "@/app/components/ui/pagination"
 import { EmptyCard } from "@/app/components/ui/empty-card"
-import { Skeleton } from "@/app/components/ui/skeleton"
+import { BuyerListContentSkeleton } from "./BuyerListSkeleton"
 import { LayoutGrid, Archive, Video, Ticket, File as FileIcon, CheckCircle2 } from "@/app/components/ui/icons"
 import { format } from "date-fns"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { resolveItemImage } from "@/app/lib/image-utils"
 import { Button } from "@/app/components/ui/button"
 import { useLocalization } from "@/app/context/LocalizationContext"
-import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { useRouter, useSearchParams } from "next/navigation"
 import { getEntitlementExperiencePath } from "@/app/buyer/experience-routes"
+import { demoAccountLibrary, filterDemoAccountRows, demoAccountDetailPath } from '@/app/home/demo-commerce'
 
 const SUBTYPE_ICONS: Record<string, any> = {
   course: <Video size={16} className="text-blue-500" />,
@@ -29,9 +29,11 @@ const SUBTYPE_ICONS: Record<string, any> = {
 export function BuyerLibraryView({
   scope = "personal",
   ownerSiteId,
+  demo = false,
 }: {
   scope?: "personal" | "site"
   ownerSiteId?: string
+  demo?: boolean
 }) {
   const { t } = useLocalization()
   const router = useRouter()
@@ -44,39 +46,41 @@ export function BuyerLibraryView({
   const [sites, setSites] = useState<any[]>([])
 
   useEffect(() => {
-    if (scope === 'personal') {
+    if (!demo && scope === 'personal') {
       getUserSites().then(res => {
         if (res.data) setSites(res.data)
       })
     }
-  }, [scope])
+  }, [scope, demo])
 
   const effectiveOwnerSiteId = scope === 'site' ? ownerSiteId : ownerFilter
 
-  const { data, error, isLoading, mutate } = useSWR(
-    ['buyer-library', page, pageSize, searchQuery, subtypeFilter, effectiveOwnerSiteId, scope],
+  const live = useSWR(
+    demo ? null : ['buyer-library', page, pageSize, searchQuery, subtypeFilter, effectiveOwnerSiteId, scope],
     async () => {
       const res = await listBuyerLibrary({ page, pageSize, subtype: subtypeFilter, ownerSiteId: effectiveOwnerSiteId, scope })
       if (res.error) throw new Error(res.error)
       return res
     }
   )
+  const data = demo ? filterDemoAccountRows(demoAccountLibrary.filter(row => subtypeFilter === 'all' || row.catalog_item.digital_subtype === subtypeFilter), { q: searchQuery, page, pageSize }) : live.data
+  const { mutate } = live
+  const error = !demo && live.error
+  const isLoading = !demo && live.isLoading
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value)
     setPage(1)
   }
-
-  const HeaderWrapper = scope === 'site' ? StickyHeader : ({ children }: any) => (
-    <div className="sticky top-[72px] z-30 bg-transparent h-[72px] flex items-center">
-      {children}
-    </div>
+  const visibleItems = (data?.data ?? []).filter((item: { catalog_item?: { name?: string; description?: string }; site?: { name?: string } }) =>
+    `${item.catalog_item?.name ?? ''} ${item.catalog_item?.description ?? ''} ${item.site?.name ?? ''}`
+      .toLowerCase().includes(searchQuery.toLowerCase())
   )
 
   return (
     <div className="flex-1 flex flex-col min-h-full">
       <Tabs value={subtypeFilter} onValueChange={(val) => { setSubtypeFilter(val); setPage(1); }} className="flex-1 flex flex-col w-full min-h-0">
-        <HeaderWrapper>
+        <AccountSubheader scope={scope}>
           <div className="flex items-center justify-between w-full">
             <div className="flex items-center gap-4 flex-1 overflow-x-auto no-scrollbar">
               <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full flex-shrink-0">
@@ -102,12 +106,11 @@ export function BuyerLibraryView({
                 </TabsTrigger>
               </TabsList>
 
-              <SearchInput
+              <AccountSearch
                 placeholder={t('buyer.library.search') || "Search library..."} 
                 value={searchQuery}
                 onChange={handleSearchChange}
-                className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
-                alwaysExpanded={false}
+                scope={scope}
               />
             </div>
             
@@ -128,17 +131,14 @@ export function BuyerLibraryView({
               )}
             </div>
           </div>
-        </HeaderWrapper>
+        </AccountSubheader>
 
         <div className={`flex-1 overflow-auto ${scope === 'personal' ? 'py-4 md:py-6' : 'p-4 md:p-6 lg:p-8'}`}>
           {isLoading ? (
-            <div className="space-y-4">
-              <Skeleton className="h-20 w-full" />
-              <Skeleton className="h-20 w-full" />
-            </div>
+            <BuyerListContentSkeleton kind="library" />
           ) : error ? (
             <div className="text-center text-red-500 p-4">{t('buyer.library.errorLoading') || 'Error loading assets'}</div>
-          ) : !data?.data || data.data.length === 0 ? (
+          ) : visibleItems.length === 0 ? (
             <EmptyCard 
               icon={<Archive size={40} className="text-muted-foreground" />}
               title={t('buyer.library.empty.title') || "Your assets are empty"}
@@ -152,7 +152,7 @@ export function BuyerLibraryView({
             />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {data.data.map((entitlement: any) => (
+              {visibleItems.map((entitlement: any) => (
                 <div key={entitlement.id} className="bg-card rounded-xl border shadow-sm overflow-hidden flex flex-col group hover:shadow-md transition-all">
                   <div className="aspect-video bg-muted relative">
                     <img src={resolveItemImage(entitlement.catalog_item || { name: 'Unknown' })} alt={entitlement.catalog_item?.name || 'Asset'} className="w-full h-full object-cover" />
@@ -184,6 +184,10 @@ export function BuyerLibraryView({
                           variant="secondary" 
                           className="rounded-full font-medium"
                           onClick={() => {
+                            if (demo) {
+                              router.push(demoAccountDetailPath('library', entitlement.id))
+                              return
+                            }
                             const experiencePath = getEntitlementExperiencePath(entitlement)
                             if (experiencePath) {
                               router.push(experiencePath)
@@ -220,7 +224,7 @@ export function BuyerLibraryView({
                 </div>
               ))}
               
-              {data.count !== undefined && data.count > pageSize && (
+              {data?.count && Math.ceil(data.count / pageSize) > 1 && (
                 <div className="col-span-full pt-6 border-t mt-2">
                   <Pagination 
                     currentPage={page} 

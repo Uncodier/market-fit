@@ -1,22 +1,17 @@
 "use client"
 
 import React from "react"
-import { BuyerQuoteDetailView } from "@/app/buyer/components/BuyerQuoteDetailView"
+import { ProcurementQuotationDetail } from '../quotation-detail'
+import { QuotationDetailSkeleton } from '../quotation-detail-skeleton'
 import { useSite } from "@/app/context/SiteContext"
 
 export default function CompanyQuotationDetail({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = React.use(params)
   const { currentSite } = useSite()
   
-  if (!currentSite) return null
+  if (!currentSite) return <QuotationDetailSkeleton />
   
   return (
-    <BuyerQuoteDetailView 
-      quoteId={resolvedParams.id}
-      backHref="/purchases/quotes"
-      returnUrl="/purchases/orders"
-      defaultOwnerSiteId={currentSite.id}
-      lockDestination={true}
-    />
+    <ProcurementQuotationDetail id={resolvedParams.id} siteId={currentSite.id} />
   )
 }

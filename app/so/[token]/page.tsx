@@ -7,8 +7,7 @@ import { PublicDocumentViewSkeleton } from "@/app/documents/components/PublicDoc
 import { resolveSalePaymentMethod } from "@/app/documents/document-meta"
 import { mapDocumentLineItems } from "@/app/documents/map-document-items"
 import { documentT } from "@/app/lib/i18n/document-t"
-import { Button } from "@/app/components/ui/button"
-import { CreditCard, Loader2 } from "@/app/components/ui/icons"
+import { PublicDocumentPaymentAction } from "@/app/documents/components/PublicDocumentPaymentAction"
 import { toast } from "sonner"
 
 export default function PublicOrderPage(props: {
@@ -123,29 +122,13 @@ export default function PublicOrderPage(props: {
   return (
     <PublicDocumentView {...view}>
       {canPay && (
-        <div className="bg-white dark:bg-[#0a0a0a] p-6 sm:p-8 rounded-lg shadow-sm border border-black/5 dark:border-white/10 print:hidden flex flex-col sm:flex-row items-center justify-between gap-6">
-          <div>
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-1">
-              {paymentTitle}
-            </h3>
-            <p className="text-base text-gray-500 dark:text-gray-400">
-              {paymentDesc}
-            </p>
-          </div>
-          <Button
-            size="lg"
-            onClick={handleCheckout}
-            disabled={isCheckingOut}
-            className="w-full sm:w-auto h-12 px-8 text-base shadow-sm"
-          >
-            {isCheckingOut ? (
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-            ) : (
-              <CreditCard className="mr-2 h-5 w-5" />
-            )}
-            {paymentBtn}
-          </Button>
-        </div>
+        <PublicDocumentPaymentAction
+          title={paymentTitle}
+          description={paymentDesc}
+          buttonLabel={paymentBtn}
+          processing={isCheckingOut}
+          onCheckout={handleCheckout}
+        />
       )}
     </PublicDocumentView>
   )

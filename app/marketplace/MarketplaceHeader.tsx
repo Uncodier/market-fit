@@ -11,8 +11,6 @@ import { CommerceShellHeader, shellClasses } from "@/app/components/commerce/Com
 import {
   MobileShellSearchExpanded,
   MobileShellSearchIconButton,
-  MobileShellSearchTrigger,
-  useMobileShellSearchCollapsed,
 } from "@/app/components/commerce/MobileShellSearch"
 import { useCommerceSignInHref } from "@/app/components/commerce/use-commerce-sign-in-href"
 import {
@@ -65,7 +63,6 @@ export function MarketplaceHeader({
   session,
   signInLabel,
 }: Props) {
-  const searchCollapsed = useMobileShellSearchCollapsed(false)
   const mobileSearchTriggerRef = useRef<HTMLButtonElement>(null)
   const restoreMobileSearchFocusRef = useRef(false)
   const { href: signInHref, onClick: onSignInClick } = useCommerceSignInHref()
@@ -103,10 +100,11 @@ export function MarketplaceHeader({
             />
           ) : undefined
         }
-        hideCenterOnMobile={searchCollapsed}
+        hideCenterOnMobile
         brand={
           <Link
             href="/marketplace"
+            data-toolbar-font
             className="shrink-0 flex items-center hover:opacity-80 transition-opacity"
           >
             <img
@@ -115,22 +113,12 @@ export function MarketplaceHeader({
               className="h-6 w-6 object-contain dark:brightness-0 dark:invert md:hidden"
             />
             <span className="hidden md:inline text-xl font-black tracking-tight text-primary">
-              MARKETPLACE
+              marketplace
             </span>
           </Link>
         }
         center={
           <>
-            {!searchCollapsed ? (
-              <div className="md:hidden flex w-full min-w-0">
-                <MobileShellSearchTrigger
-                  ref={mobileSearchTriggerRef}
-                  value={searchQuery}
-                  label={searchLabel}
-                  onOpen={openMobileSearch}
-                />
-              </div>
-            ) : null}
             <div className="hidden md:block absolute left-1/2 top-1/2 z-[15] w-2/5 -translate-x-1/2 -translate-y-1/2">
               <CommerceSearchInput
                 placeholder={searchPlaceholder}
@@ -143,14 +131,12 @@ export function MarketplaceHeader({
         }
         actions={
           <div className="flex items-center justify-end gap-1 md:gap-3 min-w-0">
-            {searchCollapsed ? (
-              <MobileShellSearchIconButton
+            <MobileShellSearchIconButton
                 ref={mobileSearchTriggerRef}
                 value={searchQuery}
                 label={searchLabel}
                 onOpen={openMobileSearch}
-              />
-            ) : null}
+            />
             <div
               data-commerce-shell-actions-core
               className="flex items-center justify-end gap-4 min-w-0"
@@ -184,6 +170,12 @@ export function MarketplaceHeader({
                 className={`relative ${shellClasses.iconButton}`}
                 iconClassName="h-4 w-4"
               />
+
+              {session && (
+                <Link href="/home/orders" className={`hidden lg:inline-flex ${shellClasses.navItem} ${shellClasses.navItemInactive}`}>
+                  {t("commerce.myPurchases")}
+                </Link>
+              )}
 
               {session ? (
                 <Link

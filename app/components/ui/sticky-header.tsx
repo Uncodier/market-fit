@@ -56,7 +56,7 @@ export function StickyHeader({
     <div
       data-toolbar-font
       className={cn(
-        "flex items-center p-0",
+        "flex shrink-0 items-center p-0",
         "bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80",
         "border-b dark:border-white/5 border-black/5 z-[150]",
         useFixedPosition ? "fixed transition-all duration-300 ease-in-out" : "sticky",

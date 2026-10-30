@@ -20,6 +20,7 @@ import {
 } from "@/app/components/ui/dialog";
 import { createClient } from "@/lib/supabase/client";
 import { useLocalization } from "@/app/context/LocalizationContext";
+import { SettingsSecretsLoadingRows } from "./settings-loading";
 
 export function SecretsSection({ instanceId }: { instanceId?: string }) {
   const { currentSite } = useSite();
@@ -308,6 +309,7 @@ export function SecretsSection({ instanceId }: { instanceId?: string }) {
       </div>
 
       <SectionCard>
+        {loading && <div role="status" aria-label="Loading secrets" className="sr-only">Loading secrets</div>}
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
             <thead className="bg-muted/50 text-muted-foreground">
@@ -320,14 +322,7 @@ export function SecretsSection({ instanceId }: { instanceId?: string }) {
             </thead>
             <tbody className="divide-y divide-border">
               {loading ? (
-                <tr>
-                  <td
-                    colSpan={4}
-                    className="px-4 py-8 text-center text-muted-foreground"
-                  >
-                    Loading...
-                  </td>
-                </tr>
+                <SettingsSecretsLoadingRows />
               ) : secrets.length === 0 ? (
                 <tr>
                   <td

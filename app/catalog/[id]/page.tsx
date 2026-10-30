@@ -11,18 +11,16 @@ import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
-import { Switch } from "@/app/components/ui/switch"
 import {
   SectionCard,
   SectionCardHeader,
   SectionCardTitle,
   SectionCardDescription,
   SectionCardContent,
-  SectionCardFooter,
 } from "@/app/components/ui/section-card"
 import { ActionFooter } from "@/app/components/ui/card-footer"
 import { ResponsiveTabsList, TabItem } from "@/app/components/ui/responsive-tabs-list"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
+import { Tabs, TabsContent } from "@/app/components/ui/tabs"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import {
   AlertDialog,
@@ -35,7 +33,7 @@ import {
   AlertDialogTitle,
 } from "@/app/components/ui/alert-dialog"
 import { toast } from "sonner"
-import { ChevronLeft, Save, Trash2, Activity, RotateCcw } from "@/app/components/ui/icons"
+import { Trash2, Activity, RotateCcw } from "@/app/components/ui/icons"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { Textarea } from "@/app/components/ui/textarea"
 import { ImageUpload } from "@/app/components/ui/image-upload"
@@ -53,6 +51,8 @@ import { MarketplaceTab } from "../components/MarketplaceTab"
 import { ChannelsTab } from "../components/ChannelsTab"
 import { ModifiersTab } from "../components/ModifiersTab"
 import { StorefrontDisplayCard } from "../components/StorefrontDisplayCard"
+import { ProcurementTab } from "../procurement/ProcurementTab"
+import { CatalogItemAvailabilityCard } from "../components/CatalogItemAvailabilityCard"
 import { ProductInventoryCard } from "../components/ProductInventoryCard"
 
 export default function CatalogItemDetail(props: { params: Promise<{ id: string }> }) {
@@ -104,12 +104,9 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
     load()
   }, [params.id, currentSite])
 
-  useEffect(() => {
-    if (categoryValue?.mode === "existing" && categoryValue.label === "Unknown Category") {
-      const match = categories.find(c => c.id === categoryValue.id)
-      if (match) setCategoryValue({ ...categoryValue, label: match.name })
-    }
-  }, [categories, categoryValue])
+  const displayCategoryValue = categoryValue?.mode === "existing" && categoryValue.label === "Unknown Category"
+    ? { ...categoryValue, label: categories.find(category => category.id === categoryValue.id)?.name || categoryValue.label }
+    : categoryValue
 
   const handleSave = async () => {
     if (!currentSite) return
@@ -119,8 +116,10 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
       const { id: resolvedCategoryId, error: catError } = await resolveRelationId("catalog_category", categoryValue, currentSite.id)
       if (catError) throw new Error(`Category error: ${catError}`)
 
+      const catalogFields = { ...formData } as Partial<CatalogItem> & { procurement_enabled?: boolean }
+      delete catalogFields.procurement_enabled
       const { data, error } = await upsertCatalogItem({
-        ...formData,
+        ...catalogFields,
         category_id: resolvedCategoryId || undefined,
         site_id: currentSite.id,
         id: item?.id
@@ -137,8 +136,8 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
           setFormData(data)
         }
       }
-    } catch (err: any) {
-      toast.error(err.message || "Failed to save")
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to save")
     } finally {
       setSaving(false)
     }
@@ -196,6 +195,7 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
     { value: "delivery", label: t('catalog.tabs.delivery') || 'Delivery' },
     { value: "marketplace", label: t('catalog.tabs.marketplace') || 'Marketplace' },
     { value: "channels", label: t('catalog.tabs.channels') || 'Channels' },
+    { value: "procurement", label: "Procurement" },
     { value: "inventory", label: t('catalog.tabs.inventory') || 'Inventory' },
     { value: "sales", label: t('catalog.tabs.sales') || 'Sales' },
     ...(formData.is_recurring ? [{ value: "plan_items", label: t('catalog.tabs.planItems') || 'Plan Items' }] : []),
@@ -247,7 +247,7 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
                   <Label>{t('catalog.form.type') || 'Type'}</Label>
                   <Select 
                     value={formData.kind || 'product'} 
-                    onValueChange={(val: any) => setFormData({...formData, kind: val, digital_subtype: val !== 'digital_asset' ? null : formData.digital_subtype})}
+                    onValueChange={(val: NonNullable<CatalogItem['kind']>) => setFormData({...formData, kind: val, digital_subtype: val !== 'digital_asset' ? null : formData.digital_subtype})}
                   >
                     <SelectTrigger><SelectValue/></SelectTrigger>
                     <SelectContent>
@@ -263,7 +263,7 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
                     <Label>{t('catalog.form.subtype') || 'Subtype'}</Label>
                     <Select 
                       value={formData.digital_subtype || 'file'} 
-                      onValueChange={(val: any) => setFormData({...formData, digital_subtype: val})}
+                      onValueChange={(val: NonNullable<CatalogItem["digital_subtype"]>) => setFormData({...formData, digital_subtype: val})}
                     >
                       <SelectTrigger><SelectValue/></SelectTrigger>
                       <SelectContent>
@@ -280,7 +280,7 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
                 <div className="space-y-2 col-span-2 md:col-span-1">
                   <Label>{t('catalog.form.category') || 'Category'}</Label>
                   <RelationSelect
-                    value={categoryValue}
+                    value={displayCategoryValue}
                     onValueChange={setCategoryValue}
                     options={categories.map(c => ({ id: c.id, label: c.name }))}
                     placeholder="Select or create category..." />
@@ -318,60 +318,7 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
                 handleSave={handleSave}
                 saving={saving} />
 
-              <SectionCard>
-                <SectionCardHeader>
-                  <SectionCardTitle>{t('catalog.form.availabilityInventory') || 'Availability & Inventory'}</SectionCardTitle>
-                </SectionCardHeader>
-                <SectionCardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>{t('catalog.form.availabilityMode') || 'Availability Mode'}</Label>
-                    <Select 
-                      value={formData.availability_mode || 'always'} 
-                      onValueChange={(val: any) => setFormData({...formData, availability_mode: val})}
-                    >
-                      <SelectTrigger><SelectValue/></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="always">{t('catalog.form.availability.always') || 'Always Available'}</SelectItem>
-                        <SelectItem value="inventory">{t('catalog.form.availability.inventory') || 'Based on Inventory'}</SelectItem>
-                        <SelectItem value="manual">{t('catalog.form.availability.manual') || 'Manual Status'}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {formData.availability_mode === 'manual' && (
-                    <div className="space-y-2 pt-2 border-t">
-                      <Label>{t('catalog.form.manualStatus') || 'Manual Status'}</Label>
-                      <Select 
-                        value={formData.availability_status || 'available'} 
-                        onValueChange={(val: any) => setFormData({...formData, availability_status: val})}
-                      >
-                        <SelectTrigger><SelectValue/></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="available">{t('catalog.status.available') || 'Available'}</SelectItem>
-                          <SelectItem value="unavailable">{t('catalog.status.unavailable') || 'Unavailable'}</SelectItem>
-                          <SelectItem value="sold_out">{t('catalog.status.soldOut') || 'Sold Out'}</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-
-                  <div className="space-y-4 pt-2 border-t">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label htmlFor="track_inventory" className="text-base cursor-pointer">{t('catalog.form.trackInventory') || 'Track inventory levels'}</Label>
-                        <p className="text-sm text-muted-foreground">{t('catalog.form.trackInventoryHint') || 'Keep counts per location'}</p>
-                      </div>
-                      <Switch 
-                        id="track_inventory" 
-                        checked={formData.track_inventory || false}
-                        onCheckedChange={(checked) => setFormData({...formData, track_inventory: checked as boolean})} />
-                    </div>
-                  </div>
-                </SectionCardContent>
-                <ActionFooter>
-                  <Button variant="outline" onClick={handleSave} disabled={saving} size="sm">{saving ? (t('common.saving') || 'Saving...') : (t('common.saveChanges') || 'Save Changes')}</Button>
-                </ActionFooter>
-              </SectionCard>
+              <CatalogItemAvailabilityCard formData={formData} setFormData={setFormData} handleSave={handleSave} saving={saving} />
 
               <StorefrontDisplayCard
                 formData={formData}
@@ -497,6 +444,10 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
               </div>
             </TabsContent>
           )}
+
+          <TabsContent value="procurement" className="m-0 border-0 p-4 md:p-6 w-full focus-visible:outline-none">
+            <ProcurementTab itemId={item?.id} siteId={currentSite?.id} />
+          </TabsContent>
 
           <TabsContent value="inventory" className="m-0 border-0 p-4 md:p-6 w-full focus-visible:outline-none">
             <div className="mx-auto max-w-[800px]">

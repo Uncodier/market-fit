@@ -3,9 +3,10 @@ import { Skeleton } from '@/app/components/ui/skeleton'
 
 export default function ChatLoading() {
   return (
-    <div className="flex h-full relative overflow-visible w-full bg-background flex-row">
+    <div role="status" aria-label="Loading conversations" aria-busy="true" className="flex h-full relative overflow-hidden w-full min-w-0 bg-background flex-row">
+      <span className="sr-only">Loading conversations</span>
       {/* Sidebar skeleton */}
-      <div className="h-full transition-all duration-300 ease-in-out z-[55] bg-background flex-shrink-0 border-r dark:border-white/5 border-black/5 absolute md:relative left-0 hidden md:block md:w-[319px] md:min-w-[319px]" style={{ overflow: 'hidden' }}>
+      <div aria-hidden="true" className="h-full transition-all duration-300 ease-in-out z-[55] bg-background flex-shrink-0 border-r dark:border-white/5 border-black/5 absolute md:relative left-0 hidden md:block md:w-[319px] md:min-w-[319px]" style={{ overflow: 'hidden' }}>
         <div className="flex flex-col h-full w-full bg-transparent overflow-hidden">
           {/* Top bar with search input skeleton */}
           <div className="flex items-center justify-center h-[71px] max-h-[71px] min-h-[71px] border-b transition-colors duration-300 flex-shrink-0 bg-background w-full">
@@ -58,11 +59,11 @@ export default function ChatLoading() {
       </div>
       
       {/* Main chat content skeleton */}
-      <div className="flex flex-col h-full transition-all duration-300 ease-in-out flex-1 min-w-0 min-h-0 relative bg-background">
+      <div aria-hidden="true" className="flex flex-col h-full transition-all duration-300 ease-in-out flex-1 min-w-0 min-h-0 relative bg-background">
         
         {/* Header skeleton (fixed) */}
         <div className="w-full z-[50]">
-          <div className="border-b dark:border-white/5 border-black/5 flex-none h-[71px] flex items-center z-[50] bg-background/80 py-2 fixed top-[var(--topbar-height,64px)] right-0 w-full md:w-[calc(100%-256px-319px)] max-md:w-full pl-4 pr-4">
+          <div className="border-b dark:border-white/5 border-black/5 flex-none h-[71px] flex items-center z-[50] bg-background/80 py-2 absolute top-0 right-0 w-full pl-4 pr-4">
             
             {/* Toggle area skeleton */}
             <div className="hidden md:flex shrink-0 items-center gap-2 h-full">
@@ -131,7 +132,7 @@ export default function ChatLoading() {
         </div>
         
         {/* Input area skeleton (fixed bottom) */}
-        <div className="fixed bottom-0 flex-none chat-input-container transition-all duration-300 ease-in-out bg-background/95 z-10 w-full md:w-[calc(100%-256px-319px)] right-0">
+        <div className="absolute bottom-0 flex-none chat-input-container transition-all duration-300 ease-in-out bg-background/95 z-10 w-full right-0">
           <div className="w-full">
             <div className="w-full mx-auto relative pb-[20px] px-4 md:px-8 lg:px-12 xl:px-24 pt-0">
               <div className="relative w-full">

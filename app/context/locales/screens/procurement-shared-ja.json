@@ -1,0 +1,21 @@
+{
+  "layout.sidebar.leads": "顧客",
+  "layout.nav.leads.title": "顧客",
+  "layout.nav.leads.help": "顧客を管理・追跡",
+  "procurement.errors.submissionCatalogMapping": "この入札に関連付けられたカタログ商品は利用できないか、通貨が異なります。購入者に関連付けられた商品の修正を依頼してください。見積もりは送信されていません。",
+  "datePicker.selectDate": "日付を選択",
+  "datePicker.selectDateTime": "日時を選択",
+  "datePicker.dateAtTime": "{{date}} {{time}}",
+  "datePicker.selectDateRange": "期間を選択",
+  "datePicker.selectEndDate": "終了日を選択",
+  "datePicker.previousMonth": "前の月",
+  "datePicker.nextMonth": "次の月",
+  "datePicker.selectTime": "時刻を選択",
+  "datePicker.selectedTime": "選択した時刻",
+  "datePicker.hours": "時",
+  "datePicker.minutes": "分",
+  "datePicker.am": "午前",
+  "datePicker.pm": "午後",
+  "datePicker.to": "から",
+  "datePicker.customRange": "カスタム期間"
+}

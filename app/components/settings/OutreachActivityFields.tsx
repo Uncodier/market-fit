@@ -11,6 +11,7 @@ import { getOutreachChannelLabel } from "./outreach-accounts"
 import type { SiteFormValues } from "./form-schema"
 import type { OutreachSegment } from "./outreach-segments"
 import { ActivityStartTimeField } from "./ActivityStartTimeField"
+import { SettingsSelectionLoading } from "./settings-loading"
 
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
 type Props = {
@@ -71,7 +72,7 @@ export function OutreachActivityFields({ activityKey, accounts, segments, loadin
           </FormItem>
         )} />
         <p className="text-sm text-muted-foreground">No segments selected means no leads are targeted unless All segments is explicitly enabled.</p>
-        {loading && <p role="status" className="text-sm">Loading this site&apos;s segments…</p>}
+        {loading && <SettingsSelectionLoading label="Loading this site's segments" />}
         {error && <div role="alert" className="text-sm text-destructive">{error} <Button type="button" variant="ghost" size="sm" onClick={retry}>Retry</Button></div>}
         {!loading && !error && !segments.length && <p className="text-sm text-muted-foreground">This site has no segments yet.</p>}
         <div className="max-h-56 overflow-y-auto space-y-2">

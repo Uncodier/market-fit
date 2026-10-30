@@ -22,6 +22,7 @@ const ALLOWED_PUBLIC_PATHS = [
   '/book',
   '/shop',
   '/marketplace',
+  '/tenders',
   '/cart',
 ]
 
@@ -355,7 +356,7 @@ export async function middleware(request: NextRequest) {
   const isAuthPath = pathname === '/auth' || pathname === '/auth/'
   const isPublicPage =
     pathname === '/' ||
-    ALLOWED_PUBLIC_PATHS.some(path => pathname.startsWith(path)) ||
+    ALLOWED_PUBLIC_PATHS.some(path => pathname === path || pathname.startsWith(`${path}/`)) ||
     isPublicDocumentSharePath(pathname)
 
   const sessionResponse = nextWithAlignedServerActionHost(request)
@@ -387,7 +388,7 @@ export async function middleware(request: NextRequest) {
       if (!isPrefetch) {
         const url = request.nextUrl.clone()
         url.pathname = '/auth'
-        url.search = `?returnTo=${encodeURIComponent(pathname)}`
+        url.search = `?returnTo=${encodeURIComponent(pathname + request.nextUrl.search)}`
         return copyResponseCookies(sessionResponse, NextResponse.redirect(url))
       }
     }

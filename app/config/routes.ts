@@ -52,6 +52,7 @@ export const routes: RouteConfig[] = [
   { path: "/reservations", hasLayout: true },
   { path: "/visits", hasLayout: true },
   { path: "/purchases", hasLayout: true },
+  { path: "/suppliers", hasLayout: true },
   { path: "/bills", hasLayout: true },
   { path: "/transactions", hasLayout: true },
   { path: "/finance", hasLayout: true },
@@ -61,6 +62,8 @@ export const routes: RouteConfig[] = [
 
   { path: "/create-site", hasLayout: false },
   { path: "/buyer", hasLayout: false },
+  { path: "/home", hasLayout: false },
+  { path: "/tenders", hasLayout: false },
   
   // Routes without layout (default)
   { path: "/navigation", hasLayout: false },
@@ -91,7 +94,7 @@ export function routeProvidesOwnMainLandmark(rawPathname: string): boolean {
   const pathname = normalizePathname(rawPathname)
   const segments = pathname.split("/").filter(Boolean)
 
-  if (segments[0] === "buyer") {
+  if (segments[0] === "buyer" || segments[0] === "home") {
     return true
   }
 
@@ -133,6 +136,7 @@ export function shouldUseWorkspaceProviders(rawPathname: string): boolean {
   return (
     pathname.startsWith("/navigation") ||
     pathname.startsWith("/buyer") ||
+    pathStartsWithRoute(pathname, "/home") ||
     pathname.startsWith("/create-site") ||
     pathname.startsWith("/projects") ||
     pathname.startsWith("/demo") ||

@@ -3,13 +3,16 @@
 import React, { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import {
-  getQuotation,
   updateQuotationStatus,
   removeQuotationItem,
   deleteQuotation,
   sendQuotation,
 } from "../actions"
 import { ensureQuotationPublicAccessToken } from "../public-actions"
+import { getWorkspaceQuotation } from "../workspace-read-actions"
+import { useSite } from "@/app/context/SiteContext"
+import { useAuthContext } from "@/app/components/auth/auth-provider"
+import { TenderQuotationDetail } from "../components/TenderQuotationDetail"
 import { buildPublicQuotePath } from "../public-token"
 import { authorizeDynamicQuote, retryDynamicQuoteItem } from "../dynamic-quote-actions"
 import { updateQuotationItem, updateQuotationNotes } from "../actions"
@@ -40,6 +43,12 @@ import {
 
 export default function QuotationDetail({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = React.use(params)
+  const { currentSite } = useSite()
+  const { user } = useAuthContext()
+  return currentSite && user ? <ScopedQuotationDetail key={`${user.id}:${currentSite.id}:${resolvedParams.id}`} siteId={currentSite.id} id={resolvedParams.id} /> : <div className="p-8"><Skeleton className="h-64 w-full" /></div>
+}
+
+function ScopedQuotationDetail({ siteId, id }: { siteId: string; id: string }) {
   const router = useRouter()
   const { t } = useLocalization()
 
@@ -53,7 +62,7 @@ export default function QuotationDetail({ params }: { params: Promise<{ id: stri
 
   const loadQuotation = async () => {
     setLoading(true)
-    const res = await getQuotation(resolvedParams.id)
+    const res = await getWorkspaceQuotation(siteId, id)
     if (res.error) {
       toast.error(res.error)
       router.push("/quotations")
@@ -65,7 +74,7 @@ export default function QuotationDetail({ params }: { params: Promise<{ id: stri
 
   useEffect(() => {
     loadQuotation()
-  }, [resolvedParams.id])
+  }, [siteId, id])
 
   useEffect(() => {
     if (quotation) {
@@ -292,6 +301,7 @@ export default function QuotationDetail({ params }: { params: Promise<{ id: stri
   }
 
   if (!quotation) return null
+  if (quotation.purpose === "procurement") return <TenderQuotationDetail quotation={quotation} />
 
   return (
     <div className="flex-1 flex flex-col min-h-[calc(100vh-var(--topbar-height,64px))] bg-muted/30">

@@ -21,7 +21,7 @@ export type BuyerQuoteDto = {
   created_at: string
   items: Array<{
     id: string
-    catalog_item_id: string
+    catalog_item_id: string | null
     name: string
     quantity: number
     unit_price: number

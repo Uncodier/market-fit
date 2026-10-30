@@ -18,7 +18,7 @@ export type QuotationForCheckout = {
   total?: number | null
   currency?: string | null
   items?: Array<{
-    catalog_item_id: string
+    catalog_item_id: string | null
     name: string
     quantity: number
     unit_price: number
@@ -77,6 +77,9 @@ export function assertQuotationCheckoutable(
   if (opts.requireItems !== false && (!quote.items || quote.items.length === 0)) {
     return { ok: false, error: "Quotation has no items" }
   }
+  if (quote.items?.some(item => !item.catalog_item_id)) {
+    return { ok: false, error: "Quotation items must be linked to catalog products before checkout" }
+  }
   return { ok: true }
 }
 
@@ -103,13 +106,16 @@ export function assertQuotationRejectable(
 }
 
 export function quotationItemsToCheckoutLines(
-  items: Array<{ catalog_item_id: string; quantity: number; unit_price: number }>
+  items: Array<{ catalog_item_id: string | null; quantity: number; unit_price: number }>
 ): QuoteCheckoutLine[] {
-  return items.map((item) => ({
-    catalogItemId: item.catalog_item_id,
-    quantity: item.quantity,
-    unitPriceOverride: Number(item.unit_price),
-  }))
+  return items.map((item) => {
+    if (!item.catalog_item_id) throw new Error("Quotation items must be linked to catalog products before checkout")
+    return {
+      catalogItemId: item.catalog_item_id,
+      quantity: item.quantity,
+      unitPriceOverride: Number(item.unit_price),
+    }
+  })
 }
 
 /** Map quotation lines into slim cart items for buy-now checkout UI. */
@@ -117,6 +123,7 @@ export function mapQuotationToCartItems(quotation: QuotationForCheckout): Record
   const currency = quotation.currency || "USD"
   const site = (quotation as any).site
   return (quotation.items || []).map((item) => {
+    if (!item.catalog_item_id) throw new Error("Quotation items must be linked to catalog products before checkout")
     const catalog = item.catalog_item || {}
     return {
       id: item.catalog_item_id,

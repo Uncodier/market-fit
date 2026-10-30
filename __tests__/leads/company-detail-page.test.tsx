@@ -30,6 +30,7 @@ jest.mock("@/app/leads/components/LeadIdentityHeader", () => ({
 jest.mock("@/app/leads/components/JourneyView", () => ({ JourneyView: () => null }))
 jest.mock("@/app/leads/components/ConversationsView", () => ({ ConversationsView: () => null }))
 jest.mock("@/app/leads/components/SalesView", () => ({ SalesView: () => null }))
+jest.mock("@/app/leads/components/CommerceView", () => ({ CommerceView: () => null }))
 jest.mock("@/app/leads/components/DigitalBehaviorView", () => ({ DigitalBehaviorView: () => null }))
 jest.mock("@/app/leads/components/DealsView", () => ({ DealsView: () => null }))
 jest.mock("@/app/leads/components/LeadDetailSkeleton", () => ({ LeadDetailSkeleton: () => null }))

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import "./globals.css"
+import "./styles/private-typography.css"
 import "./safari-fix.css"
 import "./styles/dark-theme.css"
 import "./styles/chat-input-surface.css"

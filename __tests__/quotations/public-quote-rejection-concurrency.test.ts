@@ -9,10 +9,11 @@ jest.mock("@/lib/supabase/server", () => ({
 const token = "0123456789abcdefghijklmn"
 
 function chain(result: unknown) {
-  const builder: any = {}
+  const builder: Record<string, jest.Mock> = {}
   builder.select = jest.fn(() => builder)
   builder.update = jest.fn(() => builder)
   builder.eq = jest.fn(() => builder)
+  builder.not = jest.fn(() => builder)
   builder.is = jest.fn(() => builder)
   builder.or = jest.fn(() => builder)
   builder.single = jest.fn().mockResolvedValue(result)
@@ -48,6 +49,7 @@ describe("public quote rejection concurrency", () => {
     const result = await rejectQuotationByPublicToken(token)
 
     expect(result).toEqual({ success: true })
+    expect(readQuery.not).toHaveBeenCalledWith("site_id", "is", null)
     expect(updateQuery.eq).toHaveBeenCalledWith("public_access_token", token)
     expect(updateQuery.eq).toHaveBeenCalledWith("status", "sent")
     expect(updateQuery.is).toHaveBeenCalledWith("checkout_claim_id", null)

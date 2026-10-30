@@ -57,9 +57,9 @@ export function DatePickerContent({
   }[mode]
 
   return (
-    <div className="flex flex-col sm:flex-row max-h-[80vh] sm:max-h-none overflow-y-auto sm:overflow-visible">
+    <div className="flex min-w-0 flex-col md:flex-row">
       <div
-        className="p-4 w-full sm:w-[280px] sm:min-w-[280px] flex-shrink-0"
+        className="p-4 w-full min-w-0 md:w-[280px] md:min-w-[280px] flex-shrink-0"
         tabIndex={-1}
         onKeyDown={(event) => {
           if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
@@ -139,7 +139,7 @@ export function DatePickerContent({
       </div>
       {showEvents && events.length > 0 && (
         <div className={cn(
-          "border-t sm:border-t-0 sm:border-l p-4 w-full sm:w-[168px] flex flex-col gap-2 overflow-hidden flex-shrink-0",
+          "border-t md:border-t-0 md:border-l p-4 w-full min-w-0 md:w-[168px] flex flex-col gap-2 overflow-hidden flex-shrink-0",
           mode !== 'range' && "max-h-[300px] overflow-y-auto",
         )}>
           {mode !== 'range' && <div className="text-xs font-medium text-muted-foreground mb-3">{t(groupTitle)}</div>}
@@ -201,7 +201,7 @@ export function DatePickerContent({
         </div>
       )}
       {showTimePicker && (
-        <div className="border-t sm:border-t-0 sm:border-l p-4 w-full sm:w-[230px] flex flex-col flex-shrink-0">
+        <div className="border-t md:border-t-0 md:border-l p-4 w-full min-w-0 md:w-[230px] flex flex-col flex-shrink-0">
           <div className="text-xs font-medium text-muted-foreground mb-3">{t("datePicker.selectTime")}</div>
           <TimeSelect
             value={`${selectedTime.hours.toString().padStart(2, "0")}:${selectedTime.minutes.toString().padStart(2, "0")}`}

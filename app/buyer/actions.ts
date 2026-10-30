@@ -48,7 +48,7 @@ export async function getBuyerPortalSummary({
 
   let ordersQ = supabaseService.from('sale_orders').select('created_at', { count: 'exact' })
   let subsQ = supabaseService.from('subscriptions').select('created_at', { count: 'exact' })
-  let quotesQ = supabaseService.from('quotations').select('created_at', { count: 'exact' })
+  let quotesQ = supabaseService.from('quotations').select('created_at', { count: 'exact' }).not('site_id', 'is', null)
   let libQ = supabaseService.from('entitlements').select('granted_at, catalog_item:catalog_items(digital_subtype)').eq('status', 'active')
   let recentQ = supabaseService.from('sale_orders').select('id, order_number, total, status, created_at, site:site_id(name, logo_url)').order('created_at', { ascending: false }).limit(3)
   let reservationsQ = supabaseService.from('reservations')
@@ -260,7 +260,7 @@ export async function listBuyerOrders({
 
   let query = supabaseService
     .from('sale_orders')
-    .select('*, site:site_id(id, name, logo_url), sale_order_items(*, catalog_item:catalog_item_id(id, name, description, image_url, kind, digital_subtype, currency))', { count: 'exact' })
+    .select('*, site:site_id(id, name, logo_url), sales(status, amount_due), sale_order_items(*, catalog_item:catalog_item_id(id, name, description, image_url, kind, digital_subtype, currency))', { count: 'exact' })
 
   if (scope === 'site' && ownerSiteId) {
     query = query.eq('owner_site_id', ownerSiteId)
@@ -308,6 +308,8 @@ export async function listBuyerQuotes({
   page?: number
   pageSize?: number
 }) {
+  // A personal recipient does not establish ownership by any of their workspaces.
+  if (scope !== 'personal') return { error: "Use site-scoped procurement quotations for workspace purchases" }
   const supabase = await createClient()
   
   const { data: { session } } = await supabase.auth.getSession()
@@ -316,6 +318,7 @@ export async function listBuyerQuotes({
   let query = supabase
     .from('quotations')
     .select('*, site:site_id(id, name)', { count: 'exact' })
+    .not('site_id', 'is', null)
     .eq('buyer_user_id', session.user.id)
 
   if (status && status !== 'all') {

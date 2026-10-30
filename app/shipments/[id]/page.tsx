@@ -4,11 +4,7 @@ import React, { useState, useEffect } from "react"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useSite } from "@/app/context/SiteContext"
 import { updateShipmentStatus, setShipmentLineItems } from "../actions"
-import type { ShipmentWithRelations } from "../types"
-import { ShipmentGpsTracker } from "../components/ShipmentGpsTracker"
-import { LocationMapCard } from "../components/LocationMapCard"
 import { TrackingCard } from "../components/TrackingCard"
-import { AssigneeCard } from "../components/AssigneeCard"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Button } from "@/app/components/ui/button"
 import {
@@ -21,18 +17,20 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/ta
 import { Checkbox } from "@/app/components/ui/checkbox"
 import { ActionFooter } from "@/app/components/ui/card-footer"
 import { EmptyCard } from "@/app/components/ui/empty-card"
-import { Badge } from "@/app/components/ui/badge"
 import { toast } from "sonner"
-import { Save, MapPin, User, Archive, CheckCircle2, ListOrdered } from "@/app/components/ui/icons"
+import { Save, MapPin, ListOrdered } from "@/app/components/ui/icons"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { format } from "date-fns"
-import Link from "next/link"
 import { navigateToOrder } from "@/lib/navigation/navigation-helpers"
 import { useRouter } from "next/navigation"
 import { marketplaceMetadata } from "@/lib/marketplace/presentation"
 import { MarketplaceCourierCard } from "../components/MarketplaceCourierCard"
 import { useShipmentDetailData } from "../hooks/use-shipment-detail-data"
 import { useOptionalPermissions } from "@/app/context/PermissionContext"
+
+import { ShipmentStatusBar } from "../components/ShipmentStatusBar"
+import { ShipmentIdentityHeader } from "../components/ShipmentIdentityHeader"
+import { ShipmentAboutPanel } from "../components/ShipmentAboutPanel"
 
 export default function ShipmentDetail(props: { params: Promise<{ id: string }> }) {
   const params = React.use(props.params)
@@ -61,16 +59,20 @@ export default function ShipmentDetail(props: { params: Promise<{ id: string }> 
 
   const handleStatusChange = async (newStatus: string) => {
     if (!currentSite || !shipment || !canEdit) return
+    if (updatingStatus) return
     setUpdatingStatus(true)
-    const { data, error } = await updateShipmentStatus(currentSite.id, shipment.id, newStatus)
-
-    if (error) {
-      toast.error(error)
-    } else if (data) {
-      toast.success(`Status updated to ${newStatus}`)
-      setShipment((prev) => (prev ? { ...prev, status: newStatus as ShipmentWithRelations["status"] } : null))
+    try {
+      const { data, error } = await updateShipmentStatus(currentSite.id, shipment.id, newStatus)
+      if (error) toast.error(error)
+      else if (data) {
+        toast.success(`Status updated to ${newStatus}`)
+        await refresh()
+      }
+    } catch {
+      toast.error("Failed to update shipment status")
+    } finally {
+      setUpdatingStatus(false)
     }
-    setUpdatingStatus(false)
   }
 
   const handleSaveLineItems = async () => {
@@ -93,7 +95,7 @@ export default function ShipmentDetail(props: { params: Promise<{ id: string }> 
     if (shipment) {
       const event = new CustomEvent("breadcrumb:update", {
         detail: {
-          title: `Order ${shipment.sale_orders?.order_number || "Shipment"}`,
+          title: shipment.tracking_number || `Shipment ${shipment.sale_orders?.order_number || shipment.id}`,
           parent: {
             title: t("layout.sidebar.shipments") || "Shipments",
             path: "/shipments",
@@ -117,53 +119,41 @@ export default function ShipmentDetail(props: { params: Promise<{ id: string }> 
 
   const address = (shipment.shipping_address || {}) as Record<string, string | undefined>
 
+  const openOrder = () => {
+    if (shipment.sale_order_id) navigateToOrder({
+      orderId: shipment.sale_order_id,
+      orderNumber: shipment.sale_orders?.order_number,
+      router,
+    })
+  }
+
   return (
-    <div className="flex-1 flex flex-col min-h-[calc(100vh-var(--topbar-height,64px))] bg-muted/30">
-      <Tabs defaultValue="details" className="flex-1 flex flex-col">
+    <div className="flex-1 p-0 min-w-0">
+      <Tabs defaultValue="details">
         <StickyHeader>
-          <div className="w-full pt-0 flex justify-between items-center">
-            <TabsList>
-              <TabsTrigger value="details">Details</TabsTrigger>
-              <TabsTrigger value="timeline">Timeline</TabsTrigger>
-            </TabsList>
-            <div className="flex items-center gap-2">
-              {!external && <ShipmentGpsTracker
-                shipmentId={shipment.id}
-                assignedTo={shipment.assigned_to}
-                status={shipment.status}
-              />}
-              {canEdit && shipment.status === "pending" && (
-                <Button onClick={() => handleStatusChange("preparing")} disabled={updatingStatus}>
-                  Start Preparing
-                </Button>
-              )}
-              {canEdit && shipment.status === "preparing" && (
-                <Button onClick={() => handleStatusChange("shipped")} disabled={updatingStatus}>
-                  Mark as Shipped
-                </Button>
-              )}
-              {canEdit && shipment.status === "shipped" && (
-                <Button onClick={() => handleStatusChange("in_transit")} disabled={updatingStatus}>
-                  In Transit
-                </Button>
-              )}
-              {canEdit && shipment.status === "in_transit" && (
-                <Button onClick={() => handleStatusChange("delivered")} disabled={updatingStatus}>
-                  Mark Delivered
-                </Button>
-              )}
+          <div className="pt-0 flex-1 w-full min-w-0">
+            <div className="flex items-center justify-between w-full gap-4">
+              <TabsList className="shrink-0">
+                <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="timeline">Timeline</TabsTrigger>
+              </TabsList>
+              <div className="flex items-center overflow-x-auto min-w-0">
+                <ShipmentStatusBar currentStatus={shipment.status} onStatusChange={(status) => void handleStatusChange(status)} disabled={!canEdit || updatingStatus} />
+              </div>
             </div>
           </div>
         </StickyHeader>
 
-        <div className="flex-1 p-4 md:p-6 overflow-auto">
-          <TabsContent value="details" className="m-0 border-0 p-0">
-            <div className="mx-auto max-w-[1000px] grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="md:col-span-2 space-y-6">
+        <div className="px-4 lg:px-8 py-5">
+          <ShipmentIdentityHeader shipment={shipment} external={external} onOpenOrder={openOrder} />
+          <div className="mt-5 flex flex-col lg:flex-row border-t border-border/50">
+            <div className="w-full lg:min-w-0 lg:flex-1 pt-5 lg:pr-8">
+              <TabsContent value="details" className="m-0 border-0 p-0 space-y-5">
                 {external ? <MarketplaceCourierCard shipment={shipment} onRefresh={refresh} /> : <TrackingCard
                   shipmentId={shipment.id}
                   initialCarrier={shipment.carrier || ""}
                   initialTracking={shipment.tracking_number || ""}
+                  readOnly={!canEdit}
                   onUpdate={(carrier, tracking) =>
                     setShipment((prev) =>
                       prev ? { ...prev, carrier, tracking_number: tracking } : null
@@ -261,162 +251,59 @@ export default function ShipmentDetail(props: { params: Promise<{ id: string }> 
                   </SectionCardContent>
                 </SectionCard>
 
-                {canEdit && (shipment.status === "pending" || shipment.status === "preparing") && (
-                  <div className="rounded-lg border-destructive/50 border bg-destructive/5 p-6">
-                    <div className="flex flex-col gap-4">
-                      <div>
-                        <h2 className="text-lg font-semibold text-destructive mb-1">Danger Zone</h2>
-                        <p className="text-sm text-muted-foreground">
-                          Actions in this section cannot be undone
-                        </p>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="font-medium mb-1">Cancel Shipment</h3>
-                          <p className="text-sm text-muted-foreground">
-                            Cancel this shipment. This will stop the fulfillment process.
-                          </p>
+              </TabsContent>
+              <TabsContent value="timeline" className="m-0 border-0 p-0">
+                <div className="w-full">
+                  <SectionCard>
+                    <SectionCardHeader className="py-4 px-6 border-b">
+                      <SectionCardTitle className="text-lg font-medium">Timeline</SectionCardTitle>
+                    </SectionCardHeader>
+                    <SectionCardContent className="p-0">
+                      <div className="divide-y text-sm">
+                        <div className="p-4 px-6 flex justify-between items-center bg-muted/30">
+                          <span className="text-muted-foreground">Created</span>
+                          <span className="font-medium">
+                            {format(new Date(shipment.created_at), "MMM d, yyyy h:mm a")}
+                          </span>
                         </div>
-                        <Button
-                          variant="destructive"
-                          type="button"
-                          onClick={() => handleStatusChange("cancelled")}
-                          disabled={updatingStatus}
-                        >
-                          <CheckCircle2 className="h-4 w-4 mr-2" />
-                          Cancel Shipment
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="space-y-6">
-                {!external && <AssigneeCard
-                  shipmentId={shipment.id}
-                  initialAssignee={shipment.assigned_to}
-                  onUpdate={(assigned_to, name) =>
-                    setShipment((prev) =>
-                      prev
-                        ? {
-                            ...prev,
-                            assigned_to,
-                            assignee_profile: name ? { name } : null,
-                          }
-                        : null
-                    )
-                  }
-                />}
-
-                {!external && <LocationMapCard
-                  shipmentId={shipment.id}
-                  lastLat={shipment.last_lat ?? null}
-                  lastLng={shipment.last_lng ?? null}
-                  lastLocatedAt={shipment.last_located_at ?? null}
-                />}
-
-                <SectionCard>
-                  <SectionCardContent className="p-4 space-y-4">
-                    <div>
-                      <div className="text-xs text-muted-foreground font-medium mb-1">CUSTOMER</div>
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-muted-foreground" />
-                        <Link
-                          href={`/leads/${shipment.lead_id}`}
-                          className="font-medium hover:underline text-blue-600"
-                        >
-                          {shipment.leads?.name || "View Customer"}
-                        </Link>
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="text-xs text-muted-foreground font-medium mb-1">
-                        ORIGIN LOCATION
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4 text-muted-foreground" />
-                        <span>{shipment.locations?.name || "Unknown"}</span>
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="text-xs text-muted-foreground font-medium mb-1">ORDER</div>
-                      <div className="flex items-center gap-2">
-                        <Archive className="h-4 w-4 text-muted-foreground" />
-                        {shipment.sale_order_id ? (
-                          <button
-                            onClick={() => navigateToOrder({ orderId: shipment.sale_order_id!, orderNumber: shipment.sale_orders?.order_number, router })}
-                            className="font-medium hover:underline text-blue-600 text-left"
-                          >
-                            {shipment.sale_orders?.order_number}
-                          </button>
-                        ) : (
-                          <span>{shipment.sale_orders?.order_number}</span>
+                        {shipment.shipped_at && (
+                          <div className="p-4 px-6 flex justify-between items-center">
+                            <span className="text-muted-foreground">Shipped</span>
+                            <span className="font-medium">
+                              {format(new Date(shipment.shipped_at), "MMM d, yyyy h:mm a")}
+                            </span>
+                          </div>
+                        )}
+                        {shipment.delivered_at && (
+                          <div className="p-4 px-6 flex justify-between items-center bg-muted/30">
+                            <span className="text-muted-foreground">Delivered</span>
+                            <span className="font-medium">
+                              {format(new Date(shipment.delivered_at), "MMM d, yyyy h:mm a")}
+                            </span>
+                          </div>
+                        )}
+                        {shipment.last_located_at && (
+                          <div className="p-4 px-6 flex justify-between items-center">
+                            <span className="text-muted-foreground">Last GPS ping</span>
+                            <span className="font-medium">
+                              {format(new Date(shipment.last_located_at), "MMM d, yyyy h:mm a")}
+                            </span>
+                          </div>
                         )}
                       </div>
-                    </div>
-
-                    {shipment.stock_decremented && (
-                      <div className="pt-3 border-t">
-                        <Badge
-                          variant="outline"
-                          className="bg-green-50 text-green-700 border-green-200"
-                        >
-                          <CheckCircle2 className="h-3 w-3 mr-1" /> Stock Decremented
-                        </Badge>
-                      </div>
-                    )}
-                  </SectionCardContent>
-                </SectionCard>
+                    </SectionCardContent>
+                  </SectionCard>
+                </div>
+              </TabsContent>
+            </div>
+            <aside className="w-full lg:w-[340px] xl:w-[380px] shrink-0 pt-5 lg:pl-8 lg:border-l border-border/50">
+              <div className="lg:sticky lg:top-[calc(var(--topbar-height,64px)+71px+16px)] lg:max-h-[calc(100vh-var(--topbar-height,64px)-96px)] lg:overflow-y-auto">
+                <ShipmentAboutPanel shipment={shipment} external={external} canEdit={canEdit} onOpenOrder={openOrder} onAssign={(assigned_to, name) =>
+                  setShipment((prev) => prev ? { ...prev, assigned_to, assignee_profile: name ? { name } : null } : null)
+                } />
               </div>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="timeline" className="m-0 border-0 p-0 h-full">
-            <div className="mx-auto max-w-[800px] mt-6">
-              <SectionCard>
-                <SectionCardHeader className="py-4 px-6 border-b">
-                  <SectionCardTitle className="text-lg font-medium">Timeline</SectionCardTitle>
-                </SectionCardHeader>
-                <SectionCardContent className="p-0">
-                  <div className="divide-y text-sm">
-                    <div className="p-4 px-6 flex justify-between items-center bg-muted/30">
-                      <span className="text-muted-foreground">Created</span>
-                      <span className="font-medium">
-                        {format(new Date(shipment.created_at), "MMM d, yyyy h:mm a")}
-                      </span>
-                    </div>
-                    {shipment.shipped_at && (
-                      <div className="p-4 px-6 flex justify-between items-center">
-                        <span className="text-muted-foreground">Shipped</span>
-                        <span className="font-medium">
-                          {format(new Date(shipment.shipped_at), "MMM d, yyyy h:mm a")}
-                        </span>
-                      </div>
-                    )}
-                    {shipment.delivered_at && (
-                      <div className="p-4 px-6 flex justify-between items-center bg-muted/30">
-                        <span className="text-muted-foreground">Delivered</span>
-                        <span className="font-medium">
-                          {format(new Date(shipment.delivered_at), "MMM d, yyyy h:mm a")}
-                        </span>
-                      </div>
-                    )}
-                    {shipment.last_located_at && (
-                      <div className="p-4 px-6 flex justify-between items-center">
-                        <span className="text-muted-foreground">Last GPS ping</span>
-                        <span className="font-medium">
-                          {format(new Date(shipment.last_located_at), "MMM d, yyyy h:mm a")}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </SectionCardContent>
-              </SectionCard>
-            </div>
-          </TabsContent>
+            </aside>
+          </div>
         </div>
       </Tabs>
     </div>

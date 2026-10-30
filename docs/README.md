@@ -5,6 +5,10 @@ Use the guides below before relying on older implementation notes.
 
 ## Start here
 
+- [14035 integration readiness](MERGE_14035_READINESS.md) — route inventory,
+  commercial proxy checks, merge preparation and outstanding release gates.
+
+- [Licensing](LICENSING.md) — source-available procurement scope, permitted internal use, commercial licensing requirements and base-license limitations.
 - [Module guide](MODULES.md) — current module purposes, capabilities, practical usage,
   cross-module workflows, and implementation limits.
 - [Workspace and public commerce guide](MODULES_COMMERCE_AND_ACCOUNT.md) — account tools,
@@ -33,6 +37,15 @@ Use the guides below before relying on older implementation notes.
 
 ## Integration guides
 - [Time zone selection](TIMEZONE_SELECTION.md)
+
+- [Unified account search](HOME_SEARCH.md)
+
+- [Course learning experience](COURSE_LEARNING_EXPERIENCE.md) — shared purchased/demo course player, catalog metadata, progression and media safety.
+
+- [Procurement demo walkthrough](PROCUREMENT_DEMO.md) — local fictional fixtures, navigable buyer screens, safety limits and validation.
+- [Tender quotation review](PROCUREMENT_QUOTATION_DETAIL.md) — formal buyer quotation details, supplier information, shared certificates and the single-target read migration prerequisite.
+
+- [Open public tender participation](PROCUREMENT_OPEN_PARTICIPATION.md)
 
 - [Native Rappi and Uber Eats orders](MARKETPLACE_ORDERS.md)
 - [Public marketplace sorting and featured rankings](MARKETPLACE_SORTING.md)
@@ -100,10 +113,16 @@ environment variables before changing production configuration.
 
 ## Product designs
 
-- [Procurement settings and rules](PROCUREMENT_POLICIES_DESIGN.md) — general workspace settings and a separate Rules screen for product/category requirements, approvals, participation and deadlines; design only.
+- [Procurement implementation](PROCUREMENT_IMPLEMENTATION.md) — local operational routes, security, migration prerequisites, validation and remaining workflows.
+- [Inventory replenishment](PROCUREMENT_REPLENISHMENT.md) — SKU/location minimums, draft requisitions, duplicate guards and deployment-gated inventory worker.
+- [Procurement repair validation](PROCUREMENT_REPAIR_VALIDATION.md) — review regressions, local PostgreSQL/PostgREST checks and rollout prerequisites.
+- [Procurement localization](PROCUREMENT_LOCALIZATION.md) — deep five-language coverage, preserved business data and locale-switch regression checks.
+- [Procurement delivery checklist](PROCUREMENT_DELIVERY_CHECKLIST.md) — full agreed scope tracked independently of route availability.
+- [Procurement UI reuse](PROCUREMENT_UI_REUSE.md) — prescribed screen references, shared components, verification evidence and visual acceptance limits.
+- [Procurement settings and rules](PROCUREMENT_POLICIES_DESIGN.md) — direct purchases and tenders, net thresholds, cumulative requirements, human/AI approvals, supervisor exceptions, urgent presets and deadlines; design only, with remaining decisions tracked explicitly.
 - [Team Settings location-scoped access](LOCATION_ACCESS_DESIGN.md) — target restricted-location model and module matrix; implementation, supported boundaries, limitations, and deployment steps are in the enforcement guide.
 - [Suppliers, procurement, tenders, and the unified account portal](/Users/prado/Desktop/Proyectos/Uncodie/Code/market-fit/docs/PROCUREMENT_AND_TENDERS_DESIGN.md) — planned model, screens, Marketplace-style global `/tenders`, UI/UX reuse references, and `/buyer` to `/home` migration; not implemented behavior.
-- [Procurement certifications and tender evidence](/Users/prado/Desktop/Proyectos/Uncodie/Code/market-fit/docs/PROCUREMENT_CERTIFICATIONS_DESIGN.md) — companion design for profile credentials, tender-specific requirements, private versioned evidence, and scoped review; not implemented behavior.
+- [Procurement certifications and tender evidence](PROCUREMENT_CERTIFICATIONS_DESIGN.md) — profile credentials, optional representation evidence, provisional AI review, scoped acceptance and platform retention; not implemented behavior.
 
 ## Architecture reviews
 

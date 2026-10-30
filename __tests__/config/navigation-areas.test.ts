@@ -12,6 +12,32 @@ import { NAV_ITEM_ICON, getModuleVisual } from '@/app/config/module-visuals'
 import { ClipboardList, Home } from '@/app/components/ui/icons'
 
 describe('navigation-areas', () => {
+  it('exposes operational procurement modules in Buying', () => {
+    for (const [key, path, title] of [
+      ['suppliers', '/suppliers', 'Suppliers'],
+      ['purchaseRequests', '/purchases/requests', 'Purchase Requests'],
+      ['procurementTenders', '/purchases/tenders', 'Tenders'],
+    ]) {
+      const entry = findNavigationMenuItem(key)!
+      expect(entry.area).toBe('buying')
+      expect(buildNavItemHref(entry.item)).toBe(path)
+      expect(getNavItemTitle(entry.item, value => value)).toBe(title)
+      expect(NAV_ITEM_ICON[key]).toBeDefined()
+    }
+  })
+  it('separates procurement settings from Buying rules with readable titles', () => {
+    const rules = findNavigationMenuItem('procurementRules')!
+    const settings = findNavigationMenuItem('procurementSettings')!
+    expect(rules.area).toBe('buying')
+    expect(settings.area).toBe('settings')
+    expect(buildNavItemHref(rules.item)).toBe('/purchases/rules')
+    expect(buildNavItemHref(settings.item)).toBe('/settings/procurement')
+    expect(getNavItemTitle(rules.item, key => key)).toBe('Procurement Rules')
+    expect(getNavItemTitle(settings.item, key => key)).toBe('Procurement')
+    expect(isSettingsNavKey('procurementSettings')).toBe(true)
+    expect(isConfigurationNavPath('/settings/procurement')).toBe(true)
+    expect(NAV_ITEM_ICON.procurementRules).toBe(ClipboardList)
+  })
   it('includes Settings in the apps launcher but not as sidebar shortcuts', () => {
     expect(NAVIGATION_MENU_AREA_ORDER).toContain('settings')
   })

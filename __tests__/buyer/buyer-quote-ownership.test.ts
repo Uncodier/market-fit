@@ -20,9 +20,10 @@ function authenticatedClient(user: unknown) {
 }
 
 function quotationQuery(result: unknown) {
-  const builder: any = {}
+  const builder: Record<string, jest.Mock> = {}
   builder.select = jest.fn(() => builder)
   builder.eq = jest.fn(() => builder)
+  builder.not = jest.fn(() => builder)
   builder.single = jest.fn().mockResolvedValue(result)
   return builder
 }
@@ -55,5 +56,6 @@ describe("buyer quotation ownership", () => {
     expect(result).toEqual({ error: "Quotation not found" })
     expect(query.eq).toHaveBeenNthCalledWith(1, "id", quotationId)
     expect(query.eq).toHaveBeenNthCalledWith(2, "buyer_user_id", "buyer-a")
+    expect(query.not).toHaveBeenCalledWith("site_id", "is", null)
   })
 })

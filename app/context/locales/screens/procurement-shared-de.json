@@ -1,0 +1,21 @@
+{
+  "layout.sidebar.leads": "Kunden",
+  "layout.nav.leads.title": "Kunden",
+  "layout.nav.leads.help": "Verwalten und verfolgen Sie Ihre Kunden",
+  "procurement.errors.submissionCatalogMapping": "Ein mit dieser Ausschreibung verknüpfter Katalogartikel ist nicht verfügbar oder verwendet eine andere Währung. Bitten Sie den Käufer, den verknüpften Artikel zu korrigieren. Ihr Angebot wurde nicht eingereicht.",
+  "datePicker.selectDate": "Datum auswählen",
+  "datePicker.selectDateTime": "Datum und Uhrzeit auswählen",
+  "datePicker.dateAtTime": "{{date}} um {{time}}",
+  "datePicker.selectDateRange": "Datumsbereich auswählen",
+  "datePicker.selectEndDate": "Enddatum auswählen",
+  "datePicker.previousMonth": "Vorheriger Monat",
+  "datePicker.nextMonth": "Nächster Monat",
+  "datePicker.selectTime": "Uhrzeit auswählen",
+  "datePicker.selectedTime": "Ausgewählte Uhrzeit",
+  "datePicker.hours": "Stunden",
+  "datePicker.minutes": "Minuten",
+  "datePicker.am": "vorm.",
+  "datePicker.pm": "nachm.",
+  "datePicker.to": "bis",
+  "datePicker.customRange": "Benutzerdefinierter Bereich"
+}

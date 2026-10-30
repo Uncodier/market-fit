@@ -44,13 +44,13 @@ import {
   Receipt,
   Package,
   Boxes,
+  Sliders,
   FileVideo,
   Inbox,
   CalendarCheck,
   Settings,
   MapPin,
   Calendar,
-  Share,
   Plug,
   Shield,
   Code,
@@ -59,9 +59,10 @@ import {
   ThumbsUp,
   Key,
   Wallet,
+  type LucideIcon,
 } from "@/app/components/ui/icons"
 
-export const AREA_ICON: Record<WorkspaceArea, React.ComponentType<any>> = {
+export const AREA_ICON: Record<WorkspaceArea, LucideIcon> = {
   marketing: Megaphone,
   sales: Briefcase,
   operations: ActivitySquare,
@@ -73,7 +74,13 @@ export const AREA_ICON: Record<WorkspaceArea, React.ComponentType<any>> = {
   settings: Settings,
 }
 
-export const NAV_ITEM_ICON: Record<string, React.ComponentType<any>> = {
+export const NAV_ITEM_ICON: Record<string, LucideIcon> = {
+    suppliers: Building,
+    purchaseRequests: ClipboardList,
+    procurementApprovals: CheckSquare,
+    procurementTenders: FileText,
+    procurementRules: ClipboardList,
+    procurementSettings: Settings,
     purchasesOrders: ShoppingCart,
     bills: Receipt,
     transactions: CreditCard,
@@ -87,6 +94,7 @@ export const NAV_ITEM_ICON: Record<string, React.ComponentType<any>> = {
     catalog: Package,
   priceLists: Tag,
   inventory: Boxes,
+  inventoryMinimums: Sliders,
   printers: Printer,
   records: TableRows,
   orders: ListOrdered,

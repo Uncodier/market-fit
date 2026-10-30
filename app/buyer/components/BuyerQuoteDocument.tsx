@@ -9,6 +9,7 @@ import remarkGfm from "remark-gfm"
 import { format } from "date-fns"
 import { resolveBillToLines } from "@/app/quotations/quotation-pdf-helpers"
 import { cn } from "@/lib/utils"
+import type { BuyerQuoteDto } from "@/app/buyer/quote-dto"
 
 const STATUS_STYLES: Record<string, string> = {
   draft: "bg-gray-50 text-gray-700 border-gray-200 dark:bg-muted dark:text-foreground",
@@ -26,7 +27,7 @@ export function quoteStatusBadgeClass(status?: string | null) {
 }
 
 type BuyerQuoteDocumentProps = {
-  quotation: any
+  quotation: Pick<BuyerQuoteDto, "id"> & Partial<BuyerQuoteDto> & { description?: string | null }
   isExpired?: boolean
 }
 
@@ -40,7 +41,7 @@ export function BuyerQuoteDocument({ quotation, isExpired }: BuyerQuoteDocumentP
     (quotation.status &&
       (t(`status.${quotation.status.toLowerCase()}`) || quotation.status)) ||
     ""
-  const money = (amount: number) =>
+  const money = (amount: number | null | undefined) => amount == null ? t("procurement.common.taxesPending") :
     new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: quotation.currency || "USD",
@@ -190,7 +191,7 @@ export function BuyerQuoteDocument({ quotation, isExpired }: BuyerQuoteDocumentP
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {quotation.items?.map((item: any, idx: number) => (
+                {quotation.items?.map((item, idx) => (
                   <TableRow key={item.id || idx}>
                     <TableCell className="font-medium">{item.name}</TableCell>
                     <TableCell className="text-center">{item.quantity}</TableCell>
@@ -212,15 +213,15 @@ export function BuyerQuoteDocument({ quotation, isExpired }: BuyerQuoteDocumentP
                 </span>
                 <span>{money(quotation.subtotal)}</span>
               </div>
-              {quotation.tax_total > 0 ? (
+              {quotation.total == null || (quotation.tax_total ?? 0) > 0 ? (
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">
                     {t("buyer.quotes.detail.tax") || "Tax"}
                   </span>
-                  <span>{money(quotation.tax_total)}</span>
+                  <span>{quotation.total == null ? t("procurement.common.taxesPending") : money(quotation.tax_total)}</span>
                 </div>
               ) : null}
-              {quotation.discount_total > 0 ? (
+              {(quotation.discount_total ?? 0) > 0 ? (
                 <div className="flex justify-between text-sm text-green-600">
                   <span>{t("buyer.quotes.detail.discount") || "Discount"}</span>
                   <span>-{money(quotation.discount_total)}</span>

@@ -5,17 +5,22 @@ import { BookingExperience } from "@/app/components/commerce/booking/BookingExpe
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { CheckCircle } from "@/app/components/ui/icons"
+import type { ReservationSlotOption } from "../reservation-slot-utils"
 
 export function PassBookingPanel({
   entitlement,
   services,
   initialServiceId,
   backUrl,
+  demo = false,
+  previewSlots,
 }: {
   entitlement: any
   services: any[]
   initialServiceId?: string | null
   backUrl: string
+  demo?: boolean
+  previewSlots?: ReservationSlotOption[]
 }) {
   const { t } = useLocalization()
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(() => {
@@ -96,6 +101,8 @@ export function PassBookingPanel({
             passItem={entitlement.catalog_item || entitlement.subscription?.catalog_item}
             backUrl={backUrl}
             hideHeader
+            demo={demo}
+            previewSlots={previewSlots}
           />
         </div>
       ) : (

@@ -29,7 +29,7 @@ const BUYER_QUOTE_SELECT = `
     )
   ),
   lead:leads(name, email),
-  site:sites(id, name, logo_url, url)
+  site:sites!site_id(id, name, logo_url, url)
 `
 
 export async function getBuyerQuotation(quotationId: string) {
@@ -45,6 +45,7 @@ export async function getBuyerQuotation(quotationId: string) {
   const { data, error } = await serviceClient
     .from("quotations")
     .select(BUYER_QUOTE_SELECT)
+    .not("site_id", "is", null)
     .eq("id", quotationId)
     .eq("buyer_user_id", user.id)
     .single()

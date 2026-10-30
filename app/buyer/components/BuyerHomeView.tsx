@@ -7,7 +7,6 @@ import { getBuyerPortalSummary } from "../actions"
 import { 
   Repeat, 
   FileText, 
-  Archive, 
   ShoppingCart, 
   User,
   Video,
@@ -16,24 +15,60 @@ import {
   CheckCircle2,
   Calendar,
   Clock,
-  QrCode,
   Store
 } from "@/app/components/ui/icons"
-import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
+import { Card, CardContent } from "@/app/components/ui/card"
 import { Skeleton } from "@/app/components/ui/skeleton"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/app/components/ui/dialog"
 import { useLocalization } from "@/app/context/LocalizationContext"
-import QRCode from "react-qr-code"
-import { getBuyerIdentityQr } from "../identity-qr-actions"
+import { demoAccountDetailPath } from '@/app/home/demo-commerce'
+import { BuyerHomeSkeleton } from './BuyerHomeSkeleton'
+
+type AccountNavigationCard = {
+  title: string
+  description: string
+  icon: React.ReactNode
+  href: string
+  alwaysShow?: boolean
+  isPrimary?: boolean
+  count?: number
+  newCount?: number
+}
+
+type PortalSummary = Extract<Awaited<ReturnType<typeof getBuyerPortalSummary>>, { counts: unknown }>
+type HomeReservation = {
+  id: string
+  start_time: string
+  end_time: string
+  status: string
+  entitlement_id: string | null
+  site: { name: string } | null
+  catalog_item: { name: string; image_url: string | null } | null
+  entitlement: { id: string; catalog_item: { name: string; image_url: string | null } | null } | null
+}
+export type BuyerHomeSummary = Omit<PortalSummary, 'user' | 'activeReservations' | 'recentReservations'> & {
+  user: Pick<PortalSummary['user'], 'email' | 'user_metadata'>
+  activeReservations: HomeReservation[]
+  recentReservations: HomeReservation[]
+}
+
+function HomeLink({ demo, href, children, ...props }: React.ComponentProps<typeof Link> & { demo: boolean }) {
+  const reservationId = String(href).match(/^\/buyer\/reservations\/(demo-reservation-[^/]+)$/)?.[1]
+  const target = demo && reservationId ? demoAccountDetailPath('reservations', reservationId) : href
+  return <Link href={target} {...props}>{children}</Link>
+}
 
 export function BuyerHomeView({
   scope = "personal",
   ownerSiteId,
-  basePath = "/buyer"
+  basePath = "/buyer",
+  additionalCards = [],
+  demoSummary,
 }: {
   scope?: "personal" | "site"
   ownerSiteId?: string
   basePath?: string
+  additionalCards?: AccountNavigationCard[]
+  demoSummary?: BuyerHomeSummary
 }) {
   const { t } = useLocalization()
   
@@ -44,17 +79,17 @@ export function BuyerHomeView({
     : ''
   const workspaceUrl = appUrl
   
-  const { data, error, isLoading } = useSWR(
-    { key: "buyer-portal-summary", scope, ownerSiteId },
-    async (params) => {
+  const summary = useSWR<BuyerHomeSummary>(
+    demoSummary ? null : { key: "buyer-portal-summary", scope, ownerSiteId },
+    async (params: { scope: 'personal' | 'site'; ownerSiteId?: string }) => {
       const res = await getBuyerPortalSummary({ scope: params.scope, ownerSiteId: params.ownerSiteId })
-      if (res.error) throw new Error(res.error)
+      if (!res.counts) throw new Error(res.error || 'Failed to load account details.')
       return res
     }
   )
-  const { data: identityQr } = useSWR(data?.user?.id ? ["buyer-identity-qr", data.user.id] : null,
-    () => getBuyerIdentityQr(), { refreshInterval: 60_000, revalidateOnFocus: true })
-  const qrCode = identityQr && "code" in identityQr && identityQr.expiresAt > Date.now() ? identityQr.code : null
+  const data = demoSummary ?? summary.data
+  const error = !demoSummary && summary.error
+  const isLoading = !demoSummary && summary.isLoading
 
   if (error) {
     return (
@@ -64,9 +99,11 @@ export function BuyerHomeView({
     )
   }
 
+  if (isLoading) return <BuyerHomeSkeleton cardCount={2 + additionalCards.length} />
+
   const hasBusinesses = (data?.counts?.sites ?? 0) > 0
 
-  let settingsCards = [
+  let settingsCards: AccountNavigationCard[] = [
     ...(scope === "personal" ? [{
       title: hasBusinesses
         ? (t("buyer.home.cards.businesses.title") || "Manage your businesses")
@@ -143,19 +180,11 @@ export function BuyerHomeView({
       count: data?.counts?.passes,
       newCount: data?.newCounts?.passes
     },
-    {
-      title: t("buyer.home.cards.visits.title") || "Register a visit",
-      description: t("buyer.home.cards.visits.desc") || "Accept Visit Terms and check in online.",
-      icon: <Calendar className="w-6 h-6 text-foreground/70" />,
-      href: `${basePath}/visits/new`,
-      alwaysShow: true
-    }
+    ...additionalCards.map(card => ({ ...card, alwaysShow: true }))
   ]
 
   // Filter cards based on counts, always keep alwaysShow cards
-  if (data) {
-    settingsCards = settingsCards.filter(card => card.alwaysShow || (card.count !== undefined && card.count > 0))
-  }
+  settingsCards = settingsCards.filter(card => card.alwaysShow || (card.count !== undefined && card.count > 0))
 
   const userName = data?.user?.user_metadata?.full_name || data?.user?.user_metadata?.name || data?.user?.user_metadata?.first_name || 'User'
   const userEmail = data?.user?.email || ''
@@ -190,83 +219,6 @@ export function BuyerHomeView({
             )}
           </div>
         </div>
-        {/* Digital Wallet Pass Modal */}
-        {!isLoading && scope === "personal" && data?.user?.id && (
-          <div className="w-full sm:w-auto sm:ml-auto flex items-center">
-            <Dialog>
-              <DialogTrigger asChild>
-                <button className="group relative flex items-center gap-3 bg-white dark:bg-zinc-900 border shadow-sm hover:shadow-md pl-2 pr-4 h-16 rounded-2xl transition-all hover:border-primary/30 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 w-full sm:w-auto shrink-0">
-                  <div className="bg-white border rounded-md p-1 shadow-sm overflow-hidden flex-shrink-0 group-hover:scale-[1.02] transition-transform">
-                    {qrCode ? <QRCode value={qrCode} size={36} className="rounded-sm" /> : <QrCode className="h-9 w-9" />}
-                  </div>
-                  <div className="flex flex-col text-left justify-center pr-1 whitespace-nowrap min-w-0">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground group-hover:text-primary transition-colors leading-none mb-0.5">
-                      {t("buyer.home.memberPass") || "Member Pass"}
-                    </span>
-                    <span className="text-sm font-semibold text-foreground leading-none">
-                      {t("buyer.home.scanToUse") || "Tap to scan"}
-                    </span>
-                  </div>
-                </button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-sm p-0 border-0 bg-transparent shadow-none">
-                {/* Badge Container */}
-                <div className="relative bg-[#f9fafb] dark:bg-zinc-900 rounded-[1.5rem] shadow-2xl flex flex-col overflow-hidden border border-black/10 dark:border-white/10 mt-4 ring-1 ring-black/5 dark:ring-white/5">
-                  {/* Glossy Plastic Overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/40 to-white/0 pointer-events-none z-20 mix-blend-overlay"></div>
-
-                  {/* Lanyard Hole (Simulated cutout) */}
-                  <div className="absolute top-4 left-1/2 -translate-x-1/2 w-14 h-3 rounded-full bg-black/60 shadow-[inset_0_2px_4px_rgba(0,0,0,0.6)] z-30 border-b border-white/20"></div>
-                  
-                  {/* Top Color Band */}
-                  <div className="bg-primary h-28 w-full relative border-b border-black/5 dark:border-white/5">
-                    <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-black/20 to-transparent"></div>
-                  </div>
-
-                  {/* Profile Info */}
-                  <div className="flex flex-col items-center px-6 pb-2 -mt-12 relative z-10">
-                    <div className="w-24 h-24 rounded-full bg-white flex items-center justify-center mb-3 shadow-[0_4px_12px_rgba(0,0,0,0.15)] border-4 border-white dark:border-zinc-800">
-                      {avatarUrl ? (
-                        <img src={avatarUrl} alt={userName} className="w-full h-full object-cover rounded-full" />
-                      ) : (
-                        <span className="text-3xl font-medium text-foreground">
-                          {initial}
-                        </span>
-                      )}
-                    </div>
-                    <DialogTitle className="text-2xl font-black text-foreground tracking-tight leading-none mb-1 text-center">
-                      {userName}
-                    </DialogTitle>
-                    <p className="text-sm font-medium text-muted-foreground text-center">
-                      {userEmail}
-                    </p>
-                  </div>
-
-                  {/* ID/Role Label */}
-                  <div className="flex justify-center mt-2 mb-6">
-                    <div className="bg-foreground/5 dark:bg-foreground/20 px-4 py-1.5 rounded-md border border-foreground/10 shadow-inner">
-                      <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-foreground/70">
-                        {t("buyer.home.memberPass") || "MEMBER PASS"}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* QR Section */}
-                  <div className="px-6 pb-10 flex flex-col items-center">
-                    <div className="bg-white p-4 rounded-2xl shadow-sm border border-black/10 ring-1 ring-black/5 mb-4">
-                      {qrCode ? <QRCode value={qrCode} size={180} className="rounded-md" /> : (
-                        <p className="max-w-[180px] text-sm text-muted-foreground">Account QR is temporarily unavailable. You can order anonymously.</p>
-                      )}
-                    </div>
-                    <p className="text-xs text-center text-muted-foreground font-medium max-w-[200px]">
-                      {t("buyer.home.qrHelper") || "Show this code at the venue"}
-                    </p>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
-        )}
       </div>
 
       {/* Active Reservations */}
@@ -276,10 +228,10 @@ export function BuyerHomeView({
             {t("buyer.home.reservations.title") || "Upcoming reservations"}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {data.activeReservations.map((reservation: any) => {
+            {data.activeReservations.map((reservation) => {
               const imageUrl = reservation.entitlement?.catalog_item?.image_url || reservation.catalog_item?.image_url
               return (
-                <Link key={reservation.id} href={`${basePath}/reservations/${reservation.id}`} className="block group">
+                <HomeLink demo={!!demoSummary} key={reservation.id} href={`/buyer/reservations/${reservation.id}`} className="block group">
                   <Card className="border-border/50 shadow-sm hover:shadow-md hover:border-primary/20 transition-all duration-300 bg-card rounded-2xl group-hover:-translate-y-0.5 overflow-hidden">
                     <CardContent className="p-0 flex items-stretch">
                       {/* Left Icon / Date Block */}
@@ -323,7 +275,7 @@ export function BuyerHomeView({
                       </div>
                     </CardContent>
                   </Card>
-                </Link>
+                </HomeLink>
               )
             })}
           </div>
@@ -333,7 +285,7 @@ export function BuyerHomeView({
       {/* Settings Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {settingsCards.map((card, i) => (
-          <Link key={i} href={card.href} className="block group" onClick={() => {
+          <HomeLink demo={!!demoSummary} key={i} href={card.href} className="block group" onClick={() => {
             if (card.href.endsWith('/create-site')) {
               if (typeof window !== 'undefined') {
                 sessionStorage.setItem('intentional_create_site_access', 'true')
@@ -341,7 +293,7 @@ export function BuyerHomeView({
             }
           }}>
             <Card className={`h-full shadow-sm hover:shadow-md transition-all duration-200 border-border/50 ${
-              (card as any).isPrimary 
+              card.isPrimary
                 ? 'bg-primary/5 dark:bg-primary/10' 
                 : 'bg-white dark:bg-background'
             }`}>
@@ -351,7 +303,7 @@ export function BuyerHomeView({
                   <div className="flex gap-2 items-center">
                     {(card.newCount ?? 0) > 0 && (
                       <span className="flex items-center justify-center bg-green-500/10 text-green-600 dark:text-green-400 text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider">
-                        {card.newCount} {t("common.new") || "Nuevos"}
+                        {card.newCount} {t("common.new") || "New"}
                       </span>
                     )}
                     {card.count !== undefined && (
@@ -369,7 +321,7 @@ export function BuyerHomeView({
                 </p>
               </CardContent>
             </Card>
-          </Link>
+          </HomeLink>
         ))}
       </div>
 
@@ -380,10 +332,10 @@ export function BuyerHomeView({
             {t("buyer.home.reservations.recent") || "Recent reservations"}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 opacity-80 hover:opacity-100 transition-opacity">
-            {data.recentReservations.map((reservation: any) => {
+            {data.recentReservations.map((reservation) => {
               const imageUrl = reservation.entitlement?.catalog_item?.image_url || reservation.catalog_item?.image_url
               return (
-                <Link key={reservation.id} href={`${basePath}/reservations/${reservation.id}`} className="block group">
+                <HomeLink demo={!!demoSummary} key={reservation.id} href={`/buyer/reservations/${reservation.id}`} className="block group">
                   <Card className="border-border/50 shadow-sm hover:shadow-md hover:border-primary/20 transition-all duration-300 bg-card/50 rounded-2xl group-hover:-translate-y-0.5 overflow-hidden">
                     <CardContent className="p-0 flex items-stretch">
                       {/* Left Icon / Date Block */}
@@ -432,7 +384,7 @@ export function BuyerHomeView({
                       </div>
                     </CardContent>
                   </Card>
-                </Link>
+                </HomeLink>
               )
             })}
           </div>

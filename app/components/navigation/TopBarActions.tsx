@@ -14,6 +14,7 @@ import { TopBarCreationActions } from "./TopBarCreationActions";
 import { TopBarCommerceActions } from "./TopBarCommerceActions";
 import { TopBarFinanceActions } from "./TopBarFinanceActions";
 import type { TopBarActionsProps } from "./topbar-action-types";
+import { TopBarPrimaryActionsSlot } from "./topbar-primary-actions";
 
 export function TopBarActions(props: TopBarActionsProps) {
   const { isControlCenterPage, isRobotsPage, requirementData, viewMode } = props;
@@ -116,6 +117,7 @@ export function TopBarActions(props: TopBarActionsProps) {
         <RobotPrimaryActions currentSite={currentSite} viewMode={viewMode} />
       ) : null}
       <TopBarFinanceActions {...props} />
+      <TopBarPrimaryActionsSlot />
 
       {/* Logout button in toolbar - only visible on profile page */}
       {pathname.startsWith("/profile") && (

@@ -7,6 +7,7 @@ import {
   getModuleImageUrl,
 } from "@/app/config/module-image-visuals"
 import { cn } from "@/lib/utils"
+import { NAV_ITEM_ICON, AREA_ICON } from "@/app/config/module-visuals"
 
 interface ModuleImageProps {
   area: WorkspaceArea
@@ -27,6 +28,7 @@ export function ModuleImage({
 }: ModuleImageProps) {
   const [failed, setFailed] = useState(false)
   const isFullSize = FULL_SIZE_MODULE_IMAGE_KEYS.has(itemKey)
+  const FallbackIcon = NAV_ITEM_ICON[itemKey] ?? AREA_ICON[area]
 
   return (
     <span
@@ -52,7 +54,9 @@ export function ModuleImage({
           )}
           onError={() => setFailed(true)}
         />
-      ) : null}
+      ) : <span role="img" aria-label={`${title} app icon`} className="flex h-full w-full items-center justify-center text-foreground/80">
+        <FallbackIcon className="h-1/2 w-1/2" aria-hidden={true} />
+      </span>}
     </span>
   )
 }

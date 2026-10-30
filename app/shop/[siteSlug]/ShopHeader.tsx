@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import { Button } from "@/app/components/ui/button"
 import { User } from "@/app/components/ui/icons"
 import { CommerceSearchInput } from "@/app/components/commerce/CommerceSearchInput"
@@ -151,6 +152,7 @@ export function ShopHeader({
   userChosePaymentRef,
   isFulfillmentPreferenceLoaded,
 }: Props) {
+  const { t } = useLocalization()
   const { href: signInHref, onClick: onSignInClick } = useCommerceSignInHref()
 
   return (
@@ -171,12 +173,13 @@ export function ShopHeader({
         brand={
           <Link
             href={`/shop/${siteSlug}`}
+            data-toolbar-font
             className="shrink-0 flex items-center hover:opacity-80 transition-opacity"
           >
             {site.logo_url ? (
               <img src={site.logo_url} alt={site.name} fetchPriority="high" decoding="async" className="w-8 h-8 min-w-8 rounded-full object-cover border border-border shadow-sm shrink-0" />
             ) : (
-              <span className="text-xl font-black tracking-tight text-gray-900 dark:text-gray-100 truncate max-w-[150px] md:max-w-none">
+              <span className="text-xl font-black tracking-tight text-gray-900 dark:text-gray-100 truncate lowercase max-w-[150px] md:max-w-none">
                 {site.name}
               </span>
             )}
@@ -271,6 +274,12 @@ export function ShopHeader({
                   />
                 </SheetContent>
               </Sheet>
+
+              {session && (
+                <Link href="/home/orders" className={`hidden lg:inline-flex ${shellClasses.navItem} ${shellClasses.navItemInactive}`}>
+                  {t("commerce.myPurchases")}
+                </Link>
+              )}
 
               {session ? (
                 <Link href="/buyer" className="hover:opacity-80 transition-opacity shrink-0">

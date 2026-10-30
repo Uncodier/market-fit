@@ -20,6 +20,7 @@ import { upsertReservation, validateReservationSlot } from "@/app/reservations/a
 import { CommerceShellHeader } from "@/app/components/commerce/CommerceShellHeader"
 import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
 import { PdpMetricChips } from "@/app/components/commerce/pdp/PdpMetricChips"
+import type { ReservationSlotOption } from "../reservation-slot-utils"
 
 interface BookingExperienceProps {
   mode: "cart" | "entitlement" | "pos" | "admin"
@@ -33,6 +34,8 @@ interface BookingExperienceProps {
   onSuccess?: () => void
   headerAction?: React.ReactNode
   hideHeader?: boolean
+  demo?: boolean
+  previewSlots?: ReservationSlotOption[]
 }
 
 export function BookingExperience({
@@ -47,6 +50,8 @@ export function BookingExperience({
   onSuccess,
   headerAction,
   hideHeader = false,
+  demo = false,
+  previewSlots,
 }: BookingExperienceProps) {
   const { t } = useLocalization()
   const router = useRouter()
@@ -65,6 +70,10 @@ export function BookingExperience({
   const [leadValue, setLeadValue] = useState<any>(null)
 
   const handleSelect = async (startIso: string, endIso: string, details?: any) => {
+    if (demo) {
+      toast.info("Demo preview only. No reservation was created or pass use deducted.")
+      return
+    }
     if (mode === "cart" || mode === "pos") {
       if (onCartAdd) {
         onCartAdd(startIso, endIso, details?.available)
@@ -357,6 +366,7 @@ export function BookingExperience({
               layout="page"
               hideDetailsStep={mode !== "admin"}
               onSelect={handleSelect}
+              previewSlots={demo ? (previewSlots || []) : undefined}
             />
           </div>
         </div>

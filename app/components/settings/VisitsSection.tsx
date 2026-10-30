@@ -21,6 +21,7 @@ import { Label } from "@/app/components/ui/label"
 import { Switch } from "@/app/components/ui/switch"
 import { toast } from "sonner"
 import { PenTool } from "@/app/components/ui/icons"
+import { VisitsSettingsLoading } from "./settings-loading"
 
 export function VisitsSection({ active }: { active: boolean }) {
   const { t } = useLocalization()
@@ -42,21 +43,7 @@ export function VisitsSection({ active }: { active: boolean }) {
   if (!active) return null
 
   if (!siteId || isLoading || !form) {
-    return (
-      <SectionCard id="visits-settings">
-        <SectionCardHeader>
-          <SectionCardTitle className="flex items-center gap-2">
-            <PenTool className="h-5 w-5" />
-            {t("settings.visits.title")}
-          </SectionCardTitle>
-          <SectionCardDescription>{t("settings.visits.loading")}</SectionCardDescription>
-        </SectionCardHeader>
-        <SectionCardContent className="space-y-4">
-          <div className="h-10 bg-muted/50 rounded-md animate-pulse" />
-          <div className="h-40 bg-muted/50 rounded-md animate-pulse" />
-        </SectionCardContent>
-      </SectionCard>
-    )
+    return <VisitsSettingsLoading />
   }
 
   const set = <K extends keyof VisitsSettings>(key: K, value: VisitsSettings[K]) => {

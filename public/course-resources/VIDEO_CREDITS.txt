@@ -1,0 +1,8 @@
+Demo playback footage: flower.mp4
+Source: https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4
+License: CC0 (MDN interactive examples CC0 video collection).
+Retrieved: 2026-10-29.
+
+Bundled locally to preserve the application's existing media Content Security
+Policy and to avoid a runtime dependency on an external sample-media host.
+All fictional course lessons reuse this same short clip. It is not instruction.

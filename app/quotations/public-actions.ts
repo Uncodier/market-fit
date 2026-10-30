@@ -41,7 +41,7 @@ const PUBLIC_QUOTE_SELECT = `
     )
   ),
   lead:leads(name, email),
-  site:sites(id, name, logo_url, url)
+  site:sites!site_id(id, name, logo_url, url)
 `
 
 function publicTokenSchemaError(message?: string | null) {
@@ -113,6 +113,7 @@ export async function getQuotationByPublicToken(token: string) {
   const { data, error } = await supabaseAdmin
     .from("quotations")
     .select(PUBLIC_QUOTE_SELECT)
+    .not("site_id", "is", null)
     .eq("public_access_token", token)
     .single()
 
@@ -252,6 +253,7 @@ export async function rejectQuotationByPublicToken(token: string) {
   const { data: quote, error } = await supabaseAdmin
     .from("quotations")
     .select("id, status, valid_until, buyer_user_id, public_access_token, public_access_token_expires_at, public_access_token_revoked_at")
+    .not("site_id", "is", null)
     .eq("public_access_token", token)
     .single()
 
@@ -272,6 +274,7 @@ export async function rejectQuotationByPublicToken(token: string) {
   const { data: updated, error: updateError } = await supabaseAdmin
     .from("quotations")
     .update({ status: "rejected" })
+    .not("site_id", "is", null)
     .eq("id", quote.id)
     .eq("public_access_token", token)
     .eq("status", quote.status)

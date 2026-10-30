@@ -3,9 +3,8 @@
 import React, { useEffect } from "react"
 import { useSite } from "@/app/context/SiteContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
-import { BuyerQuotesView } from "@/app/buyer/components/BuyerQuotesView"
-import { EmptyCard } from "@/app/components/ui/empty-card"
-import { FileText } from "@/app/components/ui/icons"
+import { ProcurementListLoading } from '@/app/purchases/procurement/ui/list-loading'
+import { ProcurementQuotesPanel } from "@/app/purchases/procurement/commerce/ProcurementQuotesPanel"
 
 export default function PurchasesQuotesPage() {
   const { currentSite } = useSite()
@@ -18,21 +17,11 @@ export default function PurchasesQuotesPage() {
     window.dispatchEvent(event);
   }, [t]);
 
-  if (!currentSite) {
-    return (
-      <div className="flex-1 flex items-center justify-center p-6">
-        <EmptyCard 
-          icon={<FileText size={40} className="text-muted-foreground" />}
-          title="Select a project"
-          description="Please select a project to view its quotations."
-        />
-      </div>
-    )
-  }
+  if (!currentSite) return <ProcurementListLoading columns={5} />
 
   return (
     <div className="flex-1 flex flex-col min-h-[calc(100vh-var(--topbar-height,64px))] bg-muted/30">
-      <BuyerQuotesView scope="site" basePath="/purchases" />
+      <ProcurementQuotesPanel siteId={currentSite.id} />
     </div>
   )
 }

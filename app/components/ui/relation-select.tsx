@@ -46,6 +46,8 @@ interface RelationSelectProps {
   clearable?: boolean
   disabled?: boolean
   searchPlaceholder?: string
+  clearLabel?: string
+  loadingLabel?: string
   label?: string
   icon?: React.ReactNode
   /** Renders inside the input on the right (before clear/chevron). */
@@ -74,6 +76,8 @@ export function RelationSelect({
   clearable = true,
   disabled = false,
   searchPlaceholder = "Search...",
+  clearLabel = "Clear selection",
+  loadingLabel = "Loading selection",
   label,
   icon,
   endAction,
@@ -86,6 +90,8 @@ export function RelationSelect({
   const [open, setOpen] = React.useState(false)
   const [searchQuery, setSearchQuery] = React.useState("")
   const inputRef = React.useRef<HTMLInputElement>(null)
+  const inputId = React.useId()
+  if (disabled && open) setOpen(false)
 
   const selectedLabel = value?.label
   const isBrowseQuery = !shouldFilterRelationSelectOptions(
@@ -124,6 +130,7 @@ export function RelationSelect({
 
   const handleClear = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation()
+    if (disabled) return
     onValueChange(null)
     setSearchQuery("")
     onSearchChange?.("")
@@ -131,6 +138,7 @@ export function RelationSelect({
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (disabled) return
     const newValue = e.target.value
     setSearchQuery(newValue)
     onInputValueChange?.(newValue)
@@ -139,6 +147,7 @@ export function RelationSelect({
   }
 
   const handleSelectExisting = (option: RelationSelectOption) => {
+    if (disabled) return
     onValueChange({ mode: "existing", id: option.id, label: option.label })
     if (clearAfterSelect) {
       setSearchQuery("")
@@ -149,7 +158,7 @@ export function RelationSelect({
   }
 
   const handleSelectCreate = () => {
-    if (!searchQuery.trim()) return
+    if (disabled || !searchQuery.trim()) return
     onValueChange({ mode: "create", label: searchQuery.trim() })
     if (clearAfterSelect) {
       setSearchQuery("")
@@ -158,6 +167,7 @@ export function RelationSelect({
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (disabled) return
     if (e.key === "Enter") {
       e.preventDefault()
       if (filteredOptions.length > 0) {
@@ -187,13 +197,14 @@ export function RelationSelect({
   }, [value, clearAfterSelect])
 
   return (
-    <div className={cn("w-full", label ? "space-y-2" : "")}>
+    <div className={cn("w-full min-w-0", label ? "space-y-2" : "")}>
       {label && (
-        <label className="text-sm font-medium">{label}</label>
+        <label htmlFor={inputId} className="text-sm font-medium">{label}</label>
       )}
       <Popover
-        open={open}
+        open={open && !disabled}
         onOpenChange={(next) => {
+          if (disabled && next) return
           setOpen(next)
           if (next) {
             requestAnimationFrame(() => inputRef.current?.select())
@@ -205,12 +216,13 @@ export function RelationSelect({
             {isResolvingLabel && !open ? (
               <Skeleton
                 className={cn("h-10 w-full rounded-md cursor-pointer", className)}
-                aria-label="Loading selection"
-                onClick={() => setOpen(true)}
+                aria-label={loadingLabel}
+                onClick={() => { if (!disabled) setOpen(true) }}
               />
             ) : (
               <>
                 <Input
+                  id={inputId}
                   ref={inputRef}
                   value={isResolvingLabel ? "" : searchQuery}
                   onChange={handleInputChange}
@@ -224,43 +236,44 @@ export function RelationSelect({
                     className
                   )}
                   onClick={() => {
+                    if (disabled) return
                     setOpen(true)
                     inputRef.current?.select()
                   }}
                 />
                 {icon && (
-                  <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center pointer-events-none text-muted-foreground">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center pointer-events-none text-muted-foreground">
                     {icon}
-                  </div>
+                  </span>
                 )}
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
                   {endAction && (
-                    <div
+                    <span
                       className="flex items-center"
                       onClick={(e) => e.stopPropagation()}
                       onPointerDown={(e) => e.stopPropagation()}
                     >
                       {endAction}
-                    </div>
+                    </span>
                   )}
                   {clearable && !clearAfterSelect && value && !disabled && !isResolvingLabel && (
                     <button
                       type="button"
                       className="h-3.5 w-3.5 flex items-center justify-center rounded-full font-inter text-muted-foreground hover:text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-ring"
                       onClick={handleClear}
-                      aria-label="Clear selection"
+                      aria-label={clearLabel}
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
                   )}
                   <ChevronDown className="h-3.5 w-3.5 text-muted-foreground pointer-events-none" aria-hidden={true} />
-                </div>
+                </span>
               </>
             )}
           </div>
         </PopoverTrigger>
         <PopoverContent 
-          className="p-1 w-[var(--radix-popover-trigger-width)] max-h-[300px] font-inter overflow-auto" 
+          className="p-1 w-[var(--radix-popover-trigger-width)] max-w-[calc(100vw-2rem)] max-h-[min(300px,var(--radix-popover-content-available-height))] font-inter overflow-auto"
           align="start"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
@@ -272,6 +285,7 @@ export function RelationSelect({
                   pinnedAction.selected && "bg-accent text-accent-foreground",
                 )}
                 onClick={() => {
+                  if (disabled) return
                   pinnedAction.onSelect()
                   setSearchQuery("")
                   onSearchChange?.("")

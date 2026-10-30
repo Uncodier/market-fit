@@ -224,7 +224,7 @@ export function QuotationInvoice({
               {t("quotations.detail.total") || "Total"}
             </div>
             <div className="text-lg font-bold text-primary">
-              {formatMoney(quotation.total)}
+              {quotation.total == null ? t("procurement.common.taxesPending") : formatMoney(quotation.total)}
             </div>
             {quotation.currency ? (
               <div className="text-xs text-muted-foreground">{quotation.currency}</div>
@@ -409,17 +409,17 @@ export function QuotationInvoice({
                 <span>-{formatMoney(quotation.discount_total)}</span>
               </div>
             )}
-            {(quotation.tax_total || 0) > 0 && (
+            {(quotation.total == null || quotation.tax_total > 0) && (
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">
                   {t("quotations.detail.tax") || "Tax"}
                 </span>
-                <span>{formatMoney(quotation.tax_total)}</span>
+                <span>{quotation.total == null ? t("procurement.common.taxesPending") : formatMoney(quotation.tax_total)}</span>
               </div>
             )}
             <div className="flex justify-between font-bold text-lg pt-2 border-t">
               <span>{t("quotations.detail.total") || "Total"}</span>
-              <span>{formatMoney(quotation.total)}</span>
+              <span>{quotation.total == null ? t("procurement.common.taxesPending") : formatMoney(quotation.total)}</span>
             </div>
           </div>
         </div>

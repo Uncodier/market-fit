@@ -36,6 +36,7 @@ import { calendarSelectedDate, calendarReadWindow, listReadWindow } from "./read
 import { localDateKey } from "./components/reservation-calendar-select"
 import type { CalendarViewMode } from "./components/reservation-calendar-utils"
 import { ReservationListPeriod } from "./components/ReservationListPeriod"
+import ReservationsLoading from "./loading"
 
 function ReservationsPageContent() {
   const { t } = useLocalization()
@@ -402,7 +403,7 @@ function ReservationsPageContent() {
 
 export default function ReservationsPage() {
   return (
-    <Suspense fallback={<div className="flex-1 flex flex-col min-h-0 min-w-0 h-[calc(100vh-var(--topbar-height,64px))] bg-muted/30" />}>
+    <Suspense fallback={<ReservationsLoading />}>
       <ReservationsPageContent />
     </Suspense>
   )

@@ -1,0 +1,21 @@
+{
+  "layout.sidebar.leads": "Customers",
+  "layout.nav.leads.title": "Customers",
+  "layout.nav.leads.help": "Manage and track customers",
+  "procurement.errors.submissionCatalogMapping": "A catalog item linked to this tender is unavailable or uses a different currency. Ask the buyer to correct the linked item. Your quotation was not submitted.",
+  "datePicker.selectDate": "Select date",
+  "datePicker.selectDateTime": "Select date and time",
+  "datePicker.dateAtTime": "{{date}} at {{time}}",
+  "datePicker.selectDateRange": "Select date range",
+  "datePicker.selectEndDate": "Select end date",
+  "datePicker.previousMonth": "Previous month",
+  "datePicker.nextMonth": "Next month",
+  "datePicker.selectTime": "Select time",
+  "datePicker.selectedTime": "Selected time",
+  "datePicker.hours": "Hours",
+  "datePicker.minutes": "Minutes",
+  "datePicker.am": "AM",
+  "datePicker.pm": "PM",
+  "datePicker.to": "to",
+  "datePicker.customRange": "Custom range"
+}

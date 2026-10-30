@@ -8,9 +8,7 @@ import {
   SectionCard,
   SectionCardHeader,
   SectionCardTitle,
-  SectionCardDescription,
   SectionCardContent,
-  SectionCardFooter,
 } from "@/app/components/ui/section-card"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
@@ -24,9 +22,10 @@ interface TrackingCardProps {
   initialCarrier: string
   initialTracking: string
   onUpdate: (carrier: string, tracking: string) => void
+  readOnly?: boolean
 }
 
-export function TrackingCard({ shipmentId, initialCarrier, initialTracking, onUpdate }: TrackingCardProps) {
+export function TrackingCard({ shipmentId, initialCarrier, initialTracking, onUpdate, readOnly = false }: TrackingCardProps) {
   const { currentSite } = useSite()
   const { t } = useLocalization()
   
@@ -35,7 +34,7 @@ export function TrackingCard({ shipmentId, initialCarrier, initialTracking, onUp
   const [savingTracking, setSavingTracking] = useState(false)
 
   const handleSaveTracking = async () => {
-    if (!currentSite) return
+    if (!currentSite || readOnly) return
     setSavingTracking(true)
     const { data, error } = await updateShipmentTracking(currentSite.id, shipmentId, {
       carrier,
@@ -52,7 +51,7 @@ export function TrackingCard({ shipmentId, initialCarrier, initialTracking, onUp
   }
 
   const handleGenerate = async () => {
-    if (!currentSite) return
+    if (!currentSite || readOnly) return
     const num = await generateTrackingNumber(currentSite.id)
     setTracking(num)
   }
@@ -63,27 +62,27 @@ export function TrackingCard({ shipmentId, initialCarrier, initialTracking, onUp
         <SectionCardTitle className="flex items-center gap-2"><Send className="h-5 w-5 text-muted-foreground"/> {t('shipments.trackingInfo') || 'Tracking Info'}</SectionCardTitle>
       </SectionCardHeader>
       <SectionCardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label>{t('shipments.carrier') || 'Carrier'}</Label>
-            <Input value={carrier} onChange={e => setCarrier(e.target.value)} placeholder="e.g. UPS, FedEx" />
+            <Label htmlFor={`carrier-${shipmentId}`}>{t('shipments.carrier') || 'Carrier'}</Label>
+            <Input id={`carrier-${shipmentId}`} value={carrier} readOnly={readOnly} onChange={e => setCarrier(e.target.value)} placeholder="e.g. UPS, FedEx" />
           </div>
           <div className="space-y-2">
-            <Label>{t('shipments.trackingNumber') || 'Tracking Number'}</Label>
+            <Label htmlFor={`tracking-${shipmentId}`}>{t('shipments.trackingNumber') || 'Tracking Number'}</Label>
             <div className="flex gap-2">
-              <Input value={tracking} onChange={e => setTracking(e.target.value)} placeholder="Tracking code" />
-              <Button type="button" variant="outline" onClick={handleGenerate}>
+              <Input id={`tracking-${shipmentId}`} value={tracking} readOnly={readOnly} onChange={e => setTracking(e.target.value)} placeholder="Tracking code" />
+              {!readOnly && <Button type="button" variant="outline" onClick={handleGenerate}>
                 {t('shipments.generate') || 'Generate'}
-              </Button>
+              </Button>}
             </div>
           </div>
         </div>
       </SectionCardContent>
-      <ActionFooter>
+      {!readOnly && <ActionFooter>
         <Button variant="outline" onClick={handleSaveTracking} disabled={savingTracking || (carrier === initialCarrier && tracking === initialTracking)} size="sm">
           <Save className="h-4 w-4 mr-2" /> {t('common.save') || 'Save Tracking'}
         </Button>
-      </ActionFooter>
+      </ActionFooter>}
     </SectionCard>
   )
 }
