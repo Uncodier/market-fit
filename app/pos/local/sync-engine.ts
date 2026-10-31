@@ -1,6 +1,7 @@
 import { hasPosOutboxWork, syncPosOutboxRow } from "./sync-outbox-worker";
 import { getPosPermissionLease, isPosPermissionCurrent, subscribePosPermission } from "./location-permission-state";
 import { canStartPosRemoteRequest } from "./remote-permission";
+import { POS_ACCESS_UPDATED_EVENT } from "./access-recheck";
 import { getPosDb } from "./db";
 import { listOutbox } from "./outbox";
 import { pullAndStorePosCatalogSnapshot, applyPosOpenOrders } from "./snapshot-pull";
@@ -18,7 +19,10 @@ import { clearAllPosSyncErrors, clearPosSyncError, getPosSyncError, recordPosSyn
 import { beginCatalogSync, clearCatalogSyncProgress, finishCatalogSync, getCatalogSyncProgress, setCatalogSyncPhase, type CatalogSyncProgress } from "./catalog-sync-progress";
 
 export type SyncStatus = {
+  /** Legacy remote-work availability; cached leases must keep consumers offline. */
   online: boolean;
+  /** Browser connectivity for diagnostics, never authorization for remote work. */
+  networkOnline?: boolean;
   pulling: boolean;
   syncing: boolean;
   pendingCount: number;
@@ -128,13 +132,14 @@ export function subscribePosSync(listener: SyncListener, siteId?: string): () =>
 export function getPosSyncStatus(siteId: string): SyncStatus {
   const permission = getPosPermissionLease(siteId);
   if (!permission) return {
-    online: isBrowserOnline(), accessVerified: false, pulling: false, syncing: false,
+    online: false, networkOnline: isBrowserOnline(), accessVerified: false, pulling: false, syncing: false,
     pendingCount: 0, failedCount: 0, lastPulledAt: null, lastOrdersPulledAt: null, lastError: null,
   };
   const state = siteState.get(siteId) || { ...EMPTY_SITE_STATE };
   return {
     online: isBrowserOnline() && !permission.offline,
-    accessVerified: true,
+    networkOnline: isBrowserOnline(),
+    accessVerified: !permission.offline,
     pulling: pullingSites.has(siteId),
     syncing: drainingSites.has(siteId) || hasPosOutboxWork(siteId),
     pendingCount: state.pendingCount,
@@ -404,7 +409,17 @@ export function startPosSyncLoop(siteId: string) {
 
   if (!wired) {
     wired = true;
+    window.addEventListener(POS_ACCESS_UPDATED_EVENT, () => {
+      // Lease renewal is not scope invalidation: retain counts, errors, progress
+      // and scheduling. Never trust event payloads as authorization.
+      const sites = new Set([...knownSites, ...Array.from(listeners.values()).filter((id): id is string => !!id)]);
+      sites.forEach((sid) => emit(sid));
+      intervals.forEach((_, sid) => {
+        if (canStartPosRemoteRequest(getPosPermissionLease(sid))) void runPosSyncCycle(sid, false);
+      });
+    });
     window.addEventListener("online", () => {
+      knownSites.forEach((sid) => emit(sid));
       intervals.forEach((_, sid) => void runPosSyncCycle(sid, true));
     });
     window.addEventListener("focus", () => {

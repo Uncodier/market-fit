@@ -35,7 +35,8 @@ describe("POS current browser location access", () => {
     auth.mockResolvedValue({ data: { user: { id: "actor-a" } }, error: null });
     rpc.mockImplementation(async (name: string) => ({ data: name === "current_user_site_role" ? "collaborator" : false, error: null }));
     jest.mocked(createClient).mockReturnValue({
-      auth: { getUser: auth, onAuthStateChange: (listener: typeof authChange) => { authChange = listener; return { data: { subscription: { unsubscribe } } }; } }, rpc,
+      auth: { getUser: auth, onAuthStateChange: (listener: typeof authChange) => { authChange = listener; return { data: { subscription: { unsubscribe } } }; } },
+      rpc: (...args: unknown[]) => ({ abortSignal: () => rpc(...args) }),
     } as unknown as ReturnType<typeof createClient>);
   });
   afterEach(() => { jest.useRealTimers(); });

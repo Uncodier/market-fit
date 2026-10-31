@@ -56,7 +56,7 @@ suite("POS snapshot safety with real Chromium IndexedDB (isolated, no app server
     await page.goto("http://pos.test/");
     await page.addScriptTag({ path: path.join(process.cwd(), "node_modules/dexie/dist/dexie.js") });
     const modules = Object.fromEntries([
-      "db", "location-permission-state", "remote-permission", "snapshot-pull", "sync-engine",
+      "db", "location-permission-state", "remote-permission", "snapshot-pull", "sync-engine", "access-recheck",
       "sync-errors", "sync-policy", "catalog-sync-progress", "indexeddb-runtime", "storage-diagnostic", "rejected-order-projection",
     ].map((name) => [`./${name}`, source(`app/pos/local/${name}.ts`)]));
     modules["@/app/pos/open-orders"] = source("app/pos/open-orders.ts");

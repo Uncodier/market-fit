@@ -18,6 +18,7 @@ import { updateSiteRecord, createSiteRecord, deleteSiteRecord } from "./site-cru
 import { syncSiteLogosInBackground } from "@/lib/sites/logo-background-sync"
 import { refreshSiteBillingRecord } from "./site-refresh-billing"
 import { useSiteResourceSync } from "./site-resource-sync"
+import { canRecoverMissingPosSite, type SiteRefreshOptions } from "./site-refresh-policy"
 
 export type {
   Site,
@@ -448,8 +449,10 @@ export function SiteProvider({ children }: SiteProviderProps) {
   };
 
   // Wrapper para loadSites que respeta la prevención de refresh
-  const loadSitesWithPrevention = async () => {
-    if (shouldPreventRefresh() || isOnProtectedPage()) {
+  const loadSitesWithPrevention = async (options?: SiteRefreshOptions) => {
+    const recovering = canRecoverMissingPosSite(options, currentSite?.id,
+      typeof window === "undefined" ? "" : window.location.pathname)
+    if (!recovering && (shouldPreventRefresh() || isOnProtectedPage())) {
       return
     }
     return loadSites()

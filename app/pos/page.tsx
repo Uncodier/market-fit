@@ -19,9 +19,15 @@ const ACCESS_ERRORS = {
 
 export default function POSPage() {
   const { t } = useLocalization();
-  const { currentSite } = useSite();
+  const { currentSite, refreshSites } = useSite();
   const { user, isLoading } = useAuthContext();
   const access = usePosLocationAccess(currentSite?.id, user?.id, isLoading);
+  const retryAccess = () => {
+    // Retrying the permission hook alone cannot restore an unhydrated site.
+    // Reload authorized sites; never infer authorization from a stored site ID.
+    if (!currentSite?.id && user?.id) void refreshSites({ recoverMissingSite: true });
+    access.retry?.();
+  };
 
   // No catalog, draft, or sync hook can run before actor + site verification.
   if (access.status === "allowed" && access.lease) {
@@ -42,7 +48,7 @@ export default function POSPage() {
         <code className="text-xs text-muted-foreground">{access.diagnostic}</code>
       )}
       {access.status === "unavailable" && access.retry && (
-        <Button variant="outline" onClick={access.retry}>{t("pos.access.retry")}</Button>
+        <Button variant="outline" onClick={retryAccess}>{t("pos.access.retry")}</Button>
       )}
       <p className="max-w-xl text-sm text-muted-foreground">
         {t("pos.access.cacheWarning")}

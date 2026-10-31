@@ -5,12 +5,13 @@ import { getPosDb } from "@/app/pos/local/db";
 import { useEffect } from "react";
 import PosLoading from "@/app/pos/loading";
 import { LocalizationProvider } from "@/app/context/LocalizationContext";
+import { useSite } from "@/app/context/SiteContext";
 
 function LocalizedPOS({ locale = "en" }: { locale?: "en" | "es" }) {
   return <LocalizationProvider preferredLocale={locale}><POSPage /></LocalizationProvider>;
 }
 
-jest.mock("@/app/context/SiteContext", () => ({ useSite: () => ({ currentSite: { id: "site-a" } }) }));
+jest.mock("@/app/context/SiteContext", () => ({ useSite: jest.fn(() => ({ currentSite: { id: "site-a" } })) }));
 jest.mock("@/app/components/auth/auth-provider", () => ({ useAuthContext: () => ({ user: { id: "actor-a" } }) }));
 jest.mock("@/app/pos/hooks/use-pos-location-access", () => ({ usePosLocationAccess: jest.fn() }));
 jest.mock("@/app/pos/local/db", () => ({ getPosDb: jest.fn() }));
@@ -52,6 +53,19 @@ describe("POS guarded workspace mount", () => {
     expect(screen.getByText(/verification timed out/i)).toBeInTheDocument();
     expect(screen.queryByText(/Cached POS data is not available offline/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Retry access check" }));
+    expect(retry).toHaveBeenCalledTimes(1);
+    expect(getPosDb).not.toHaveBeenCalled();
+  });
+
+  it("retries the authorized site loader when site hydration failed, without mounting private data", () => {
+    const refreshSites = jest.fn();
+    const retry = jest.fn();
+    jest.mocked(useSite).mockReturnValueOnce({ currentSite: null, refreshSites } as unknown as ReturnType<typeof useSite>);
+    jest.mocked(usePosLocationAccess).mockReturnValue({ status: "unavailable", lease: null, reason: "context", retry });
+    render(<LocalizedPOS />);
+    fireEvent.click(screen.getByRole("button", { name: "Retry access check" }));
+    expect(refreshSites).toHaveBeenCalledTimes(1);
+    expect(refreshSites).toHaveBeenCalledWith({ recoverMissingSite: true });
     expect(retry).toHaveBeenCalledTimes(1);
     expect(getPosDb).not.toHaveBeenCalled();
   });

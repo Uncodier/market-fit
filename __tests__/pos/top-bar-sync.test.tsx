@@ -40,4 +40,17 @@ describe("top-bar sync widget site scope", () => {
     fireEvent.click(screen.getByRole("button", { name: "pos.sync.catalog.refresh" }));
     expect(pullPosCatalogInBackground).toHaveBeenCalledWith("site-one", true);
   });
+
+  it("requests verification instead of refreshing the catalog for a cached lease", async () => {
+    jest.mocked(getPosSyncStatus).mockReturnValue({ ...base, online: false, networkOnline: true, accessVerified: false });
+    const recheck = jest.fn();
+    window.addEventListener("pos-access-recheck", recheck);
+    render(<PosTopBarSync />);
+    await act(async () => { await Promise.resolve(); });
+    fireEvent.click(screen.getByRole("button", { name: "pos.sync.catalog.accessPending" }));
+    fireEvent.click(screen.getByRole("button", { name: "Verify POS access" }));
+    expect(recheck).toHaveBeenCalledTimes(1);
+    expect(pullPosCatalogInBackground).not.toHaveBeenCalled();
+    window.removeEventListener("pos-access-recheck", recheck);
+  });
 });

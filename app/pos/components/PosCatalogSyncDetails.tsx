@@ -8,7 +8,7 @@ export function formatSyncDuration(ms: number) {
 }
 
 export function catalogSyncLabel(status: SyncStatus, t: (key: string) => string) {
-  if (!status.online) return t("pos.sync.offline");
+  if (!(status.networkOnline ?? status.online)) return t("pos.sync.offline");
   if (status.accessVerified === false) return t("pos.sync.catalog.accessPending");
   if (status.pulling) return t(`pos.sync.catalog.${status.catalogSync?.phase === "idle" ? "checking" : status.catalogSync?.phase ?? "checking"}`);
   if (status.catalogSync?.error) return t("pos.sync.catalog.retryPending");
@@ -27,13 +27,16 @@ export function PosCatalogSyncDetails({ status, now, locale, t }: {
   const completedAt = success?.completedAt ?? status.lastPulledAt;
   const completedDate = completedAt ? new Date(completedAt) : null;
   const validDate = completedDate && Number.isFinite(completedDate.getTime());
-  const duration = progress?.startedAt != null && status.pulling
+  const duration = progress?.startedAt != null && status.pulling && status.online && status.accessVerified !== false
     ? formatSyncDuration(now - progress.startedAt) : null;
 
   return (
     <section className="space-y-2 text-xs" aria-label={t("pos.sync.catalog.title")}>
       <h3 className="font-medium text-sm">{t("pos.sync.catalog.title")}</h3>
       <p role="status" aria-live="polite">{catalogSyncLabel(status, t)}</p>
+      {(status.networkOnline ?? status.online) && status.accessVerified === false && (
+        <p className="text-muted-foreground">The browser is online, but session or server access is not verified. Local work is retained. Verification waits for any pending session request; repeated clicks cannot restart a stalled session request.</p>
+      )}
       {duration && <p className="text-muted-foreground" aria-live="off">{t("pos.sync.catalog.elapsed", { duration })}</p>}
       <p className="text-muted-foreground">
         {t("pos.sync.catalog.lastSuccess")}{": "}

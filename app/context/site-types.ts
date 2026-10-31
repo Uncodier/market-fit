@@ -422,7 +422,7 @@ export interface SiteContextType {
   updateSite: (site: Site, options?: UpdateSiteOptions) => Promise<void>
   createSite: (site: Omit<Site, 'id' | 'created_at' | 'updated_at'>) => Promise<Site>
   deleteSite: (id: string) => Promise<void>
-  refreshSites: () => Promise<void>
+  refreshSites: (options?: { recoverMissingSite?: boolean }) => Promise<void>
   refreshSiteBilling: (siteId: string) => Promise<void>
   updateSettings: (siteId: string, settings: Partial<SiteSettings>) => Promise<void>
   getSettings: (siteId: string) => Promise<SiteSettings | null>

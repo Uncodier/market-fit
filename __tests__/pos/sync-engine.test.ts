@@ -469,7 +469,7 @@ describe("POS sync failure reporting and recovery", () => {
     rows = [queued()];
     await engine.runPosSyncCycle(SITE, true);
     await engine.syncPosCheckout(SITE, rows[0].clientMutationId);
-    expect(engine.getPosSyncStatus(SITE)).toMatchObject({ online: false, accessVerified: true, pendingCount: 1, lastError: null });
+    expect(engine.getPosSyncStatus(SITE)).toMatchObject({ online: false, networkOnline: true, accessVerified: false, pendingCount: 1, lastError: null });
     expect(checkIn).not.toHaveBeenCalled();
     expect(revision).not.toHaveBeenCalled();
     expect(ordersPull).not.toHaveBeenCalled();

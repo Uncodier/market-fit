@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { requestPosAccessRecheck } from "@/app/pos/local/access-recheck";
 import {
   getPosSyncStatus,
   startPosSyncLoop,
@@ -12,7 +13,8 @@ import {
 } from "@/app/pos/local/sync-engine";
 
 const EMPTY: SyncStatus = {
-  online: true,
+  online: false,
+  accessVerified: false,
   pulling: false,
   syncing: false,
   pendingCount: 0,
@@ -45,7 +47,9 @@ export function usePosSyncStatus(siteId: string | undefined) {
   return {
     status: snapshot.siteId === siteId ? snapshot.status : EMPTY,
     retrySync: () => {
-      if (siteId) void runPosSyncCycle(siteId, true);
+      if (!siteId) return;
+      if (getPosSyncStatus(siteId).accessVerified === false) requestPosAccessRecheck();
+      else void runPosSyncCycle(siteId, true);
     },
     drainOutbox: () => {
       if (siteId) void drainPosOutbox(siteId);

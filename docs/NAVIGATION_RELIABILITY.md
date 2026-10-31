@@ -26,6 +26,10 @@ remain unchanged: changing prefetch traffic is a separate optimization.
 Explicit logout, external redirects, demo transitions, and site-archival document
 reloads retain their existing behavior. These are not idle-recovery mechanisms.
 
+The main POS uses its own permission gate rather than the global location-revision
+document reset. Deployment notices defer updates while POS is open; see
+[POS updates and connection recovery](POS_UPDATE_RECOVERY.md).
+
 ### Robots file-picker recovery
 
 Robots checks subscription changes on focus/visibility through the existing

@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
+import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { locationPermissionRevision } from '@/lib/permissions/location-revision'
 import { invalidateAgentsCache } from '@/app/agents/agents-cache'
@@ -10,12 +11,19 @@ const reloadDocument = () => window.location.reload()
 
 /** Discard warm React/browser projections when the server-owned permission set changes. */
 export function useLocationPermissionRevision(siteId: string | null, resetDocument = reloadDocument) {
+  const isPos = usePathname() === '/pos'
+  const previousScope = useRef<{ siteId: string | null; value?: string }>({ siteId })
   useEffect(() => {
+    if (previousScope.current.siteId !== siteId) previousScope.current = { siteId }
+    // The POS owns a stricter actor/site lease and revocation gate. A second
+    // document-reset monitor would interrupt checkout on transient RPC failures.
+    // Other routes, including POS check-in, retain the global security reset.
+    if (isPos) return
     if (!siteId || siteId.startsWith('demo-')) return
     let disposed = false
     let running = false
     let resetting = false
-    let baseline: string | undefined
+    let baseline = previousScope.current.value
     let timeout: ReturnType<typeof setTimeout> | undefined
     let generation = 0
     const reset = () => {
@@ -61,6 +69,7 @@ export function useLocationPermissionRevision(siteId: string | null, resetDocume
           return
         }
         baseline = next
+        previousScope.current.value = next
       } catch { if (baseline !== undefined && request === generation) reset() }
       finally {
         if (request === generation) {
@@ -84,5 +93,5 @@ export function useLocationPermissionRevision(siteId: string | null, resetDocume
       window.removeEventListener('online', visible)
       document.removeEventListener('visibilitychange', visible)
     }
-  }, [siteId, resetDocument])
+  }, [siteId, resetDocument, isPos])
 }

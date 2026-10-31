@@ -59,7 +59,7 @@ describe("POS offline authorization revocation", () => {
           authChange = listener;
           return { data: { subscription: { unsubscribe: jest.fn() } } };
         },
-      }, rpc,
+      }, rpc: (...args: unknown[]) => ({ abortSignal: () => rpc(...args) }),
     } as unknown as ReturnType<typeof createClient>);
   });
   afterEach(() => { jest.useRealTimers(); });

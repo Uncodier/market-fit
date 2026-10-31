@@ -83,14 +83,31 @@ describe("catalog status within the sync widget", () => {
     expect(screen.getByRole("button", { name: "Refresh catalog" })).toBeDisabled();
   });
 
-  it("shows permission re-verification instead of synced and disables catalog refresh", () => {
+  it("requests access verification while connected without invoking catalog refresh", () => {
+    const recheck = jest.fn();
+    const refresh = jest.fn();
+    window.addEventListener("pos-access-recheck", recheck);
     const { rerender } = render(<PosSyncBadge status={{ ...base, lastPulledAt: "2026-10-23T12:00:00Z" }} t={t} onRefresh={jest.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "Synced" }));
-    rerender(<PosSyncBadge status={{ ...base, accessVerified: false }} t={t} onRefresh={jest.fn()} />);
+    rerender(<PosSyncBadge status={{ ...base, online: false, networkOnline: true, accessVerified: false, pulling: true }} t={t} onRefresh={refresh} />);
     expect(screen.getByRole("button", { name: "Waiting for verified POS access" })).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("Waiting for verified POS access");
     expect(document.querySelector("time")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Refresh catalog" })).toBeDisabled();
+    const verify = screen.getByRole("button", { name: "Verify POS access" });
+    expect(verify).toBeEnabled();
+    fireEvent.click(verify);
+    expect(recheck).toHaveBeenCalledTimes(1);
+    expect(recheck.mock.calls[0][0]).toBeInstanceOf(CustomEvent);
+    expect(refresh).not.toHaveBeenCalled();
+    window.removeEventListener("pos-access-recheck", recheck);
+  });
+
+  it("does not offer verification without network connectivity", () => {
+    const refresh = jest.fn();
+    render(<PosSyncBadge status={{ ...base, online: false, networkOnline: false, accessVerified: false }} t={t} onRefresh={refresh} />);
+    fireEvent.click(screen.getByRole("button", { name: "Offline" }));
+    expect(screen.getByRole("status")).toHaveTextContent("Offline");
+    expect(screen.getByRole("button", { name: "Verify POS access" })).toBeDisabled();
   });
 
   it.each([

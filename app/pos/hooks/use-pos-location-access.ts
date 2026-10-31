@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { posStorageDiagnostic } from "../local/storage-diagnostic";
+import { notifyPosAccessUpdated, POS_ACCESS_RECHECK_EVENT } from "../local/access-recheck";
 import {
   acceptPosPermission, getPosPermissionLease, preparePosPermission,
   revokePosPermission, restorePosPermission, subscribePosPermission, suspendPosPermission,
@@ -47,6 +48,7 @@ export function usePosLocationAccess(siteId?: string, userId?: string, authLoadi
     let recheck = false;
     let timeout: ReturnType<typeof setTimeout> | undefined;
     let authTimer: ReturnType<typeof setTimeout> | undefined;
+    let controller: AbortController | undefined;
     let unsubscribeAuth = () => {};
     const unsubscribe = subscribePosPermission((reason) => {
       if (disposed) return;
@@ -86,7 +88,10 @@ export function usePosLocationAccess(siteId?: string, userId?: string, authLoadi
         const grant = !permissionRevoked && userId && siteId
           ? await restorePosPermission(userId, siteId, () => current(request) && !permissionRevoked) : null;
         if (!current(request)) return;
-        if (grant) setState({ status: "allowed", lease: grant });
+        if (grant) {
+          setState({ status: "allowed", lease: grant });
+          notifyPosAccessUpdated();
+        }
         else await deny(request, "unavailable", false, reason);
       } catch (error) {
         await deny(request, "unavailable", false, "storage", posStorageDiagnostic(error));
@@ -120,11 +125,15 @@ export function usePosLocationAccess(siteId?: string, userId?: string, authLoadi
       }
       inFlight = true;
       timedOut = false;
+      controller = new AbortController();
       timeout = setTimeout(() => {
         if (disposed || !inFlight) return;
         timedOut = true;
         // Scope invalidation also has to leave pending UI within this deadline.
         sequence += 1;
+        // Cancel DB transport as well as the UI wait, so a hung RPC cannot keep
+        // every future sync/access check behind the same in-flight slot.
+        controller?.abort();
         if (!prepared) void deny(sequence, "unavailable", false, "timeout");
         else void restoreCachedAccess(sequence, navigator.onLine ? "timeout" : "offline");
       }, POS_PERMISSION_TIMEOUT_MS);
@@ -142,7 +151,7 @@ export function usePosLocationAccess(siteId?: string, userId?: string, authLoadi
         if (!current(request)) return;
         if (auth.error || !auth.data.user) {
           if (auth.error && isPosConnectionFailure(auth.error)) {
-            await restoreCachedAccess(request, "offline");
+            await restoreCachedAccess(request, navigator.onLine ? "session" : "offline");
             return;
           }
           await deny(request, "unavailable", false, "session");
@@ -151,9 +160,9 @@ export function usePosLocationAccess(siteId?: string, userId?: string, authLoadi
         // Independent server checks, never the cached UI permission context.
         failureReason = "permission";
         const [restriction, globalRestriction, membership] = await Promise.all([
-          client.rpc("current_user_has_site_location_restrictions", { p_site_id: siteId }),
-          client.rpc("current_user_has_location_restrictions"),
-          client.rpc("current_user_site_role", { p_site_id: siteId }),
+          client.rpc("current_user_has_site_location_restrictions", { p_site_id: siteId }).abortSignal(controller.signal),
+          client.rpc("current_user_has_location_restrictions").abortSignal(controller.signal),
+          client.rpc("current_user_site_role", { p_site_id: siteId }).abortSignal(controller.signal),
         ]);
         if ((!restriction.error && restriction.data === true) || (!globalRestriction.error && globalRestriction.data === true)) {
           await revokeForScope("restricted");
@@ -169,7 +178,7 @@ export function usePosLocationAccess(siteId?: string, userId?: string, authLoadi
           const errors = [membership.error, restriction.error, globalRestriction.error].filter(Boolean);
           if (errors.length && errors.every(isPosConnectionFailure) &&
             (membership.error || ROLES.has(membership.data))) {
-            await restoreCachedAccess(request, "offline");
+            await restoreCachedAccess(request, navigator.onLine ? "permission" : "offline");
             return;
           }
           await deny(request, "unavailable", false, "permission");
@@ -180,10 +189,11 @@ export function usePosLocationAccess(siteId?: string, userId?: string, authLoadi
         if (current(request) && grant) {
           permissionRevoked = false;
           setState({ status: "allowed", lease: grant });
+          notifyPosAccessUpdated();
         }
       } catch (error) {
         if (failureReason !== "storage" && isPosAuthorizationDenial(error)) await revokeForScope("unavailable", failureReason);
-        else if (failureReason !== "storage" && isPosConnectionFailure(error)) await restoreCachedAccess(request, "offline");
+        else if (failureReason !== "storage" && isPosConnectionFailure(error)) await restoreCachedAccess(request, navigator.onLine ? failureReason : "offline");
         else await deny(request, "unavailable", false, failureReason, failureReason === "storage" ? posStorageDiagnostic(error) : undefined);
       } finally {
         inFlight = false;
@@ -230,6 +240,9 @@ export function usePosLocationAccess(siteId?: string, userId?: string, authLoadi
     const onOffline = () => {
       sequence += 1;
       clearTimeout(timeout);
+      // Offline fallback retires the deadline too; cancel DB transport now so
+      // reconnection does not wait forever for the abandoned request slot.
+      controller?.abort();
       void restoreCachedAccess(sequence, "offline");
     };
     const onRefresh = () => { void refresh(); };
@@ -244,6 +257,7 @@ export function usePosLocationAccess(siteId?: string, userId?: string, authLoadi
     window.addEventListener("offline", onOffline);
     window.addEventListener("online", onRefresh);
     window.addEventListener("focus", onRefresh);
+    window.addEventListener(POS_ACCESS_RECHECK_EVENT, onRefresh);
     window.addEventListener("storage", onStorage);
     document.addEventListener("visibilitychange", onVisible);
     const interval = setInterval(onRefresh, POS_PERMISSION_REFRESH_MS);
@@ -252,6 +266,7 @@ export function usePosLocationAccess(siteId?: string, userId?: string, authLoadi
       disposed = true;
       sequence += 1;
       clearTimeout(timeout);
+      controller?.abort();
       clearTimeout(authTimer);
       clearInterval(interval);
       unsubscribe();
@@ -259,6 +274,7 @@ export function usePosLocationAccess(siteId?: string, userId?: string, authLoadi
       window.removeEventListener("offline", onOffline);
       window.removeEventListener("online", onRefresh);
       window.removeEventListener("focus", onRefresh);
+      window.removeEventListener(POS_ACCESS_RECHECK_EVENT, onRefresh);
       window.removeEventListener("storage", onStorage);
       document.removeEventListener("visibilitychange", onVisible);
       suspendPosPermission();

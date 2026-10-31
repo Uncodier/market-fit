@@ -4,6 +4,7 @@ import { Button } from "@/app/components/ui/button";
 import { Progress } from "@/app/components/ui/progress";
 import { AlertTriangle, CheckCircle2, Clock, Loader2 } from "@/app/components/ui/icons";
 import type { SyncStatus } from "@/app/pos/local/sync-engine";
+import { requestPosAccessRecheck } from "@/app/pos/local/access-recheck";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/app/components/ui/popover";
@@ -24,15 +25,16 @@ export function posSyncBadgeProgress(status: SyncStatus) {
 }
 
 export function posSyncBadgeView(status: SyncStatus, t: (key: string) => string) {
+  const networkOnline = status.networkOnline ?? status.online;
   const pending = status.pendingCount + status.failedCount;
-  const busy = status.online && (status.pulling || status.syncing || status.pendingCount > 0);
+  const busy = status.online && status.accessVerified !== false && (status.pulling || status.syncing || status.pendingCount > 0);
   const hasError = status.failedCount > 0 || !!status.lastError || !!status.catalogSync?.error;
   const expanded = !status.online || status.accessVerified === false || hasError || busy || !status.lastPulledAt || !!status.catalogSync?.lastSuccess;
 
   let label = t("pos.sync.synced") || "Synced";
   let tone = "text-emerald-800 bg-emerald-100 dark:text-emerald-200 dark:bg-emerald-950/50";
 
-  if (!status.online) {
+  if (!networkOnline) {
     label =
       pending > 0
         ? `${t("pos.sync.offline") || "Offline"} · ${pending}`
@@ -56,7 +58,7 @@ export function posSyncBadgeView(status: SyncStatus, t: (key: string) => string)
   }
 
   const Icon =
-    !status.online
+    !networkOnline || status.accessVerified === false
       ? Clock
       : hasError
         ? AlertTriangle
@@ -134,7 +136,10 @@ export function PosSyncBadge({
       <PopoverContent align="start" className="w-80 max-w-[calc(100vw-2rem)] space-y-4">
         <PosCatalogSyncDetails status={status} now={now} locale={locale} t={t} />
         <div className="flex flex-wrap gap-2">
-          {onRefresh && <Button type="button" variant="outline" size="sm" disabled={!status.online || status.accessVerified === false || status.pulling} onClick={onRefresh}>{t("pos.sync.catalog.refresh")}</Button>}
+          {onRefresh && <Button type="button" variant="outline" size="sm"
+            disabled={!(status.networkOnline ?? status.online) || (status.accessVerified !== false && status.pulling)}
+            onClick={status.accessVerified === false ? requestPosAccessRecheck : onRefresh}
+          >{status.accessVerified === false ? "Verify POS access" : t("pos.sync.catalog.refresh")}</Button>}
           {onClick && <Button type="button" variant="ghost" size="sm" onClick={() => { setOpen(false); onClick(); }}>{t("pos.sync.queue")}{status.pendingCount + status.failedCount > 0 ? ` · ${status.pendingCount + status.failedCount}` : ""}</Button>}
         </div>
       </PopoverContent>
