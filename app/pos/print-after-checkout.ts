@@ -93,13 +93,19 @@ export async function printPosReceiptManually(params: {
   )
 
   if (hardwarePrinter) {
-    try {
-      await printOnDevice(hardwarePrinter, job, { allowPrompt: false })
-      return "printer"
-    } catch {
-      // A saved USB/Bluetooth binding may no longer be available. Use the
-      // browser print dialog so the cashier can still print the receipt.
-    }
+    // Do not switch transports after a failure: the printer may have already
+    // received part of the ticket, and system printing uses a different driver.
+    await printOnDevice(hardwarePrinter, job, { allowPrompt: false })
+    return "printer"
+  }
+
+  const hasHardwareConfiguration = params.settings.devices.some(
+    (device) => device.modules.pos && device.transport !== "system",
+  )
+  if (hasHardwareConfiguration) {
+    throw new Error(
+      "The configured POS printer is not ready on this computer. Open Settings > Printers, enable it and connect it here, then run a test print.",
+    )
   }
 
   const systemPrinter = configured.find(

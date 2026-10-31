@@ -78,7 +78,7 @@ describe("manual POS receipt printing", () => {
     expect(printHtml).not.toHaveBeenCalled()
   })
 
-  it("opens system print when the synchronized printer cannot be reached", async () => {
+  it("reports hardware failures without silently switching to the system driver", async () => {
     jest.mocked(printOnDevice).mockRejectedValueOnce(new Error("USB unavailable"))
 
     await expect(
@@ -86,6 +86,42 @@ describe("manual POS receipt printing", () => {
         settings: { devices: [usbPrinter] },
         receipt,
       }),
+    ).rejects.toThrow("USB unavailable")
+
+    expect(printOnDevice).toHaveBeenCalledTimes(1)
+    expect(htmlForJob).not.toHaveBeenCalled()
+    expect(printHtml).not.toHaveBeenCalled()
+  })
+
+  it("requires a configured hardware printer to be connected on this station", async () => {
+    jest.mocked(isPrinterReadyOnStation).mockReturnValue(false)
+
+    await expect(
+      printPosReceiptManually({ settings: { devices: [usbPrinter] }, receipt }),
+    ).rejects.toThrow("Settings > Printers")
+
+    expect(printOnDevice).not.toHaveBeenCalled()
+    expect(printHtml).not.toHaveBeenCalled()
+  })
+
+  it("does not treat a disabled POS hardware printer as missing configuration", async () => {
+    jest.mocked(printersForJob).mockReturnValue([])
+
+    await expect(
+      printPosReceiptManually({
+        settings: { devices: [{ ...usbPrinter, enabled: false }] },
+        receipt,
+      }),
+    ).rejects.toThrow("configured POS printer is not ready")
+
+    expect(printHtml).not.toHaveBeenCalled()
+  })
+
+  it("opens system print when no POS printer is configured", async () => {
+    jest.mocked(printersForJob).mockReturnValue([])
+
+    await expect(
+      printPosReceiptManually({ settings: { devices: [] }, receipt }),
     ).resolves.toBe("system")
 
     expect(htmlForJob).toHaveBeenCalledWith(
@@ -93,6 +129,22 @@ describe("manual POS receipt printing", () => {
       80,
     )
     expect(printHtml).toHaveBeenCalledWith("<html>receipt</html>")
+  })
+
+  it("honors an explicitly configured system printer and its paper width", async () => {
+    const systemPrinter = { ...usbPrinter, transport: "system" as const, paperWidthMm: 58 as const }
+    jest.mocked(printersForJob).mockReturnValue([systemPrinter])
+
+    await expect(
+      printPosReceiptManually({ settings: { devices: [systemPrinter] }, receipt }),
+    ).resolves.toBe("system")
+
+    expect(printOnDevice).toHaveBeenCalledWith(
+      systemPrinter,
+      expect.objectContaining({ template: "receipt" }),
+      { allowPrompt: false },
+    )
+    expect(printHtml).not.toHaveBeenCalled()
   })
 
   it("includes the employee who requested the order in receipt summaries", () => {

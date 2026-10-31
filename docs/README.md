@@ -36,6 +36,7 @@ Use the guides below before relying on older implementation notes.
   scoped requirement tests and a read-only local cron observer; separate from browser suites.
 
 ## Integration guides
+- [POS receipt printing](POS_PRINTING.md) — direct USB setup, explicit system printing, transport failures, and PostScript driver troubleshooting.
 - [Time zone selection](TIMEZONE_SELECTION.md)
 
 - [Unified account search](HOME_SEARCH.md)
