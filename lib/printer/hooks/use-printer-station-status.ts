@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { usePrinterSettings } from "./use-printer"
 import { useSite } from "@/app/context/SiteContext"
 import {
@@ -58,7 +58,6 @@ function usbBind(deviceId: string, info: {
 export function usePrinterStationStatus(module: PrinterModule): LivePrinterStatus {
   const settings = usePrinterSettings()
   const { currentSite, updateSettings } = useSite()
-  const locale = currentSite?.settings?.default_locale || null
   const [tick, setTick] = useState(0)
   const [live, setLive] = useState<PrinterStationState>("checking")
   const [error, setError] = useState<string | undefined>()
@@ -95,13 +94,10 @@ export function usePrinterStationStatus(module: PrinterModule): LivePrinterStatu
     [module, persistPrinters],
   )
 
-  const base = useMemo(
-    () => printerStationStatus(settings, module),
-    [settings, module, tick],
-  )
+  const base = printerStationStatus(settings, module)
 
   const runProbe = useCallback(
-    async (forcePrint = false, override?: PrintersSettings) => {
+    async (override?: PrintersSettings, background = false) => {
       const active = override || settings
       if (printerStationStatus(active, module).state === "hidden") {
         setLive("hidden")
@@ -110,11 +106,8 @@ export function usePrinterStationStatus(module: PrinterModule): LivePrinterStatu
         return { state: "hidden" as const }
       }
       const id = ++probeId.current
-      setLive("checking")
-      const outcome = await probeModulePrinters(active, module, {
-        forcePrint,
-        locale,
-      })
+      if (!background) setLive("checking")
+      const outcome = await probeModulePrinters(active, module)
       if (id !== probeId.current) return outcome
       setLive(outcome.state)
       setError(outcome.error)
@@ -124,11 +117,34 @@ export function usePrinterStationStatus(module: PrinterModule): LivePrinterStatu
       }
       return outcome
     },
-    [settings, module, locale, persistOwnedClaims],
+    [settings, module, persistOwnedClaims],
   )
 
   useEffect(() => {
-    void runProbe(false)
+    const timer = window.setTimeout(() => { void runProbe() }, 0)
+    return () => window.clearTimeout(timer)
+  }, [runProbe, tick])
+
+  useEffect(() => {
+    // USB/Serial events update immediately; polling also covers BLE disconnects.
+    const navigatorDevices = navigator as Navigator & {
+      usb?: EventTarget
+      serial?: EventTarget
+    }
+    const check = () => { void runProbe(undefined, true) }
+    const sources = [navigatorDevices.usb, navigatorDevices.serial]
+    for (const source of sources) {
+      source?.addEventListener?.("connect", check)
+      source?.addEventListener?.("disconnect", check)
+    }
+    const interval = window.setInterval(check, 10000)
+    return () => {
+      window.clearInterval(interval)
+      for (const source of sources) {
+        source?.removeEventListener?.("connect", check)
+        source?.removeEventListener?.("disconnect", check)
+      }
+    }
   }, [runProbe])
 
   useEffect(() => {
@@ -174,7 +190,7 @@ export function usePrinterStationStatus(module: PrinterModule): LivePrinterStatu
         }
       }
       await persistPrinters(nextDevices)
-      const outcome = await runProbe(true, { devices: nextDevices })
+      const outcome = await runProbe({ devices: nextDevices })
       if (outcome.state !== "ready") {
         throw new Error(("error" in outcome && outcome.error) || "Printer is not connected on this computer")
       }
@@ -198,7 +214,7 @@ export function usePrinterStationStatus(module: PrinterModule): LivePrinterStatu
     aid,
     reconnect,
     confirm: async () => {
-      const outcome = await runProbe(true)
+      const outcome = await runProbe()
       if (outcome.state !== "ready" && outcome.state !== "hidden") {
         throw new Error(outcome.error || "Printer is not connected on this computer")
       }

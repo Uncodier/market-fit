@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useState } from "react"
 import { Button } from "@/app/components/ui/button"
 import { AlertTriangle, Loader2, Printer } from "@/app/components/ui/icons"
 import { useLocalization } from "@/app/context/LocalizationContext"
@@ -14,19 +14,7 @@ export function PrinterSyncBadge({ module }: { module: PrinterModule }) {
   const { t } = useLocalization()
   const status = usePrinterStationStatus(module)
   const [aidOpen, setAidOpen] = useState(false)
-  const shownAid = useRef(false)
   const needsAid = status.state === "disconnected" || status.state === "unpaired"
-
-  useEffect(() => {
-    if (needsAid && !shownAid.current) {
-      shownAid.current = true
-      setAidOpen(true)
-    }
-    if (status.state === "ready") {
-      shownAid.current = false
-      setAidOpen(false)
-    }
-  }, [needsAid, status.state])
 
   if (status.state === "hidden") return null
 
@@ -45,7 +33,7 @@ export function PrinterSyncBadge({ module }: { module: PrinterModule }) {
     status.state === "checking"
       ? t("printer.sync.checkingHint") || "Confirming this station can print"
       : status.state === "ready"
-        ? t("printer.sync.readyHint") || "This station printed a sync confirm"
+        ? t("printer.sync.ready") || "Printer ready"
         : status.error ||
           (status.state === "unpaired"
             ? t("printer.sync.unpairedHint") || "Connect this printer on this station"
@@ -56,9 +44,7 @@ export function PrinterSyncBadge({ module }: { module: PrinterModule }) {
       ? "text-emerald-800 bg-emerald-100 dark:text-emerald-200 dark:bg-emerald-950/50"
       : status.state === "checking"
         ? "text-blue-800 bg-blue-100 dark:text-blue-200 dark:bg-blue-950/50"
-        : status.state === "disconnected" || status.state === "unsupported"
-          ? "text-red-800 bg-red-100 dark:text-red-200 dark:bg-red-950/50"
-          : "text-amber-800 bg-amber-100 dark:text-amber-200 dark:bg-amber-950/50"
+        : "text-red-800 bg-red-100 dark:text-red-200 dark:bg-red-950/50"
 
   const Icon =
     status.state === "checking"
@@ -81,7 +67,7 @@ export function PrinterSyncBadge({ module }: { module: PrinterModule }) {
             return
           }
           void status.confirm().then(() => {
-            toast.success(t("printer.sync.confirmed") || "Printer sync confirm sent")
+            toast.success(t("printer.sync.ready") || "Printer ready")
           }).catch((err) => {
             toast.error(err instanceof Error ? err.message : "Could not confirm printer")
           })
@@ -105,7 +91,7 @@ export function PrinterSyncBadge({ module }: { module: PrinterModule }) {
         </span>
       </Button>
       <PrinterFirstAidDialog
-        open={aidOpen && status.state !== "checking"}
+        open={aidOpen && (needsAid || status.state === "unsupported")}
         onOpenChange={setAidOpen}
         aid={status.aid}
         error={status.error}
@@ -113,7 +99,7 @@ export function PrinterSyncBadge({ module }: { module: PrinterModule }) {
         onReconnect={async () => {
           try {
             await status.reconnect()
-            toast.success(t("printer.sync.confirmed") || "Printer sync confirm sent")
+            toast.success(t("printer.sync.ready") || "Printer ready")
             setAidOpen(false)
           } catch (err) {
             toast.error(err instanceof Error ? err.message : "Could not reconnect printer")

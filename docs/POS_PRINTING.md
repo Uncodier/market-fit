@@ -19,6 +19,15 @@ printer or suppress that dialog using ordinary web APIs.
 
 ## USB setup
 
+Connecting, reconnecting, opening a module, and checking the status badge never
+print a synchronization ticket. Connection checks open the authorized USB/Serial
+or Bluetooth connection without sending print data. USB/Serial connection events
+and a ten-second health check refresh the badge. Disconnected, unpaired, and
+unsupported printers show red; assistance opens only when the user clicks the
+badge. Test printing remains an explicit action in Settings.
+
+Connection availability does not prove paper, ink, or successful physical output.
+
 1. Use a browser exposing WebUSB/Web Serial (typically desktop Chrome or Edge).
 2. In Settings > Printers, select USB and the actual paper width (58 or 80 mm).
 3. Enable the POS module, connect the device on the cashier's computer, and save.
