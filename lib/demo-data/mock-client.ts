@@ -1,3 +1,5 @@
+import { AbortableDemoRpc } from "./abortable-rpc";
+
 export function createDemoMockClient(demoSiteId: string) {
   // We defer importing the implementation and the data
   let realClientPromise: Promise<any> | null = null;
@@ -77,7 +79,11 @@ export function createDemoMockClient(demoSiteId: string) {
       
       return createChainProxy([], []);
     },
-    rpc: async (fn: string, params: any) => (await getClient()).rpc(fn, params),
+    rpc: (fn: string, params?: unknown) => new AbortableDemoRpc(async (signal) => {
+      const client = await getClient();
+      if (signal?.aborted) throw new DOMException("Demo RPC aborted", "AbortError");
+      return client.rpc(fn, params);
+    }),
     channel: (channel: string) => {
       const mockChannel = {
         on: () => mockChannel,

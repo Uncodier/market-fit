@@ -17,6 +17,7 @@ jest.mock("@/app/components/ui/icons", () => ({
 jest.mock("@/app/components/create-requirement-dialog-for-campaign", () => ({ CampaignRequirementDialog: () => null }))
 jest.mock("@/app/components/add-campaign-lead-dialog", () => ({ AddCampaignLeadDialog: () => null }))
 jest.mock("@/app/deals/components/LinkTeamMemberDialog", () => ({ LinkTeamMemberDialog: () => null }))
+jest.mock("@/app/deals/components/DealHeaderActions", () => ({ DealHeaderActions: () => null }))
 jest.mock("@/app/deals/components/use-deal-commerce", () => ({
   useDealCommerce: () => ({ isCreatingQuote: false, isCreatingSale: false }),
 }))

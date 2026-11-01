@@ -337,14 +337,18 @@ export async function updateDeal(data: Partial<Deal>) {
 }
 
 export async function deleteDeal(id: string) {
+  if (!z.string().uuid().safeParse(id).success) return { error: "Invalid deal ID" }
+
   try {
     const supabase = createClient()
-    const { error } = await supabase.from("deals").delete().eq("id", id)
-    if (error) return { error: error.message || "Failed to delete deal" }
+    const { data, error } = await supabase.from("deals").delete().eq("id", id).select("id")
+    if (error) return { error: "Failed to delete deal" }
+    if (!data || data.length !== 1 || data[0].id !== id) {
+      return { error: "Deal not found or you don't have permission to delete it" }
+    }
     return { error: null }
-  } catch (error: any) {
-    console.error("Error deleting deal:", error)
-    return { error: error.message || "Failed to delete deal" }
+  } catch {
+    return { error: "Failed to delete deal" }
   }
 }
 

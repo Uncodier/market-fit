@@ -9,6 +9,7 @@ import { FileText, ShoppingCart, User } from "@/app/components/ui/icons"
 import { Deal } from "@/app/deals/types"
 import { updateDeal } from "@/app/deals/actions"
 import { LinkTeamMemberDialog } from "./LinkTeamMemberDialog"
+import { DealHeaderActions } from "./DealHeaderActions"
 import { dealWinProbability, formatDealCurrency } from "./deal-format"
 import { useDealCommerce } from "./use-deal-commerce"
 import { useInlineIdentityEdit } from "@/app/hooks/use-inline-identity-edit"
@@ -129,6 +130,7 @@ export function DealIdentityHeader({
               <span className="text-xs text-muted-foreground">+{extraOwners}</span>
             )}
           </Button>
+          <DealHeaderActions deal={deal} />
         </div>
       </div>
 

@@ -35,9 +35,9 @@ Verify that an Admin can create a deal, open it, and rename it inline.
 
 ## Cleanup
 
-- None in UI. `deleteDeal` exists in actions but no Delete control is rendered on the deal page. Leftover test deals may accumulate.
+- The deal identity header provides **Deal options** → **Delete** with a confirmation dialog. Successful deletion returns to `/deals`; failed deletion keeps the dialog open for retry.
 
 ## Implementation Plan
 
 - Test file: `tests/crud-deal.test.yaml`
-- Known gap: no Delete step.
+- Browser coverage gap: the YAML scenario does not yet include a Delete step. Jest covers confirmation, cancellation, pending state, failure, and permission denial.

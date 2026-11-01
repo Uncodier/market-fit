@@ -1,6 +1,7 @@
 import { getDemoData } from "./index";
 import { applyNotFilter, applySelectEmbeds, getRowValue, matchesOrFilter } from "./mock-query";
 import { getDemoSiteRole } from "./site-role";
+import { demoHasLocationRestrictions, demoHasSiteLocationRestrictions } from "./location-restrictions";
 import {
   mutateDemoOrderLineUnits,
   cascadeDeleteDemoOrderItems,
@@ -454,6 +455,12 @@ export async function createDemoMockClientImpl(demoSiteId: string) {
        if (fn === "current_user_site_role") {
          const role = getDemoSiteRole(memoryData, demoSiteId, session?.user.id, params?.p_site_id);
          return Promise.resolve({ data: role, error: null });
+       }
+       if (fn === "current_user_has_site_location_restrictions") {
+         return Promise.resolve({ data: demoHasSiteLocationRestrictions(memoryData, demoSiteId, session?.user.id, params?.p_site_id), error: null });
+       }
+       if (fn === "current_user_has_location_restrictions") {
+         return Promise.resolve({ data: demoHasLocationRestrictions(memoryData, demoSiteId, session?.user.id), error: null });
        }
        if (fn === "get_my_accessible_sites") {
          return Promise.resolve({ data: memoryData.sites || [], error: null });

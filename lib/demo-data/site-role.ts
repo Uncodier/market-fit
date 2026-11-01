@@ -1,7 +1,7 @@
-type DemoRoleData = {
+export type DemoRoleData = {
   sites?: { id: string; user_id?: string; archived_at?: string | null }[]
   site_ownership?: { site_id: string; user_id: string }[]
-  site_members?: { site_id: string; user_id: string; role: string; status?: string }[]
+  site_members?: { id?: string; site_id: string; user_id: string; role: string; status?: string }[]
 }
 
 /** Mirror the role RPC using only the selected demo's in-memory identity and sites. */
