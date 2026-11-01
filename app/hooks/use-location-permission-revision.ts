@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { locationPermissionRevision } from '@/lib/permissions/location-revision'
 import { invalidateAgentsCache } from '@/app/agents/agents-cache'
+import { isAuthSessionMissingError } from '@supabase/supabase-js'
 
 export const LOCATION_REVISION_TIMEOUT_MS = 8000
 const reloadDocument = () => window.location.reload()
@@ -25,6 +26,7 @@ export function useLocationPermissionRevision(siteId: string | null, resetDocume
     let resetting = false
     let baseline = previousScope.current.value
     let timeout: ReturnType<typeof setTimeout> | undefined
+    let controller: AbortController | undefined
     let generation = 0
     const reset = () => {
       if (disposed || resetting) return
@@ -36,31 +38,37 @@ export function useLocationPermissionRevision(siteId: string | null, resetDocume
       if (disposed || running || resetting || !navigator.onLine) return
       running = true
       const request = ++generation
+      let timedOut = false
+      controller = new AbortController()
       timeout = setTimeout(() => {
         if (disposed || request !== generation) return
-        generation += 1
-        running = false
-        // Retire an already mounted private snapshot when freshness cannot be
-        // established. On first load there is no baseline to retire or reload loop.
-        if (baseline !== undefined) reset()
+        timedOut = true
+        controller?.abort()
+        // Unavailability is not revocation. Keep SDK work single-flight until
+        // settlement; a late confirmed denial still retires this scope.
       }, LOCATION_REVISION_TIMEOUT_MS)
       try {
         const client = createClient()
         const auth = await client.auth.getUser()
         if (disposed || request !== generation) return
         if (!auth.data.user || auth.error) {
-          if (baseline !== undefined) reset()
+          const status = auth.error?.status
+          if (baseline !== undefined && (!auth.error || isAuthSessionMissingError(auth.error) ||
+              status === 401 || status === 403)) reset()
           return
         }
+        if (timedOut) return
         const { data, error } = await client.rpc('current_user_location_access', { p_site_id: siteId })
+          .abortSignal(controller.signal)
         if (disposed || request !== generation) return
         if (error) {
           // Membership revocation raises 42501; it does not return a null scope.
-          if (baseline !== undefined) reset()
+          if (baseline !== undefined && error.code === '42501') reset()
           return
         }
         const revision = locationPermissionRevision(data, siteId)
-        if (revision === null) { if (baseline !== undefined) reset(); return }
+        if (revision === null) return
+        if (revision === 'unavailable') { if (baseline !== undefined) reset(); return }
         const next = JSON.stringify([auth.data.user?.id ?? null, revision])
         if (baseline !== undefined && next !== baseline) {
           // A security revocation is a deliberate document reset, not navigation recovery.
@@ -68,9 +76,12 @@ export function useLocationPermissionRevision(siteId: string | null, resetDocume
           reset()
           return
         }
+        if (timedOut) return
         baseline = next
         previousScope.current.value = next
-      } catch { if (baseline !== undefined && request === generation) reset() }
+      } catch {
+        // Transport failures do not prove that the actor or permissions changed.
+      }
       finally {
         if (request === generation) {
           clearTimeout(timeout)
@@ -82,12 +93,13 @@ export function useLocationPermissionRevision(siteId: string | null, resetDocume
     window.addEventListener('focus', visible)
     window.addEventListener('online', visible)
     document.addEventListener('visibilitychange', visible)
-    const timer = window.setInterval(() => void check(), 30000)
+    const timer = window.setInterval(visible, 30000)
     void check()
     return () => {
       disposed = true
       generation += 1
       clearTimeout(timeout)
+      controller?.abort()
       window.clearInterval(timer)
       window.removeEventListener('focus', visible)
       window.removeEventListener('online', visible)

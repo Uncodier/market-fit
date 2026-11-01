@@ -26,6 +26,7 @@ export type LoadSitesDeps = {
   setCurrentSite: Dispatch<SetStateAction<Site | null>>
   selectSite: (site: Site) => Promise<void>
   reload: () => void
+  isCurrent?: () => boolean
 }
 
 export async function loadAccessibleSites(deps: LoadSitesDeps) {
@@ -46,13 +47,21 @@ export async function loadAccessibleSites(deps: LoadSitesDeps) {
     setCurrentSite,
     selectSite,
     reload,
+    isCurrent = () => true,
   } = deps
-    if (!isMounted || !supabase) {
+    if (!isMounted || !supabase || !isCurrent()) {
       return
     }
 
-    // Reset loaded flag at the start of a new load
-    setSitesLoaded(false)
+    // A same-workspace refresh must not replace hydrated UI with its loading gate.
+    const demoSiteId = getDemoSiteId()
+    const background = isInitialized && Boolean(currentSite) &&
+      (!demoSiteId || demoSiteId === currentSite?.id)
+    if (!background) {
+      setSitesLoaded(false)
+      setIsLoading(true)
+    }
+    setError(null)
     // ✅ MARK that we attempted to load sites (kept for diagnostics)
     setSitesLoadAttempted(true)
     
@@ -68,15 +77,12 @@ export async function loadAccessibleSites(deps: LoadSitesDeps) {
     } catch {
       userId = null
     }
+    if (!isCurrent()) return
     
     let keepLoading = false
 
     try {
-      // Always set loading to true when starting to load sites, regardless of initialization status
-      setIsLoading(true)
-      setError(null)
-
-      const savedSiteId = getLocalStorage("currentSiteId")
+      const savedSiteId = background ? currentSite?.id : getLocalStorage("currentSiteId")
 
       const {
         sites: accessibleSites,
@@ -86,7 +92,7 @@ export async function loadAccessibleSites(deps: LoadSitesDeps) {
         unauthorized,
       } = await fetchAccessibleSitesClient(supabase, savedSiteId)
 
-      if (aborted) {
+      if (!isCurrent() || aborted) {
         return
       }
 
@@ -102,7 +108,7 @@ export async function loadAccessibleSites(deps: LoadSitesDeps) {
           unauthorizedRetryRef.current += 1
           keepLoading = true
           setTimeout(() => {
-            void reload()
+            if (isCurrent()) void reload()
           }, 400)
           return
         }
@@ -152,6 +158,7 @@ export async function loadAccessibleSites(deps: LoadSitesDeps) {
       // Do not inject them into workspace/buyer site lists.
       if (typeof window !== 'undefined' && isDemoModeActive()) {
         const { availableDemos } = await import('@/lib/demo-data/index');
+        if (!isCurrent()) return
         for (const demo of availableDemos) {
           // Check if it already exists to prevent duplicates
           if (!allSitesData.some(site => site.id === demo.id)) {
@@ -190,7 +197,7 @@ export async function loadAccessibleSites(deps: LoadSitesDeps) {
         return {
           ...site,
           focus_mode: getLocalStorage(`site_${site.id}_focus_mode`, site.focus_mode || 50),
-          // No incluimos settings aquí, se cargarán específicamente para el sitio actual
+          // Settings are hydrated separately for the selected site.
           settings: undefined,
           // Add billing data if available
           billing: isDemoSite ? demoBilling : (siteBilling ? hydrateSiteBilling(siteBilling) : undefined)
@@ -202,22 +209,25 @@ export async function loadAccessibleSites(deps: LoadSitesDeps) {
         new Map(sitesWithData.map((site: any) => [site.id, site])).values()
       );
       
-      setSites(previous => mergeLoadedSiteBilling(previous, uniqueSites as Site[], billingRevision))
+      setSites(previous => isCurrent()
+        ? mergeLoadedSiteBilling(previous, uniqueSites as Site[], billingRevision)
+        : previous)
       // Same-site selection deliberately skips settings reloads, so publish the
       // financial read independently using current state, never a captured closure.
       setCurrentSite(previous => {
-        if (!previous) return previous
+        if (!isCurrent() || !previous) return previous
         const loaded = (uniqueSites as Site[]).find(site => site.id === previous.id)
-        if (!loaded) return previous
+        // A successful authorized list no longer containing this site revokes selection.
+        if (!loaded) return null
         const merged = mergeLoadedSiteBilling([previous], [loaded], billingRevision)[0]
-        return { ...previous, billing: merged.billing, billing_read_status: merged.billing_read_status }
+        return { ...previous, ...merged, settings: previous.settings }
       })
       setSitesLoaded(true)
       
       // Si hay sitios, intentamos restaurar el sitio guardado (no auto-seleccionar el primero)
       if (sitesWithData.length > 0) {
         const preferredSiteId = resolvePreferredSiteId({
-          savedSiteId: getLocalStorage("currentSiteId"),
+          savedSiteId: background ? currentSite?.id : getLocalStorage("currentSiteId"),
           demoSiteId: getDemoSiteId(),
         })
         const savedSite = preferredSiteId
@@ -225,14 +235,14 @@ export async function loadAccessibleSites(deps: LoadSitesDeps) {
           : null
         
         // PRIORIDAD 1: Si hay un sitio guardado válido, usarlo siempre
-        if (savedSite) {
+        if (savedSite && (!background || savedSite.id !== currentSite?.id)) {
           await selectSite(savedSite)
         }
         // PRIORIDAD 2: Si ya estamos inicializados, tenemos sitio actual, pero no está guardado
         else if (isInitialized && currentSite && !savedSite) {
           // Verificar que el sitio actual aún existe en la lista
           const existingSite = sitesWithData.find((site: any) => site.id === currentSite.id)
-          if (existingSite) {
+          if (existingSite && !background) {
             await selectSite(existingSite)
           } else {
             // No seleccionar automáticamente otro sitio; esperar a que el usuario elija en /projects
@@ -241,14 +251,15 @@ export async function loadAccessibleSites(deps: LoadSitesDeps) {
         // PRIORIDAD 3: Si no hay sitio actual ni guardado, NO auto-seleccionar. Se manejará con redirect a /projects
       }
 
-      if (!isInitialized) {
+      if (isCurrent() && !isInitialized) {
         setIsInitialized(true)
       }
     } catch (err) {
+      if (!isCurrent()) return
       console.error("Error loading sites:", err instanceof Error ? err.message : String(err))
       setError(err instanceof Error ? err : new Error(String(err)))
     } finally {
-      if (!keepLoading) {
+      if (isCurrent() && !background && !keepLoading) {
         setIsLoading(false)
       }
     }

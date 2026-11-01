@@ -31,6 +31,15 @@ function sitesResult(
   }
 }
 
+function isSiteList(value: unknown): value is Array<{ id: string }> {
+  return Array.isArray(value) && value.every(site => site && typeof site === "object" &&
+    typeof site.id === "string" && site.id.length > 0)
+}
+
+function invalidSitesResult() {
+  return sitesResult({ sites: [], error: snapshotPostgrestError(new Error("Invalid sites response")) })
+}
+
 export async function fetchAccessibleSitesClient(
   client: SitesClient,
   detailId?: string | null
@@ -51,7 +60,7 @@ export async function fetchAccessibleSitesClient(
         aborted: isAbortError(error),
       })
     }
-    return sitesResult({ sites: Array.isArray(data) ? data : [] })
+    return isSiteList(data) ? sitesResult({ sites: data }) : invalidSitesResult()
   }
 
   try {
@@ -67,8 +76,9 @@ export async function fetchAccessibleSitesClient(
         unauthorized: response.status === 401,
       })
     }
+    if (!payload || !isSiteList(payload.sites)) return invalidSitesResult()
     return sitesResult({
-      sites: Array.isArray(payload.sites) ? payload.sites : [],
+      sites: payload.sites,
       detail: payload.detail
     })
   } catch (error) {

@@ -113,8 +113,9 @@ const annualBilling: NonNullable<Site['billing']> = {
   paid_subscription_plan: 'engine', paid_subscription_addons_count: 2,
 }
 
-it("retains annual interval and paid invoice coverage through full reload and current-site restoration", async () => {
+it("retains annual interval and paid invoice coverage without reselecting the hydrated site", async () => {
   const model = state()
+  model.setCurrentSite(saved)
   jest.mocked(fetchAccessibleSitesClient).mockResolvedValue({ sites: [{ ...saved, billing: annualBilling }], error: null, unauthorized: false, aborted: false })
   const selectSite = jest.fn()
   await loadAccessibleSites({
@@ -126,7 +127,8 @@ it("retains annual interval and paid invoice coverage through full reload and cu
     setSites: model.setSites, setCurrentSite: model.setCurrentSite, selectSite, reload: jest.fn(),
   })
   expect(model.sites()[0].billing).toMatchObject(annualBilling)
-  expect(selectSite.mock.calls[0][0].billing).toMatchObject(annualBilling)
+  expect(model.current()?.billing).toMatchObject(annualBilling)
+  expect(selectSite).not.toHaveBeenCalled()
 })
 
 it("does not lose annual paid coverage when earlier site/settings details finish", async () => {

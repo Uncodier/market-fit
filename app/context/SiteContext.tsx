@@ -12,8 +12,8 @@ import { navigateOrAssign } from "@/lib/navigation/stale-router"
 import type { Site, SiteSettings, SiteContextType, UpdateSiteOptions } from "./site-types"
 import { cleanUUID } from "./site-storage"
 import { persistSiteSettings } from "./site-update-settings"
-import { applyCurrentSite, fetchSiteSettings } from "./site-set-current"
-import { loadAccessibleSites } from "./site-load-sites"
+import { fetchSiteSettings } from "./site-set-current"
+import { useSiteLoadingLifecycle } from "./site-loading-lifecycle"
 import { updateSiteRecord, createSiteRecord, deleteSiteRecord } from "./site-crud"
 import { syncSiteLogosInBackground } from "@/lib/sites/logo-background-sync"
 import { refreshSiteBillingRecord } from "./site-refresh-billing"
@@ -68,7 +68,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
   const [sitesLoadAttempted, setSitesLoadAttempted] = useState(false)
   const [hasValidSession, setHasValidSession] = useState(false)
   const hasValidSessionRef = useRef(false)
-  const isLoadingRef = useRef(true)
+  const authUserIdRef = useRef<string | null>(null)
   
   // Sincronizar ref con state
   useEffect(() => {
@@ -79,10 +79,6 @@ export function SiteProvider({ children }: SiteProviderProps) {
     if (currentSite?.id) persistCurrentSiteCookie(currentSite.id)
   }, [currentSite?.id])
 
-  useEffect(() => {
-    isLoadingRef.current = isLoading
-  }, [isLoading])
-  
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const unauthorizedRetryRef = useRef(0)
   
@@ -113,25 +109,11 @@ export function SiteProvider({ children }: SiteProviderProps) {
     return () => setIsMounted(false)
   }, [])
   
-  const loadSites = async () => {
-    return loadAccessibleSites({
-      supabase: supabaseRef.current,
-      isMounted,
-      isInitialized,
-      currentSite,
-      unauthorizedRetryRef,
-      setSitesLoaded,
-      setSitesLoadAttempted,
-      setIsLoading,
-      setError,
-      setHasValidSession,
-      setIsInitialized,
-      setSites,
-      setCurrentSite,
-      selectSite: handleSetCurrentSite,
-      reload: () => { void loadSites() },
-    })
-  }
+  const { loadSites, selectSite: handleSetCurrentSite, invalidate } = useSiteLoadingLifecycle({
+    supabaseRef, isMounted, isInitialized, currentSite, unauthorizedRetryRef,
+    setSitesLoaded, setSitesLoadAttempted, setIsLoading, setError,
+    setHasValidSession, setIsInitialized, setSites, setCurrentSite,
+  })
 
   // Cargar sitios al iniciar el provider, pero solo después de la hidratación
   useEffect(() => {
@@ -139,18 +121,23 @@ export function SiteProvider({ children }: SiteProviderProps) {
     
     loadSites() // Initial load is always allowed
     
-    // Safety timeout to ensure loading state is resolved
-    const loadingTimeout = setTimeout(() => {
-      if (isLoadingRef.current) {
-        console.warn("Loading timeout reached, forcing loading to false")
-        setIsLoading(false)
-        setIsInitialized((initialized) => initialized || true)
-      }
-    }, 10000)
-    
     // Suscribirse a eventos de autenticación para cargar sitios cuando el usuario inicie sesión
     const { data: { subscription } } = supabaseRef.current.auth.onAuthStateChange(
       (event: 'SIGNED_IN' | 'SIGNED_OUT' | 'USER_UPDATED' | 'PASSWORD_RECOVERY' | 'TOKEN_REFRESHED' | 'INITIAL_SESSION', session: any) => {
+        const userId = session?.user?.id ?? null
+        if (userId && authUserIdRef.current && userId !== authUserIdRef.current) {
+          invalidate()
+          hasValidSessionRef.current = false
+          unauthorizedRetryRef.current = 0
+          setSites([])
+          setCurrentSite(null)
+          setIsInitialized(false)
+          setSitesLoaded(false)
+          setIsLoading(true)
+          localStorage.removeItem("currentSiteId")
+          clearCurrentSiteCookie()
+        }
+        if (userId || event === 'SIGNED_OUT') authUserIdRef.current = userId
         if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
           // Check if we already have a valid session (cross-tab auth sync or initial load)
           if (hasValidSessionRef.current) {
@@ -162,11 +149,18 @@ export function SiteProvider({ children }: SiteProviderProps) {
           if (session) {
             setHasValidSession(true)
             setSitesLoadAttempted(false) // ✅ Reset for new load
-            loadSitesWithPrevention()
+            // Restoring identity is hydration, not an optional background refresh.
+            loadSites()
           }
         } else if (event === 'SIGNED_OUT') {
+          invalidate()
+          hasValidSessionRef.current = false
+          unauthorizedRetryRef.current = 0
+          if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current)
           setSites([])
           setCurrentSite(null)
+          setIsInitialized(false)
+          setSitesLoaded(false)
           setHasValidSession(false)
           setSitesLoadAttempted(true) // ✅ Mark as "loaded" (empty)
           setIsLoading(false)
@@ -180,7 +174,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
           if (session && !hasValidSessionRef.current) {
             setHasValidSession(true)
             setSitesLoadAttempted(false)
-            loadSitesWithPrevention()
+            loadSites()
             return
           }
           setHasValidSession(!!session)
@@ -189,7 +183,6 @@ export function SiteProvider({ children }: SiteProviderProps) {
     )
     
     return () => {
-      clearTimeout(loadingTimeout)
       subscription.unsubscribe()
     }
   }, [isMounted])
@@ -314,16 +307,6 @@ export function SiteProvider({ children }: SiteProviderProps) {
   }, [isMounted, isInitialized, isLoading, sitesLoaded, hasValidSession, sites.length, currentSite?.id, pathname, router])
   
   useSiteResourceSync(currentSite?.id, setSites, setCurrentSite)
-
-  const handleSetCurrentSite = async (site: Site) => {
-    return applyCurrentSite({
-      site,
-      currentSite,
-      supabase: supabaseRef.current,
-      setCurrentSite,
-      setSites,
-    })
-  }
 
   const shouldPreventRefresh = () => {
     if (typeof window === "undefined") return false
@@ -452,7 +435,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
   const loadSitesWithPrevention = async (options?: SiteRefreshOptions) => {
     const recovering = canRecoverMissingPosSite(options, currentSite?.id,
       typeof window === "undefined" ? "" : window.location.pathname)
-    if (!recovering && (shouldPreventRefresh() || isOnProtectedPage())) {
+    if (currentSite && !recovering && (shouldPreventRefresh() || isOnProtectedPage())) {
       return
     }
     return loadSites()

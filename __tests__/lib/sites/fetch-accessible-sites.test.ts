@@ -8,6 +8,27 @@ describe("fetchAccessibleSitesClient", () => {
     jest.restoreAllMocks()
   })
 
+  it.each([null, {}, { sites: null }, { sites: [null] }, { sites: [{}] }, { sites: [{ id: '' }] }])(
+    'rejects malformed successful responses instead of reporting a revoked site list: %j', async payload => {
+      global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => payload })
+      const result = await fetchAccessibleSitesClient({})
+      expect(result.error?.message).toBe('Invalid sites response')
+      expect(result.unauthorized).toBe(false)
+    },
+  )
+
+  it('distinguishes a confirmed empty list from unreadable JSON', async () => {
+    global.fetch = jest.fn().mockResolvedValueOnce({ ok: true, json: async () => ({ sites: [] }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => { throw new SyntaxError('Invalid JSON') } })
+    expect((await fetchAccessibleSitesClient({})).error).toBeNull()
+    expect((await fetchAccessibleSitesClient({})).error).not.toBeNull()
+  })
+
+  it('rejects malformed demo lists as errors too', async () => {
+    const result = await fetchAccessibleSitesClient({ _isDemo: true, rpc: async () => ({ data: null, error: null }) })
+    expect(result.error?.message).toBe('Invalid sites response')
+  })
+
   it("uses the demo RPC and ignores empty PostgREST objects by snapshotting them", async () => {
     const rpc = jest.fn().mockResolvedValue({ data: [{ id: "demo-1" }], error: null })
     const result = await fetchAccessibleSitesClient({ _isDemo: true, rpc })

@@ -13,7 +13,11 @@ The `/pos` page now relies on its own actor/site permission gate instead of the
 global document-reset monitor. Its independent membership, site-exclusion and
 global-exclusion checks, expiry, sign-out, cross-tab invalidation and revocation
 handling remain active. Other pages, including `/pos/check-in`, retain the global
-monitor. Ordinary navigation outside POS does not restart its deadline or discard
+monitor. The shared monitor now preserves mounted work on transient auth/RPC
+failures, malformed responses and verification timeouts. It aborts timed-out RPC
+transport and stays single-flight until SDK work settles; later wake events retry.
+Confirmed denials, missing authenticated users and changed permission fingerprints
+still retire the private document. Ordinary navigation outside POS does not restart its deadline or discard
 pending denials; the actor/site revision baseline survives the POS pause.
 A confirmed denial still locks private data; a transient failure does
 not gain remote access or erase stored POS work.

@@ -30,6 +30,13 @@ The main POS uses its own permission gate rather than the global location-revisi
 document reset. Deployment notices defer updates while POS is open; see
 [POS updates and connection recovery](POS_UPDATE_RECOVERY.md).
 
+The shared location-revision monitor no longer reloads mounted workspace pages on
+transport errors, malformed responses or its eight-second verification timeout.
+RPC transport is aborted at the deadline; SDK work remains single-flight until it
+settles. Confirmed authentication/membership denials and changed permission scopes
+still retire private data, including late denials. Cached UI is not authorization:
+server checks and RLS remain mandatory. Hidden tabs do not run interval checks.
+
 ### Robots file-picker recovery
 
 Robots checks subscription changes on focus/visibility through the existing
@@ -101,8 +108,16 @@ RLS remain enforced. Regression coverage lives in
 ### Other workspace screens
 
 `WorkspaceSiteSWRScope` defers workspace SWR requests while `SiteContext.isLoading`
-is true, regardless of array, object, or URL key shape. It leaves the interactive
-shell mounted and reports loading instead of a stale error or an empty list.
+is true, regardless of array, object, or URL key shape. It keeps previously loaded
+data mounted for the same actor, site and resource during that pause. Initial
+loads and scope/key changes report loading rather than borrowing previous data.
+Terminal request errors invalidate the retained snapshot. Cross-key SWR
+`keepPreviousData` is disabled inside this workspace scope to avoid displaying a
+different tenant or resource while its request is pending.
+The workspace cache is memory-only and isolated per mounted authenticated actor;
+an account transition replaces this cache and its private component tree. Ordinary
+same-account refreshes do not remount it. Workspace reads do not reuse the global
+local-storage cache after another account signs in.
 It does not gate public commerce or account-global providers. Reports retain
 their deliberately independent `ReportSWRScope` and their explicit site gate.
 
@@ -121,11 +136,27 @@ The app-wide SWR retry policy recognizes both HTTP 4xx status and exact access
 errors returned by Server Actions. Confirmed access failures are shown immediately,
 without automatic retries or keeping an older cached result visible.
 
-This gate covers the existing loading flag, not every session or resource
-lifecycle: its ten-second safety timeout is unchanged, manual site switching
-does not establish a new loading interval, and resource-ID chat/robot artifact
-flows retain their own authorization and lifecycle rules. These paths need live
-verification rather than a blanket selected-site gate.
+SiteContext distinguishes initial/site-identity hydration from same-workspace
+background reads. Background refresh retains hydrated settings and does not raise
+the loading gate; successful authorized reads refresh metadata/billing and clear
+a revoked selection. Request generations fence overlapping reads, site switches,
+signout, actor changes and unmount, including deferred settings and retries. Auth
+subscriptions use current committed site state rather than their initial closure.
+An already selected real workspace is tab-local during background refresh: another
+tab changing the saved preference cannot switch it. Malformed successful site-list
+responses are errors, not authoritative empty lists or evidence of revoked access.
+Site switches remain gated through hydration. A request-owned ten-second deadline
+reports a recoverable error and rejects late publications instead of silently
+unlocking an incomplete selection. Background timeouts retain the mounted site;
+initial/selection timeouts clear only the incomplete selection. Explicit selection
+hydration cannot be superseded by a metadata refresh. Identity restoration and
+missing-site retry bypass route-based background-refresh suppression.
+Resource-ID chat/robot artifact flows retain their own authorization and lifecycle
+rules and still need live verification. No mutation is automatically replayed.
+
+Deals distinguishes missing site, initial load, failed reads and a successful empty
+list. Read failures preserve status/code metadata, and retry revalidates data without
+reloading the page. Missing tables and null payloads are errors, not empty results.
 
 ### Navigation modules
 

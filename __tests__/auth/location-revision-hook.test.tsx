@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/client'
 import { invalidateAgentsCache } from '@/app/agents/agents-cache'
 import { LOCATION_REVISION_TIMEOUT_MS, useLocationPermissionRevision } from '@/app/hooks/use-location-permission-revision'
 import { usePathname } from 'next/navigation'
+import { AuthSessionMissingError } from '@supabase/supabase-js'
 
 jest.mock('@/lib/supabase/client', () => ({ createClient: jest.fn() }))
 jest.mock('@/app/agents/agents-cache', () => ({ invalidateAgentsCache: jest.fn() }))
@@ -11,6 +12,7 @@ const scope = { site_id: site, role: 'collaborator', revision: 0, restricted_loc
 const rpc = jest.fn()
 const getUser = jest.fn()
 const reset = jest.fn()
+const signals: AbortSignal[] = []
 const settle = () => act(async () => { await Promise.resolve(); await Promise.resolve(); await Promise.resolve() })
 
 beforeEach(() => {
@@ -19,9 +21,98 @@ beforeEach(() => {
   Object.defineProperty(navigator, 'onLine', { configurable: true, value: true })
   rpc.mockResolvedValue({ data: scope, error: null })
   getUser.mockResolvedValue({ data: { user: { id: 'actor' } }, error: null })
-  jest.mocked(createClient).mockReturnValue({ rpc, auth: { getUser } } as never)
+  jest.mocked(createClient).mockReturnValue({
+    rpc: (...args: unknown[]) => ({ abortSignal: (signal: AbortSignal) => { signals.push(signal); return rpc(...args) } }),
+    auth: { getUser },
+  } as never)
+  signals.length = 0
 })
 afterEach(() => jest.useRealTimers())
+
+it.each([
+  { code: '', message: 'Failed to fetch' },
+  { code: '57014', message: 'Query timed out' },
+  { code: 'PGRST000', message: 'Database unavailable' },
+])('keeps the document on a transient RPC error: $message', async error => {
+  renderHook(() => useLocationPermissionRevision(site, reset))
+  await settle()
+  rpc.mockResolvedValueOnce({ data: null, error })
+  act(() => window.dispatchEvent(new Event('focus')))
+  await settle()
+  expect(reset).not.toHaveBeenCalled()
+  act(() => window.dispatchEvent(new Event('online')))
+  await settle()
+  expect(rpc).toHaveBeenCalledTimes(3)
+  expect(reset).not.toHaveBeenCalled()
+})
+
+it('keeps warm data on auth transport failures and malformed scope responses', async () => {
+  renderHook(() => useLocationPermissionRevision(site, reset))
+  await settle()
+  getUser.mockResolvedValueOnce({ data: { user: null }, error: { status: 503 } })
+  act(() => window.dispatchEvent(new Event('focus')))
+  await settle()
+  rpc.mockResolvedValueOnce({ data: {}, error: null })
+  act(() => window.dispatchEvent(new Event('focus')))
+  await settle()
+  rpc.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+  act(() => window.dispatchEvent(new Event('focus')))
+  await settle()
+  expect(reset).not.toHaveBeenCalled()
+})
+
+it.each([401, 403])('retires data on confirmed auth denial %s', async status => {
+  renderHook(() => useLocationPermissionRevision(site, reset))
+  await settle()
+  getUser.mockResolvedValueOnce({ data: { user: null }, error: { status } })
+  act(() => window.dispatchEvent(new Event('focus')))
+  await settle()
+  expect(reset).toHaveBeenCalledTimes(1)
+})
+
+it('retires data on the SDK missing-session error even though its status is 400', async () => {
+  renderHook(() => useLocationPermissionRevision(site, reset))
+  await settle()
+  getUser.mockResolvedValueOnce({ data: { user: null }, error: new AuthSessionMissingError() })
+  act(() => window.dispatchEvent(new Event('focus')))
+  await settle()
+  expect(reset).toHaveBeenCalledTimes(1)
+})
+
+it('honors a denial that arrives after the verification timeout', async () => {
+  renderHook(() => useLocationPermissionRevision(site, reset))
+  await settle()
+  let resolve!: (value: unknown) => void
+  rpc.mockReturnValueOnce(new Promise(done => { resolve = done }))
+  act(() => window.dispatchEvent(new Event('focus')))
+  await settle()
+  act(() => jest.advanceTimersByTime(LOCATION_REVISION_TIMEOUT_MS))
+  expect(reset).not.toHaveBeenCalled()
+  await act(async () => resolve({ data: null, error: { code: '42501' } }))
+  expect(reset).toHaveBeenCalledTimes(1)
+})
+
+it('honors a changed permission scope arriving after timeout', async () => {
+  renderHook(() => useLocationPermissionRevision(site, reset))
+  await settle()
+  let resolve!: (value: unknown) => void
+  rpc.mockReturnValueOnce(new Promise(done => { resolve = done }))
+  act(() => window.dispatchEvent(new Event('focus')))
+  await settle()
+  act(() => jest.advanceTimersByTime(LOCATION_REVISION_TIMEOUT_MS))
+  await act(async () => resolve({ data: { ...scope, revision: 1 }, error: null }))
+  expect(reset).toHaveBeenCalledTimes(1)
+})
+
+it('does not run periodic checks while the tab is hidden', async () => {
+  renderHook(() => useLocationPermissionRevision(site, reset))
+  await settle()
+  const visibility = jest.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')
+  try {
+    act(() => jest.advanceTimersByTime(60_000))
+    expect(getUser).toHaveBeenCalledTimes(1)
+  } finally { visibility.mockRestore() }
+})
 
 it('leaves POS refresh and revocation to its local access gate without resetting the document', async () => {
   jest.mocked(usePathname).mockReturnValue('/pos')
@@ -83,7 +174,7 @@ it.each(['/orders', '/pos'])('retains the revision baseline across navigation th
   expect(reset).toHaveBeenCalledTimes(1)
 })
 
-it('expires a hung refresh and ignores its eventual result', async () => {
+it('aborts a hung refresh without reloading or overlapping it and ignores late success', async () => {
   let resolve!: (value: unknown) => void
   renderHook(() => useLocationPermissionRevision(site, reset))
   await settle()
@@ -91,9 +182,13 @@ it('expires a hung refresh and ignores its eventual result', async () => {
   act(() => window.dispatchEvent(new Event('focus')))
   await settle()
   act(() => jest.advanceTimersByTime(LOCATION_REVISION_TIMEOUT_MS))
-  expect(reset).toHaveBeenCalledTimes(1)
+  expect(signals.at(-1)?.aborted).toBe(true)
+  expect(reset).not.toHaveBeenCalled()
+  act(() => window.dispatchEvent(new Event('focus')))
+  await settle()
+  expect(rpc).toHaveBeenCalledTimes(2)
   await act(async () => resolve({ data: scope, error: null }))
-  expect(reset).toHaveBeenCalledTimes(1)
+  expect(reset).not.toHaveBeenCalled()
 })
 
 it('does not extend a pending verification deadline on ordinary navigation', async () => {
@@ -109,7 +204,8 @@ it('does not extend a pending verification deadline on ordinary navigation', asy
     await settle()
   }
   act(() => jest.advanceTimersByTime(2_000))
-  expect(reset).toHaveBeenCalledTimes(1)
+  expect(reset).not.toHaveBeenCalled()
+  expect(signals.at(-1)?.aborted).toBe(true)
   expect(rpc).toHaveBeenCalledTimes(2)
 })
 
@@ -128,11 +224,16 @@ it('does not discard a pending denial on ordinary navigation', async () => {
   expect(rpc).toHaveBeenCalledTimes(2)
 })
 
-it('does not loop-reload on missing setup at initial load, but retries after timeout', async () => {
-  getUser.mockReturnValueOnce(new Promise(() => undefined))
+it('waits for timed-out auth work to settle before retrying', async () => {
+  let resolve!: (value: unknown) => void
+  getUser.mockReturnValueOnce(new Promise(done => { resolve = done }))
   renderHook(() => useLocationPermissionRevision(site, reset))
   await settle()
   act(() => jest.advanceTimersByTime(LOCATION_REVISION_TIMEOUT_MS))
+  act(() => window.dispatchEvent(new Event('focus')))
+  await settle()
+  expect(getUser).toHaveBeenCalledTimes(1)
+  await act(async () => resolve({ data: { user: { id: 'actor' } }, error: null }))
   act(() => window.dispatchEvent(new Event('focus')))
   await settle()
   expect(getUser).toHaveBeenCalledTimes(2)

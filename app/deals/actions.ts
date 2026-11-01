@@ -7,12 +7,14 @@ import { Deal, DealContact, DealOwner } from "./types"
 type OwnerProfile = { id: string; email: string | null; name: string | null }
 type DealTask = NonNullable<Deal["next_task"]> & { deal_id: string }
 
-export async function getDeals(siteId: string): Promise<{ deals: Deal[] | null; error: string | null }> {
+export async function getDeals(siteId: string): Promise<{
+  deals: Deal[] | null; error: string | null; status?: number; code?: string
+}> {
   try {
     const supabase = createClient()
     
     // Get deals with their basic fields, resolving companies
-    const { data: deals, error }: PostgrestSingleResponse<Deal[]> = await supabase
+    const { data: deals, error, status }: PostgrestSingleResponse<Deal[]> = await supabase
       .from("deals")
       .select(`
         *,
@@ -22,15 +24,14 @@ export async function getDeals(siteId: string): Promise<{ deals: Deal[] | null; 
       .order("created_at", { ascending: false })
 
     if (error) {
-      if (error.code === '42P01') {
-        // Table doesn't exist yet, return empty array instead of throwing
-        return { deals: [], error: null }
-      }
-      throw error
+      return { deals: null, error: "Failed to fetch deals", status, code: error.code }
     }
     
     // Check if we have any deals before trying to map them
-    if (!deals || deals.length === 0) {
+    if (!deals) {
+      return { deals: null, error: "Failed to fetch deals", status }
+    }
+    if (deals.length === 0) {
       return { deals: [], error: null }
     }
     
@@ -106,9 +107,14 @@ export async function getDeals(siteId: string): Promise<{ deals: Deal[] | null; 
     })
 
     return { deals: normalizedDeals, error: null }
-  } catch (error: any) {
-    console.error("Error fetching deals:", error, JSON.stringify(error, null, 2))
-    return { deals: null, error: error?.message || "Failed to fetch deals" }
+  } catch (error: unknown) {
+    const metadata = error && typeof error === "object" ? error as Record<string, unknown> : {}
+    return {
+      deals: null,
+      error: "Failed to fetch deals",
+      ...(typeof metadata.status === "number" && Number.isFinite(metadata.status) ? { status: metadata.status } : {}),
+      ...(typeof metadata.code === "string" ? { code: metadata.code } : {}),
+    }
   }
 }
 
