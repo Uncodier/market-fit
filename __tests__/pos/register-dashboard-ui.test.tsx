@@ -8,6 +8,7 @@ import { closedRegisterSession, registerSession, registerSummary } from "./regis
 
 jest.mock("@/app/pos/operation-client", () => ({ fetchRegisterDashboard: jest.fn(), fetchRegisterSummary: jest.fn(), openPosRegister: jest.fn(), movePosRegisterCash: jest.fn(), closePosRegister: jest.fn() }));
 jest.mock("@/app/pos/register/queue-guard", () => ({ withRegisterCloseLock: jest.fn() }));
+jest.mock("@/lib/printer/hooks/use-printer", () => ({ usePrinterSettings: () => ({ devices: [] }) }));
 const dashboard = jest.mocked(fetchRegisterDashboard);
 const summary = jest.mocked(fetchRegisterSummary);
 const open = jest.mocked(openPosRegister);
@@ -244,7 +245,7 @@ describe("cash register dashboard UI", () => {
     render(<CashRegisterOptions {...input} />);
     fireEvent.click(screen.getByRole("button", { name: "Cash Register" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Register unavailable");
-    expect(screen.getByRole("alert")).toHaveTextContent("Close and reopen this dialog after recovery.");
+    expect(screen.getByRole("alert")).toHaveTextContent("Close and reopen this dialog to try again.");
     expect(screen.queryByRole("button", { name: /refresh/i, hidden: true })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /^Close$/ }));
     fireEvent.click(screen.getByRole("button", { name: "Cash Register" }));
@@ -264,13 +265,13 @@ describe("cash register dashboard UI", () => {
     dashboard.mockResolvedValueOnce({ error: "Register migration unavailable" });
     selectView("History");
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
-    await waitFor(() => expect(screen.getByText(/No balance has been reset/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/Last loaded figures have not been reset/)).toBeInTheDocument());
     selectView("Today");
     expect(screen.getByRole("button", { name: "Open register" })).toBeDisabled();
     expect(screen.queryByRole("button", { name: /refresh/i, hidden: true })).not.toBeInTheDocument();
     selectView("History");
     fireEvent.click(screen.getByRole("button", { name: "Previous" }));
-    await waitFor(() => expect(screen.queryByText(/No balance has been reset/)).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText(/Last loaded figures have not been reset/)).not.toBeInTheDocument());
     selectView("Today");
     await waitFor(() => expect(screen.getByRole("button", { name: "Open register" })).toBeEnabled());
     expect(screen.getByLabelText("Opening cash (USD)")).toHaveValue("100");
@@ -327,7 +328,7 @@ describe("cash register dashboard UI", () => {
     expect(screen.queryByRole("button", { name: "Refresh" })).not.toBeInTheDocument();
     selectView("Today");
     expect(screen.queryByRole("button", { name: /refresh/i, hidden: true })).not.toBeInTheDocument();
-    expect(screen.getByRole("alert")).toHaveTextContent("Close and reopen this dialog after recovery.");
+    expect(screen.getByRole("alert")).toHaveTextContent("Close and reopen this dialog to try again.");
   });
 
   it.each(["populated", "empty"])("shows history skeletons while loading a %s next page", async (result) => {

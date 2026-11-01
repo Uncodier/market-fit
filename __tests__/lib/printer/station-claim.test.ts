@@ -92,6 +92,24 @@ describe("printer station claim", () => {
     expect(claimNeedsUpdate(device, bind)).toBe(false)
     expect(claimNeedsUpdate(device, { printerId: "p1", bluetoothDeviceId: "bt-2" })).toBe(true)
   })
+
+  it("rejects a changed USB serial number or driver even for the same model", () => {
+    const bind = { printerId: "p1", usbVendorId: 1, usbProductId: 2, usbKind: "webusb" as const, usbSerialNumber: "A" }
+    const device = createPrinterDevice({ id: "p1", transport: "usb", station: buildStationClaim(bind) })
+    expect(stationOwnsPrinter(device, bind)).toBe(true)
+    for (const changed of [{ ...bind, usbSerialNumber: "B" }, { ...bind, usbKind: "serial" as const }]) {
+      expect(stationOwnsPrinter(device, changed)).toBe(false)
+      expect(claimNeedsUpdate(device, changed)).toBe(true)
+    }
+  })
+
+  it("rejects bindings for another printer, workstation or transport", () => {
+    const device = createPrinterDevice({ id: "p1", transport: "usb" })
+    expect(stationOwnsPrinter(device, { printerId: "p2", usbVendorId: 1 })).toBe(false)
+    expect(stationOwnsPrinter(device, { printerId: "p1", workstationId: "other", usbVendorId: 1 })).toBe(false)
+    expect(stationOwnsPrinter(device, { printerId: "p1", bluetoothDeviceId: "bt" })).toBe(false)
+    expect(stationOwnsPrinter({ ...device, transport: "bluetooth" }, { printerId: "p1", usbVendorId: 1 })).toBe(false)
+  })
 })
 
 describe("station sync ticket", () => {

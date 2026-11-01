@@ -1,8 +1,12 @@
+import type { RegisterReportPayload } from "./register-report-types"
+export type { RegisterReportPayload } from "./register-report-types"
+
 export type PrinterTransport = "usb" | "bluetooth" | "system"
 export type PrinterModule = "pos" | "orders" | "inventory"
 export type PaperWidthMm = 58 | 80
 export type PrintTemplateKind =
   | "receipt"
+  | "register-report"
   | "kitchen"
   | "kitchen-delta"
   | "inventory-label"
@@ -161,6 +165,7 @@ export interface TestPrintPayload {
 }
 
 export type PrintJobPayload =
+  | RegisterReportPayload
   | ReceiptPayload
   | KitchenPayload
   | InventoryLabelPayload

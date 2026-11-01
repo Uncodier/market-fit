@@ -8,9 +8,11 @@ import {
   type PaperWidthMm,
   type PrintJob,
   type ReceiptPayload,
+  type RegisterReportPayload,
   type TestPrintPayload,
 } from "../core/types"
 import { writeReceipt } from "./receipt"
+import { writeRegisterReport } from "./register-report"
 import { writeKitchenTicket } from "./kitchen"
 import { writeKitchenDelta } from "./kitchen-delta"
 import { writeInventoryLabel } from "./inventory-label"
@@ -109,7 +111,7 @@ export class HtmlThermalBuilder implements TicketBuilder {
     return this
   }
 
-  qr(data: string, _moduleSize?: number): this {
+  qr(data: string): this {
     this.lines.push({ kind: "qr", value: toEscPosAscii(data) })
     return this
   }
@@ -174,6 +176,9 @@ export class HtmlThermalBuilder implements TicketBuilder {
 
 function writeJob(builder: TicketBuilder, job: PrintJob) {
   switch (job.template) {
+    case "register-report":
+      writeRegisterReport(builder, job.payload as RegisterReportPayload)
+      break
     case "receipt":
       writeReceipt(builder, job.payload as ReceiptPayload)
       break

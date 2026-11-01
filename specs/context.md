@@ -127,3 +127,10 @@ App env vars are documented in `docs/ENVIRONMENT_VARIABLES.md` (Supabase, API se
   Trace/video/screenshots are disabled; account cleanup is exact QA destruction,
   pending until resource-group absence is verified. Authored/offline validation
   does not imply live success. See `specs/tests/account-lifecycle.md`.
+- `procurement` and `subsystems` are separately selected native Playwright suites;
+  they never join smoke/regression discovery implicitly. They require a verified
+  disposable installer QA stack, local loopback origins on the execution host,
+  public-key backend identity, exact QA/run namespaces and adequate expiry.
+  Procurement covers the implemented tender transaction surfaces; subsystems
+  covers cross-screen identity such as POS customer selection and lead quotations.
+  See `specs/tests/procurement.md` and `specs/tests/subsystems.md` for exact scope.

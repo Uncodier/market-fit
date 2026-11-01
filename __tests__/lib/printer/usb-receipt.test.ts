@@ -32,7 +32,7 @@ describe("direct USB receipt output", () => {
       },
       transferOut: jest.fn(async (_endpoint: number, data: Uint8Array) => {
         chunks.push(data)
-        return { status: "ok" }
+        return { status: "ok", bytesWritten: data.length }
       }),
     }
     Object.defineProperty(navigator, "usb", {

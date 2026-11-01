@@ -11,30 +11,24 @@ import type {
 import { printersForAutoPrint, printersForJob } from "../core/format"
 import { encodeJob, htmlForJob } from "../templates"
 import { printHtml } from "./browser-print"
-import { isWebUsbSupported, warmWebUsbPrinter, writeWebUsbBytes } from "./web-usb"
+import { warmWebUsbPrinter, writeWebUsbBytes } from "./web-usb"
 import { warmUsbPrinter, writeUsbBytes } from "./web-serial"
 import { warmBluetoothPrinter, writeBluetoothBytes } from "./web-bluetooth"
 
-async function writeUsb(device: PrinterDevice, bytes: Uint8Array, allowPrompt: boolean) {
-  const bind = getPrinterBind(device.id)
+async function writeUsb(bind: WorkstationBind | null, bytes: Uint8Array, allowPrompt: boolean) {
   if (bind?.usbKind === "webusb") {
     await writeWebUsbBytes(bytes, bind.usbVendorId, bind.usbProductId, bind.usbSerialNumber, {
       allowPrompt,
     })
     return
   }
-  try {
-    await writeUsbBytes(bytes, bind?.usbVendorId, bind?.usbProductId, {
-      allowPrompt,
-      baudRate: bind?.baudRate,
-      serialNumber: bind?.usbSerialNumber
-    })
-  } catch (err) {
-    if (!isWebUsbSupported()) throw err
-    await writeWebUsbBytes(bytes, bind?.usbVendorId, bind?.usbProductId, bind?.usbSerialNumber, {
-      allowPrompt,
-    })
-  }
+  // Never replay a failed write via another driver: bytes may already be on paper.
+  await writeUsbBytes(bytes, bind?.usbVendorId, bind?.usbProductId, {
+    allowPrompt,
+    baudRate: bind?.baudRate,
+    serialNumber: bind?.usbSerialNumber,
+    allowWebUsbFallback: bind?.usbKind !== "serial",
+  })
 }
 
 export async function warmUsbPrinterConnection(
@@ -101,7 +95,7 @@ export async function sendToDevice(
   const allowPrompt = options?.allowPrompt !== false
   for (let i = 0; i < copies; i++) {
     if (device.transport === "usb") {
-      await writeUsb(device, bytes, allowPrompt)
+      await writeUsb(bind, bytes, allowPrompt)
     } else if (device.transport === "bluetooth") {
       await writeBluetoothBytes(bytes, bind?.bluetoothDeviceId, { allowPrompt })
     } else {

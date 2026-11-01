@@ -27,7 +27,9 @@ describe("paperless printer connection checks", () => {
       transport,
       modules: { pos: true, orders: false, inventory: false },
     })
-    setPrinterBind({ printerId: printer.id, usbVendorId: 1, usbProductId: 2, bluetoothDeviceId: "ble-1" })
+    setPrinterBind({ printerId: printer.id, ...(transport === "usb"
+      ? { usbVendorId: 1, usbProductId: 2 }
+      : { bluetoothDeviceId: "ble-1" }) })
     const warm = transport === "usb" ? jest.mocked(warmUsbPrinterConnection) : jest.mocked(warmBluetoothPrinter)
     warm.mockResolvedValueOnce(true).mockResolvedValueOnce(false).mockResolvedValueOnce(true)
 

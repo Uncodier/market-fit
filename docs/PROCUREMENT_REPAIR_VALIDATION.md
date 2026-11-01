@@ -51,6 +51,44 @@ Internal request IDs, estimates and plans are never added to public snapshots.
 
 ## Local checks
 
+### Credential Storage admission interoperability (2026-10-30)
+
+Forward correction `20261030230000_procurement_storage_admission.sql` fixes the
+native credential upload's Storage `42501` admission failure. The historical
+insert guard requires `metadata.size` before Storage has uploaded the bytes.
+Storage API v1.84.19 `Uploader.upload` probes with `mimetype` and `contentLength`,
+not `size`; older permission probes can have empty or NULL metadata. The prior
+fully populated test INSERT did not reproduce this boundary.
+
+The correction keeps the restrictive INSERT guard and authorizes only the exact
+caller-owned, pending reservation younger than one hour. Any supplied `size` or
+`mimetype` must match that reservation; absent values are permitted at admission.
+`contentLength` is not a file-size substitute because multipart envelopes can
+contribute to request length. Backend metadata remains authoritative.
+
+The endpoint still validates actual byte count, allowed MIME and content signature
+before reservation/upload. The bucket remains private with its 8 MiB/MIME limits;
+account reservation quotas and completion's exact backend `size`/`mimetype` checks
+are unchanged. An empty/mismatched object cannot become ready, readable or shared.
+Caller UPDATE/DELETE and pending SELECT remain denied. Storage's own internal
+completion transaction persists backend metadata; no application service-role
+fallback is needed or added. This does not claim that PostgreSQL can validate
+object bytes or enforce signature checks on direct Storage requests.
+
+```bash
+npm test -- --runInBand __tests__/procurement/credential-storage-postgres.test.ts \
+  __tests__/procurement/evidence-postgres.test.ts __tests__/procurement/storage-postgres.test.ts
+```
+
+The new regression runs against a fresh socket-only PostgreSQL cluster, never a
+configured database URL. It reproduces baseline admission failure, tests empty
+and v1.84.19 probe metadata, rollback-only admission, internal metadata completion,
+foreign/anonymous/expired/ready denial, and backend mismatches. It retains the
+real credential RPCs and restrictive policies even with a broad legacy policy.
+PostgreSQL tests are not an actual Storage server replay. After explicit target
+approval, apply only the complete forward correction to existing local QA and
+retest the native upload; never replay/edit the historical credential migration.
+
 ```bash
 npm test -- --runInBand __tests__/procurement __tests__/licensing
 npm test -- --runInBand __tests__/commerce __tests__/buyer __tests__/quotations __tests__/catalog

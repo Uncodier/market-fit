@@ -34,7 +34,7 @@ const getUser = jest.fn();
 const from = jest.fn();
 const userClient = { auth: { getUser }, from };
 const eq = jest.fn();
-const baseHeaders = { "Content-Type": "application/json", Origin: "http://localhost", "Sec-Fetch-Site": "same-origin" };
+const baseHeaders = { "Content-Type": "application/json", Host: "localhost:3000", Origin: "http://localhost:3000", "Sec-Fetch-Site": "same-origin" };
 const operations = [
   { operation: "checkout", input: checkoutInput },
   { operation: "create-lead", input: { siteId, name: "Customer", clientMutationId: requestId } },
@@ -47,7 +47,7 @@ const operations = [
   { operation: "register-move", input: { siteId, sessionId, kind: "cash_in", amount: 1, reason: "Float", requestId } },
 ];
 function request(body: unknown = operations[0], headers: Record<string, string> = baseHeaders) {
-  return new Request("http://localhost/api/pos/operation", { method: "POST", headers, body: JSON.stringify(body) });
+  return new Request("http://0.0.0.0:3000/api/pos/operation", { method: "POST", headers, body: JSON.stringify(body) });
 }
 function expectNoActions() { actions.forEach((action) => expect(action).not.toHaveBeenCalled()); }
 
@@ -151,8 +151,8 @@ it("rejects location-restricted users without action calls", async () => {
   expectNoActions();
 });
 
-it.each([undefined, "null", "https://attacker.invalid", "http://localhost:3000", "http://sub.localhost"])("rejects missing/cross-origin %p", async (origin) => {
-  const headers: Record<string, string> = { "Content-Type": "application/json", "X-Forwarded-Host": "attacker.invalid" };
+it.each([undefined, "null", "https://attacker.invalid", "http://localhost:3001", "http://sub.localhost"])("rejects missing/cross-origin %p", async (origin) => {
+  const headers: Record<string, string> = { "Content-Type": "application/json", Host: "localhost:3000", "X-Forwarded-Host": "attacker.invalid" };
   if (origin) headers.Origin = origin;
   expect((await POST(request(operations[0], headers))).status).toBe(403);
   expect(createClient).not.toHaveBeenCalled();

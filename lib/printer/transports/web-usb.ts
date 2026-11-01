@@ -8,7 +8,7 @@ type UsbDeviceLike = {
   close: () => Promise<void>
   selectConfiguration: (value: number) => Promise<void>
   claimInterface: (n: number) => Promise<void>
-  transferOut: (endpointNumber: number, data: BufferSource) => Promise<{ status: string }>
+  transferOut: (endpointNumber: number, data: BufferSource) => Promise<{ status: string; bytesWritten: number }>
 }
 
 type UsbInterfaceLike = {
@@ -70,6 +70,10 @@ async function findDevice(
   const usb = getUsb()
   if (!usb) return null
   const devices = await usb.getDevices()
+  const candidates = devices.filter((d) => matches(d, vendorId, productId, serialNumber))
+  if (candidates.length > 1) {
+    throw new Error("Multiple USB printers match this binding. Connect only the intended printer and bind it again.")
+  }
   if (
     cached &&
     devices.includes(cached) &&
@@ -78,10 +82,7 @@ async function findDevice(
     return cached
   }
   cached = null
-  const hasFingerprint =
-    vendorId != null || productId != null || Boolean(serialNumber)
-  const found = devices.find((d) => matches(d, vendorId, productId, serialNumber))
-    || (!hasFingerprint ? devices[0] : null)
+  const found = candidates[0]
   if (found) cached = found
   return found
 }
@@ -130,7 +131,7 @@ async function claimBulkOut(device: UsbDeviceLike): Promise<number> {
           try {
             await device.claimInterface(iface.interfaceNumber)
             return endpoint.endpointNumber
-          } catch (e) {
+          } catch {
              continue
           }
         }
@@ -210,8 +211,11 @@ export async function writeWebUsbBytes(
   const chunkSize = 64
   try {
     for (let i = 0; i < data.length; i += chunkSize) {
-      const result = await device.transferOut(endpoint, data.slice(i, i + chunkSize))
-      if (result.status !== "ok") throw new Error("USB printer transfer failed")
+      const chunk = data.slice(i, i + chunkSize)
+      const result = await device.transferOut(endpoint, chunk)
+      if (result.status !== "ok" || result.bytesWritten !== chunk.length) {
+        throw new Error("USB printer transfer failed or was incomplete")
+      }
     }
   } catch (err) {
     if (cached === device) cached = null

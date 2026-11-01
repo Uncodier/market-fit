@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isSameOriginRequest } from "@/lib/http/is-same-origin-request";
 import { executePosOperation } from "@/app/pos/operation-boundary";
 import { withPosServerTiming } from "@/app/pos/checkout-server-timing";
 import { decodeRequestBody, readLimitedRequestBody, RequestBodyTooLargeError } from "@/lib/http/read-limited-request-body";
@@ -11,10 +12,7 @@ const headers = {
 
 /** Fixed same-origin HTTP transport, independent of the client Server Action queue. */
 export async function POST(request: Request) {
-  // Do not trust forwarding headers or accept sibling subdomains as same-origin.
-  const origin = request.headers.get("origin");
-  const fetchSite = request.headers.get("sec-fetch-site");
-  if (!origin || origin !== new URL(request.url).origin || (fetchSite && fetchSite !== "same-origin")) {
+  if (!isSameOriginRequest(request)) {
     return NextResponse.json({ error: "Forbidden POS request origin." }, { status: 403, headers });
   }
   if (request.headers.get("content-type")?.split(";", 1)[0].trim().toLowerCase() !== "application/json") {

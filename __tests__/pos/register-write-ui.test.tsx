@@ -7,6 +7,7 @@ import { closedRegisterSession, registerSession, registerSummary } from "./regis
 
 jest.mock("@/app/pos/operation-client", () => ({ fetchRegisterSummary: jest.fn(), movePosRegisterCash: jest.fn(), closePosRegister: jest.fn() }));
 jest.mock("@/app/pos/register/queue-guard", () => ({ withRegisterCloseLock: jest.fn() }));
+jest.mock("@/lib/printer/hooks/use-printer", () => ({ usePrinterSettings: () => ({ devices: [] }) }));
 
 const move = jest.mocked(movePosRegisterCash);
 const close = jest.mocked(closePosRegister);
@@ -35,6 +36,15 @@ function movement() {
 }
 
 describe("cash register write UI", () => {
+  it.each([["155", "Balanced"], ["150", "Cash shortage"], ["160", "Cash surplus"]])("labels the closing preview for counted cash %s", (counted, label) => {
+    renderForms("close");
+    expect(screen.getByLabelText("Closing preview")).toHaveTextContent("Enter counted cash");
+    fireEvent.change(screen.getByLabelText("Counted cash (USD)"), { target: { value: counted } });
+    expect(screen.getByLabelText("Closing preview")).toHaveTextContent(label);
+    expect(screen.getByLabelText("Counted cash (USD)")).toHaveAccessibleDescription("Include cash only. Do not include card or transfer payments.");
+    expect(close).not.toHaveBeenCalled();
+  });
+
   it("blocks offline writes and retains all inputs", async () => {
     renderForms();
     movement();
@@ -167,6 +177,8 @@ describe("cash register write UI", () => {
     summary.mockResolvedValueOnce({ error: "Summary unavailable" });
     rerender(<RegisterSessionPanel siteId="site-1" session={registerSession} locationName="Store" revision={1} writable onChanged={onChanged} />);
     await waitFor(() => expect(screen.getByRole("button", { name: "Close register" })).toBeDisabled());
+    expect(screen.getByRole("alert")).toBeVisible();
+    expect(screen.getByRole("alert")).toHaveTextContent("Summary unavailable");
     expect(screen.getByRole("button", { name: "Cancel" })).toBeEnabled();
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Summary unavailable");

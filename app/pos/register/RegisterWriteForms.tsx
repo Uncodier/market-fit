@@ -2,16 +2,17 @@
 
 import { useId, useState } from "react";
 import { Button } from "@/app/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card";
 import { Input } from "@/app/components/ui/input";
 import { Label } from "@/app/components/ui/label";
 import { Textarea } from "@/app/components/ui/textarea";
 import { closePosRegister as closeRegister, movePosRegisterCash as moveRegisterCash } from "../operation-client";
 import { withRegisterCloseLock } from "./queue-guard";
 import type { RegisterMovementKind, RegisterSession, RegisterSummary } from "./types";
-import { registerAmount, registerMoney, requireRegisterOnline } from "./register-ui-utils";
+import { registerAmount, requireRegisterOnline } from "./register-ui-utils";
 import { useRegisterMutation } from "./use-register-mutation";
 import { RegisterActions } from "./RegisterLayout";
+import { RegisterReconciliation } from "./RegisterReconciliation";
 
 export type RegisterWriteAction = "cash_in" | "cash_out" | "close";
 
@@ -83,13 +84,13 @@ export function RegisterWriteForms({ siteId, session, summary, disabled, action,
             }), (closed) => onChanged(closed));
           } catch (failure) { mutation.setError(failure instanceof Error ? failure.message : "Invalid closing amount."); }
         }}>
-          <CardHeader><CardTitle className="text-base">Close register</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            <div className="space-y-1"><Label htmlFor={`${id}-counted`}>Counted cash ({session.currency})</Label><Input id={`${id}-counted`} inputMode="decimal" value={counted} onChange={(event) => setCounted(event.target.value)} disabled={busy} autoFocus required /></div>
-            <dl className="grid grid-cols-2 gap-2 text-sm">
-              <dt>Expected cash</dt><dd className="text-right">{summary ? registerMoney(summary.expected_amount, session.currency) : "Unavailable"}</dd>
-              <dt>Preview difference</dt><dd className="text-right">{difference === null ? "Enter counted cash" : registerMoney(difference, session.currency)}</dd>
-            </dl>
+          <CardHeader className="border-b bg-muted/20 p-4 sm:p-5">
+            <CardTitle className="text-base">Close register</CardTitle>
+            <CardDescription>Count the cash in the drawer, then review the difference before closing this shift.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4 p-4 sm:p-5">
+            <div className="space-y-2"><Label htmlFor={`${id}-counted`}>Counted cash ({session.currency})</Label><Input id={`${id}-counted`} className="h-12 text-lg font-medium tabular-nums" inputMode="decimal" placeholder="0.00" aria-describedby={`${id}-counted-help`} value={counted} onChange={(event) => setCounted(event.target.value)} disabled={busy} autoFocus required /><p id={`${id}-counted-help`} className="text-xs text-muted-foreground">Include cash only. Do not include card or transfer payments.</p></div>
+            <RegisterReconciliation currency={session.currency} amount={summary?.expected_amount ?? null} difference={difference} preview />
             <div className="space-y-1"><Label htmlFor={`${id}-notes`}>Closing notes</Label><Textarea id={`${id}-notes`} value={notes} onChange={(event) => setNotes(event.target.value)} disabled={busy} maxLength={2000} /></div>
             <p className="text-xs text-muted-foreground">Closing is blocked if any payment remains unresolved. Check payment status before closing. The final expected cash and difference are calculated by the server.</p>
           </CardContent>

@@ -2,9 +2,13 @@ import { injectQrIntoDocument } from "../core/inject-qr"
 
 function waitForIframeLoad(iframe: HTMLIFrameElement): Promise<void> {
   return new Promise((resolve) => {
-    const done = () => resolve()
+    const done = () => {
+      clearTimeout(timer)
+      iframe.removeEventListener("load", done)
+      resolve()
+    }
+    const timer = setTimeout(done, 300)
     iframe.addEventListener("load", done, { once: true })
-    setTimeout(done, 300)
   })
 }
 
@@ -26,17 +30,18 @@ export async function printHtml(html: string): Promise<void> {
     iframe.remove()
     throw new Error("Could not open print frame")
   }
-  doc.open()
-  doc.write(html)
-  doc.close()
-
   try {
-    await waitForIframeLoad(iframe)
+    const loaded = waitForIframeLoad(iframe)
+    doc.open()
+    doc.write(html)
+    doc.close()
+    await loaded
     await injectQrIntoDocument(doc, 112)
     const win = iframe.contentWindow
     if (!win) throw new Error("Could not open print window")
     await new Promise<void>((resolve, reject) => {
       const cleanup = () => {
+        clearTimeout(timer)
         win.removeEventListener("afterprint", onAfter)
         iframe.remove()
       }
@@ -45,6 +50,10 @@ export async function printHtml(html: string): Promise<void> {
         resolve()
       }
       win.addEventListener("afterprint", onAfter)
+      // Safari can return from print() while its dialog still uses this document.
+      // Resolve dispatch, but only afterprint may remove the frame. If the browser
+      // omits that event the frame stays until navigation, rather than blanking a job.
+      const timer = setTimeout(resolve, 1500)
       try {
         win.focus()
         win.print()
@@ -52,10 +61,6 @@ export async function printHtml(html: string): Promise<void> {
         cleanup()
         reject(err)
       }
-      setTimeout(() => {
-        cleanup()
-        resolve()
-      }, 1500)
     })
   } catch (err) {
     iframe.remove()

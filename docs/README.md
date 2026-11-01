@@ -36,6 +36,12 @@ Use the guides below before relying on older implementation notes.
   scoped requirement tests and a read-only local cron observer; separate from browser suites.
 
 ## Integration guides
+
+- [Business and role-based UX personalization](UX_PERSONALIZATION_DESIGN.md) — proposed identity onboarding, site defaults, personal overrides, Complete experience, team experience roles, and staged module-level UX coverage; design only.
+- [Record templates and UX decision trees](UX_PERSONALIZATION_TEMPLATES_AND_DECISIONS.md) — school/clinic starter packs, installation and privacy gates, `/navigation` collection shortcuts, and decision trees for templates, modules, CTAs, names, icons, and copy; design only.
+- [Complete business UX catalog](UX_PERSONALIZATION_BUSINESS_CATALOG.md) — all 12 current industries and 29 explicit business leaves with questions, templates, modules, roles, shortcuts, CTAs and helper copy; proposed specification.
+- [UX execution decision rules](UX_PERSONALIZATION_EXECUTION_RULES.md) — complete template field registry and deterministic rules for needs, sizes, operating models, roles, module coverage, states, copy and validation fixtures; proposed specification.
+- [Marketing Agency and Content Creator modes](UX_PERSONALIZATION_AGENCY_AND_CREATOR_MODES.md) — first-class priority ICP choices, dedicated setup trees, templates, shortcuts, copy, roles and client/publishing boundaries; proposed specification.
 - [POS receipt printing](POS_PRINTING.md) — direct USB setup, explicit system printing, transport failures, and PostScript driver troubleshooting.
 - [Time zone selection](TIMEZONE_SELECTION.md)
 

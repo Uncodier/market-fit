@@ -8,7 +8,7 @@ function leaves(suites: ListedSuite[]): ListedSuite[] {
   return suites.flatMap(suite => [...(suite.specs?.length ? [suite] : []), ...leaves(suite.suites || [])]);
 }
 
-it.each(['smoke', 'regression', 'buyer', 'roles', 'project-lifecycle', 'account-lifecycle'])('discovers only the intended %s tests without auth/network execution', suite => {
+it.each(['smoke', 'regression', 'buyer', 'roles', 'project-lifecycle', 'account-lifecycle', 'procurement', 'subsystems'])('discovers only the intended %s tests without auth/network execution', suite => {
   const env: NodeJS.ProcessEnv = { ...process.env, TEST_SUITE: suite, SHIPLIGHT_RUN_ID: 'discovery-regression', SHIPLIGHT_OFFLINE: '1' };
   delete env.JEST_WORKER_ID;
   const result = spawnSync(process.execPath, [path.resolve('node_modules/@playwright/test/cli.js'), 'test', '--list', '--reporter=json'], {
@@ -28,6 +28,13 @@ it.each(['smoke', 'regression', 'buyer', 'roles', 'project-lifecycle', 'account-
   }
   if (suite === 'buyer') expect(files.join('\n')).not.toContain('auth.setup.ts');
   if (suite === 'regression') expect(files.join('\n')).not.toContain('buyer-navigation');
+  for (const moduleSuite of ['procurement', 'subsystems']) {
+    const moduleFiles = files.filter(file => file.startsWith(`tests/${moduleSuite}/`));
+    if (suite === moduleSuite) {
+      expect(moduleFiles.length).toBeGreaterThan(0);
+      expect(files.filter(file => file !== 'auth.setup.ts')).toEqual(moduleFiles);
+    } else expect(moduleFiles).toEqual([]);
+  }
   if (suite === 'project-lifecycle') {
     expect(files.sort()).toEqual(['auth.setup.ts', 'tests/projects/lifecycle.spec.ts']);
     expect(found.flatMap(item => item.specs || [])).toHaveLength(2);

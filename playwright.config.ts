@@ -7,7 +7,7 @@ dotenv.config({ path: path.resolve(__dirname, '.env'), quiet: true });
 dotenv.config({ path: path.resolve(__dirname, '.env.local'), quiet: true });
 
 const suite = (process.env.TEST_SUITE || 'smoke') as TestSuite;
-if (!['smoke', 'regression', 'buyer', 'roles', 'project-lifecycle', 'account-lifecycle'].includes(suite)) throw new Error('Invalid TEST_SUITE');
+if (!['smoke', 'regression', 'buyer', 'roles', 'project-lifecycle', 'account-lifecycle', 'procurement', 'subsystems'].includes(suite)) throw new Error('Invalid TEST_SUITE');
 const privateLifecycle = suite === 'project-lifecycle' || suite === 'account-lifecycle';
 const generated = shiplightConfig();
 const safeReporters = Array.isArray(generated.reporter) ? generated.reporter.map(entry =>
@@ -17,6 +17,10 @@ const safeReporters = Array.isArray(generated.reporter) ? generated.reporter.map
 const shared = { browserName: 'chromium' as const };
 const adminState = storageStatePath('admin');
 const projects = suite === 'roles' ? [{ name: 'roles', testMatch: /tests\/boundaries\/.*\.spec\.ts$/ }]
+  : suite === 'procurement' || suite === 'subsystems' ? [
+    { name: 'setup', testMatch: /(^|\/)auth\.setup\.ts$/, use: { storageState: { cookies: [], origins: [] } } },
+    { name: suite, testMatch: new RegExp(`tests/${suite}/.*\\.spec\\.ts$`), use: { ...shared, storageState: adminState }, dependencies: ['setup'] },
+  ]
   : suite === 'account-lifecycle' ? [
     { name: 'account-lifecycle', testMatch: /tests\/accounts\/lifecycle\.spec\.ts$/, use: { ...shared, storageState: { cookies: [], origins: [] } } },
   ]
@@ -40,7 +44,7 @@ export default defineConfig({
   testIgnore: ['**/node_modules/**', '**/tests/agent/**', '**/arch.yaml.spec.ts'],
   globalSetup: './tests/support/preflight.ts',
   timeout: suite === 'smoke' ? 90_000 : 300_000,
-  globalTimeout: suite === 'smoke' ? 600_000 : suite === 'account-lifecycle' ? 1_200_000 : 7_200_000,
+  globalTimeout: suite === 'smoke' ? 600_000 : ['account-lifecycle', 'procurement', 'subsystems'].includes(suite) ? 1_200_000 : 7_200_000,
   expect: { timeout: 15_000 },
   workers: 1,
   retries: 0,

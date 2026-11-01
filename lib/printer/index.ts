@@ -10,6 +10,7 @@ export type {
   KitchenLine,
   KitchenPayload,
   ReceiptPayload,
+  RegisterReportPayload,
   InventoryLabelPayload,
   WorkstationBind,
   PrinterStationClaim,

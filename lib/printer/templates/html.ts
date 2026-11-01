@@ -1,4 +1,5 @@
 import { resolveTicketLocale, ticketCopy } from "../core/copy"
+import { registerReportHtml } from "./register-report"
 import {
   formatMoney,
   formatTicketDateParts,
@@ -11,6 +12,7 @@ import type {
   KitchenPayload,
   PrintJob,
   ReceiptPayload,
+  RegisterReportPayload,
   TestPrintPayload,
   TicketBrand,
 } from "../core/types"
@@ -283,6 +285,8 @@ export function testPrintHtml(payload: TestPrintPayload, paper: PaperWidthMm): s
 
 export function htmlForJob(job: PrintJob, paper: PaperWidthMm): string {
   switch (job.template) {
+    case "register-report":
+      return registerReportHtml(job.payload as RegisterReportPayload, paper)
     case "receipt":
       return receiptHtml(job.payload as ReceiptPayload, paper)
     case "kitchen":

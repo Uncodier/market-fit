@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isSameOriginRequest } from "@/lib/http/is-same-origin-request";
 import { cancelPosCheckout } from "@/app/pos/checkout-cancel-boundary";
 import { decodeRequestBody, readLimitedRequestBody, RequestBodyTooLargeError } from "@/lib/http/read-limited-request-body";
 
@@ -10,9 +11,7 @@ const headers = {
 
 /** Cancels admission only, never an order or a recorded payment. */
 export async function POST(request: Request) {
-  const origin = request.headers.get("origin");
-  const fetchSite = request.headers.get("sec-fetch-site");
-  if (!origin || origin !== new URL(request.url).origin || (fetchSite && fetchSite !== "same-origin")) {
+  if (!isSameOriginRequest(request)) {
     return NextResponse.json({ error: "Forbidden POS request origin." }, { status: 403, headers });
   }
   if (request.headers.get("content-type")?.split(";", 1)[0].trim().toLowerCase() !== "application/json") {

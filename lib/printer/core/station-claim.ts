@@ -45,6 +45,8 @@ export function bindMatchesClaim(
   claim?: PrinterStationClaim | null,
 ): boolean {
   if (!bind || !claim) return false
+  if (claim.usbKind && bind.usbKind !== claim.usbKind) return false
+  if (claim.usbSerialNumber && bind.usbSerialNumber !== claim.usbSerialNumber) return false
   if (claim.bluetoothDeviceId) {
     return Boolean(bind.bluetoothDeviceId) && bind.bluetoothDeviceId === claim.bluetoothDeviceId
   }
@@ -63,6 +65,10 @@ export function isClaimedByThisWorkstation(device: PrinterDevice): boolean {
 export function stationOwnsPrinter(device: PrinterDevice, bind: WorkstationBind | null): boolean {
   if (device.transport === "system") return true
   if (!bind) return false
+  if (bind.printerId !== device.id) return false
+  if (bind.workstationId && bind.workstationId !== getPrinterWorkstation().id) return false
+  if (device.transport === "bluetooth" && !bind.bluetoothDeviceId) return false
+  if (device.transport === "usb" && bind.bluetoothDeviceId) return false
   if (!device.station?.workstationId) return hardwareFingerprint(bind) !== "none"
   return isClaimedByThisWorkstation(device) && bindMatchesClaim(bind, device.station)
 }
@@ -76,6 +82,8 @@ export function claimNeedsUpdate(device: PrinterDevice, bind: WorkstationBind | 
   if ((cur.bluetoothDeviceId || "") !== (next.bluetoothDeviceId || "")) return true
   if ((cur.usbVendorId ?? null) !== (next.usbVendorId ?? null)) return true
   if ((cur.usbProductId ?? null) !== (next.usbProductId ?? null)) return true
+  if ((cur.usbKind ?? null) !== (next.usbKind ?? null)) return true
+  if ((cur.usbSerialNumber || "") !== (next.usbSerialNumber || "")) return true
   return false
 }
 

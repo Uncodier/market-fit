@@ -27,6 +27,29 @@ before running them; do not reuse production secrets or customer fixtures.
 
 ## Commands
 
+### Isolated module journeys
+
+`procurement` and `subsystems` are native, deterministic Playwright suites, not
+root YAML regressions. Neither is discovered by smoke or regression. They run
+only inside an installer-owned, verified local QA stack (including a stack on
+the Azure QA VM), with both mutation flags, exact QA/run namespaces, public-key
+backend binding and at least 20 minutes before expiry.
+
+```sh
+# Offline discovery; never logs in or contacts a target.
+npm run test:e2e -- --suite procurement --list
+npm run test:e2e -- --suite subsystems --list
+```
+
+Procurement additionally requires distinct admin/buyer/collaborator/foreign
+identities. Cross-screen tests require the exact QA lead and catalog fixture.
+See [procurement scenarios](../specs/tests/procurement.md) and
+[cross-screen scenarios](../specs/tests/subsystems.md) for setup, ownership,
+unsupported flows and the difference between offline and live verification.
+Use the installer to prepare/provision/run/export/destroy the exact Azure QA.
+Creating a new QA resource group requires explicit infrastructure cost approval.
+No module-wide browser success is inferred from discovery or Jest alone.
+
 ```sh
 # Discovery and transpilation only: no authentication, browser or application calls.
 npm run test:e2e -- --list

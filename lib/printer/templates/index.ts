@@ -1,4 +1,5 @@
 import { encodeReceipt } from "./receipt"
+import { encodeRegisterReport } from "./register-report"
 import { encodeKitchenTicket } from "./kitchen"
 import { encodeKitchenDelta } from "./kitchen-delta"
 import { encodeInventoryLabel } from "./inventory-label"
@@ -10,11 +11,14 @@ import type {
   PaperWidthMm,
   PrintJob,
   ReceiptPayload,
+  RegisterReportPayload,
   TestPrintPayload,
 } from "../core/types"
 
 export function encodeJob(job: PrintJob, paper: PaperWidthMm): Uint8Array {
   switch (job.template) {
+    case "register-report":
+      return encodeRegisterReport(job.payload as RegisterReportPayload, paper)
     case "receipt":
       return encodeReceipt(job.payload as ReceiptPayload, paper)
     case "kitchen":

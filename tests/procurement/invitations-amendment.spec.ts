@@ -1,0 +1,55 @@
+import { test, expect } from '@playwright/test';
+import { selectWorkspace } from '../support/workspace';
+import { verifyProcurementAdmin, ProcurementJournal, setupTender, publishTender, tenderDetail, procurementApi } from '../support/procurement-fixtures';
+import { createApprovedSupplier, republishAmendment, readyTenderEditor, saveTenderEditor } from '../support/procurement-expansion';
+import { publicTenderPath } from '../support/procurement-ui';
+import { procurementPolicy } from '../support/procurement-policy';
+
+test('buyer registers and withdraws an exact new approved supplier invitation, then republishes an immutable amendment', async ({ page, browser }, info) => {
+  await selectWorkspace(page);
+  await verifyProcurementAdmin(page);
+  const journal = new ProcurementJournal(info, 'invitation-amendment');
+  const supplier = await createApprovedSupplier(page, journal);
+  const created = await setupTender(page, journal, { participation: 'invitation_only' });
+  await page.goto(`/purchases/tenders/${created.tender.id}`);
+  await page.getByRole('tab', { name: 'Suppliers', exact: true }).click();
+  await page.getByLabel('Approved supplier', { exact: true }).click();
+  await page.locator(`[data-relation-id="${supplier.id}"]`).click();
+  const invited = page.waitForResponse(res => res.url().includes(`/tenders/${created.tender.id}/participants?`) && res.request().method() === 'POST');
+  await journal.record('invitation');
+  await page.getByRole('button', { name: 'Register invitation', exact: true }).click();
+  const invitation = await invited;
+  expect(invitation.status()).toBe(200);
+  await journal.record('invitation', (await invitation.json()).id);
+  const path = `/api/procurement/tenders/${created.tender.id}?site_id=${procurementPolicy().siteId}`;
+  const participants = (await procurementApi(page, path)).body.participants;
+  expect(participants.filter((row: { supplier_id: string; status: string }) => row.supplier_id === supplier.id && row.status === 'invited')).toHaveLength(1);
+  const withdrawn = page.waitForResponse(res => res.url().includes(`/tenders/${created.tender.id}/participants?`) && res.request().method() === 'POST');
+  await page.getByRole('button', { name: 'Withdraw invitation', exact: true }).click();
+  expect((await withdrawn).status()).toBe(200);
+  const after = (await procurementApi(page, path)).body.participants;
+  expect(after.find((row: { supplier_id: string }) => row.supplier_id === supplier.id).status).toBe('withdrawn');
+  const first = await publishTender(page, await tenderDetail(page, created.tender.id), journal);
+  const anonymous = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+  try {
+    const portal = await anonymous.newPage();
+    await portal.goto(publicTenderPath(first));
+    await expect(portal.locator('main > header').getByRole('heading', { name: first.tender.title, exact: true, level: 1 })).toBeVisible();
+    await page.goto(`/purchases/tenders/${created.tender.id}/edit`);
+    const editor = await readyTenderEditor(page, first.tender.title);
+    await editor.getByRole('textbox', { name: 'Public description and terms', exact: true }).fill(`${journal.marker} amended published terms`);
+    await saveTenderEditor(page, created.tender.id);
+    const edited = await tenderDetail(page, created.tender.id);
+    expect(edited.publications[0]).toEqual(first.publications[0]);
+    await republishAmendment(page, edited.tender.id, journal);
+    await expect.poll(async () => (await tenderDetail(page, created.tender.id)).publications.length).toBe(2);
+    const final = await tenderDetail(page, created.tender.id);
+    expect(final.publications).toHaveLength(2);
+    expect(final.publications[1]).toEqual(first.publications[0]);
+    expect(final.publications[0].snapshot.description).toBe(`${journal.marker} amended published terms`);
+    await portal.reload();
+    await expect(portal.getByText(`${journal.marker} amended published terms`, { exact: true })).toBeVisible();
+    await portal.goto(publicTenderPath(first).split('/').slice(0, 3).join('/'));
+    await expect(portal.getByRole('link').filter({ hasText: first.tender.title }).first()).toBeVisible();
+  } finally { await anonymous.close(); }
+});

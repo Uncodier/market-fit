@@ -34,6 +34,8 @@ export async function selectWorkspace(page: Page): Promise<void> {
   await expect(select).toBeVisible();
   await dismissConsent(page);
   await select.click();
-  await expect(page).toHaveURL(new RegExp(`^${baseURL.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/robots(?:[?#]|$)`));
+  // A cold development route compilation can exceed the default assertion timeout.
+  // Still require the actual router transition; never navigate around the chooser.
+  await expect(page).toHaveURL(new RegExp(`^${baseURL.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/robots(?:[?#]|$)`), { timeout: 45_000 });
   await assertWorkspace(page);
 }

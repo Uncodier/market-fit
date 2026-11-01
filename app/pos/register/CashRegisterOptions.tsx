@@ -4,6 +4,7 @@ import { Component, lazy, Suspense, useState, type ReactNode } from "react";
 import { Button } from "@/app/components/ui/button";
 import { Banknote } from "@/app/components/ui/icons";
 import { Dialog, DialogBody, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/app/components/ui/dialog";
+import { RegisterDashboardSkeleton } from "./RegisterSkeletons";
 
 export interface CashRegisterOptionsProps {
   siteId?: string;
@@ -57,7 +58,7 @@ function CashRegisterContent(props: CashRegisterOptionsProps) {
         <DialogDescription>{props.onOpened ? "Open a register to continue. Your payment details will be preserved; confirm the payment after opening." : "Open, reconcile and review the register for a location. Register writes require an internet connection."}</DialogDescription>
       </DialogHeader>
       <RegisterLoadBoundary>
-        <Suspense fallback={<DialogBody><p role="status">Loading cash register…</p></DialogBody>}>
+        <Suspense fallback={<DialogBody><RegisterDashboardSkeleton /></DialogBody>}>
           <RegisterDashboard key={`${props.siteId}:${props.locationId}`} {...props} />
         </Suspense>
       </RegisterLoadBoundary>

@@ -1,13 +1,9 @@
 import type { PosCartItem } from "@/app/pos/components/CartPanel"
 import { markKitchenItemsPrinted } from "@/app/printer/actions"
+import { printPosJobManually } from "./manual-print"
 import {
-  htmlForJob,
-  isPrinterReadyOnStation,
   kitchenDeltaHasWork,
-  printersForJob,
-  printHtml,
   printJobForSettings,
-  printOnDevice,
   rememberPrinted,
   shouldAutoPrint,
   type KitchenDelta,
@@ -36,7 +32,8 @@ export function receiptFromPosCart(params: {
     .filter((c) => c.cartQty > 0)
     .map((c) => {
       let finalName = c.name
-      const parentName = (c as any)._parent?.name || c.parent?.name || (c as any).parent_name
+      const legacy = c as PosCartItem & { _parent?: { name?: string }; parent_name?: string }
+      const parentName = legacy._parent?.name || c.parent?.name || legacy.parent_name
       if (parentName && !finalName.startsWith(parentName)) {
         finalName = `${parentName} -> ${finalName}`
       }
@@ -86,38 +83,7 @@ export async function printPosReceiptManually(params: {
       createdAt: params.receipt.createdAt || sentAt,
     },
   }
-  const configured = printersForJob(params.settings, "pos", "receipt")
-  const hardwarePrinter = configured.find(
-    (device) =>
-      device.transport !== "system" && isPrinterReadyOnStation(device),
-  )
-
-  if (hardwarePrinter) {
-    // Do not switch transports after a failure: the printer may have already
-    // received part of the ticket, and system printing uses a different driver.
-    await printOnDevice(hardwarePrinter, job, { allowPrompt: false })
-    return "printer"
-  }
-
-  const hasHardwareConfiguration = params.settings.devices.some(
-    (device) => device.modules.pos && device.transport !== "system",
-  )
-  if (hasHardwareConfiguration) {
-    throw new Error(
-      "The configured POS printer is not ready on this computer. Open Settings > Printers, enable it and connect it here, then run a test print.",
-    )
-  }
-
-  const systemPrinter = configured.find(
-    (device) =>
-      device.transport === "system" && isPrinterReadyOnStation(device),
-  )
-  if (systemPrinter) {
-    await printOnDevice(systemPrinter, job, { allowPrompt: false })
-  } else {
-    await printHtml(htmlForJob(job, 80))
-  }
-  return "system"
+  return printPosJobManually(params.settings, job)
 }
 
 export async function printAfterPosCheckout(params: {

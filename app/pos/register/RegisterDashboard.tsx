@@ -14,6 +14,8 @@ import { useRegisterMutation } from "./use-register-mutation";
 import { RegisterSessionPanel } from "./RegisterSessionPanel";
 import { RegisterActionScope, RegisterActions, RegisterLayout } from "./RegisterLayout";
 import { RegisterHistoryTable } from "./RegisterHistoryTable";
+import { RegisterReadError } from "./RegisterReadError";
+import { RegisterRefreshSkeleton, RegisterSessionSkeleton } from "./RegisterSkeletons";
 
 export default function RegisterDashboard({ siteId, locationId, onLocationChange, locations, currency, onOpened }: CashRegisterOptionsProps) {
   const [selectedLocation, setSelectedLocation] = useState(locations.some((location) => location.id === locationId) ? locationId : locations.length === 1 ? locations[0].id : "");
@@ -90,18 +92,18 @@ function LocationDashboard({ siteId, locationId, currency, locationName, onOpene
         <TabsTrigger value="today">Today</TabsTrigger>
         <TabsTrigger value="history">History</TabsTrigger>
       </TabsList>
-      {loading && view === "today" && <p role="status">Loading register…</p>}
-      {error && <div role="alert" className="rounded-md border border-destructive/30 p-3 text-sm"><p>{error}</p><p className="mt-1">The register may be unavailable until its database migration is installed. No balance has been reset. Close and reopen this dialog after recovery.</p></div>}
+      {loading && dashboard && view === "today" && <RegisterRefreshSkeleton />}
+      {error && <RegisterReadError error={error} hasPreviousData={!!dashboard} />}
       <RegisterActionScope active={view === "today"}>
         <TabsContent value="today" forceMount hidden={view !== "today"} className="space-y-4 data-[state=inactive]:hidden">
           {dashboard ? (active ? (
             <RegisterSessionPanel key={active.id} siteId={siteId} session={active} locationName={locationName} revision={revision} writable={fresh && canManage} onChanged={(closed) => { if (closed) { setDetail(closed); setView("history"); } refresh(); }} />
           ) : (
             <OpenRegisterForm siteId={siteId} locationId={locationId} currency={currency} disabled={!fresh} onOpened={() => { refresh(); onOpened?.(); }} />
-          )) : (
+          )) : loading ? <RegisterSessionSkeleton /> : (
             <Card className="overflow-hidden">
               <CardHeader><CardTitle className="text-base">Current register</CardTitle></CardHeader>
-              <CardContent><p className="text-sm text-muted-foreground">{loading ? "Checking the current register for this location." : "Register data is unavailable. Close and reopen this dialog to try again."}</p></CardContent>
+              <CardContent><p className="text-sm text-muted-foreground">Register data is unavailable. Close and reopen this dialog to try again.</p></CardContent>
             </Card>
           )}
         </TabsContent>

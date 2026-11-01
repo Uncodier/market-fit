@@ -1,5 +1,10 @@
 # Test Spec: Application Coverage Gaps
 
+> For the current source-grounded edge-case inventory and exact 2026-10-31 Azure
+> evidence boundaries, start with [the preproduction audit](preproduction-20261031.md).
+> The findings and infrastructure claims below are historical unless independently
+> reverified; a listed scenario is not a completed live test.
+
 **Scope**: Application-wide test gaps across browser journeys, HTTP boundaries, server actions, database invariants, and scheduled jobs
 **Source material**: `specs/context.md`, `specs/tests/*.md`, `app/**`, `supabase/migrations/**`, `__tests__/**`, `tests/**/*.test.yaml`, user request
 **Testing posture**: baked-in Shiplight default

@@ -16,9 +16,9 @@ jest.mock('@/lib/permissions/location-boundary', () => ({ canAccessUnscopedSite:
 const getUser = jest.fn();
 const rpc = jest.fn();
 const input = { siteId: ids.site, clientMutationId: 'original-checkout', reason: ' Customer changed their mind. ' };
-const headers = { Origin: 'http://localhost', 'Content-Type': 'application/json', 'Sec-Fetch-Site': 'same-origin' };
+const headers = { Host: 'localhost:3000', Origin: 'http://localhost:3000', 'Content-Type': 'application/json', 'Sec-Fetch-Site': 'same-origin' };
 const request = (body: unknown = input, overrides: Record<string, string> = {}) => new Request(
-  'http://localhost/api/pos/checkout-cancel', {
+  'http://0.0.0.0:3000/api/pos/checkout-cancel', {
     method: 'POST', headers: { ...headers, ...overrides }, body: JSON.stringify(body),
   },
 );
@@ -95,7 +95,7 @@ it('accepts the exact length bounds without altering the reason', async () => {
   expect((await cancelPosCheckout({ ...input, clientMutationId: 'x'.repeat(128), reason: 'a'.repeat(500) })).status).toBe(200);
 });
 
-it.each(['', 'null', 'https://attacker.invalid', 'http://sub.localhost', 'http://localhost:3000'])(
+it.each(['', 'null', 'https://attacker.invalid', 'http://sub.localhost', 'http://localhost:3001'])(
   'denies missing or foreign origin %p without trusting forwarding headers', async origin => {
     expect((await POST(request(input, { Origin: origin, 'X-Forwarded-Host': 'attacker.invalid' }))).status).toBe(403);
     expect(createClient).not.toHaveBeenCalled();

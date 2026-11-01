@@ -17,7 +17,7 @@ describe('fail-closed E2E environment policy', () => {
   it('allows a configured read-only local suite without mutation consent', () => {
     expect(readEnvironment(env).suite).toBe('smoke');
   });
-  it.each(['regression', 'roles'])('requires disposable consent for %s', suite => {
+  it.each(['regression', 'roles', 'procurement', 'subsystems'])('requires disposable consent for %s', suite => {
     expect(() => readEnvironment({ ...env, TEST_SUITE: suite })).toThrow('TEST_ALLOW_MUTATIONS');
     expect(readEnvironment({ ...env, TEST_SUITE: suite, TEST_ALLOW_MUTATIONS: '1', TEST_DISPOSABLE_ENVIRONMENT: '1' }).suite).toBe(suite);
   });
