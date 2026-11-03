@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo, useCallback, type SetStateAction } from "
 
 import { useRequirementStatus } from "@/app/components/simple-messages-view/hooks/useRequirementStatus"
 import { useInstanceArtifacts } from "@/app/components/simple-messages-view/hooks/useInstanceArtifacts"
+import { cloudViewerUrl } from './cloud-tool-deliverables'
+import { useCloudToolDeliverables } from './use-cloud-tool-deliverables'
 
 import { loadInstanceWorkspaceState, saveInstanceWorkspaceState, type BrowserTab, type WorkspaceLayout } from "./instance-workspace-state"
 import { browserWorkspaceReducer, createBrowserWorkspaceState, reconcileBrowserWorkspace, sameBrowserObservation } from "./browser-workspace-reducer"
@@ -16,6 +18,8 @@ export function useBrowserWorkspace(input: ReturnType<typeof useInstanceActions>
   const instanceId = scopedInstance?.id ?? null
   const siteId = currentSite?.id ?? null
   const scopeKey = JSON.stringify([siteId, instanceId])
+  const cloudDeliverables = useCloudToolDeliverables(instanceId, siteId)
+  const latestCloudUrl = cloudDeliverables[0]?.url ?? null
   const { requirementStatuses: readStatuses, isLoading: isRequirementStatusesLoading, isValidating: isRequirementStatusesValidating } = useRequirementStatus(scopedInstance)
   const requirementStatuses = useMemo(() => readStatuses.filter((status: { instance_id?: string; site_id?: string }) =>
     status.instance_id === instanceId && status.site_id === siteId
@@ -43,14 +47,16 @@ export function useBrowserWorkspace(input: ReturnType<typeof useInstanceActions>
   }, [artifacts])
 
   const latestPreviewUrl = useMemo(() => {
-    if (!requirementStatuses || requirementStatuses.length === 0) return null;
+    if (!requirementStatuses || requirementStatuses.length === 0) return latestCloudUrl;
     
     // Find the most recent requirement_status that has a preview
     for (let i = requirementStatuses.length - 1; i >= 0; i--) {
       const status = requirementStatuses[i];
       if (status.preview_url) {
-        return status.preview_url;
+        return cloudViewerUrl(status.preview_url) ?? status.preview_url;
       }
+      const cloudUrl = cloudViewerUrl(status.source_code) ?? cloudViewerUrl(status.repo_url)
+      if (cloudUrl) return cloudUrl
       // Fallback: If no preview_url but repo_url points to a zip file in Supabase
       if (!status.preview_url && status.repo_url && (status.repo_url.endsWith('.zip') || status.repo_url.includes('.zip?'))) {
         return status.repo_url;
@@ -61,18 +67,19 @@ export function useBrowserWorkspace(input: ReturnType<typeof useInstanceActions>
       }
     }
     
-    return null;
-  }, [requirementStatuses]);
+    return latestCloudUrl;
+  }, [requirementStatuses, latestCloudUrl]);
 
   const latestSourceCodeUrl = useMemo(() => {
-    if (!requirementStatuses || requirementStatuses.length === 0) return null;
     
     // Find the most recent requirement_status that has source_code
     for (let i = requirementStatuses.length - 1; i >= 0; i--) {
       const status = requirementStatuses[i];
       if (status.source_code) {
-        return status.source_code;
+        return cloudViewerUrl(status.source_code) ?? status.source_code;
       }
+      const cloudUrl = cloudViewerUrl(status.repo_url) ?? cloudViewerUrl(status.preview_url)
+      if (cloudUrl) return cloudUrl
       if (!status.source_code && status.repo_url && (status.repo_url.endsWith('.zip') || status.repo_url.includes('.zip?'))) {
         return status.repo_url;
       }
@@ -87,8 +94,8 @@ export function useBrowserWorkspace(input: ReturnType<typeof useInstanceActions>
       return codeArtifact.url
     }
     
-    return null;
-  }, [requirementStatuses, artifacts]);
+    return latestCloudUrl;
+  }, [requirementStatuses, artifacts, latestCloudUrl]);
 
   const hasRequirementPreview = !!latestPreviewUrl || !!latestSourceCodeUrl;
 

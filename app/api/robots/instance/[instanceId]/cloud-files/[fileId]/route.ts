@@ -20,7 +20,7 @@ function failure(status: number) {
 
 function apiOrigin(request: Request): URL | null {
   try {
-    const configured = process.env.API_SERVER_URL
+    const configured = process.env.API_SERVER_URL || process.env.NEXT_PUBLIC_API_SERVER_URL
     if (!configured) return null
     const base = new URL(configured)
     const local = ['localhost', '127.0.0.1', '[::1]'].includes(base.hostname)

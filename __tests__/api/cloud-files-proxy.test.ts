@@ -16,6 +16,7 @@ const appOrigin = 'https://app.example.test'
 const path = `/api/robots/instance/${instanceId}/cloud-files/${fileId}`
 const auth = { getUser: jest.fn(), getSession: jest.fn() }
 const originalApi = process.env.API_SERVER_URL
+const originalPublicApi = process.env.NEXT_PUBLIC_API_SERVER_URL
 
 function request(query = 'version=2&format=zip', headers: Record<string, string> = {}) {
   return new Request(`${appOrigin}${path}?${query}`, {
@@ -29,6 +30,7 @@ function context(instance: string = instanceId, file: string = fileId) {
 beforeEach(() => {
   jest.clearAllMocks()
   process.env.API_SERVER_URL = apiOrigin
+  delete process.env.NEXT_PUBLIC_API_SERVER_URL
   ;(createClient as jest.Mock).mockResolvedValue({ auth })
   auth.getUser.mockResolvedValue({ data: { user: { id: userId } }, error: null })
   auth.getSession.mockResolvedValue({ data: { session: { user: { id: userId }, access_token: token } }, error: null })
@@ -40,6 +42,8 @@ beforeEach(() => {
 afterAll(() => {
   if (originalApi === undefined) delete process.env.API_SERVER_URL
   else process.env.API_SERVER_URL = originalApi
+  if (originalPublicApi === undefined) delete process.env.NEXT_PUBLIC_API_SERVER_URL
+  else process.env.NEXT_PUBLIC_API_SERVER_URL = originalPublicApi
 })
 
 it('preserves binary bytes and sends only the verified user token to the fixed scope', async () => {
@@ -56,6 +60,17 @@ it('preserves binary bytes and sends only the verified user token to the fixed s
   expect(response.headers.get('cache-control')).toContain('no-store')
   const headers = JSON.stringify([...response.headers])
   for (const sensitive of [token, untrustedToken, cookie]) expect(headers).not.toContain(sensitive)
+})
+
+it('supports the existing public API origin fallback without weakening validation', async () => {
+  delete process.env.API_SERVER_URL
+  process.env.NEXT_PUBLIC_API_SERVER_URL = apiOrigin
+  expect((await GET(request(), context())).status).toBe(200)
+  expect(fetch).toHaveBeenCalledWith(new URL(`${apiOrigin}${path}?version=2&format=zip`), expect.any(Object))
+  ;(fetch as jest.Mock).mockClear()
+  process.env.NEXT_PUBLIC_API_SERVER_URL = appOrigin
+  expect((await GET(request(), context())).status).toBe(503)
+  expect(fetch).not.toHaveBeenCalled()
 })
 
 it.each(['anonymous', 'invalid-user', 'missing-session', 'mismatch', 'expired'])('denies %s without upstream fetch', async mode => {

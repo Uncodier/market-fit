@@ -6,11 +6,13 @@ import { type TabItem } from "@/app/components/ui/responsive-tabs-list"
 
 import { getScreenMetadata } from "./screen-metadata"
 import type { useBrowserPresentation } from "./use-browser-presentation"
+import { isCloudOnlyContent } from './cloud-tool-deliverables'
 
 export function useWorkspaceTabs(input: ReturnType<typeof useBrowserPresentation>) {
   const { hasRequirementPreview, activeBrowserTab, t, artifactScreens, pinArtifact, closeArtifact, mobileWorkspaceTab, setMobileWorkspaceTab, setActiveBrowserTab, desktopToolbarRef, desktopDeviceControlsRef, desktopLayoutToggleRef, desktopTabsPreferredWidth, setDesktopTabsWidth, isZipUrl } = input
 
   const allArtifactItems = useMemo(() => {
+    const cloudOnly = isCloudOnlyContent(input.latestPreviewUrl, input.latestSourceCodeUrl)
     const items: Array<{
       id: string;
       kind: 'preview' | 'source' | 'artifact';
@@ -24,11 +26,11 @@ export function useWorkspaceTabs(input: ReturnType<typeof useBrowserPresentation
       items.push({
         id: 'preview',
         kind: 'preview',
-        label: 'Preview',
-        icon: Globe,
+        label: cloudOnly ? 'Files' : 'Preview',
+        icon: cloudOnly ? Folder : Globe,
         isActive: activeBrowserTab.kind === 'preview'
       });
-      items.push({
+      if (!cloudOnly) items.push({
         id: 'source',
         kind: 'source',
         label: 'Source',
@@ -36,7 +38,7 @@ export function useWorkspaceTabs(input: ReturnType<typeof useBrowserPresentation
         isActive: activeBrowserTab.kind === 'source'
       });
       const databaseMeta = getScreenMetadata('database', t)
-      items.push({
+      if (!cloudOnly) items.push({
         id: 'database',
         kind: 'artifact',
         screen: 'database',
@@ -47,7 +49,7 @@ export function useWorkspaceTabs(input: ReturnType<typeof useBrowserPresentation
     }
     
     artifactScreens.forEach(a => {
-      if (hasRequirementPreview && a.screen === 'database') return;
+      if (hasRequirementPreview && !cloudOnly && a.screen === 'database') return;
       const isActive = activeBrowserTab.kind === 'artifact' && activeBrowserTab.screen === a.screen;
       const metadata = getScreenMetadata(a.screen, t);
       items.push({
@@ -61,7 +63,7 @@ export function useWorkspaceTabs(input: ReturnType<typeof useBrowserPresentation
     });
     
     return items;
-  }, [hasRequirementPreview, activeBrowserTab, artifactScreens, t]);
+  }, [hasRequirementPreview, activeBrowserTab, artifactScreens, t, input.latestPreviewUrl, input.latestSourceCodeUrl]);
 
   const workspaceTabs = useMemo<TabItem[]>(() => [
     {

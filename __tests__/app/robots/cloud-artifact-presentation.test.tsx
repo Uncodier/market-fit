@@ -22,3 +22,18 @@ it('preserves an existing source_code artifact revision URL without iframe query
   expect(result.current.activeUrlToDisplay).toBe(url)
   expect(result.current.isZipUrl).toBe(true)
 })
+
+it('recognizes a cloud archive in the preview tab without a .zip extension', () => {
+  const url = `/api/robots/instance/${randomUUID()}/cloud-files/${randomUUID()}?version=1&format=zip`
+  const input = {
+    requirementStatuses: [], artifacts: [], latestPreviewUrl: url, hasRequirementPreview: true,
+    activeRobotInstance: { id: randomUUID(), site_id: randomUUID() },
+    currentSite: { id: randomUUID() }, activeBrowserTab: { kind: 'preview' },
+    setActiveBrowserTab: jest.fn(), setMobileWorkspaceTab: jest.fn(), workspaceLayout: 'split',
+    mobileWorkspaceTab: 'preview', theme: 'dark', viewportSize: 'imac',
+    iframeRef: createRef<HTMLIFrameElement>(), containerRef: createRef<HTMLDivElement>(), setScale: jest.fn(),
+  } as unknown as Parameters<typeof useBrowserPresentation>[0]
+  const { result } = renderHook(() => useBrowserPresentation(input))
+  expect(result.current.activeUrlToDisplay).toBe(url)
+  expect(result.current.isZipUrl).toBe(true)
+})

@@ -17,6 +17,9 @@ import detailsEn from './details-en.json';
 import detailsEs from './details-es.json';
 import operationsEn from './operations-en.json';
 import operationsEs from './operations-es.json';
+import operationsFr from './operations-fr.json';
+import operationsDe from './operations-de.json';
+import operationsJa from './operations-ja.json';
 import publicEn from './public-en.json';
 import publicEs from './public-es.json';
 import bookingFr from './booking-fr.json';
@@ -38,7 +41,7 @@ export const screenMessages: Record<SupportedLocale, Record<string, string>> = {
     ...missingEs, ...systemEs, ...accountEs, ...authFlowsEs, ...commercePagesEs,
     ...contentEs, ...detailsEs, ...operationsEs, ...publicEs, ...procurementSharedEs,
   },
-  fr: { ...missingFr, ...bookingFr, ...procurementSharedFr },
-  de: { ...missingDe, ...bookingDe, ...procurementSharedDe },
-  ja: { ...missingJa, ...bookingJa, ...procurementSharedJa },
+  fr: { ...missingFr, ...operationsFr, ...bookingFr, ...procurementSharedFr },
+  de: { ...missingDe, ...operationsDe, ...bookingDe, ...procurementSharedDe },
+  ja: { ...missingJa, ...operationsJa, ...bookingJa, ...procurementSharedJa },
 };

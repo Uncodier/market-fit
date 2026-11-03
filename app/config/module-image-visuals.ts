@@ -263,7 +263,7 @@ export function getModuleImagePrompt(
   title: string,
 ): string {
   // AI Workspace replaces the old Home tile, but keeps its exact image prompt.
-  const imageKey = itemKey === "aiWorkspace" ? "salesHome" : itemKey
+  const imageKey = itemKey === "aiWorkspace" ? "salesHome" : itemKey === "accountsPayable" ? "accountsReceivable" : itemKey
   const subject = screenIconSubject(imageKey, title)
   const clarifier = MODULE_IMAGE_CLARIFIERS[imageKey]
   const isFullSize = FULL_SIZE_MODULE_IMAGE_KEYS.has(imageKey)

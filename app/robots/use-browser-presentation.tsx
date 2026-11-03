@@ -10,6 +10,7 @@ import { pinArtifactToNavigation } from "./artifact-navigation-shortcut"
 import { getScreenMetadata } from "./screen-metadata"
 import { useTenantLookup } from "./use-tenant-lookup"
 import type { useBrowserWorkspace } from "./use-browser-workspace"
+import { isCloudOnlyContent } from './cloud-tool-deliverables'
 
 export function useBrowserPresentation(input: ReturnType<typeof useBrowserWorkspace>) {
   const { requirementStatuses, activeRobotInstance, setActiveBrowserTab, setMobileWorkspaceTab, currentSite, hasRequirementPreview, artifacts, pendingInstanceId, isCanvasMode, workspaceLayout, mobileWorkspaceTab, activeBrowserTab, theme, latestSourceCodeUrl, latestPreviewUrl, iframeRef, removeArtifactLocally, refetchArtifacts, toast, t, containerRef, viewportSize, setScale } = input
@@ -17,7 +18,7 @@ export function useBrowserPresentation(input: ReturnType<typeof useBrowserWorksp
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null)
 
   const { url: databaseArtifactUrl } = useTenantLookup({
-    siteId: currentSite?.id,
+    siteId: isCloudOnlyContent(latestPreviewUrl, latestSourceCodeUrl) ? undefined : currentSite?.id,
     instanceId: activeRobotInstance?.id,
     requirementIds: requirementStatuses.map((status: { requirement_id?: string | null }) => status.requirement_id),
     instanceSiteId: activeRobotInstance?.site_id,
@@ -39,6 +40,7 @@ export function useBrowserPresentation(input: ReturnType<typeof useBrowserWorksp
       const s = requirementStatuses[i]
       const hasPreview =
         s.preview_url ||
+        cloudRevisionFormat(s.repo_url || '') || cloudRevisionFormat(s.source_code || '') ||
         (s.repo_url &&
           (s.repo_url.endsWith(".zip") || s.repo_url.includes(".zip?"))) ||
         (s.source_code &&
@@ -94,6 +96,7 @@ export function useBrowserPresentation(input: ReturnType<typeof useBrowserWorksp
   })()
   
   const isZipUrl = activeBrowserTab.kind === 'source' || (typeof rawActiveUrlToDisplay === 'string' && (
+    cloudRevisionFormat(rawActiveUrlToDisplay) === 'zip' ||
     rawActiveUrlToDisplay.endsWith('.zip') || 
     rawActiveUrlToDisplay.includes('.zip?') ||
     rawActiveUrlToDisplay.endsWith('.tar.gz') ||

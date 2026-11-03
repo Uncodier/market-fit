@@ -38,6 +38,7 @@ const SECTION_TITLES: Record<string, string> = {
   '/inventory': 'Inventory',
   '/subscriptions': 'Subscriptions',
   '/accounts-receivable': 'Accounts Receivable',
+  '/accounts-payable': 'Accounts Payable',
   '/reservations': 'Reservations',
   '/visits': 'Visits',
   '/applications/database': 'Database',

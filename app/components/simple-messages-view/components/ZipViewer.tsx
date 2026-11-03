@@ -2,11 +2,14 @@
 
 import React, { useState, useEffect, useMemo } from 'react'
 import { useArchiveContents, type FileNode } from "./use-archive-contents"
-import { Folder, FileText, ChevronRight, ChevronDown, Download, Loader, Archive } from '@/app/components/ui/icons'
+import { Folder, FileText, ChevronRight, ChevronDown, Download } from '@/app/components/ui/icons'
 import { Skeleton } from '@/app/components/ui/skeleton'
 import Editor, { loader } from '@monaco-editor/react'
 import { useTheme } from '@/app/context/ThemeContext'
 import { archiveRequestUrl } from '@/lib/cloud-file-url'
+import { ArchiveHtmlPreview, isPreviewableHtml } from './ArchiveHtmlPreview'
+import { ArchiveViewerToolbar } from './ArchiveViewerToolbar'
+import type { editor } from 'monaco-editor'
 
 interface ZipViewerProps {
   url: string
@@ -27,12 +30,31 @@ const ArchiveRevisionViewer: React.FC<ZipViewerProps & { className?: string }> =
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [fileTree, setFileTree] = useState<FileNode | null>(null)
-  const [selectedFile, setSelectedFile] = useState<FileNode | null>(null)
+  const [chosenFile, setSelectedFile] = useState<FileNode | null>(null)
+  const archiveFiles = useMemo(() => {
+    const files: FileNode[] = []
+    const visit = (node: FileNode) => {
+      if (!node.isDir) files.push(node)
+      else Object.values(node.children).forEach(visit)
+    }
+    if (fileTree) visit(fileTree)
+    return files
+  }, [fileTree])
+  const initialFile = archiveFiles.find(file => file.name.toLowerCase() === 'readme.md')
+    ?? archiveFiles.find(file => isPreviewableHtml(file.path)) ?? archiveFiles[0] ?? null
+  const selectedFile = chosenFile ?? initialFile
+  const [filesVisibilityOverride, setFilesVisibilityOverride] = useState<boolean | null>(null)
+  const filesVisible = filesVisibilityOverride ?? archiveFiles.length > 1
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set(['/']))
-  const [rawZip, setRawZip] = useState<Blob | null>(null)
+  const [, setRawZip] = useState<Blob | null>(null)
   const [editorFailed, setEditorFailed] = useState(false)
   const [editorReady, setEditorReady] = useState(false)
   const [editedContents, setEditedContents] = useState<Record<string, string>>({})
+  const [contentMode, setContentMode] = useState<'preview' | 'source'>('preview')
+  const canPreview = !!selectedFile && isPreviewableHtml(selectedFile.path)
+  const selectedContent = selectedFile
+    ? (Object.prototype.hasOwnProperty.call(editedContents, selectedFile.path)
+      ? editedContents[selectedFile.path] : selectedFile.content || '') : ''
 
   // Function to handle "Send changes to Agent"
   const handleSendChanges = () => {
@@ -56,15 +78,15 @@ const ArchiveRevisionViewer: React.FC<ZipViewerProps & { className?: string }> =
   }
 
   // Handle editor mount to add custom actions
-  const handleEditorDidMount = (editor: any, monaco: any) => {
-    editor.addAction({
+  const handleEditorDidMount = (instance: editor.IStandaloneCodeEditor) => {
+    instance.addAction({
       id: 'send-context-to-agent',
       label: 'Añadir como contexto al agente',
       contextMenuGroupId: 'navigation',
       contextMenuOrder: 1.5,
-      run: function (ed: any) {
+      run: function (ed) {
         const selection = ed.getSelection();
-        const text = ed.getModel().getValueInRange(selection);
+        const text = selection ? ed.getModel()?.getValueInRange(selection) : undefined;
         if (text && selectedFile) {
           const message = `Por favor analiza este fragmento de código de \`${selectedFile.path}\`:\n\n\`\`\`\n${text}\n\`\`\``;
           window.dispatchEvent(new CustomEvent('robot:send-message', {
@@ -82,7 +104,7 @@ const ArchiveRevisionViewer: React.FC<ZipViewerProps & { className?: string }> =
         // Prevent Monaco from trying to load web workers (which causes CSP/404 [object Event] errors)
         // by providing a mock worker that silently ignores all messages.
         // Syntax highlighting will still work as it runs on the main thread.
-        ;(window as any).MonacoEnvironment = {
+        ;(window as Window & { MonacoEnvironment?: { getWorker: () => Worker } }).MonacoEnvironment = {
           getWorker: function () {
             return {
               postMessage: function() {},
@@ -92,14 +114,14 @@ const ArchiveRevisionViewer: React.FC<ZipViewerProps & { className?: string }> =
               addEventListener: function() {},
               removeEventListener: function() {},
               dispatchEvent: function() { return true; }
-            } as any;
+            } as unknown as Worker;
           }
         };
         loader.config({ monaco })
         return loader.init()
       }).then(() => {
         setEditorReady(true)
-      }).catch((err) => {
+      }).catch((err: unknown) => {
         console.warn('Monaco editor initialization failed, falling back to simple text view:', err)
         setEditorFailed(true)
       })
@@ -107,26 +129,6 @@ const ArchiveRevisionViewer: React.FC<ZipViewerProps & { className?: string }> =
   }, [])
 
   useArchiveContents({ url, setLoading, setError, setRawZip, setFileTree, setExpandedDirs })
-
-  useEffect(() => {
-    if (fileTree && !selectedFile) {
-      const findReadme = (node: FileNode): FileNode | null => {
-        if (!node.isDir && node.name.toLowerCase() === 'readme.md') {
-          return node;
-        }
-        for (const child of Object.values(node.children)) {
-          const found = findReadme(child);
-          if (found) return found;
-        }
-        return null;
-      };
-      
-      const readme = findReadme(fileTree);
-      if (readme) {
-        setSelectedFile(readme);
-      }
-    }
-  }, [fileTree, selectedFile])
 
   useEffect(() => {
     if (selectedFile && onFileSelect) {
@@ -262,18 +264,22 @@ const ArchiveRevisionViewer: React.FC<ZipViewerProps & { className?: string }> =
 
   return (
     <div className={`flex flex-col w-full h-full bg-background ${className || ''}`}>
+      <ArchiveViewerToolbar canPreview={canPreview} mode={contentMode} onModeChange={setContentMode}
+        filesVisible={filesVisible} onToggleFiles={() => setFilesVisibilityOverride(!filesVisible)} />
       <div className="flex flex-1 overflow-hidden min-h-0">
         {/* Sidebar */}
-        <div className="w-64 min-w-[200px] border-r border-border overflow-y-auto bg-muted/10 p-2 shrink-0">
+        {filesVisible && <div role="navigation" aria-label="Archive files" className="w-64 min-w-[200px] border-r border-border overflow-y-auto bg-muted/10 p-2 shrink-0">
           {renderTree(fileTree)}
-        </div>
+        </div>}
 
         {/* Main View */}
         <div className="flex-1 overflow-y-auto bg-card relative min-w-0">
           {selectedFile ? (
             <div className="flex flex-col h-full">
               <div className="flex-1 min-h-0 overflow-hidden relative">
-                {!editorFailed && editorReady ? (
+                {canPreview && contentMode === 'preview' ? (
+                  <ArchiveHtmlPreview content={selectedContent} name={selectedFile.name} />
+                ) : !editorFailed && editorReady ? (
                   <div className="relative h-full">
                     <Editor
                       height="100%"

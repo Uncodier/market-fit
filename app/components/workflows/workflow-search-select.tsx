@@ -3,8 +3,10 @@
 import { RelationSelect, type RelationSelectValue } from "@/app/components/ui/relation-select"
 import { WF_FIELD_CLASS } from "./types"
 
+type WorkflowSelectOption = { value: string; label: string; group?: string; description?: string; searchText?: string }
+
 function withCurrentOption(
-  options: readonly { value: string; label: string }[],
+  options: readonly WorkflowSelectOption[],
   current?: string,
 ) {
   if (!current || options.some((option) => option.value === current)) return options
@@ -20,8 +22,9 @@ export function WorkflowSearchSelect({
   clearable = false,
   disabled,
   includeCurrentOption = true,
+  label,
 }: {
-  options: readonly { value: string; label: string }[]
+  options: readonly WorkflowSelectOption[]
   value?: string
   onChange: (value: string) => void
   placeholder?: string
@@ -30,6 +33,7 @@ export function WorkflowSearchSelect({
   disabled?: boolean
   /** Keep unavailable values visible without offering them as selectable options. */
   includeCurrentOption?: boolean
+  label?: string
 }) {
   const list = includeCurrentOption ? withCurrentOption(options, value) : options
   const selected = list.find((option) => option.value === value)
@@ -40,7 +44,8 @@ export function WorkflowSearchSelect({
   return (
     <div className="min-w-0 w-full" onPointerDown={(event) => event.stopPropagation()}>
       <RelationSelect
-        options={list.map((option) => ({ id: option.value, label: option.label }))}
+        options={list.map(({ value: id, ...option }) => ({ id, ...option }))}
+        label={label}
         value={relationValue}
         onValueChange={(next) => {
           if (!next) {

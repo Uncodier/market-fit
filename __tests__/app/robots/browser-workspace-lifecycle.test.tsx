@@ -3,11 +3,13 @@ import { act, renderHook } from '@testing-library/react'
 import { useBrowserWorkspace } from '@/app/robots/use-browser-workspace'
 import { useRequirementStatus } from '@/app/components/simple-messages-view/hooks/useRequirementStatus'
 import { useInstanceArtifacts } from '@/app/components/simple-messages-view/hooks/useInstanceArtifacts'
+import { useCloudToolDeliverables } from '@/app/robots/use-cloud-tool-deliverables'
 import type { InstanceArtifact } from '@/app/components/simple-messages-view/types'
 import { instanceWorkspaceStorageKey, saveInstanceWorkspaceState } from '@/app/robots/instance-workspace-state'
 
 jest.mock('@/app/components/simple-messages-view/hooks/useRequirementStatus', () => ({ useRequirementStatus: jest.fn() }))
 jest.mock('@/app/components/simple-messages-view/hooks/useInstanceArtifacts', () => ({ useInstanceArtifacts: jest.fn() }))
+jest.mock('@/app/robots/use-cloud-tool-deliverables', () => ({ useCloudToolDeliverables: jest.fn(() => []) }))
 
 type Input = Parameters<typeof useBrowserWorkspace>[0]
 function input(id: string | null = 'a', site = 'site-a', query = ''): Input {
@@ -38,11 +40,36 @@ beforeEach(() => {
   artifactsLoading = false
   previewKnown = false
   statuses = []
+  jest.mocked(useCloudToolDeliverables).mockReturnValue([])
   readArtifacts.mockImplementation(() => ({ artifacts, isLoading: artifactsLoading, refetchArtifacts, removeArtifactLocally }))
   readStatus.mockImplementation(() => ({ requirementStatuses: statuses, isLoading: !previewKnown, isValidating: !previewKnown, loadStatuses: jest.fn() }))
 })
 
 describe('Robots browser workspace render lifecycle', () => {
+  it('shows a cloud tool receipt without a requirement and preserves a real deployment preview', () => {
+    const url = '/api/robots/instance/12345678-1234-1234-1234-123456789012/cloud-files/12345678-1234-1234-1234-123456789013?version=2&format=zip'
+    jest.mocked(useCloudToolDeliverables).mockReturnValue([
+      { fileId: 'file', version: 2, url, createdAt: '2026-11-03T21:10:00Z' },
+    ])
+    previewKnown = true
+    const view = renderHook(useBrowserWorkspace, { initialProps: input() })
+    expect(view.result.current.latestPreviewUrl).toBe(url)
+    expect(view.result.current.latestSourceCodeUrl).toBe(url)
+    statuses = [{ instance_id: 'a', site_id: 'site-a', preview_url: 'https://example.com/preview' }]
+    view.rerender(input())
+    expect(view.result.current.latestPreviewUrl).toBe('https://example.com/preview')
+    expect(view.result.current.latestSourceCodeUrl).toBe(url)
+  })
+
+  it('opens cloud text revisions from requirement status in the existing archive viewer', () => {
+    const path = '/api/robots/instance/12345678-1234-1234-1234-123456789012/cloud-files/12345678-1234-1234-1234-123456789013?version=2&format='
+    statuses = [{ instance_id: 'a', site_id: 'site-a', source_code: `${path}text` }]
+    previewKnown = true
+    const view = renderHook(useBrowserWorkspace, { initialProps: input() })
+    expect(view.result.current.latestPreviewUrl).toBe(`${path}zip`)
+    expect(view.result.current.latestSourceCodeUrl).toBe(`${path}zip`)
+  })
+
   it('mounts with fresh empty read arrays in StrictMode without a render loop', () => {
     readArtifacts.mockImplementation(() => ({ artifacts: [], isLoading: true, refetchArtifacts, removeArtifactLocally }))
     readStatus.mockImplementation(() => ({ requirementStatuses: [], isLoading: true, isValidating: true, loadStatuses: jest.fn() }))

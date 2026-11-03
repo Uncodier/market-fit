@@ -111,6 +111,7 @@ export const NAVIGATION_AREAS: Record<
       { key: "procurementTenders", href: "/purchases/tenders" },
       { key: "procurementRules", href: "/purchases/rules" },
       { key: "bills", href: "/bills" },
+      { key: "accountsPayable", href: "/accounts-payable" },
       { key: "transactions", href: "/transactions" },
       { key: "purchasesOrders", href: "/purchases/orders" },
       { key: "purchasesSubscriptions", href: "/purchases/subscriptions" },
@@ -358,6 +359,7 @@ export function getNavItemTitle(item: AreaNavItem, t: (k: string) => string): st
   if (item.key === "procurementTenders") return "Tenders"
   if (item.key === "procurementSettings") return "Procurement"
   if (item.key === "accountsReceivable") return "Accounts Receivable"
+  if (item.key === "accountsPayable") return "Accounts Payable"
   if (item.settingsTab) {
     const tabKey = `settings.tabs.${item.settingsTab}`
     const tabTitle = t(tabKey)

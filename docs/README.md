@@ -20,6 +20,7 @@ Use the guides below before relying on older implementation notes.
 - [Security](SECURITY.md) — mandatory controls for auth, data access, payments,
   public links, webhooks, and outbound requests.
 - [Database migrations](DATABASE_MIGRATIONS.md) — safe Supabase migration workflow.
+- [Accounts payable](ACCOUNTS_PAYABLE.md) — supplier bill balances, aging filters and existing bill payment entry.
 - [Critical flow security rollout](SECURITY_FINDINGS_ROLLOUT.md) — purchase permissions,
   internal webhook visibility, task reordering, and deployment validation.
 - [Environment variables](ENVIRONMENT_VARIABLES.md) — configuration by subsystem.
@@ -34,6 +35,7 @@ Use the guides below before relying on older implementation notes.
   local safety gates, private ownership journal and offline regression tests.
 - [Production harness canaries](HARNESS_PRODUCTION_CANARIES.md) — five explicitly
   scoped requirement tests and a read-only local cron observer; separate from browser suites.
+- [Existing-app requirement evidence](/Users/prado/Desktop/Proyectos/Uncodie/Code/market-fit/docs/HARNESS_EXISTING_APP_EVIDENCE.md) — realistic `develop` change cases, strict offline evidence evaluation and the remaining live collection prerequisites.
 
 ## Integration guides
 

@@ -10,7 +10,6 @@ import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
 import { ImprentaAutoResizeTextarea } from "@/app/components/agents/imprenta-auto-resize-textarea"
 import { apiClient } from "@/app/services/api-client-service"
 import {
-  DB_EVENT_TABLES,
   DEFAULT_PLAN_TYPE,
   PLAN_TYPE_OPTIONS,
   TRIGGER_KIND_OPTIONS,
@@ -22,6 +21,13 @@ import {
 import { WorkflowCronFields } from "./workflow-cron-fields"
 import { WorkflowSearchSelect } from "./workflow-search-select"
 import { WorkflowChannelMessageFields } from "./workflow-channel-message-fields"
+import {
+  getWorkflowTableOperations,
+  isPurchasingWorkflowTable,
+  normalizeWorkflowTableOperations,
+  WORKFLOW_TABLE_OPERATIONS,
+  WORKFLOW_TABLE_OPTIONS,
+} from "./workflow-table-options"
 
 function stopInteract(event: React.SyntheticEvent) {
   event.stopPropagation()
@@ -41,7 +47,7 @@ function webhookCallUrl(node: InstanceNode) {
   return `${base}/api/workflows/triggers/dispatch?${params}`
 }
 
-function WorkflowTriggerTableEvents({
+export function WorkflowTriggerTableEvents({
   trigger,
   onPersist,
 }: {
@@ -63,8 +69,8 @@ function WorkflowTriggerTableEvents({
         ]
       : [])
 
-  const addEvent = () => {
-    void onPersist({ trigger: { ...trigger, db_events: [...events, { table: "leads", op: ["insert"] }] } })
+  const addEvent = (table = "leads") => {
+    void onPersist({ trigger: { ...trigger, db_events: [...events, { table, op: ["insert"] }] } })
   }
 
   const updateAt = (index: number, patch: Partial<{ table: string; op: ("insert" | "update" | "delete")[] }>) => {
@@ -81,11 +87,26 @@ function WorkflowTriggerTableEvents({
     <div className="flex flex-col gap-2 bg-background/30 rounded-xl p-2 border border-border/40">
       <div className="flex items-center justify-between">
         <p className="text-[11px] font-medium pl-1">Table Events</p>
-        <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={addEvent}>
-          <Plus className="h-2.5 w-2.5 mr-1" />
-          Add Event
-        </Button>
+        <div className="flex flex-wrap justify-end gap-1">
+          <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={() => addEvent("procurement_requests")}>
+            <Plus className="h-2.5 w-2.5 mr-1" />
+            Add Purchasing Event
+          </Button>
+          <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={() => addEvent()}>
+            <Plus className="h-2.5 w-2.5 mr-1" />
+            Add Event
+          </Button>
+        </div>
       </div>
+
+      <p className="text-[10px] text-muted-foreground pl-1">
+        Search workspace or purchasing tables by name. Select the changes that should start this workflow.
+      </p>
+      {events.some(event => isPurchasingWorkflowTable(event.table)) && (
+        <p role="status" className="text-[10px] text-muted-foreground pl-1">
+          Purchasing workflows respect approval policies. Database webhook setup is required; sealed proposal contents are not enabled by these triggers.
+        </p>
+      )}
 
       {events.length === 0 ? (
         <p className="text-[10px] text-muted-foreground py-1 pl-1">No tables selected</p>
@@ -102,28 +123,34 @@ function WorkflowTriggerTableEvents({
                 size="sm"
                 className="absolute top-1 right-1 h-5 w-5 p-0 shrink-0 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-background/80"
                 onClick={() => removeAt(index)}
+                aria-label={`Remove table event ${index + 1}`}
               >
                 <X className="h-3 w-3" />
               </Button>
 
               <div className="pr-5">
                 <WorkflowSearchSelect
-                  options={DB_EVENT_TABLES.map((table) => ({ value: table, label: table }))}
+                  options={WORKFLOW_TABLE_OPTIONS}
                   value={ev.table}
                   placeholder="Table"
-                  allowCreate
-                  onChange={(table) => updateAt(index, { table })}
+                  label={`Table for event ${index + 1}`}
+                  allowCreate={false}
+                  onChange={(table) => updateAt(index, { table, op: normalizeWorkflowTableOperations(table, ev.op) })}
                 />
               </div>
 
               <div className="flex items-center gap-1">
-                {(["insert", "update", "delete"] as const).map((op) => {
+                {WORKFLOW_TABLE_OPERATIONS.map((op) => {
                   const isActive = ev.op.includes(op)
+                  const isSupported = getWorkflowTableOperations(ev.table).includes(op)
                   return (
                     <Button
                       key={op}
                       type="button"
                       variant={isActive ? "outline" : "ghost"}
+                      aria-pressed={isActive}
+                      disabled={!isSupported}
+                      title={!isSupported ? `${op} events are not available for ${ev.table}` : undefined}
                       size="sm"
                       className={`flex-1 h-6 text-[10px] rounded-lg ${
                         isActive
@@ -131,9 +158,9 @@ function WorkflowTriggerTableEvents({
                           : "text-muted-foreground hover:text-foreground"
                       }`}
                       onClick={() => {
-                        let newOps = isActive ? ev.op.filter((o) => o !== op) : [...ev.op, op]
-                        if (newOps.length === 0) newOps = ["insert"]
-                        updateAt(index, { op: newOps })
+                        if (!isSupported) return
+                        const newOps = isActive ? ev.op.filter((o) => o !== op) : [...ev.op, op]
+                        updateAt(index, { op: normalizeWorkflowTableOperations(ev.table, newOps) })
                       }}
                     >
                       {op}
@@ -141,6 +168,17 @@ function WorkflowTriggerTableEvents({
                   )
                 })}
               </div>
+              {ev.op.some(op => !getWorkflowTableOperations(ev.table).includes(op)) && (
+                <div role="alert" className="text-[10px] text-amber-700 dark:text-amber-300">
+                  Saved configuration includes unavailable events for {ev.table}: {ev.op.filter(op => !getWorkflowTableOperations(ev.table).includes(op)).join(", ")}. These events cannot fire. Select a supported table or repair the operations.
+                  {getWorkflowTableOperations(ev.table).length > 0 && (
+                    <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-[10px]"
+                      onClick={() => updateAt(index, { op: normalizeWorkflowTableOperations(ev.table, ev.op) })}>
+                      Repair operations
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -171,7 +209,7 @@ export function WorkflowTriggerBody({
   const [testing, setTesting] = useState(false)
   const [copied, setCopied] = useState(false)
   const [sampleMessage, setSampleMessage] = useState("Example customer message")
-  const webhookUrl = useMemo(() => webhookCallUrl(node), [node.id, node.instance_id, node.site_id])
+  const webhookUrl = useMemo(() => webhookCallUrl(node), [node])
   const planType = trigger.plan_type || DEFAULT_PLAN_TYPE
   const activeKinds = trigger.active_kinds || (trigger.kind ? [trigger.kind] : ["manual"])
   const currentKind = activeKinds[0] || "manual"
@@ -187,8 +225,8 @@ export function WorkflowTriggerBody({
       })
       if (!response.success) throw new Error(response.error?.message || "Test failed")
       toast.success("Test run started (no side effects).")
-    } catch (error: any) {
-      toast.error(error?.message || "Workflow test failed")
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Workflow test failed")
     } finally {
       setTesting(false)
     }
