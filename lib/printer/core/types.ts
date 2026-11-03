@@ -114,6 +114,8 @@ export interface TicketBrand {
 }
 
 export interface ReceiptPayload extends TicketBrand {
+  confirmationPending?: boolean
+  localReference?: string
   title?: string
   orderNumber?: string | null
   createdAt?: string | null

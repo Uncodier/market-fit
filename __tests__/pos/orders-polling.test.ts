@@ -5,7 +5,7 @@ jest.mock("@/app/pos/local/location-permission-state", () => ({
 }));
 jest.mock("@/app/pos/local/sync-outbox-item", () => ({ applyOutboxItem: jest.fn() }));
 jest.mock("@/app/pos/catalog-revision-client", () => ({ fetchPosCatalogRevision: jest.fn() }));
-jest.mock("@/app/pos/actions/list-open-orders", () => ({ listPosOpenOrders: jest.fn() }));
+jest.mock("@/app/pos/read-client", () => ({ fetchPosOpenOrders: jest.fn() }));
 jest.mock("@/app/pos/actions/report-sync-error", () => ({ reportPosSyncError: jest.fn() }));
 jest.mock("@/app/pos/local/db", () => ({ getPosDb: jest.fn() }));
 jest.mock("@/app/pos/local/outbox", () => ({ listOutbox: jest.fn(), updateOutboxRow: jest.fn() }));
@@ -47,7 +47,7 @@ beforeEach(async () => {
   }));
   permission.isPosPermissionCurrent.mockImplementation((lease) => lease?.generation === generation);
   permission.subscribePosPermission.mockImplementation((listener) => { invalidate = listener; return () => {}; });
-  orders = jest.mocked((await import("@/app/pos/actions/list-open-orders")).listPosOpenOrders);
+  orders = jest.mocked((await import("@/app/pos/read-client")).fetchPosOpenOrders);
   orders.mockResolvedValue({ data: [] });
   const snapshot = await import("@/app/pos/local/snapshot-pull");
   apply = jest.mocked(snapshot.applyPosOpenOrders);

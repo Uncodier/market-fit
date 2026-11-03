@@ -1,6 +1,6 @@
 import { enqueueRegisteredCheckout } from "@/app/pos/register/prepare-payment";
 import { checkoutCart } from "@/app/commerce/checkout";
-import { listPosOpenOrders } from "@/app/pos/actions/list-open-orders";
+import { fetchPosOpenOrders } from "@/app/pos/read-client";
 import { getActiveRegisterForPayment } from "@/app/pos/register/actions";
 import { getPosDb } from "@/app/pos/local/db";
 import { enqueueCheckout, listOutbox, mapLocalId, updateOutboxRow } from "@/app/pos/local/outbox";
@@ -19,7 +19,7 @@ jest.mock("@/app/pos/actions/report-sync-error", () => ({ reportPosSyncError: je
 jest.mock("@/app/pos/local/snapshot-pull", () => ({
   pullAndStorePosCatalogSnapshot: async () => ({ ok: true }), applyPosOpenOrders: jest.fn(),
 }));
-jest.mock("@/app/pos/actions/list-open-orders", () => ({ listPosOpenOrders: jest.fn() }));
+jest.mock("@/app/pos/read-client", () => ({ fetchPosOpenOrders: jest.fn() }));
 jest.mock("@/app/pos/local/location-permission-state", () => {
   const permission = (siteId: string) => ({ siteId, userId: "22222222-2222-4222-8222-222222222222", generation: 1 });
   return { requirePosPermission: permission, getPosPermissionLease: permission,
@@ -81,7 +81,7 @@ afterEach(() => { jest.clearAllTimers(); jest.useRealTimers(); });
 it("confirms new payments via HTTP while background Server Actions and an older checkout remain hung", async () => {
   let finishOrders!: (value: { data: [] }) => void;
   let finishOld!: (value: Response) => void;
-  jest.mocked(listPosOpenOrders).mockReturnValue(new Promise((resolve) => { finishOrders = resolve; }));
+  jest.mocked(fetchPosOpenOrders).mockReturnValue(new Promise((resolve) => { finishOrders = resolve; }));
   jest.mocked(fetch).mockImplementation(async (_url, options) => {
     const { operation, input } = JSON.parse(String(options?.body));
     if (operation === "register") return response({ data: register });
@@ -93,7 +93,7 @@ it("confirms new payments via HTTP while background Server Actions and an older 
   });
   const orders = pullPosOrdersInBackground(SITE);
   await flush();
-  expect(listPosOpenOrders).toHaveBeenCalledTimes(1);
+  expect(fetchPosOpenOrders).toHaveBeenCalledTimes(1);
   const old = enqueueRegisteredCheckout(SITE, payload("old", OLD)).catch((error: unknown) => error);
   await flush();
   expect(rows[0].status).toBe("syncing");

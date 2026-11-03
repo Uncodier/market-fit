@@ -55,6 +55,17 @@ const receipt = {
   currency: "USD",
 }
 
+it("suppresses confirmed duplicate receipts and uses non-blocking printer options", async () => {
+  jest.clearAllMocks()
+  jest.mocked(shouldAutoPrint).mockReturnValue(true)
+  jest.mocked(kitchenDeltaHasWork).mockReturnValue(false)
+  await printAfterPosCheckout({ settings: { devices: [usbPrinter] }, intent: "pay", receipt, skipReceipt: true })
+  expect(printJobForSettings).not.toHaveBeenCalled()
+  await printAfterPosCheckout({ settings: { devices: [usbPrinter] }, intent: "pay", receipt, receiptJobId: "local-attempt" })
+  expect(printJobForSettings).toHaveBeenCalledWith(expect.any(Object), expect.objectContaining({ id: "local-attempt" }),
+    { autoPrintFlag: "posReceipt", fallbackToSystem: false, allowPrompt: false, bestEffort: true })
+})
+
 describe("manual POS receipt printing", () => {
   beforeEach(() => {
     jest.clearAllMocks()
@@ -155,7 +166,7 @@ describe("manual POS receipt printing", () => {
           name: "Coffee",
           cartQty: 1,
           cartPrice: 3,
-        } as any,
+        } as Parameters<typeof receiptFromPosCart>[0]["cart"][number],
       ],
       total: 3,
       requestedByName: "Alex Seller",

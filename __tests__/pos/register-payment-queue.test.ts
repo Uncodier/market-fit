@@ -50,6 +50,29 @@ describe("Register payment queue and closing lock", () => {
     expect(drainPosOutbox).not.toHaveBeenCalled()
     expect(locks.request).toHaveBeenCalledWith("pos-register:site", { mode: "exclusive", signal: expect.any(AbortSignal) }, expect.any(Function))
   })
+  it("uses a prepared register read without another network round trip", async () => {
+    const readRegister = jest.fn().mockResolvedValue({ data: { id: "prepared-shift", location_id: "location" } })
+    const result = await enqueueRegisteredCheckout("site", payload, undefined, undefined,
+      { waitForConfirmation: false, readRegister })
+    expect(result.status).toBe("pending")
+    expect(readRegister).toHaveBeenCalledTimes(1)
+    expect(getActiveRegisterForPayment).not.toHaveBeenCalled()
+    expect(enqueueCheckout).toHaveBeenCalledWith("site", expect.objectContaining({ registerSessionId: "prepared-shift" }),
+      expect.any(String), expect.any(Function))
+    expect(syncPosCheckout).not.toHaveBeenCalled()
+  })
+  it("preserves the cart when a prepared register read requires setup", async () => {
+    const readRegister = jest.fn().mockResolvedValue({ error: "Open a register", code: "register_required" })
+    await expect(enqueueRegisteredCheckout("site", payload, undefined, undefined, { readRegister })).rejects.toBeInstanceOf(PaymentRegisterRequiredError)
+    expect(enqueueCheckout).not.toHaveBeenCalled()
+  })
+  it("does not use a prepared hint after the selected cart changes", async () => {
+    const readRegister = jest.fn().mockResolvedValue({ data: { id: "shift", location_id: "location" } })
+    await expect(enqueueRegisteredCheckout("site", payload, undefined, () => false, { readRegister }))
+      .rejects.toThrow("active cart changed")
+    expect(readRegister).not.toHaveBeenCalled()
+    expect(enqueueCheckout).not.toHaveBeenCalled()
+  })
 
   it("accepts an optimistic payment only after durable enqueue without awaiting the server", async () => {
     jest.mocked(syncPosCheckout).mockImplementation(() => new Promise(() => {}))

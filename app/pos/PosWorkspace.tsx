@@ -16,6 +16,7 @@ import { PosCategoryTabs } from "./components/PosCategoryTabs";
 import { PosPageDialogs } from "./components/PosPageDialogs";
 import { CartPanel } from "./components/CartPanel";
 import { PosCatalogGrid } from "./components/PosCatalogGrid";
+import { PosLocalReadNotice } from "./components/PosLocalReadNotice";
 import { PrinterSyncBadge } from "@/app/components/printer/PrinterSyncBadge";
 import { PosSyncIssues } from "./components/PosSyncIssues";
 import { PosOrderReviewDialog } from "./components/PosOrderReviewDialog";
@@ -409,7 +410,9 @@ export default function PosWorkspace() {
           </div>
         </StickyHeader>
 
-        {emptyOffline ? (
+        <PosLocalReadNotice catalogError={catalog.catalogError} ordersError={catalog.ordersError}
+          ready={catalog.hydrated} retry={catalog.reload} />
+        {catalog.catalogError && !catalog.hydrated ? null : emptyOffline ? (
           <div className="flex-1 flex items-center justify-center p-8 text-center text-sm text-muted-foreground min-h-[50vh]">
             {t("pos.sync.emptyOffline") ||
               "Connect once to download the catalog for offline use."}

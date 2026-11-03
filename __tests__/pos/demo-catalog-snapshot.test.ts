@@ -8,6 +8,8 @@ import { pullPosCatalogSnapshot } from "@/app/pos/actions/pull-snapshot"
 import { getPosCatalogRevision } from "@/app/pos/actions/sync-revision"
 import { readThroughJsonCache } from "@/lib/redis/json-cache"
 import { listAllModifierGroupsForPos } from "@/app/catalog/modifier-actions"
+import { parsePosCatalogRead, parsePosOrdersRead } from "@/app/pos/read-contract"
+import { listPosOpenOrders } from "@/app/pos/actions/list-open-orders"
 
 jest.mock("server-only", () => ({}))
 jest.mock("@/lib/supabase/server", () => ({ createClient: jest.fn(), createServiceClient: jest.fn() }))
@@ -39,6 +41,10 @@ describe("POS snapshots using the real demo client and catalog actions", () => {
     expect(result).toEqual({ data: expect.any(Object) })
     if (!("data" in result)) throw new Error(result.error)
     const snapshot = result.data
+    expect(parsePosCatalogRead(result, siteId)).toEqual(snapshot)
+    const orders = await listPosOpenOrders(siteId)
+    expect(orders).not.toHaveProperty("error")
+    expect(parsePosOrdersRead(orders, siteId)).toEqual(orders.data)
     expect(createServiceClient).not.toHaveBeenCalled()
     expect(snapshot.catalogItems).toHaveLength(itemCount)
     expect(snapshot.catalogItems.every((item) => item.site_id === siteId && item.status === "active")).toBe(true)

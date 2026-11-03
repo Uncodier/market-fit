@@ -1,4 +1,5 @@
-import { pullPosCatalogSnapshot, type PosCatalogSnapshot } from "@/app/pos/actions/pull-snapshot";
+import type { PosCatalogSnapshot } from "@/app/pos/actions/pull-snapshot";
+import { fetchPosCatalogSnapshot } from "@/app/pos/read-client";
 import { posOrderAmountDue, selectPosOpenOrders } from "@/app/pos/open-orders";
 import { getPosDb } from "./db";
 import type { LocalPendingOrder, LocalPromotion } from "./types";
@@ -10,12 +11,12 @@ const SCHEMA_VERSION = 1;
 
 export async function readLocalCatalog(siteId: string) {
   const db = getPosDb();
-  const [catalogItemsRaw, categoriesRaw, locations, leads, priceLists, meta] =
+  // Customers have an independent read lane and must not gate catalog readiness.
+  const [catalogItemsRaw, categoriesRaw, locations, priceLists, meta] =
     await Promise.all([
       db.catalogItems.where("site_id").equals(siteId).toArray(),
       db.categories.where("site_id").equals(siteId).toArray(),
       db.locations.where("site_id").equals(siteId).toArray(),
-      db.leads.where("site_id").equals(siteId).toArray(),
       db.priceLists.where("site_id").equals(siteId).toArray(),
       db.meta.get(siteId),
     ]);
@@ -38,7 +39,6 @@ export async function readLocalCatalog(siteId: string) {
     catalogItems,
     categories,
     locations,
-    leads,
     priceLists,
     modifierGroupsByHostId: meta?.modifierGroupsByHostId || {},
     inventorySnapshot: meta?.inventorySnapshot ?? null,
@@ -292,8 +292,8 @@ export async function pullAndStorePosCatalogSnapshot(
 }> {
   const permission = requirePosRemotePermission(siteId);
   const res = bypassCache
-    ? await pullPosCatalogSnapshot(siteId, revision, true)
-    : await pullPosCatalogSnapshot(siteId, revision);
+    ? await fetchPosCatalogSnapshot(siteId, revision, true)
+    : await fetchPosCatalogSnapshot(siteId, revision);
   if (!canStartPosRemoteRequest(permission)) return { ok: false, error: "POS access changed" };
   if ("error" in res) {
     return { ok: false, error: res.error };

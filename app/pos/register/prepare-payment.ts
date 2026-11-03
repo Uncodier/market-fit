@@ -17,7 +17,10 @@ function paymentFingerprint(data: CheckoutOutboxPayload, sameAttempt = false) {
 
 /** Persist receipt identities before dispatch. Optimistic callers must observe server confirmation separately. */
 export async function enqueueRegisteredCheckout(siteId: string, payload: CheckoutOutboxPayload, onReceipt?: (id: string) => void,
-  isCurrent: () => boolean = () => true, options: { waitForConfirmation?: boolean } = {}) {
+  isCurrent: () => boolean = () => true, options: {
+    waitForConfirmation?: boolean
+    readRegister?: () => ReturnType<typeof fetchActivePaymentRegister>
+  } = {}) {
   const permission = requirePosPermission(siteId)
   if (!payload.payments?.length) return enqueueCheckout(siteId, payload)
   assertPosRemotePermission(permission)
@@ -61,9 +64,9 @@ export async function enqueueRegisteredCheckout(siteId: string, payload: Checkou
         onReceipt?.(payload.clientMutationId)
       }
       assertPosRemotePermission(permission)
-      const result = await fetchActivePaymentRegister({
+      const result = await (options.readRegister ? options.readRegister() : fetchActivePaymentRegister({
         siteId, ...(payload.originLocationId ? { locationId: payload.originLocationId } : {}),
-      })
+      }))
       assertPosRemotePermission(permission)
       if (result.error !== undefined) throwPaymentRegisterError(result)
       assertSelection()

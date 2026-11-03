@@ -27,6 +27,7 @@ import { checkOrderBeforePayment, PosOrderChangedError } from "@/app/pos/check-o
 import { PaymentRegisterRequiredError } from "../register/payment-register-required";
 import { usePaymentRegisterPrompt } from "./use-payment-register-prompt";
 import { usePosSubmission } from "./use-pos-submission";
+import { usePaymentRegisterPreflight } from "./use-payment-register-preflight";
 
 export function usePosCheckout({
   validateInventory,
@@ -70,6 +71,8 @@ export function usePosCheckout({
   const cartKey = JSON.stringify(posCheckoutLines(cart));
   const submission = usePosSubmission(JSON.stringify([siteId, userId, activeOrderId]), checkoutAttempt.session);
   const registerPrompt = usePaymentRegisterPrompt(siteId, userId, activeOrderId, cartKey);
+  const registerPreflight = usePaymentRegisterPreflight(siteId, userId, originLocationId,
+    JSON.stringify([activeOrderId, cartKey]), isPaymentDialogOpen && !orderPreparing && !registerPrompt.open);
   const selection = useRef({ siteId, userId, activeOrderId, cartKey });
   useLayoutEffect(() => {
     selection.current = { siteId, userId, activeOrderId, cartKey };
@@ -210,7 +213,8 @@ export function usePosCheckout({
       intent: params.intent,
       notes: orderNotes.trim(),
       clientMutationId,
-    }, (id) => { if (isCurrent()) checkoutAttempt.adopt(id); }, isCurrent, { waitForConfirmation: false });
+    }, (id) => { if (isCurrent()) checkoutAttempt.adopt(id); }, isCurrent,
+    { waitForConfirmation: false, readRegister: registerPreflight.take });
     if (!isCurrent()) return;
     clientMutationId = queuedCheckout.clientMutationId;
     refreshPosSyncCounts(siteId);
@@ -325,6 +329,8 @@ export function usePosCheckout({
 
     const finishSubmission = submission.begin();
     try {
+      // Overlap independent reads when payment is submitted before preflight finishes.
+      if (payments.length) registerPreflight.start();
       await checkOrderBeforePayment(siteId, activeOrderId, expectedOrderVersion);
       if (!isCurrent()) return;
       const { resolvedLeadId, localLeadId } =

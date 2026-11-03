@@ -1,4 +1,5 @@
 import { listOutbox } from "@/app/pos/local/outbox"
+import { invalidateRegisterPreflightDuring } from "./preflight-revision"
 
 export function requireRegisterOnline() {
   if (typeof navigator === "undefined" || !navigator.onLine) {
@@ -45,6 +46,6 @@ export async function assertRegisterQueueSettled(siteId: string) {
 export async function withRegisterCloseLock<T>(siteId: string, operation: () => Promise<T>): Promise<T> {
   return withRegisterPaymentLock(siteId, async () => {
     await assertRegisterQueueSettled(siteId)
-    return operation()
+    return invalidateRegisterPreflightDuring(siteId, operation)
   })
 }

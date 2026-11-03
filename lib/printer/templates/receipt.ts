@@ -23,6 +23,12 @@ export function writeReceipt(b: TicketBuilder, payload: ReceiptPayload): void {
   if (payload.website) b.text(payload.website, "center")
   if (payload.taxId) b.text(`${copy.taxId} ${payload.taxId}`, "center")
   writeSolidRule(b)
+  if (payload.confirmationPending) {
+    b.bold(true).text("PAYMENT CONFIRMATION PENDING", "center").bold(false)
+    b.text("Saved on this device. Not proof of settlement.", "center")
+    if (payload.localReference) b.text(`Local reference: ${payload.localReference}`)
+    b.separator()
+  }
   if (payload.orderNumber) {
     b.size(true).bold(true)
     b.text(`#${payload.orderNumber}`, "center")

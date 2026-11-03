@@ -2,11 +2,12 @@ import { hasPosOutboxWork, syncPosOutboxRow } from "./sync-outbox-worker";
 import { getPosPermissionLease, isPosPermissionCurrent, subscribePosPermission } from "./location-permission-state";
 import { canStartPosRemoteRequest } from "./remote-permission";
 import { POS_ACCESS_UPDATED_EVENT } from "./access-recheck";
+import { CatalogRefreshState } from "./catalog-refresh-state";
 import { getPosDb } from "./db";
 import { listOutbox } from "./outbox";
 import { pullAndStorePosCatalogSnapshot, applyPosOpenOrders } from "./snapshot-pull";
 import { fetchPosCatalogRevision } from "@/app/pos/catalog-revision-client";
-import { listPosOpenOrders } from "@/app/pos/actions/list-open-orders";
+import { fetchPosOpenOrders } from "@/app/pos/read-client";
 import {
   shouldRunCatalogPull,
   shouldRefreshCatalogSnapshot,
@@ -54,6 +55,7 @@ const pullingSites = new Set<string>();
 const knownSites = new Set<string>();
 // Keep recovery intent across permission suspension and workspace unmounts.
 const catalogRecovery = new Map<string, number>();
+const catalogRefresh = new CatalogRefreshState();
 let recoverySequence = 0;
 const EMPTY_SITE_STATE: SiteSyncState = {
   lastPulledAt: null,
@@ -66,11 +68,12 @@ const EMPTY_SITE_STATE: SiteSyncState = {
   nextOrdersRetryAt: null,
 };
 const siteState = new Map<string, SiteSyncState>();
-// Permission changes reset scheduling, but cannot cancel an outstanding Server Action.
+// Permission changes reset scheduling, but do not release outstanding remote work.
 // Retain its slot until the real request and local application have settled.
 const ordersInFlight = new Map<string, Promise<void>>();
 subscribePosPermission(() => {
   siteState.clear(); clearAllPosSyncErrors(); clearCatalogSyncProgress();
+  catalogRefresh.resetCooldowns();
   const sites = new Set([...knownSites, ...Array.from(listeners.values()).filter((id): id is string => !!id)]);
   sites.forEach((siteId) => emit(siteId));
 });
@@ -89,6 +92,10 @@ async function refreshCounts(siteId: string) {
   try {
     const rows = await listOutbox(siteId);
     if (!isPosPermissionCurrent(permission)) return;
+    if (catalogRefresh.observe(permission, rows)) {
+      catalogRecovery.set(siteId, ++recoverySequence);
+      void pullPosCatalogInBackground(siteId);
+    }
     reconcilePosOutboxErrors(siteId, rows);
     const pendingCount = rows.filter(
       (r) => r.status === "pending" || r.status === "syncing",
@@ -164,11 +171,12 @@ export async function drainPosOutbox(siteId: string): Promise<void> {
   }
   drainingSites.add(siteId);
   emit(siteId);
-  let attemptedCheckout = false;
 
   try {
     // Prefer create_lead before checkout that depends on it
     const open = await listOutbox(siteId, ["pending", "syncing", "failed"]);
+    if (!canStartPosRemoteRequest(permission)) return;
+    catalogRefresh.observe(permission, open);
     const ordered = [
       ...open.filter((r) => r.kind === "create_lead"),
       ...open.filter((r) => r.kind !== "create_lead"),
@@ -176,7 +184,6 @@ export async function drainPosOutbox(siteId: string): Promise<void> {
 
     for (const row of ordered) {
       if (!canStartPosRemoteRequest(permission)) break;
-      if (row.kind === "checkout") attemptedCheckout = true;
       await syncPosOutboxRow(row, permission, outboxChanged);
     }
     clearPosSyncError(siteId, "outbox");
@@ -190,7 +197,6 @@ export async function drainPosOutbox(siteId: string): Promise<void> {
     const rerun = rerunSites.delete(siteId);
     if (isPosPermissionCurrent(permission)) {
       await refreshCounts(siteId);
-      if (attemptedCheckout) void pullPosCatalogInBackground(siteId, true);
       if (rerun) void drainPosOutbox(siteId);
     }
   }
@@ -211,6 +217,10 @@ export async function syncPosCheckout(siteId: string, mutationId: string): Promi
   try {
     const rows = await listOutbox(siteId);
     if (!canStartPosRemoteRequest(permission)) return;
+    if (catalogRefresh.observe(permission, rows)) {
+      catalogRecovery.set(siteId, ++recoverySequence);
+      void pullPosCatalogInBackground(siteId);
+    }
     const row = rows.find((candidate) => candidate.siteId === siteId &&
       candidate.clientMutationId === mutationId && candidate.kind === "checkout" && candidate.payload.kind === "checkout");
     if (!row || row.status === "synced") return;
@@ -222,7 +232,6 @@ export async function syncPosCheckout(siteId: string, mutationId: string): Promi
   } finally {
     if (isPosPermissionCurrent(permission)) {
       await refreshCounts(siteId);
-      void pullPosCatalogInBackground(siteId, true);
     }
   }
 }
@@ -241,15 +250,19 @@ export async function pullPosCatalogInBackground(
 ): Promise<void> {
   const permission = getPosPermissionLease(siteId);
   if (!canStartPosRemoteRequest(permission)) return;
+  // Record intent before admission: active pulls and cooldowns cannot consume it.
+  if (force) catalogRecovery.set(siteId, ++recoverySequence);
   if (pullingSites.has(siteId)) return;
+  if (!catalogRefresh.canRetry(siteId)) return;
   pullingSites.add(siteId);
+  const recovery = catalogRecovery.get(siteId);
+  let succeeded = false;
   beginCatalogSync(siteId);
   emit(siteId);
 
   try {
     const meta = await getPosDb().meta.get(siteId);
     if (!canStartPosRemoteRequest(permission)) return;
-    const recovery = catalogRecovery.get(siteId);
     const refreshSnapshot = force || recovery !== undefined || !meta?.lastCatalogRevision ||
       shouldRefreshCatalogSnapshot(Date.now(), meta?.lastPulledAt ?? null);
     let revisionToUse: string | null = null;
@@ -265,6 +278,8 @@ export async function pullPosCatalogInBackground(
     if (!("error" in revRes) && revRes.data) {
       if (!refreshSnapshot && meta?.lastCatalogRevision === revRes.data) {
         markCatalogChecked(siteId);
+        catalogRefresh.succeeded(siteId);
+        succeeded = true;
         clearPosSyncError(siteId, "catalog");
         finishCatalogSync(siteId, "checked");
         return;
@@ -280,6 +295,7 @@ export async function pullPosCatalogInBackground(
     });
     if (!canStartPosRemoteRequest(permission)) return;
     if (!res.ok) {
+      catalogRefresh.failed(siteId);
       recordPosSyncError("catalog", { siteId, operation: "catalog", error: res.error || "Catalog pull failed" });
       finishCatalogSync(siteId, "error");
     } else {
@@ -290,17 +306,23 @@ export async function pullPosCatalogInBackground(
         lastCatalogCheckAt: Date.now(),
       });
       clearPosSyncError(siteId, "catalog");
+      catalogRefresh.succeeded(siteId);
+      succeeded = true;
       finishCatalogSync(siteId, "success", refreshSnapshot || revisionToUse === null);
       if (recovery !== undefined && catalogRecovery.get(siteId) === recovery) catalogRecovery.delete(siteId);
     }
   } catch (error) {
     if (!canStartPosRemoteRequest(permission)) return;
+    catalogRefresh.failed(siteId);
     recordPosSyncError("catalog", { siteId, operation: "catalog", error: error instanceof Error ? error.message : "Catalog pull failed" });
     finishCatalogSync(siteId, "error");
   } finally {
     pullingSites.delete(siteId);
     if (!canStartPosRemoteRequest(permission)) finishCatalogSync(siteId, "checked");
     await refreshCounts(siteId);
+    if (succeeded && catalogRecovery.has(siteId) && canStartPosRemoteRequest(permission)) {
+      void pullPosCatalogInBackground(siteId);
+    }
   }
 }
 
@@ -316,7 +338,7 @@ export function pullPosOrdersInBackground(siteId: string): Promise<void> {
   const request = Promise.resolve().then(async () => {
     if (!canStartPosRemoteRequest(permission) || !isDocumentVisible()) return;
     try {
-      const res = await listPosOpenOrders(siteId);
+      const res = await fetchPosOpenOrders(siteId);
       if (!canStartPosRemoteRequest(permission)) return;
       if (res.error) throw new Error(res.error);
       await applyPosOpenOrders(siteId, res.data || [], permission);
@@ -379,7 +401,7 @@ export async function runPosSyncCycle(
   });
 
   // Each lane has its own admission guard. A slow orders pull must not hold up
-  // catalog checks or local outbox replay (the framework may still serialize actions).
+  // catalog checks or local outbox replay.
   const work: Promise<void>[] = [];
   if (doCatalog) work.push(pullPosCatalogInBackground(siteId, force));
   if (doOrders) work.push(pullPosOrdersInBackground(siteId));

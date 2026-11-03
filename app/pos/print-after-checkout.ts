@@ -96,16 +96,20 @@ export async function printAfterPosCheckout(params: {
   fulfillment?: string | null
   kitchenDelta?: KitchenDelta | null
   receipt: ReceiptPayload
+  skipReceipt?: boolean
+  receiptJobId?: string
 }): Promise<void> {
-  const { settings, intent, orderId, kitchenDelta, receipt } = params
+  const { settings, intent, orderId, kitchenDelta } = params
+  const receipt = { ...params.receipt }
   const sentAt = new Date().toISOString()
   receipt.orderNumber = params.orderNumber || receipt.orderNumber
   receipt.createdAt = params.createdAt || receipt.createdAt
   receipt.qrValue = receipt.qrValue || params.orderNumber || orderId || null
   if (params.fulfillment && !receipt.fulfillment) receipt.fulfillment = params.fulfillment
-  const autoOpts = { fallbackToSystem: false, allowPrompt: false }
+  const autoOpts = { fallbackToSystem: false, allowPrompt: false, bestEffort: true }
 
   const printReceipt =
+    !params.skipReceipt &&
     (intent === "pay" || intent === "complete" || (intent === "send" && (receipt.payments || []).length > 0)) &&
     shouldAutoPrint(settings, "pos", "posReceipt")
 
@@ -113,7 +117,7 @@ export async function printAfterPosCheckout(params: {
     await printJobForSettings(
       settings,
       {
-        id: `receipt-${orderId || sentAt}`,
+        id: params.receiptJobId || `receipt-${orderId || sentAt}`,
         module: "pos",
         template: "receipt",
         orderId: orderId || undefined,
@@ -166,6 +170,6 @@ export async function printAfterPosCheckout(params: {
       .map((change) => ({ id: change.itemId as string, quantity: change.to })),
   ]
   if (printed.length) {
-    void markKitchenItemsPrinted(params.siteId, printed)
+    void markKitchenItemsPrinted(params.siteId, printed).catch(() => {})
   }
 }

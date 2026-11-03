@@ -75,3 +75,72 @@ Regression coverage includes the location monitor, access gate, transport abort,
 scope revocation, site recovery policy, sync badge/retry and version checker.
 No migration, remote data repair or deployment is included. Device recovery and
 the original incident cause require live evidence after an approved rollout.
+
+## Local read recovery
+
+POS catalog hydration and order/customer refresh have independent publication
+paths. Queue and open-order notifications no longer reload the complete catalog,
+taxes and price lists. Bursts of notifications are coalesced; an invalidation
+received during a read schedules one trailing refresh instead of being lost.
+Customer publication belongs only to the order/customer lane, including after a
+catalog invalidation. A late catalog read cannot overwrite newer customers.
+Local customer edits retire older customer reads, and failed reads after a site
+switch cannot expose the previous site's customer list.
+`readLocalCatalog` does not access or return customers; a rejected or stalled
+customer-table read cannot delay initial catalog/pricing readiness. Customer
+errors and retries remain in the order/customer lane, without a duplicate read
+from the catalog lane. `catalog-customer-isolation.test.tsx` exercises the actual
+snapshot readers with failing and stalled customer storage, not a mocked
+catalog-reader result.
+
+Local reads have an eight-second UI deadline. Rejected or timed-out reads retry
+after one, two and four seconds, then await another sync notification or explicit
+**Retry local data**. Late read results cannot publish after timeout, workspace
+retirement, or a newer same-domain read. These deadlines apply only to reads;
+they never cancel or replay a payment or clear IndexedDB.
+
+An order/customer refresh failure keeps a successfully loaded catalog usable.
+Pricing, taxes, promotions and catalog publication stay together: a failed
+refresh retains the complete last-good bundle. Without a successfully loaded
+bundle, the UI shows an actionable failure instead of an endless skeleton, and
+checkout readiness remains false. A transient read error is not permission to
+invent empty taxes, prices, stock or orders from another site.
+
+Focused regressions:
+
+```bash
+npm test -- --runInBand __tests__/pos/use-pos-catalog.test.tsx __tests__/pos/catalog-customer-isolation.test.tsx __tests__/pos/local-read-notice.test.tsx __tests__/pos/refresh-queue.test.ts
+```
+
+## Background synchronization efficiency
+
+Catalog refresh after checkout follows an observed persisted transition to
+`synced`, including late worker completion. Visiting skipped, backed-off or
+unconfirmed operations no longer forces full downloads. Refresh intent is
+versioned so an active download cannot consume a newer confirmation or reconnect
+request. Failed catalog downloads retain that intent and use a 30-second
+exponential cooldown capped at five minutes. Manual requests cannot bypass the
+cooldown; successful refresh clears it. No checkout admission or payment
+reconciliation rules are relaxed.
+
+Full catalog and open-order reads use authenticated, uncached HTTP endpoints
+instead of the browser's sequential Server Action dispatcher. Request and
+response contracts are validated before local replacement; late or malformed
+responses cannot clear last-good data. Browser waits are bounded to 30 seconds
+for catalog and 12 seconds for orders. The existing server-side eight-second
+PostgREST deadline for orders remains in place. Catalog fan-out does not yet
+propagate cancellation through every server reader: browser timeout aborts its
+transport, but must not be described as cancelling all server database work.
+
+The order read contract preserves cancelled historical lines and children of
+cancelled parents with nullable or absent pricing fields. Active line prices
+and quantities accept finite numeric strings, normalized to numbers; blanks,
+booleans and non-finite values remain invalid. Historical rows retain tenant
+checks and never become payable through this compatibility rule. Existing cart
+completeness and server checkout validation still decide payment eligibility.
+
+Inventory and catalog reads overlap on the server, but both must succeed before
+publishing a snapshot. Independent catalog/inventory versions and eliminating
+the optional revision wait remain future optimizations; this repair does not
+introduce a database revision protocol or change the five-minute full-refresh
+safety policy. Measure deployment latency separately from offline tests.

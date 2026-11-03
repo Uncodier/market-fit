@@ -328,6 +328,42 @@ Regression suites: `__tests__/app/settings/settings-skeletons.test.tsx`,
 `__tests__/components/settings/loading-skeletons.test.tsx`, and
 `__tests__/procurement/portal-settings-ui.test.tsx`.
 
+## POS checkout latency regression checks
+
+The payment dialog preloads the active register read for up to 15 seconds,
+scoped to the actor, site, location, cart and permission generation. Submission
+overlaps that read with existing-order balance verification. Register setup and
+dialog closure discard the hint; it is not server authorization. The checkout
+server still validates the register shift, location, caller and order version.
+
+Register closing invalidates hints through a synchronous, site-scoped storage
+revision while holding the same browser lock as payment admission. Reads started
+before or during closing cannot be reused afterward, including late responses or
+ambiguous close failures. Unavailable revision storage disables speculative reuse;
+failure to publish invalidation prevents closing. This coordinates tabs of the
+same browser, not other devices or already-loaded older client versions.
+Failed speculative reads are discarded or replaced by one fresh read on the
+first submission; payment mutations are never retried by this mechanism.
+
+After durable local acceptance, the dialog closes and confirmation runs in the
+background. Payment receipts print immediately after durable local acceptance,
+marked "PAYMENT CONFIRMATION PENDING" with a local reference rather than a server
+order number. Confirmation skips the receipt; kitchen deltas still require the
+server result. A cross-tab, persisted per-payment claim prevents automatic
+receipt replay after cleanup retries, reloads, or partial hardware writes.
+Uncertain/skipped prints require explicit manual reprint. Automatic POS printing
+reconnects previously bound USB/Bluetooth hardware without permission prompts;
+unavailable printers are skipped without failing checkout or opening system print.
+Automatic writes to the same hardware are serialized without delaying checkout.
+Manual printing retains its explicit errors and system-print behavior.
+A pending local payment must not be presented as paid. Existing-order verification
+can still delay acceptance. Measure live latency separately from these offline
+regression tests:
+
+```bash
+npm test -- --runInBand __tests__/pos/payment-register-preflight.test.tsx __tests__/pos/register-preflight-close.test.tsx __tests__/pos/register-payment-queue.test.ts __tests__/pos/use-pos-checkout-preparation.test.tsx __tests__/pos/checkout-feedback.test.ts
+```
+
 ## Before handing off
 
 - Review the diff for unrelated edits and accidental secret exposure.

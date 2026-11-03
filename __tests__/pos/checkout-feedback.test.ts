@@ -1,6 +1,7 @@
 import { confirmPosCheckoutInBackground } from "@/app/pos/checkout-feedback";
 import { syncPosCheckout } from "@/app/pos/local/sync-engine";
 import { printAfterPosCheckout } from "@/app/pos/print-after-checkout";
+import { printLocalPosReceipt } from "@/app/pos/print-local-receipt";
 import { toast } from "sonner";
 import type { PosOutboxRow } from "@/app/pos/local/types";
 
@@ -10,6 +11,7 @@ jest.mock("@/app/pos/local/location-permission-state", () => ({ isPosPermissionC
 jest.mock("@/app/pos/local/sync-engine", () => ({ syncPosCheckout: jest.fn() }));
 jest.mock("@/app/pos/local/db", () => ({ getPosDb: () => ({ outbox: { where: () => ({ equals: () => ({ first }) }) } }) }));
 jest.mock("@/app/pos/print-after-checkout", () => ({ printAfterPosCheckout: jest.fn() }));
+jest.mock("@/app/pos/print-local-receipt", () => ({ printLocalPosReceipt: jest.fn() }));
 jest.mock("sonner", () => ({ toast: { message: jest.fn(), success: jest.fn(), error: jest.fn() } }));
 
 const row: PosOutboxRow = { id: "row", siteId: "site", clientMutationId: "mutation", kind: "checkout",
@@ -26,16 +28,17 @@ beforeEach(() => {
   first.mockResolvedValue({ ...row, status: "synced", resultOrderId: "order", resultOrderNumber: "POS-1" });
 });
 
-it("reports processing first and prints only after durable confirmation", async () => {
+it("starts the local receipt immediately and suppresses the confirmed duplicate", async () => {
   let finish!: () => void;
   jest.mocked(syncPosCheckout).mockReturnValueOnce(new Promise<void>((resolve) => { finish = resolve; }));
   const pending = confirmPosCheckoutInBackground(input);
   expect(toast.message).toHaveBeenCalledWith(expect.stringContaining("Confirming"), { id: "pos-checkout:row" });
   expect(toast.success).not.toHaveBeenCalled();
   expect(printAfterPosCheckout).not.toHaveBeenCalled();
+  expect(printLocalPosReceipt).toHaveBeenCalledWith(input);
   finish(); await pending;
   expect(toast.success).toHaveBeenCalledWith("Order POS-1 confirmed.", { id: "pos-checkout:row" });
-  expect(printAfterPosCheckout).toHaveBeenCalledWith(expect.objectContaining({ orderId: "order", orderNumber: "POS-1" }));
+  expect(printAfterPosCheckout).toHaveBeenCalledWith(expect.objectContaining({ orderId: "order", orderNumber: "POS-1", skipReceipt: true }));
 });
 
 it("shares confirmation and printing when local cleanup retries the same pending receipt", async () => {
@@ -96,8 +99,22 @@ it("does not lose confirmation just because printing fails", async () => {
   jest.mocked(printAfterPosCheckout).mockRejectedValueOnce(new Error("Printer offline"));
   await confirmPosCheckoutInBackground(input);
   expect(toast.success).toHaveBeenCalled();
-  expect(toast.error).toHaveBeenCalledWith(expect.stringContaining("printing failed"), expect.any(Object));
+  expect(toast.error).not.toHaveBeenCalled();
   expect(syncPosCheckout).toHaveBeenCalledTimes(1);
+});
+
+it("confirms independently of a hanging optimistic printer", async () => {
+  jest.mocked(printLocalPosReceipt).mockReturnValueOnce(new Promise(() => {}));
+  await confirmPosCheckoutInBackground(input);
+  expect(toast.success).toHaveBeenCalled();
+  expect(syncPosCheckout).toHaveBeenCalledTimes(1);
+});
+
+it("does not print a local payment receipt for an unpaid send", async () => {
+  const unpaid = { ...row, payload: { kind: "checkout" as const, data: { ...row.payload.data, payments: [] } } } as PosOutboxRow;
+  await confirmPosCheckoutInBackground({ ...input, row: unpaid });
+  expect(printLocalPosReceipt).not.toHaveBeenCalled();
+  expect(printAfterPosCheckout).toHaveBeenCalledWith(expect.objectContaining({ skipReceipt: false }));
 });
 
 it("suppresses receipts and feedback when access changes", async () => {

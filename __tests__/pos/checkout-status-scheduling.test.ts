@@ -14,7 +14,7 @@ jest.mock("@/app/pos/local/location-permission-state", () => {
 jest.mock("@/app/pos/operation-client", () => ({ checkoutPosCart: jest.fn(), createPosLead: jest.fn() }));
 jest.mock("@/app/commerce/ticket-check-in", () => ({ checkInTicket: jest.fn() }));
 jest.mock("@/app/pos/catalog-revision-client", () => ({ fetchPosCatalogRevision: async () => ({ data: "revision" }) }));
-jest.mock("@/app/pos/actions/list-open-orders", () => ({ listPosOpenOrders: jest.fn() }));
+jest.mock("@/app/pos/read-client", () => ({ fetchPosOpenOrders: jest.fn() }));
 jest.mock("@/app/orders/actions", () => ({ updateOrderNotes: jest.fn() }));
 jest.mock("@/app/pos/actions/report-sync-error", () => ({ reportPosSyncError: async () => ({ ok: true }) }));
 jest.mock("@/app/pos/actions/reconcile-checkout", () => ({ reconcilePosCheckoutStatus: jest.fn() }));

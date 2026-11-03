@@ -6,6 +6,7 @@ import { syncPosCheckout } from "./local/sync-engine";
 import { isPosPermissionCurrent, type PosPermissionLease } from "./local/location-permission-state";
 import { printAfterPosCheckout } from "./print-after-checkout";
 import type { PosOutboxRow } from "./local/types";
+import { printLocalPosReceipt } from "./print-local-receipt";
 
 type PrintRequest = Parameters<typeof printAfterPosCheckout>[0];
 type Feedback = {
@@ -36,6 +37,9 @@ async function observeCheckout({ row, permission, print }: Feedback): Promise<vo
   const current = () => isPosPermissionCurrent(permission);
   if (!current()) return;
   const paid = row.payload.kind === "checkout" && Boolean(row.payload.data.payments?.length);
+  // Local persistence is enough to print a pending receipt. Neither printing nor
+  // reconnecting a printer owns the checkout confirmation or the next cart.
+  if (paid) void printLocalPosReceipt({ row, permission, print });
   const review = () => toast.error(paid
     ? "Checkout needs review. Check payment status in the sync queue before collecting again."
     : "Order needs review. Open the sync queue for details.", { id, duration: 10_000 });
@@ -49,11 +53,11 @@ async function observeCheckout({ row, permission, print }: Feedback): Promise<vo
     if (stored.status === "synced") {
       toast.success(stored.resultOrderNumber ? `Order ${stored.resultOrderNumber} confirmed.` : "Order confirmed.", { id });
       try {
-        await printAfterPosCheckout({ ...print, orderId: stored.resultOrderId,
+        await printAfterPosCheckout({ ...print, skipReceipt: paid, orderId: stored.resultOrderId,
           orderNumber: stored.resultOrderNumber, kitchenDelta: stored.resultKitchenDelta,
           fulfillment: stored.resultFulfillment });
       } catch {
-        if (current()) toast.error("Order confirmed, but printing failed. Reprint from the order.", { id });
+        // Automatic printing is best effort; confirmation remains successful.
       }
     } else if (stored.status === "failed" || stored.recoveryState) {
       review();

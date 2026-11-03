@@ -3,7 +3,7 @@ jest.mock("@/app/pos/local/location-permission-state", () => ({
 }));
 jest.mock("@/app/pos/local/sync-outbox-worker", () => ({ hasPosOutboxWork: () => false, syncPosOutboxRow: jest.fn() }));
 jest.mock("@/app/pos/actions/sync-revision", () => ({ getPosCatalogRevision: jest.fn() }));
-jest.mock("@/app/pos/actions/list-open-orders", () => ({ listPosOpenOrders: jest.fn() }));
+jest.mock("@/app/pos/read-client", () => ({ fetchPosOpenOrders: jest.fn() }));
 jest.mock("@/app/pos/actions/report-sync-error", () => ({ reportPosSyncError: jest.fn() }));
 jest.mock("@/app/pos/local/db", () => ({ getPosDb: jest.fn() }));
 jest.mock("@/app/pos/local/outbox", () => ({ listOutbox: jest.fn() }));
@@ -39,7 +39,7 @@ beforeEach(async () => {
   meta = { lastCatalogRevision: "revision", lastPulledAt: new Date().toISOString() };
   jest.mocked((await import("@/app/pos/local/db")).getPosDb).mockReturnValue({ meta: { get: async () => meta } } as never);
   jest.mocked((await import("@/app/pos/local/outbox")).listOutbox).mockResolvedValue([]);
-  jest.mocked((await import("@/app/pos/actions/list-open-orders")).listPosOpenOrders).mockResolvedValue({ data: [] });
+  jest.mocked((await import("@/app/pos/read-client")).fetchPosOpenOrders).mockResolvedValue({ data: [] });
   jest.mocked((await import("@/app/pos/actions/report-sync-error")).reportPosSyncError).mockResolvedValue({ ok: true });
   download = jest.mocked((await import("@/app/pos/local/snapshot-pull")).pullAndStorePosCatalogSnapshot);
   download.mockImplementation(async (_site, revision) => {
@@ -61,7 +61,7 @@ it("publishes accepted access and resumes an active cycle immediately without cl
   await flush();
   jest.mocked(fetch).mockClear();
   download.mockClear();
-  const orders = jest.mocked((await import("@/app/pos/actions/list-open-orders")).listPosOpenOrders);
+  const orders = jest.mocked((await import("@/app/pos/read-client")).fetchPosOpenOrders);
   orders.mockClear();
   const listener = jest.fn();
   const unsubscribe = engine.subscribePosSync(listener, SITE);
@@ -92,7 +92,7 @@ it("updates inactive diagnostics without starting remote work, and rejects missi
   await flush();
   engine.stopPosSyncLoop(SITE);
   jest.mocked(fetch).mockClear();
-  const orders = jest.mocked((await import("@/app/pos/actions/list-open-orders")).listPosOpenOrders);
+  const orders = jest.mocked((await import("@/app/pos/read-client")).fetchPosOpenOrders);
   orders.mockClear();
   const listener = jest.fn();
   const unsubscribe = engine.subscribePosSync(listener, SITE);
@@ -115,7 +115,7 @@ it("separates connectivity from cached-lease access without enabling any remote 
   await engine.syncPosCheckout(SITE, "checkout");
   expect(fetch).not.toHaveBeenCalled();
   expect(download).not.toHaveBeenCalled();
-  expect((await import("@/app/pos/actions/list-open-orders")).listPosOpenOrders).not.toHaveBeenCalled();
+  expect((await import("@/app/pos/read-client")).fetchPosOpenOrders).not.toHaveBeenCalled();
   expect((await import("@/app/pos/local/sync-outbox-worker")).syncPosOutboxRow).not.toHaveBeenCalled();
 
   Object.defineProperty(navigator, "onLine", { configurable: true, value: false });

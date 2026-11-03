@@ -146,6 +146,7 @@ export function receiptHtml(payload: ReceiptPayload, paper: PaperWidthMm): strin
   const inner = `
     ${brandBlock(payload)}
     <hr class="hr-solid" />
+    ${payload.confirmationPending ? `<div class="badge">PAYMENT CONFIRMATION PENDING</div><div class="meta">Saved on this device. Not proof of settlement.</div>${payload.localReference ? `<div class="code">Local reference: ${escapeHtml(payload.localReference)}</div>` : ""}` : ""}
     ${payload.orderNumber ? `<div class="order">#${escapeHtml(payload.orderNumber)}</div>` : `<div class="order">${escapeHtml(copy.receipt)}</div>`}
     ${whenLine(payload.createdAt, locale)}
     ${fulfill ? `<div class="badge">${escapeHtml(fulfill)}</div>` : ""}

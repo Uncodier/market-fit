@@ -177,19 +177,29 @@ export async function pullPosCatalogSnapshot(
 
     // Recovery must read fresh data but retain the observed revision locally,
     // so the next lightweight check cannot replace it with an older cached row.
-    const cached = bypassCache || revision === null
+    const catalogRead = async () => bypassCache || revision === null
       ? { status: "computed" as const, value: await compute() }
-      : await readThroughJsonCache<Omit<PosCatalogSnapshot, "inventorySnapshot">>({
+      : readThroughJsonCache<Omit<PosCatalogSnapshot, "inventorySnapshot">>({
           key: `cache:v2:pos-catalog-snapshot:${await hashRedisKeyPart(`${siteId}:${revision || "latest"}`)}`,
           ttlSeconds: revision ? 300 : 30,
           lockTtlMs: 30_000,
           compute,
         });
 
+    // Independent inventory and catalog reads can overlap on the server. Wait
+    // for both to settle: neither a partial snapshot nor an early rejected
+    // sibling may be published as a successful download.
+    const [catalogResult, inventoryResult] = await Promise.allSettled([
+      catalogRead(), pullPosInventorySnapshot(siteId),
+    ]);
+    if (catalogResult.status === "rejected") throw catalogResult.reason;
+    if (inventoryResult.status === "rejected") throw inventoryResult.reason;
+    const cached = catalogResult.value;
+    const inventory = inventoryResult.value;
+
     if (cached.status === "busy") {
       return { error: "Catalog snapshot is being refreshed" };
     }
-    const inventory = await pullPosInventorySnapshot(siteId);
     if ("error" in inventory) return { error: inventory.error };
     return {
       data: {

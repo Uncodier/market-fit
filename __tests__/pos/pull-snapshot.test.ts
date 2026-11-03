@@ -154,4 +154,33 @@ describe("pullPosCatalogSnapshot", () => {
     jest.mocked(listLocations).mockResolvedValue({ data: [], error: "private detail" });
     expect(await pullPosCatalogSnapshot("site-1")).toEqual({ error: "Failed to pull POS catalog snapshot" });
   });
+
+  it("overlaps inventory with catalog work without publishing a partial snapshot", async () => {
+    let finishCatalog!: (value: Awaited<ReturnType<typeof listCatalogItems>>) => void;
+    let finishInventory!: (value: Awaited<ReturnType<typeof pullPosInventorySnapshot>>) => void;
+    jest.mocked(listCatalogItems).mockReturnValueOnce(new Promise((resolve) => { finishCatalog = resolve; }));
+    jest.mocked(pullPosInventorySnapshot).mockReturnValueOnce(new Promise((resolve) => { finishInventory = resolve; }));
+    let settled = false;
+    const pending = pullPosCatalogSnapshot("site-1", null).then((value) => { settled = true; return value; });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(listCatalogItems).toHaveBeenCalled();
+    expect(pullPosInventorySnapshot).toHaveBeenCalled();
+    finishCatalog({ data: [parent], count: 1 });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(settled).toBe(false);
+    finishInventory({ data: { levels: [], policy: "block" } });
+    expect(await pending).toHaveProperty("data.inventorySnapshot.policy", "block");
+  });
+
+  it("waits for catalog fan-out to settle after inventory rejects", async () => {
+    let finishCatalog!: (value: Awaited<ReturnType<typeof listCatalogItems>>) => void;
+    jest.mocked(listCatalogItems).mockReturnValueOnce(new Promise((resolve) => { finishCatalog = resolve; }));
+    jest.mocked(pullPosInventorySnapshot).mockRejectedValueOnce(new Error("private inventory failure"));
+    let settled = false;
+    const pending = pullPosCatalogSnapshot("site-1", null).then((value) => { settled = true; return value; });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(settled).toBe(false);
+    finishCatalog({ data: [parent], count: 1 });
+    expect(await pending).toEqual({ error: "Failed to pull POS catalog snapshot" });
+  });
 });

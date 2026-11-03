@@ -1,15 +1,13 @@
 import type { PosOutboxRow } from "@/app/pos/local/types";
-
 jest.mock("@/app/pos/local/location-permission-state", () => ({
   getPosPermissionLease: jest.fn((siteId: string) => ({ siteId, userId: "cashier", generation: 1 })),
   isPosPermissionCurrent: jest.fn(() => true),
   subscribePosPermission: () => () => {},
 }));
-
 jest.mock("@/app/pos/operation-client", () => ({ checkoutPosCart: jest.fn(), createPosLead: jest.fn() }));
 jest.mock("@/app/commerce/ticket-check-in", () => ({ checkInTicket: jest.fn() }));
 jest.mock("@/app/pos/catalog-revision-client", () => ({ fetchPosCatalogRevision: jest.fn() }));
-jest.mock("@/app/pos/actions/list-open-orders", () => ({ listPosOpenOrders: jest.fn() }));
+jest.mock("@/app/pos/read-client", () => ({ fetchPosOpenOrders: jest.fn() }));
 jest.mock("@/app/orders/actions", () => ({ updateOrderNotes: jest.fn() }));
 jest.mock("@/app/pos/actions/report-sync-error", () => ({ reportPosSyncError: jest.fn() }));
 jest.mock("@/app/pos/local/checkout-recovery", () => ({ reconcilePosCheckout: jest.fn(), applyPosCheckoutRecovery: jest.fn() }));
@@ -62,7 +60,7 @@ describe("POS sync failure reporting and recovery", () => {
     catalogPull = jest.mocked(snapshot.pullAndStorePosCatalogSnapshot);
     applyOrders = jest.mocked(snapshot.applyPosOpenOrders);
     revision = jest.mocked((await import("@/app/pos/catalog-revision-client")).fetchPosCatalogRevision);
-    ordersPull = jest.mocked((await import("@/app/pos/actions/list-open-orders")).listPosOpenOrders);
+    ordersPull = jest.mocked((await import("@/app/pos/read-client")).fetchPosOpenOrders);
     const outbox = jest.mocked(await import("@/app/pos/local/outbox"));
     listOutbox = outbox.listOutbox;
     listOutbox.mockImplementation(async (siteId: string, statuses?: string[]) => rows
@@ -266,16 +264,19 @@ describe("POS sync failure reporting and recovery", () => {
     await engine.pullPosCatalogInBackground(SITE, true);
     expect(engine.getPosSyncStatus(SITE).lastError).toBe("Sync catalog failed");
     expect(report).toHaveBeenCalledWith({ siteId: SITE, operation: "catalog", error: "Sync catalog failed" });
+    await jest.advanceTimersByTimeAsync(30_000);
     await engine.pullPosCatalogInBackground(SITE, true);
     expect(engine.getPosSyncStatus(SITE)).toMatchObject({ pulling: false, lastError: null });
   });
 
-  it("clears catalog failures after a successful unchanged-revision check", async () => {
+  it("retains forced refresh intent until a full retry succeeds after cooldown", async () => {
     catalogPull.mockRejectedValueOnce(new Error("Catalog failed"));
     await engine.pullPosCatalogInBackground(SITE, true);
     metaGet.mockResolvedValue({ lastCatalogRevision: "revision-1", lastPulledAt: new Date().toISOString() });
+    await jest.advanceTimersByTimeAsync(30_000);
     await engine.pullPosCatalogInBackground(SITE);
-    expect(catalogPull).toHaveBeenCalledTimes(1);
+    expect(catalogPull).toHaveBeenCalledTimes(2);
+    expect(catalogPull).toHaveBeenLastCalledWith(SITE, "revision-1", true, expect.any(Function));
     expect(engine.getPosSyncStatus(SITE).lastError).toBeNull();
   });
 
@@ -399,6 +400,8 @@ describe("POS sync failure reporting and recovery", () => {
     expect(catalogPull).toHaveBeenCalledTimes(1);
     finish({ ok: true });
     await pull;
+    for (let i = 0; i < 30; i++) await Promise.resolve();
+    expect(catalogPull).toHaveBeenCalledTimes(2);
     expect(engine.getPosSyncStatus(SITE).pulling).toBe(false);
   });
 

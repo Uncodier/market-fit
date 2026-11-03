@@ -20,6 +20,9 @@ jest.mock("@/app/pos/local/location-permission-state", () => ({
 }));
 
 jest.mock("@/app/pos/operation-client", () => ({ fetchPosOrder: jest.fn() }));
+jest.mock("@/app/pos/hooks/use-payment-register-preflight", () => ({
+  usePaymentRegisterPreflight: () => ({ start: jest.fn(), take: jest.fn() }),
+}));
 jest.mock("@/app/context/SiteContext", () => ({ useSite: () => ({ currentSite: null }) }));
 jest.mock("@/app/pos/local/outbox", () => ({ enqueueCheckout: jest.fn(), enqueueCreateLead: jest.fn() }));
 jest.mock("@/app/pos/register/prepare-payment", () => ({ enqueueRegisteredCheckout: jest.fn() }));
@@ -108,7 +111,7 @@ describe("POS payment preparation", () => {
     expect(enqueueRegisteredCheckout).toHaveBeenCalledWith("site", expect.objectContaining({
       existingOrderId: "order", promotionId: "shop-promo", promotionCode: "SAVE20",
       payments: [expect.objectContaining({ amount: 80 })],
-    }), expect.any(Function), expect.any(Function), { waitForConfirmation: false });
+    }), expect.any(Function), expect.any(Function), { waitForConfirmation: false, readRegister: expect.any(Function) });
   });
 
   it("rejects a payment-dialog replacement code before admitting a recorded coupon payment", async () => {
@@ -371,7 +374,7 @@ describe("POS payment preparation", () => {
     expect(result.current.checkoutLoading).toBe(false);
     expect(result.current.isPaymentDialogOpen).toBe(false);
     expect(input.onCleared).toHaveBeenCalledTimes(1);
-    expect(enqueueRegisteredCheckout).toHaveBeenCalledWith("site", expect.any(Object), expect.any(Function), expect.any(Function), { waitForConfirmation: false });
+    expect(enqueueRegisteredCheckout).toHaveBeenCalledWith("site", expect.any(Object), expect.any(Function), expect.any(Function), { waitForConfirmation: false, readRegister: expect.any(Function) });
     expect(toast.success).not.toHaveBeenCalled();
     expect(toast.message).toHaveBeenCalledWith(expect.stringContaining("Confirming in the background"), expect.any(Object));
     expect(pendingDelete).not.toHaveBeenCalled();

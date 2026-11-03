@@ -1,4 +1,5 @@
 import { getPrinterBind } from "../core/bind-store"
+import { hardwareFingerprint, stationOwnsPrinter } from "../core/station-claim"
 import { isPrinterReadyOnStation } from "../core/station-status"
 import type {
   PaperWidthMm,
@@ -14,6 +15,25 @@ import { printHtml } from "./browser-print"
 import { warmWebUsbPrinter, writeWebUsbBytes } from "./web-usb"
 import { warmUsbPrinter, writeUsbBytes } from "./web-serial"
 import { warmBluetoothPrinter, writeBluetoothBytes } from "./web-bluetooth"
+
+const automaticFlights = new Map<string, Promise<void>>()
+
+/** Independent checkout/confirmation jobs must not interleave bytes on one device. */
+async function printAutomatically(device: PrinterDevice, job: PrintJob): Promise<void> {
+  const bind = getPrinterBind(device.id)
+  const key = hardwareFingerprint(bind)
+  const previous = automaticFlights.get(key) || Promise.resolve()
+  const flight = previous.catch(() => {}).then(async () => {
+    const current = getPrinterBind(device.id)
+    if (!stationOwnsPrinter(device, current) || hardwareFingerprint(current) !== key) {
+      throw new Error("Printer binding changed")
+    }
+    await printOnDevice(device, job, { allowPrompt: false })
+  })
+  automaticFlights.set(key, flight)
+  try { await flight }
+  finally { if (automaticFlights.get(key) === flight) automaticFlights.delete(key) }
+}
 
 async function writeUsb(bind: WorkstationBind | null, bytes: Uint8Array, allowPrompt: boolean) {
   if (bind?.usbKind === "webusb") {
@@ -122,6 +142,7 @@ export async function printJobForSettings(
     autoPrintFlag?: keyof PrinterDevice["autoPrint"]
     fallbackToSystem?: boolean
     allowPrompt?: boolean
+    bestEffort?: boolean
   },
 ): Promise<boolean> {
   const devices = printersForJob(
@@ -129,7 +150,28 @@ export async function printJobForSettings(
     job.module,
     job.template,
     options?.autoPrintFlag,
-  ).filter(isPrinterReadyOnStation)
+  ).filter((device) => {
+    if (!options?.bestEffort) return isPrinterReadyOnStation(device)
+    // Readiness can be stale; bound transports reconnect inside their write methods.
+    return device.transport !== "system" && stationOwnsPrinter(device, getPrinterBind(device.id))
+  })
+  if (options?.bestEffort) {
+    let allPrinted = devices.length > 0
+    for (const device of devices) {
+      try {
+        // A binding may have changed while a previous device was printing.
+        if (!stationOwnsPrinter(device, getPrinterBind(device.id))) {
+          allPrinted = false
+          continue
+        }
+        await printAutomatically(device, job)
+      } catch {
+        // Never replay a possibly partial write or fall back to another driver.
+        allPrinted = false
+      }
+    }
+    return allPrinted
+  }
   if (devices.length === 0) {
     if (options?.fallbackToSystem === false) return false
     const paper: PaperWidthMm = 80

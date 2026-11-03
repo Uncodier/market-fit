@@ -2,8 +2,8 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import type { CatalogItem } from "@/app/types";
 import { usePosCatalog } from "@/app/pos/hooks/use-pos-catalog";
 import { readLocalCatalog, readLocalPendingOrders, readLocalPromotions, readTaxesByItemIds } from "@/app/pos/local/snapshot-pull";
-import { getPosDb } from "@/app/pos/local/db";
-import { subscribePosSync } from "@/app/pos/local/sync-engine";
+import { getPosDb, type PosLead } from "@/app/pos/local/db";
+import { subscribePosSync, type SyncStatus } from "@/app/pos/local/sync-engine";
 import type { PosInventorySnapshot } from "@/app/pos/inventory-availability";
 
 jest.mock("@/app/pos/local/snapshot-pull", () => ({
@@ -19,7 +19,7 @@ const inventory: PosInventorySnapshot = {
 function local(siteId: string, inventorySnapshot: PosInventorySnapshot | null = inventory): Awaited<ReturnType<typeof readLocalCatalog>> {
   return {
     catalogItems: [{ id: `item-${siteId}`, is_pos_available: true, availability_mode: "inventory" } as CatalogItem],
-    categories: [], locations: [], leads: [], priceLists: [], modifierGroupsByHostId: {},
+    categories: [], locations: [], priceLists: [], modifierGroupsByHostId: {},
     inventorySnapshot, lastPulledAt: "2026-10-01T00:00:00Z", lastCatalogRevision: "revision", hasLocalData: true,
   };
 }
@@ -37,7 +37,9 @@ describe("usePosCatalog inventory", () => {
     jest.mocked(readLocalPendingOrders).mockResolvedValue([]);
     jest.mocked(readLocalPromotions).mockResolvedValue([]);
     jest.mocked(readTaxesByItemIds).mockResolvedValue({});
-    jest.mocked(getPosDb).mockReturnValue({ priceListItems: { toArray: jest.fn(async () => []) } } as never);
+    jest.mocked(getPosDb).mockReturnValue({ priceListItems: { toArray: jest.fn(async () => []) },
+      leads: { where: jest.fn(() => ({ equals: jest.fn(() => ({ toArray: jest.fn(async () => []) })) })) },
+    } as never);
     jest.mocked(subscribePosSync).mockReturnValue(jest.fn());
   });
 
@@ -118,5 +120,198 @@ describe("usePosCatalog inventory", () => {
     await act(async () => { newer.resolve(local("site-1", newInventory)); await second; });
     await act(async () => { older.resolve(local("site-1", inventory)); await first; });
     expect(result.current.inventorySnapshot).toEqual(newInventory);
+  });
+
+  it("keeps the catalog usable when the independent order read fails", async () => {
+    jest.mocked(readLocalPendingOrders).mockRejectedValue(new Error("Temporary order read failure"));
+    const { result } = renderHook(() => usePosCatalog("site-1"));
+    await waitFor(() => expect(result.current.hydrated).toBe(true));
+    expect(result.current.ordersError).toBe(true);
+    expect(result.current.catalogError).toBe(false);
+    expect(result.current.catalogItems[0].id).toBe("item-site-1");
+    jest.mocked(readLocalPendingOrders).mockResolvedValue([]);
+    await act(async () => result.current.reload());
+    expect(result.current.ordersError).toBe(false);
+  });
+
+  it("exposes initial pricing failure without pretending that checkout data is ready", async () => {
+    jest.mocked(readTaxesByItemIds).mockRejectedValueOnce(new Error("Temporary tax read failure"));
+    const { result } = renderHook(() => usePosCatalog("site-1"));
+    await waitFor(() => expect(result.current.catalogError).toBe(true));
+    expect(result.current.hydrated).toBe(false);
+    expect(result.current.catalogItems).toEqual([]);
+    await act(async () => result.current.reload());
+    expect(result.current.catalogError).toBe(false);
+    expect(result.current.hydrated).toBe(true);
+  });
+
+  it("retains the whole last-good pricing bundle after a failed refresh", async () => {
+    const taxes = { "item-site-1": [{ rate: 10 }] };
+    jest.mocked(readTaxesByItemIds).mockResolvedValue(taxes);
+    const { result } = renderHook(() => usePosCatalog("site-1"));
+    await waitFor(() => expect(result.current.hydrated).toBe(true));
+    const previous = result.current.catalogItems;
+    jest.mocked(readLocalCatalog).mockResolvedValue(local("new-data"));
+    jest.mocked(readTaxesByItemIds).mockRejectedValueOnce(new Error("Read failure"));
+    await act(async () => result.current.reload());
+    expect(result.current.catalogItems).toBe(previous);
+    expect(result.current.taxesByItem).toBe(taxes);
+    expect(result.current.hydrated).toBe(true);
+    expect(result.current.catalogError).toBe(true);
+  });
+
+  it("only reloads orders on queue changes and coalesces a burst of catalog notifications", async () => {
+    const { result } = renderHook(() => usePosCatalog("site-1"));
+    await waitFor(() => expect(result.current.hydrated).toBe(true));
+    const notify = jest.mocked(subscribePosSync).mock.calls[0][0];
+    const status: SyncStatus = { online: true, pulling: false, syncing: false, pendingCount: 0,
+      failedCount: 0, lastPulledAt: "first", lastOrdersPulledAt: null, lastError: null };
+    await act(async () => notify(status));
+    const catalogReads = jest.mocked(readLocalCatalog).mock.calls.length;
+    const previous = result.current.catalogItems;
+    await act(async () => {
+      notify({ ...status, pendingCount: 1 });
+      notify({ ...status, pendingCount: 2 });
+      notify({ ...status, lastOrdersPulledAt: "orders" });
+    });
+    expect(readLocalCatalog).toHaveBeenCalledTimes(catalogReads);
+    expect(result.current.catalogItems).toBe(previous);
+    await act(async () => {
+      notify({ ...status, lastPulledAt: "second" });
+      notify({ ...status, lastPulledAt: "third" });
+    });
+    expect(readLocalCatalog).toHaveBeenCalledTimes(catalogReads + 1);
+  });
+
+  it("never exposes previous-site orders when the new site's order read fails", async () => {
+    jest.mocked(readLocalPendingOrders).mockResolvedValue([{ id: "old", site_id: "site-1", raw: {
+      id: "old", status: "pending", sales: { amount_due: 10 },
+    } }] as never);
+    const { result, rerender } = renderHook(({ siteId }) => usePosCatalog(siteId), { initialProps: { siteId: "site-1" } });
+    await waitFor(() => expect(result.current.hydrated).toBe(true));
+    jest.mocked(readLocalPendingOrders).mockRejectedValue(new Error("Unavailable"));
+    rerender({ siteId: "site-2" });
+    await waitFor(() => expect(result.current.ordersError).toBe(true));
+    expect(result.current.catalogItems[0].id).toBe("item-site-2");
+    expect(result.current.pendingOrders).toEqual([]);
+  });
+
+  it("refreshes synced customer identities on queue changes without reading product data", async () => {
+    const customers = [{ id: "server-lead", site_id: "site-1", name: "Synced customer" }];
+    jest.mocked(getPosDb).mockReturnValue({ priceListItems: { toArray: async () => [] },
+      leads: { where: () => ({ equals: () => ({ toArray: async () => customers }) }) },
+    } as never);
+    const { result } = renderHook(() => usePosCatalog("site-1"));
+    await waitFor(() => expect(result.current.hydrated).toBe(true));
+    const notify = jest.mocked(subscribePosSync).mock.calls[0][0];
+    const reads = jest.mocked(readLocalCatalog).mock.calls.length;
+    await act(async () => notify({ online: true, pulling: false, syncing: false, pendingCount: 0,
+      failedCount: 0, lastPulledAt: null, lastOrdersPulledAt: null, lastError: null }));
+    expect(result.current.leads).toEqual(customers);
+    expect(readLocalCatalog).toHaveBeenCalledTimes(reads);
+  });
+
+  it("automatically retries transient reads with a bounded progressive schedule", async () => {
+    jest.useFakeTimers();
+    try {
+      jest.mocked(readLocalCatalog).mockRejectedValue(new Error("Read failure"));
+      const { result } = renderHook(() => usePosCatalog("site-1"));
+      await act(async () => { await jest.advanceTimersByTimeAsync(0); });
+      expect(result.current.catalogError).toBe(true);
+      await act(async () => { await jest.advanceTimersByTimeAsync(1_000); });
+      await act(async () => { await jest.advanceTimersByTimeAsync(2_000); });
+      await act(async () => { await jest.advanceTimersByTimeAsync(4_000); });
+      expect(readLocalCatalog).toHaveBeenCalledTimes(4);
+      await act(async () => { await jest.advanceTimersByTimeAsync(60_000); });
+      expect(readLocalCatalog).toHaveBeenCalledTimes(4);
+      expect(result.current.hydrated).toBe(false);
+    } finally { jest.useRealTimers(); }
+  });
+
+  it("does not overwrite newer customers when an older catalog read finishes", async () => {
+    const { result } = renderHook(() => usePosCatalog("site-1"));
+    await waitFor(() => expect(result.current.hydrated).toBe(true));
+    const stale = deferred<ReturnType<typeof local>>();
+    jest.mocked(readLocalCatalog).mockReturnValueOnce(stale.promise);
+    let reload!: Promise<void>;
+    act(() => { reload = result.current.reload(); });
+    const customers = [{ id: "new-customer", site_id: "site-1", name: "New" }];
+    jest.mocked(getPosDb).mockReturnValue({ priceListItems: { toArray: async () => [] },
+      leads: { where: () => ({ equals: () => ({ toArray: async () => customers }) }) },
+    } as never);
+    const notify = jest.mocked(subscribePosSync).mock.calls[0][0];
+    await act(async () => notify({ online: true, pulling: false, syncing: false, pendingCount: 1,
+      failedCount: 0, lastPulledAt: null, lastOrdersPulledAt: null, lastError: null }));
+    expect(result.current.leads).toEqual(customers);
+    await act(async () => {
+      stale.resolve(local("site-1"));
+      await reload;
+    });
+    expect(result.current.leads).toEqual(customers);
+  });
+
+  it("never exposes previous-site customers after the new site's customer read fails", async () => {
+    const customers = [{ id: "private-customer", site_id: "site-1", name: "Private" }];
+    const readCustomers = jest.fn(async () => customers);
+    jest.mocked(getPosDb).mockReturnValue({ priceListItems: { toArray: async () => [] },
+      leads: { where: () => ({ equals: () => ({ toArray: readCustomers }) }) },
+    } as never);
+    const { result, rerender } = renderHook(({ siteId }) => usePosCatalog(siteId), { initialProps: { siteId: "site-1" } });
+    await waitFor(() => expect(result.current.leads).toEqual(customers));
+    readCustomers.mockRejectedValue(new Error("Unavailable"));
+    rerender({ siteId: "site-2" });
+    await waitFor(() => expect(result.current.ordersError).toBe(true));
+    expect(result.current.hydrated).toBe(true);
+    expect(result.current.leads).toEqual([]);
+  });
+
+  it("preserves a local customer edit over an already-started background customer read", async () => {
+    const pending = deferred<PosLead[]>();
+    const readCustomers = jest.fn(async () => [] as PosLead[]);
+    jest.mocked(getPosDb).mockReturnValue({ priceListItems: { toArray: async () => [] },
+      leads: { where: () => ({ equals: () => ({ toArray: readCustomers }) }) },
+    } as never);
+    const { result } = renderHook(() => usePosCatalog("site-1"));
+    await waitFor(() => expect(result.current.hydrated).toBe(true));
+    readCustomers.mockReturnValueOnce(pending.promise);
+    let reload!: Promise<void>;
+    await act(async () => { reload = result.current.reload(); });
+    const customer = { id: "local_customer", site_id: "site-1", name: "Local", is_local: true };
+    act(() => result.current.setLeads((previous) => [...previous, customer]));
+    await act(async () => { pending.resolve([]); await reload; });
+    expect(result.current.leads).toEqual([customer]);
+  });
+
+  it("refreshes customers on catalog-only invalidation through the customer lane", async () => {
+    let customers: PosLead[] = [];
+    jest.mocked(getPosDb).mockReturnValue({ priceListItems: { toArray: async () => [] },
+      leads: { where: () => ({ equals: () => ({ toArray: async () => customers }) }) },
+    } as never);
+    const { result } = renderHook(() => usePosCatalog("site-1"));
+    await waitFor(() => expect(result.current.hydrated).toBe(true));
+    const notify = jest.mocked(subscribePosSync).mock.calls[0][0];
+    const status: SyncStatus = { online: true, pulling: false, syncing: false, pendingCount: 0,
+      failedCount: 0, lastPulledAt: "first", lastOrdersPulledAt: null, lastError: null };
+    await act(async () => notify(status));
+    customers = [{ id: "fresh", site_id: "site-1", name: "Fresh" }];
+    await act(async () => notify({ ...status, lastPulledAt: "second" }));
+    expect(result.current.leads).toEqual(customers);
+  });
+
+  it("bounds a hanging initial read and ignores its late data after successful recovery", async () => {
+    jest.useFakeTimers();
+    try {
+      const stuck = deferred<ReturnType<typeof local>>();
+      jest.mocked(readLocalCatalog).mockReturnValueOnce(stuck.promise);
+      const { result } = renderHook(() => usePosCatalog("site-1"));
+      await act(async () => { await jest.advanceTimersByTimeAsync(8_000); });
+      expect(result.current.catalogError).toBe(true);
+      expect(result.current.hydrated).toBe(false);
+      await act(async () => { await jest.advanceTimersByTimeAsync(1_000); });
+      expect(result.current.hydrated).toBe(true);
+      expect(result.current.catalogError).toBe(false);
+      await act(async () => stuck.resolve(local("stale")));
+      expect(result.current.catalogItems[0].id).toBe("item-site-1");
+    } finally { jest.useRealTimers(); }
   });
 });

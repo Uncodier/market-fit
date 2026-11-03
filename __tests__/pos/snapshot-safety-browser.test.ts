@@ -57,7 +57,7 @@ suite("POS snapshot safety with real Chromium IndexedDB (isolated, no app server
     await page.addScriptTag({ path: path.join(process.cwd(), "node_modules/dexie/dist/dexie.js") });
     const modules = Object.fromEntries([
       "db", "location-permission-state", "remote-permission", "snapshot-pull", "sync-engine", "access-recheck",
-      "sync-errors", "sync-policy", "catalog-sync-progress", "indexeddb-runtime", "storage-diagnostic", "rejected-order-projection",
+      "sync-errors", "sync-policy", "catalog-sync-progress", "catalog-refresh-state", "indexeddb-runtime", "storage-diagnostic", "rejected-order-projection",
     ].map((name) => [`./${name}`, source(`app/pos/local/${name}.ts`)]));
     modules["@/app/pos/open-orders"] = source("app/pos/open-orders.ts");
     await page.addScriptTag({ content: `(() => {
@@ -65,10 +65,9 @@ suite("POS snapshot safety with real Chromium IndexedDB (isolated, no app server
       const requests = { orders: 0, catalog: 0, reports: [] };
       const mocks = {
         dexie: { default: Dexie },
-        '@/app/pos/actions/list-open-orders': { listPosOpenOrders: () => {
+        '@/app/pos/read-client': { fetchPosOpenOrders: () => {
           requests.orders++; return new Promise(resolve => { requests.finishOrders = resolve; });
-        } },
-        '@/app/pos/actions/pull-snapshot': { pullPosCatalogSnapshot: () => {
+        }, fetchPosCatalogSnapshot: () => {
           requests.catalog++; return new Promise(resolve => { requests.finishCatalog = resolve; });
         } },
         '@/app/pos/catalog-revision-client': { fetchPosCatalogRevision: async () => ({ data: 'revision' }) },
