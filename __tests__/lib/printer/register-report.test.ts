@@ -13,6 +13,23 @@ function htmlText(html: string): string {
 }
 
 describe("dedicated register report template", () => {
+  it.each([58, 80] as const)("prints only summary sections at %s mm without changing the closing snapshot", (paper) => {
+    const report = { ...job, payload: { ...payload, includeTransactions: false, summary: { ...registerSummary, expected_amount: 999 } } }
+    const before = JSON.stringify(report)
+    for (const render of [encodeJob, htmlForJob, thermalHtmlForJob]) {
+      const result = render(report, paper)
+      const text = (typeof result === "string" ? htmlText(result) : Buffer.from(result).toString("ascii"))
+        .replace(/\x1b[aE][\x00-\x02]/g, "").replace(/\s/g, "")
+      for (const value of ["Cash Register Summary", "Immutable closing snapshot", "$155.00", "Receipt count: 2", "card: $70.00", "Counted cash: $150.00", "Short by five"]) {
+        expect(text).toContain(value.replace(/\s/g, ""))
+      }
+      for (const value of ["$999.00", "Cash movements", "Receipts", "movement-1", "receipt-1", "sale-1", "Float replenishment", "Tendered:", "Change:"]) {
+        expect(text).not.toContain(value.replace(/\s/g, ""))
+      }
+    }
+    expect(JSON.stringify(report)).toBe(before)
+  })
+
   it.each([58, 80] as const)("preserves reconciliation and complete audit fields at %s mm", (paper) => {
     const outputs = [
       Buffer.from(encodeJob(job, paper)).toString("ascii"),

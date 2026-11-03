@@ -35,6 +35,13 @@ an arbitrary supplied summary is never substituted. Open sessions use the suppli
 live summary and are labeled **Live session preview — not a closing report**.
 Printing does not fetch or reconstruct sales.
 
+The register panel also offers **Print summary** for open and closed sessions.
+It passes `{ includeTransactions: false }` as the optional fifth argument to
+`printRegisterReport`. This prints session identity, reconciliation, receipt count,
+payment totals, and closing notes without the individual cash movement or receipt
+sections. **Print report** retains the complete audit detail. Both actions use the
+same printer routing and immutable-snapshot checks and cannot run simultaneously.
+
 USB/Bluetooth output uses the existing sanitized ESC/POS ASCII encoding
 (supported accented characters are transliterated). System HTML preserves
 Unicode text, escapes report content, loads no assets, and uses the selected

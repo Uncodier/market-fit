@@ -7,6 +7,7 @@ export const SHARED_MODULE_IMAGE_AREAS = {
   procurementRules: "buying",
   procurementSettings: "settings",
   inventoryMinimums: "operations",
+  modifierGroups: "operations",
 } as const
 
 export function isSharedModuleImageKey(key: string): key is keyof typeof SHARED_MODULE_IMAGE_AREAS {

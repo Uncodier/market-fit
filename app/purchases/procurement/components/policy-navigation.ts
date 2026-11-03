@@ -4,7 +4,6 @@ import type { QuickNavSection } from '@/app/components/ui/quick-nav';
 export function policyNavigation(screen: 'settings' | 'rules', ruleType: string, rules: ProcurementRule[], t: (key: string) => string): QuickNavSection[] {
   if (ruleType === 'replenishment') return [
     { id: 'procurement-replenishment-minimums', title: t('procurement.workflow.replenishment.inventory') },
-    { id: 'procurement-replenishment-cases', title: t('procurement.workflow.replenishment.openCases') },
   ];
   const sections: QuickNavSection[] = screen === 'settings'
     ? ['general', 'fallback', 'deadlines', 'exceptions', 'urgent', 'notifications'].map(key => ({

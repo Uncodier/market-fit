@@ -58,6 +58,22 @@ describe("register summary presentation", () => {
 });
 
 describe("register print feedback", () => {
+  it("prints the summary separately and blocks full-report printing while it is pending", async () => {
+    let resolve!: (target: "printer" | "system") => void;
+    print.mockImplementation(() => new Promise((done) => { resolve = done; }));
+    render(<RegisterSessionPanel {...panelProps} />);
+    fireEvent.click(screen.getByRole("button", { name: "Print summary" }));
+    expect(print).toHaveBeenCalledWith(closedRegisterSession, registerSummary, "Main store", { devices: [] }, { includeTransactions: false });
+    expect(screen.getByRole("button", { name: "Printing…" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Print report" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Print report" }));
+    expect(print).toHaveBeenCalledTimes(1);
+    await act(async () => resolve("printer"));
+    expect(screen.getByRole("status")).toHaveTextContent("Summary sent to printer.");
+    expect(screen.getByRole("button", { name: "Print summary" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Print report" })).toBeEnabled();
+  });
+
   it("waits for the printer, prevents duplicate submissions and confirms dispatch", async () => {
     let resolve!: (target: "printer" | "system") => void;
     print.mockImplementation(() => new Promise((done) => { resolve = done; }));

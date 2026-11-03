@@ -38,6 +38,7 @@ test('dedicated minimums screen filters enabled state and search without reading
   fireEvent.click(within(toolbar).getByRole('button', { name: 'Search rules' }));
   fireEvent.change(within(toolbar).getByRole('textbox', { name: 'Search rules' }), { target: { value: 'missing' } });
   expect(screen.queryByText('Office stock')).not.toBeInTheDocument();
-  expect(screen.getByText('On this page')).toBeInTheDocument();
+  expect(screen.queryByText('On this page')).not.toBeInTheDocument();
+  expect(document.querySelector('[class*="max-w-[880px]"]')).not.toBeInTheDocument();
   expect(jest.mocked(fetch).mock.calls.every(([url]) => String(url).includes('/replenishment?'))).toBe(true);
 });

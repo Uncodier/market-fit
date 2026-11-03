@@ -5,4 +5,5 @@ export interface RegisterReportPayload {
   session: RegisterSession
   summary: RegisterSummary
   locationName: string
+  includeTransactions?: boolean
 }

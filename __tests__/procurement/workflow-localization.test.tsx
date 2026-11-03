@@ -162,7 +162,7 @@ test('tender form translates choices and errors without reloading approved reque
   }
 })
 
-test('replenishment rules, persisted cases, queue states and validation switch without stock checks', async () => {
+test('replenishment rules, detail links, queue states and validation switch without stock checks', async () => {
   const rule = { id: site, version: 2, name: 'Saved rule name', catalog_item_id: site, location_id: site,
     minimum: 10, target: 40, minimum_order: 1, order_multiple: 1, action: 'draft', enabled: true }
   jest.mocked(fetch).mockResolvedValue({ ok: true, json: async () => ({ rules: [rule], rule_count: 1, case_count: 1,
@@ -174,7 +174,9 @@ test('replenishment rules, persisted cases, queue states and validation switch w
     view.rerender(shell(locale, <ReplenishmentRules siteId={site} />))
     expect(screen.getByRole('table')).toHaveTextContent(value(locale, 'pending'))
     expect(screen.getByRole('table')).toHaveTextContent(copy(locale, 'replenishment.createDraft'))
-    expect(screen.getByRole('navigation', { name: copy(locale, 'replenishment.casePages') })).toBeInTheDocument()
+    expect(screen.getByRole('navigation', { name: copy(locale, 'replenishment.rulePages') })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Saved rule name' })).toHaveAttribute('href', `/inventory/minimums/${site}`)
+    expect(screen.queryByRole('navigation', { name: copy(locale, 'replenishment.casePages') })).not.toBeInTheDocument()
     expect(fetch).toHaveBeenCalledTimes(1)
   }
   fireEvent.click(screen.getByRole('button', { name: copy('ja', 'common.edit') }))

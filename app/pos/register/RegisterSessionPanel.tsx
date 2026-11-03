@@ -32,7 +32,7 @@ export function RegisterSessionPanel({ siteId, session, locationName, revision, 
   const [error, setError] = useState<string | null>(null);
   const [printError, setPrintError] = useState<string | null>(null);
   const [printStatus, setPrintStatus] = useState<string | null>(null);
-  const [printing, setPrinting] = useState(false);
+  const [printing, setPrinting] = useState<"report" | "summary" | null>(null);
   const printInFlight = useRef(false);
   const printerSettings = usePrinterSettings();
   const [action, setAction] = useState<RegisterWriteAction | null>(null);
@@ -58,26 +58,34 @@ export function RegisterSessionPanel({ siteId, session, locationName, revision, 
   }, [siteId, session.id, session.status, revision]);
   const reportSummary = session.status === "closed" ? session.snapshot : summary;
   const writeDisabled = !writable || loading || !!error || !summary;
-  async function handlePrint() {
+  async function handlePrint(mode: "report" | "summary") {
     if (!reportSummary || printInFlight.current) return;
     printInFlight.current = true;
-    setPrinting(true);
+    setPrinting(mode);
     setPrintError(null);
     setPrintStatus(null);
     try {
-      const target = await printRegisterReport(session, reportSummary, locationName, printerSettings);
-      setPrintStatus(target === "printer" ? "Report sent to printer." : "System print dialog opened.");
+      const target = mode === "summary"
+        ? await printRegisterReport(session, reportSummary, locationName, printerSettings, { includeTransactions: false })
+        : await printRegisterReport(session, reportSummary, locationName, printerSettings);
+      setPrintStatus(target === "printer" ? (mode === "summary" ? "Summary sent to printer." : "Report sent to printer.") : "System print dialog opened.");
     } catch (failure) {
       setPrintError(failure instanceof Error ? failure.message : "Unable to print report.");
     } finally {
       printInFlight.current = false;
-      setPrinting(false);
+      setPrinting(null);
     }
   }
-  const printButton = (
-    <Button type="button" variant="outline" disabled={!reportSummary || loading || !!error || printing} onClick={() => void handlePrint()}>
-      {printing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden={true} /> : <Printer className="mr-2 h-4 w-4" aria-hidden={true} />}{printing ? "Printing…" : "Print report"}
-    </Button>
+  const printDisabled = !reportSummary || loading || !!error || printing !== null;
+  const printButtons = (
+    <>
+      <Button type="button" variant="outline" disabled={printDisabled} onClick={() => void handlePrint("summary")}>
+        {printing === "summary" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden={true} /> : <Printer className="mr-2 h-4 w-4" aria-hidden={true} />}{printing === "summary" ? "Printing…" : "Print summary"}
+      </Button>
+      <Button type="button" variant="outline" disabled={printDisabled} onClick={() => void handlePrint("report")}>
+        {printing === "report" ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden={true} /> : <Printer className="mr-2 h-4 w-4" aria-hidden={true} />}{printing === "report" ? "Printing…" : "Print report"}
+      </Button>
+    </>
   );
 
   return (
@@ -90,7 +98,7 @@ export function RegisterSessionPanel({ siteId, session, locationName, revision, 
               <CardTitle className="flex items-center gap-2 text-base"><span className={`h-2 w-2 rounded-full ${session.status === "open" ? "bg-emerald-500" : "bg-muted-foreground"}`} aria-hidden={true} />{session.status === "open" ? "Open session" : "Closed session"}</CardTitle>
               <p className="break-words text-sm text-muted-foreground">{locationName} · {session.currency}</p>
             </div>
-            {session.status === "open" && <div role="group" aria-label="Register tools">{printButton}</div>}
+            {session.status === "open" && <div role="group" aria-label="Register tools" className="flex flex-wrap gap-2">{printButtons}</div>}
           </div>
           <p className="text-xs text-muted-foreground">Opened {registerDate(session.opened_at)}{session.status === "closed" && <> · Closed {registerDate(session.closed_at)}</>}</p>
         </CardHeader>
@@ -119,7 +127,7 @@ export function RegisterSessionPanel({ siteId, session, locationName, revision, 
         </CardContent>
         {session.status === "closed" && <RegisterActions>
           {onHideDetail && <Button type="button" variant="ghost" onClick={onHideDetail}>Hide detail</Button>}
-          {printButton}
+          {printButtons}
         </RegisterActions>}
       </Card>
       {session.status === "open" && onChanged && <>

@@ -26,6 +26,7 @@ export const MODULE_IMAGE_HINTS: Record<string, string> = {
   records: "spreadsheet sheet",
   orders: "clipboard",
   orderLines: "digital numbers",
+  modifierGroups: "grouped option cards",
   shipments: "parcel",
   controlCenter: "check mark",
   reservations: "calendar",
@@ -157,6 +158,8 @@ const COMPACT_FULL_SIZE_COMPOSITION =
   "Use the Apple iOS Calendar, Notes, Contacts, and Reminders icons as references for visual polish, spacing discipline, and clarity rather than copying their symbols or outer app tiles: one recognizable object, full-size at 88 to 92 percent of the canvas, optically centered, evenly balanced, with a narrow consistent safe margin and softly rounded geometry; no app tile, iOS-style squircle, rounded-square container, badge, frame, floor, scenery, or secondary icon"
 
 const MODULE_IMAGE_CLARIFIERS: Partial<Record<string, string>> = {
+  modifierGroups:
+    "Show one compact group of three overlapping option cards, each with one large circular selection control, representing grouped product extras; no product shelf, crates, sliders, text, numbers, logos, or extra objects",
   suppliers:
     "Show one compact supplier office building with a broad centered entrance and a few large windows; no warehouse scene, people, parcels, storefront awning, text, logos, or extra objects",
   purchaseRequests:

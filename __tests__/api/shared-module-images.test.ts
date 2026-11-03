@@ -79,6 +79,19 @@ it('generates only the fixed prompt under Makinari with server credentials', asy
     { limit: 20, windowSeconds: 3600, failureMode: 'closed' })
 })
 
+it('generates the modifier groups asset from its fixed Operations prompt', async () => {
+  const req = new Request('https://app.example.test/api/images/modules/modifierGroups', {
+    headers: { 'sec-fetch-site': 'same-origin', referer: 'https://app.example.test/navigation' },
+  })
+  expect((await run(req, 'modifierGroups')).status).toBe(200)
+  expect(readPromptImageCache).toHaveBeenCalledWith({
+    prompt: getModuleImagePrompt('operations', 'modifierGroups', ''), width: 256, height: 256,
+  }, SUPPORT_SITE_ID)
+  const url = new URL(String(jest.mocked(fetch).mock.calls[0][0]))
+  expect(decodeURIComponent(url.pathname)).toBe(`/api/public/image/prompt/${getModuleImagePrompt('operations', 'modifierGroups', '')}`)
+  expect(url.searchParams.get('site_id')).toBe(SUPPORT_SITE_ID)
+})
+
 it.each(['?site_id=other', '?prompt=arbitrary', '?width=1024', '?target=https://evil.test', '?signature=forged'])(
   'rejects client overrides %s before cache or auth', async query => {
     expect((await run(request({}, query))).status).toBe(400)

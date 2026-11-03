@@ -17,7 +17,7 @@ import { MobileFiltersDrawer, FilterContainer, FilterSection } from "@/app/compo
 import { Button } from "@/app/components/ui/button"
 import { SearchInput } from "@/app/components/ui/search-input"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
-import { Plus, Archive, DatabaseIcon, Boxes, ModifierGroups, UploadCloud as Upload } from "@/app/components/ui/icons"
+import { Plus, Archive, DatabaseIcon, Boxes, UploadCloud as Upload } from "@/app/components/ui/icons"
 import { Pagination } from "@/app/components/ui/pagination"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { Skeleton } from "@/app/components/ui/skeleton"
@@ -26,7 +26,7 @@ import { ViewSelector } from "@/app/components/view-selector"
 import { useMobileView } from "@/app/hooks/use-mobile-view"
 import { KanbanView } from "./components/KanbanView"
 import { cn } from "@/lib/utils"
-import { useSearchParams, useRouter } from "next/navigation"
+import { useSearchParams } from "next/navigation"
 import { SortDropdown } from "@/app/components/ui/sort-dropdown"
 import { useSearchPagination } from "@/lib/catalog-search/use-search-pagination"
 
@@ -34,7 +34,6 @@ const ImportCatalogDialog = dynamic(() => import("./components/ImportCatalogDial
 const pageSize = 50
 
 export default function CatalogPage() {
-  const router = useRouter()
   const searchParams = useSearchParams()
   const urlSort = searchParams ? searchParams.get('sort') : null
   const defaultSort = urlSort === 'updated_at' ? 'updated_at' : (urlSort === 'created_at' || urlSort === 'newest' ? 'newest' : (urlSort === 'oldest' ? 'oldest' : 'display_order'))
@@ -294,18 +293,6 @@ export default function CatalogPage() {
                 >
                   <Upload className="h-4 w-4" />
                   <span className="hidden sm:inline">Import</span>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="flex items-center gap-1"
-                  onClick={() => router.push("/catalog/modifier-groups")}
-                  title={t("catalog.modifiers.groupsTitle") || "Modifier groups"}
-                >
-                  <ModifierGroups className="h-4 w-4" />
-                  <span className="hidden sm:inline">
-                    {t("catalog.modifiers.groupsTitle") || "Modifier groups"}
-                  </span>
                 </Button>
                 <div className="w-px h-6 bg-border mx-1 hidden sm:block" />
                 <SortDropdown sortBy={sortBy} setSortBy={setSortBy} options={[

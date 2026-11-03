@@ -43,6 +43,7 @@ it("replaces a pending summary with a skeleton and restores retained figures aft
   expect(container.querySelector('[data-slot="register-summary-skeleton"]')).not.toBeNull();
   expect(screen.getByRole("status")).toHaveClass("sr-only");
   expect(screen.getByRole("button", { name: "Print report" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Print summary" })).toBeDisabled();
   await act(async () => resolve({ data: registerSummary }));
   expect(screen.getByText("Expected drawer cash")).toBeVisible();
   expect(container.querySelector('[data-slot="register-summary-skeleton"]')).toBeNull();

@@ -91,6 +91,7 @@ export const NAVIGATION_AREAS: Record<
       { key: "records", href: "/records" },
       { key: "orders", href: "/orders" },
       { key: "orderLines", href: "/order-lines" },
+      { key: "modifierGroups", href: "/catalog/modifier-groups" },
       { key: "shipments", href: "/shipments" },
       { key: "controlCenter", href: "/control-center" },
       { key: "reservations", href: "/reservations" },
@@ -242,6 +243,10 @@ export function isNavItemActive(
   pathname: string,
   searchParams: URLSearchParams
 ): boolean {
+  if (item.key === "catalog" &&
+      (pathname === "/catalog/modifier-groups" || pathname.startsWith("/catalog/modifier-groups/"))) {
+    return false
+  }
   if (item.key === "reportCosts" && pathname === "/dashboard" && searchParams.get("tab") === "costs") return true
   if (item.dashboardTab) {
     if (!pathname.startsWith("/dashboard")) return false
@@ -320,6 +325,11 @@ export function isConfigurationNavPath(
 }
 
 export function getNavItemTitle(item: AreaNavItem, t: (k: string) => string): string {
+  if (item.key === "modifierGroups") {
+    const key = "catalog.modifiers.groupsTitle"
+    const title = t(key)
+    return title && title !== key ? title : "Modifier groups"
+  }
   if (item.key === 'inventoryMinimums') return t('procurement.policy.page.minimums') === 'procurement.policy.page.minimums' ? 'Inventory minimums' : t('procurement.policy.page.minimums');
   const procurementKeys: Record<string, string> = { procurementRules: 'rules', suppliers: 'suppliers', purchaseRequests: 'requests', procurementApprovals: 'approvals', procurementTenders: 'tenders', procurementSettings: 'procurement' }
   if (procurementKeys[item.key]) {

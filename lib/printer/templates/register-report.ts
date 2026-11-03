@@ -13,7 +13,7 @@ function reportSections(payload: RegisterReportPayload): ReportSection[] {
   const registerDate = (value: string | null) => value || "—"
   const money = (amount: number | null) => amount === null ? "—" : registerMoney(amount, session.currency)
   const sections: ReportSection[] = [
-    { title: "Cash Register Report", lines: [
+    { title: payload.includeTransactions === false ? "Cash Register Summary" : "Cash Register Report", lines: [
       session.status === "closed" ? "Immutable closing snapshot" : "Live session preview — not a closing report",
       `Location: ${locationName}`, `Location ID: ${session.location_id}`, `Site ID: ${session.site_id}`,
       `Session: ${session.id}`, `Currency: ${session.currency}`, `Status: ${session.status}`,
@@ -33,6 +33,9 @@ function reportSections(payload: RegisterReportPayload): ReportSection[] {
     { title: "Payment totals", lines: Object.entries(summary.payment_totals).map(
       ([method, amount]) => `${method}: ${money(amount)}`,
     ) },
+  ]
+  if (payload.includeTransactions === false) return sections
+  sections.push(
     { title: "Cash movements", lines: summary.movements.flatMap((movement) => [
       `Movement: ${movement.id}`, `Type: ${movement.kind}`, `Amount: ${money(movement.amount)}`,
       `Reason: ${movement.reason}`, `Responsible (user ID): ${movement.actor_id}`,
@@ -43,7 +46,7 @@ function reportSections(payload: RegisterReportPayload): ReportSection[] {
       `Amount: ${money(receipt.amount)}`, `Tendered: ${money(receipt.tendered)}`, `Change: ${money(receipt.change)}`,
       `Responsible (user ID): ${receipt.actor_id}`, `Time: ${registerDate(receipt.received_at)}`, "",
     ]) },
-  ]
+  )
   return sections
 }
 
@@ -78,7 +81,8 @@ export function registerReportHtml(payload: RegisterReportPayload, paper: PaperW
       (line) => `<p>${escapeHtml(line)}</p>`,
     ).join("")}</section>`,
   ).join("")
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Cash Register Report</title>
+  const title = payload.includeTransactions === false ? "Cash Register Summary" : "Cash Register Report"
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${title}</title>
 <style>@page{size:${paper}mm auto;margin:2mm}body{margin:0;color:#111;background:#fff}
 .ticket{width:${paper - 4}mm;max-width:100%;margin:auto;font:11px/1.35 monospace}
 h2{font-size:14px;text-align:center;border-bottom:1px dashed #111;padding-bottom:6px}

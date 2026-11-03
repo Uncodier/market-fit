@@ -219,6 +219,12 @@ it("opens Import on demand with the site and refreshes on success", () => {
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 });
 
+it("does not show modifier groups in the catalog toolbar", () => {
+  render(<CatalogPage />);
+  expect(screen.queryByRole("button", { name: /modifier groups/i })).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Import" })).toBeInTheDocument();
+});
+
 it("returns to the last available page when archival removes the current final page", () => {
   mockItems.count = 51;
   const { rerender } = render(<CatalogPage />);

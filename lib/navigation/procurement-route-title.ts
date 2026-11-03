@@ -2,6 +2,11 @@ import { localeMessages } from '@/app/context/locale-catalog'
 
 /** Canonical module labels for nested procurement routes, before entity names load. */
 export function procurementRouteTitle(pathname: string, t?: (key: string) => string): string | null {
+  if (pathname.split(/[?#]/)[0].startsWith('/inventory/minimums/')) {
+    const key = 'procurement.workflow.replenishment.ruleTitle';
+    const label = t?.(key);
+    return label && label !== key ? label : localeMessages.en[key];
+  }
   if (pathname.split(/[?#]/)[0] === '/inventory/minimums') {
     const key = 'procurement.policy.page.minimums';
     const label = t?.(key);

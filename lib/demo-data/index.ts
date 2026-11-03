@@ -22,7 +22,7 @@ function finalizeDemoData(data: Record<string, unknown>) {
 export const availableDemos = [
   {
     id: 'demo-habituall',
-    name: 'HabitUall App (Español)',
+    name: 'Cowork',
     description: 'Gestión de espacios de coworking, clubes y estudios de clases deportivas.',
     url: 'https://apps-o8a3yagp1.preview.makinari.com'
   },

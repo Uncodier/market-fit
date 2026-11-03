@@ -8,6 +8,7 @@ export async function printRegisterReport(
   summary: RegisterSummary,
   locationName: string,
   settings: PrintersSettings,
+  options: { includeTransactions?: boolean } = {},
 ): Promise<"printer" | "system"> {
   const sentAt = new Date().toISOString()
   return printPosJobManually(settings, {
@@ -19,6 +20,7 @@ export async function printRegisterReport(
       session,
       summary: registerReportSummary({ session, summary, locationName }),
       locationName,
+      ...(options.includeTransactions === false ? { includeTransactions: false } : {}),
     },
   })
 }

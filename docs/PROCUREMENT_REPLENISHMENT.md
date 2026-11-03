@@ -8,10 +8,22 @@ approval-policy versions. Catalog procurement links to this single configuration
 
 - Minimum stock, target stock, minimum purchase quantity and purchase multiple.
 - Enabled/disabled switch and alert or draft-requisition action.
-- Independent 50-row pages and exact counts for rules and open cases; worker
-  states and case names are fetched by their visible rule IDs, not truncated
-  independently. Existing rules can be disabled after their SKU or location
-  becomes inactive. Creating or re-enabling a rule still requires eligible data.
+- The minimums list contains rules; each name opens `/inventory/minimums/[id]`.
+  The rule detail follows the Deals/Leads layout: sticky case/requisition tabs,
+  identity header and a configuration/worker-status sidebar. Cases no longer
+  appear as a global section below the rule list.
+- Minimums uses the full-width list layout instead of the narrow settings card
+  and section index. Rules, cases and requisitions reuse the same document-list
+  shell, compact headers, entity cells and status dots as Deals and Inventory;
+  monetary values use the shared money cell. Tables scroll horizontally on small
+  screens, with pagination outside the scroll area. Loading placeholders match
+  the table layout. No purchasing or approval behavior changes with this styling.
+- Rules and each rule's case/requisition histories use independent 50-row pages
+  and exact counts. Case history includes open and closed incidents; the
+  requisition tab links to the existing purchasing documents, including those
+  from closed cases. It never copies a requisition or changes its lifecycle.
+- Existing rules can be disabled after their SKU or location becomes inactive.
+  Creating or re-enabling a rule still requires eligible data.
 - Minimum and target are catalog units; generated requisitions use whole units.
 - The latest manager saving a rule is its execution authority. Workers revalidate
   that manager's current access rather than granting a general automation role.
@@ -20,6 +32,43 @@ approval-policy versions. Catalog procurement links to this single configuration
   requires a reason and preserves provenance. It never cancels the requisition.
 - Existing approval workflows remain responsible for submission and approval.
   No tender, award, purchase order or payment is generated automatically.
+- The detail has no redundant Back, Refresh or modal Edit action. Its name,
+  quantity settings, action and enabled state use click-to-edit fields with
+  explicit check/cancel controls (Enter/Escape for text and numbers), following
+  the Lead property interaction. Each save uses the complete validated document
+  and the edit session's expected version; conflicts preserve the draft and
+  reconcile server state without automatic write retries. SKU/location remain
+  immutable. Demo fields remain read-only; navigation uses the global breadcrumb.
+- Editing and Check stock remain available from the list and detail. Only open
+  cases can be resolved from the detail, with an explicit reason and the existing
+  duplicate-guard warning. Loading, failed reads and missing rules have distinct
+  states; changing workspace/rule discards the previous detail. Demo records stay
+  read-only and never substitute for real API results.
+
+## Rule detail read API
+
+`GET /api/procurement/replenishment/[id]?site_id=<uuid>&case_page=1&request_page=1`
+requires authenticated procurement manager access and uses only the user's
+RLS-scoped client. The rule UUID and query parameters are validated; unknown or
+duplicate parameters are rejected. Each page defaults to 1 and accepts decimal
+integers from 1 through 999999, with a fixed page size of 50.
+
+The private, non-cacheable response contains top-level `rule`, `queue` (one row or
+null), `cases`, `case_count`, `case_page`, `requests`, `request_count`,
+`request_page`, and `page_size`. Rule data includes nullable `catalog_item_name`
+and `location_name`, resolved separately within the authorized site. Cases include
+both open and closed history, original rule version and quantities, creator,
+request link, and closure actor, timestamp and reason. Requests are flat summaries
+with `id`, `title`, `status`, `currency`, `net_amount_minor` and `revision`.
+
+Both histories are independently paginated with exact totals and deterministic
+newest-case-first ordering. Requests are selected through this rule's cases,
+including closed cases, using the existing unique request link and composite
+same-site foreign key. No global request list or capped intermediate ID list is
+loaded. Missing or inaccessible rules return 404; failed reads or unavailable
+exact totals return a sanitized 503 rather than partial history. No additional
+migration is required. Regression coverage is in
+`__tests__/procurement/replenishment-detail-api.test.ts`.
 
 ## Calculation and limitations
 
@@ -103,8 +152,17 @@ saved manager is reauthorized inside the database before mutation.
 
 ## Validation
 
+Rule-detail validation: TypeScript and targeted ESLint pass. The final selected
+UI/API/navigation/localization run passed 131 tests; one existing broad
+localization audit still fails on hardcoded copy in unchanged files outside this
+change. The isolated replenishment PostgreSQL suite also passes. These checks do
+not constitute authenticated browser or production acceptance; no deployment or
+remote migration was performed.
+
 ```bash
 npm test -- --runInBand __tests__/procurement/replenishment-api.test.ts \
+  __tests__/procurement/replenishment-detail-api.test.ts \
+  __tests__/procurement/replenishment-detail-ui.test.tsx \
   __tests__/procurement/replenishment-ui.test.tsx \
   __tests__/procurement/replenishment-postgres.test.ts \
   __tests__/procurement/replenishment-queue-postgres.test.ts

@@ -52,6 +52,23 @@ describe("manual cash register report routing", () => {
     expect(printOnDevice).toHaveBeenCalledWith(system, expect.objectContaining({ template: "register-report" }), { allowPrompt: false })
   })
 
+  it("routes summary printing to hardware with transaction detail explicitly disabled", async () => {
+    await expect(printRegisterReport(closedRegisterSession, registerSummary, "Store", { devices: [usb] }, { includeTransactions: false })).resolves.toBe("printer")
+    expect(printOnDevice).toHaveBeenCalledWith(usb, expect.objectContaining({
+      payload: expect.objectContaining({ session: closedRegisterSession, summary: registerSummary, includeTransactions: false }),
+    }), { allowPrompt: false })
+  })
+
+  it("prints a live summary without transactions through system fallback", async () => {
+    await printRegisterReport(registerSession, registerSummary, "Store", { devices: [] }, { includeTransactions: false })
+    const html = jest.mocked(printHtml).mock.calls[0][0]
+    expect(html).toContain("Cash Register Summary")
+    expect(html).toContain("Live session preview")
+    expect(html).toContain("$155.00")
+    expect(html).not.toContain("movement-1")
+    expect(html).not.toContain("receipt-1")
+  })
+
   it("opens only report HTML at 80 mm with no applicable POS hardware", async () => {
     await expect(run([{ ...usb, modules: { ...usb.modules, pos: false } }])).resolves.toBe("system")
     expect(printOnDevice).not.toHaveBeenCalled()

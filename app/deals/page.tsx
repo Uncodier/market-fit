@@ -69,29 +69,20 @@ export default function DealsPage() {
   const [activeTab, setActiveTab] = useState("all")
   const [searchQuery, setSearchQuery] = useState("")
   const [viewType, setViewType] = useMobileView("kanban")
-  const { currentSite, isLoading: siteLoading, error: siteError, refreshSites } = useSite()
+  const { currentSite } = useSite()
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "value_desc" | "value_asc">("newest")
 
-  const { data: dbDealsData, error, isValidating, mutate: mutateDeals } = useSWR(
+  const { data: dbDealsData, isLoading: loading, mutate: mutateDeals } = useSWR(
     currentSite?.id ? ['deals', currentSite.id] : null,
     async ([_, siteId]) => {
       const result = await getDeals(siteId)
-      if (result.error || !Array.isArray(result.deals)) {
-        throw Object.assign(new Error("Failed to fetch deals"), {
-          status: result.status,
-          code: result.code,
-        })
-      }
-      return result.deals
+      if (result.error) throw new Error(result.error)
+      return result.deals || []
     },
     {}
   )
 
-  // Keep same-site cached data during revalidation, never another site's data.
-  const dbDeals = currentSite?.id ? dbDealsData ?? [] : []
-  const loading = !currentSite?.id
-    ? siteLoading && !siteError
-    : dbDealsData === undefined && !error
+  const dbDeals = dbDealsData || []
 
   const loadDeals = async (silent = false) => {
     await mutateDeals()
@@ -132,7 +123,7 @@ export default function DealsPage() {
     }
 
     // Sort logic
-    filtered = [...filtered].sort((a, b) => {
+    filtered = filtered.sort((a, b) => {
       const dateA = new Date(a.created_at || 0).getTime()
       const dateB = new Date(b.created_at || 0).getTime()
       const valueA = a.amount || 0
@@ -253,26 +244,9 @@ export default function DealsPage() {
           "bg-muted/30 flex-1 min-h-0 min-w-0 overflow-y-auto",
           viewType === "kanban" ? "py-4 md:py-8" : "p-4 md:p-8 space-y-4 overflow-x-hidden"
         )}>
-              {currentSite?.id && error && (
-                <div role="alert" className="m-4 rounded-lg border p-4 space-y-3">
-                  <p>Unable to load deals. Please try again.</p>
-                  <Button variant="outline" disabled={isValidating} onClick={() => { void mutateDeals() }}>
-                    {t('common.retry') || "Retry"}
-                  </Button>
-                </div>
-              )}
               {loading ? (
-                <div role="status" aria-label={t('common.loading') || "Loading..."}>
-                  {viewType === "table" ? <DealsTableSkeleton /> : <DealsKanbanSkeleton />}
-                </div>
-            ) : !currentSite?.id ? (
-              <div role={siteError ? "alert" : "status"} className="m-4 rounded-lg border p-4 space-y-3">
-                <p>{siteError ? "Unable to load your site. Please try again." : "Select a site to view deals."}</p>
-                <Button variant="outline" disabled={siteLoading} onClick={() => { void refreshSites().catch(() => {}) }}>
-                  {t('common.retry') || "Retry"}
-                </Button>
-              </div>
-            ) : error && filteredDeals.length === 0 ? null : dbDealsData !== undefined && filteredDeals.length === 0 && !searchQuery ? (
+              viewType === "table" ? <DealsTableSkeleton /> : <DealsKanbanSkeleton />
+            ) : filteredDeals.length === 0 && !searchQuery ? (
               <IsEmpty 
                 icon={<Briefcase className="h-10 w-10 text-muted-foreground" />}
                 title={t('deals.empty.title') || "No deals found"}
