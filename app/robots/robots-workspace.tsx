@@ -22,13 +22,12 @@ const ImprentaPanel = dynamic(
 )
 
 import { getScreenMetadata } from "./screen-metadata"
-import { RequirementRunnerBanner } from './requirement-runner-banner'
+import { RequirementRunnerCard } from './requirement-runner-card'
 import type { useWorkspaceTabs } from "./use-workspace-tabs"
 
 export function RobotsWorkspace(input: ReturnType<typeof useWorkspaceTabs>) {
   const { isCanvasMode, workspaceTabs, activeWorkspaceTab, handleWorkspaceTabChange, hasBrowserContent, isMobileBrowserVisible, isBrowserVisible, isChatHidden, desktopToolbarRef, hasRequirementPreview, activeBrowserTab, isZipUrl, activeUrlToDisplay, selectedFilePath, iframeRef, displayedIframeUrl, desktopDeviceControlsRef, setViewportSize, viewportSize, allArtifactItems, desktopTabsWidth, desktopWorkspaceTabs, setDesktopTabsPreferredWidth, desktopLayoutToggleRef, setWorkspaceLayout, containerRef, isMobile, scale, isResuming, isInstanceStarting, latestPreviewUrl, latestSourceCodeUrl, artifacts, isActivityRobot, hasMessageBeenSent, isInstanceRunning, requirementPreviewFrameKey, setSelectedFilePath, artifactReloadCounter, theme, rawActiveUrlToDisplay, t, handleIframeLoad, iframeSrc, isPreviewHidden, viewMode, activeRobotInstance, currentSite, siteChangeKey, setHasMessageBeenSent, handleNewInstanceCreated } = input
   return (<>
-      {!isCanvasMode && <RequirementRunnerBanner instance={activeRobotInstance} siteId={currentSite?.id} />}
       <div className={`absolute inset-0 flex flex-col min-h-0 ${isCanvasMode ? 'overflow-visible' : 'overflow-hidden'}`}>
         {!isCanvasMode && workspaceTabs.length > 1 && (
           <div
@@ -301,6 +300,7 @@ export function RobotsWorkspace(input: ReturnType<typeof useWorkspaceTabs>) {
                     key={`${currentSite?.id}-${siteChangeKey}`}
                     className="h-full absolute inset-0"
                     activeRobotInstance={activeRobotInstance}
+                    conversationContext={<RequirementRunnerCard key={`${currentSite?.id}-${activeRobotInstance?.id}`} instance={activeRobotInstance} siteId={currentSite?.id} />}
                     isBrowserVisible={hasBrowserContent}
                     hasTopHeaderSpace
                     onMessageSent={setHasMessageBeenSent}

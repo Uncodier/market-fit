@@ -2,13 +2,14 @@
 
 import Link from 'next/link'
 import useSWR from 'swr'
+import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card'
 import { useRobots } from '@/app/context/RobotsContext'
 import { createClient } from '@/lib/supabase/client'
 import { robotsInstanceHref } from '@/lib/navigation/robots-instance'
 import { linkedRunnerId, requirementIdFromRobotName } from './requirement-runner-link'
 
 /** Navigation only: never changes ownership, archive state or dispatches work. */
-export function RequirementRunnerBanner({ instance, siteId }: {
+export function RequirementRunnerCard({ instance, siteId }: {
   instance: { id: string; name?: string } | null
   siteId?: string
 }) {
@@ -30,18 +31,22 @@ export function RequirementRunnerBanner({ instance, siteId }: {
   if (!error && runner && runner.id === instance?.id && !runner.is_archived) return null
   const unavailable = error || !runner || runner.is_archived
   return (
-    <aside aria-label="Requirement executor" className="absolute inset-x-3 z-40 rounded-lg border bg-background/95 p-3 text-sm shadow-sm"
-      style={{ top: 'calc(var(--topbar-height, 64px) + 112px)' }}>
-      <p>{unavailable
-        ? runner?.is_archived ? 'The linked executor is archived. It has not been restored or replaced.'
-          : 'The linked executor is unavailable or could not be checked. No replacement has been started.'
-        : 'This is a related conversation. Requirement execution and its feedback conversation are on the linked executor.'}</p>
-      <div className="mt-2 flex flex-wrap gap-4">
-        {!unavailable && runner && <Link className="underline" href={robotsInstanceHref(runner.id, { name: runner.requirement_title || runner.name })}>
-          Open executor and send feedback
-        </Link>}
-        <Link className="underline" href={`/requirements/${requirementId}`}>View requirement</Link>
-      </div>
-    </aside>
+    <Card role="note" aria-label="Requirement conversation context" className="mx-auto w-full min-w-0 max-w-3xl text-sm">
+      <CardHeader className="p-4 pb-2">
+        <CardTitle className="text-sm font-medium">Requirement conversation context</CardTitle>
+      </CardHeader>
+      <CardContent className="p-4 pt-0">
+        <p>{unavailable
+          ? runner?.is_archived ? 'The linked executor is archived. It has not been restored or replaced.'
+            : 'The linked executor is unavailable or could not be checked. No replacement has been started.'
+          : 'This is a related conversation. Requirement execution and its feedback conversation are on the linked executor.'}</p>
+        <div className="mt-2 flex flex-wrap gap-4">
+          {!unavailable && runner && <Link className="underline" href={robotsInstanceHref(runner.id, { name: runner.requirement_title || runner.name })}>
+            Open executor and send feedback
+          </Link>}
+          <Link className="underline" href={`/requirements/${requirementId}`}>View requirement</Link>
+        </div>
+      </CardContent>
+    </Card>
   )
 }

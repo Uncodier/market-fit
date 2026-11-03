@@ -60,6 +60,14 @@ describe('SimpleMessagesView', () => {
     expect(container.firstElementChild).toContainElement(screen.getByRole('textbox'))
   })
 
+  it('keeps conversation context inside the scrollable history, not the pinned composer', () => {
+    render(<SimpleMessagesView conversationContext={<div role="note">Requirement conversation context</div>} />)
+    const card = screen.getByRole('note')
+    expect(model.messagesContainerRef.current).toHaveClass('overflow-y-auto')
+    expect(model.messagesContainerRef.current).toContainElement(card)
+    expect(model.bottomContainerRef.current).not.toContainElement(card)
+  })
+
   it('renders the current empty-state prompt when no robot is active', () => {
     render(<SimpleMessagesView />)
     expect(screen.getByRole('textbox')).toHaveAttribute('placeholder', 'Analyze our product-market fit...')

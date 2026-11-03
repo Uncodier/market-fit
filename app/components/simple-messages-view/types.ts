@@ -1,4 +1,5 @@
 import type { SpeechLanguage, SpeechVoice } from "@/lib/ai/speech-options"
+import type { ReactNode } from 'react'
 
 export interface SimpleMessagesViewProps {
   className?: string
@@ -7,6 +8,7 @@ export interface SimpleMessagesViewProps {
   onMessageSent?: (hasMessageBeenSent: boolean) => void
   onNewInstanceCreated?: (instanceId: string) => void
   hasTopHeaderSpace?: boolean // Used to add top padding for fixed headers
+  conversationContext?: ReactNode
 }
 
 // Media Parameter Types

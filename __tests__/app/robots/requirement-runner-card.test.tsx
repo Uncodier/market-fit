@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import { RequirementRunnerBanner } from '@/app/robots/requirement-runner-banner'
+import { RequirementRunnerCard } from '@/app/robots/requirement-runner-card'
 import { requirementIdFromRobotName, linkedRunnerId } from '@/app/robots/requirement-runner-link'
 
 const req = '11111111-1111-4111-8111-111111111111'
@@ -18,7 +18,7 @@ beforeEach(() => {
   mockSWR.mockReturnValue({ data: { runnerId }, error: null })
   mockInstances.mockReturnValue([{ id: runnerId, site_id: 'site', name: `req-runner-${req}`, is_archived: false }])
 })
-const view = (id = 'qa', name = `req-maint-${req}`) => render(<RequirementRunnerBanner instance={{ id, name }} siteId="site" />)
+const view = (id = 'qa', name = `req-maint-${req}`) => render(<RequirementRunnerCard instance={{ id, name }} siteId="site" />)
 
 it('links QA history to the existing executor feedback conversation without dispatch', () => {
   view()
@@ -26,11 +26,15 @@ it('links QA history to the existing executor feedback conversation without disp
   expect(screen.getByRole('link', { name: 'View requirement' })).toHaveAttribute('href', `/requirements/${req}`)
   expect(mockInstances).toHaveBeenCalledWith(true)
   expect(mockClient).not.toHaveBeenCalled()
+  const card = screen.getByRole('note', { name: 'Requirement conversation context' })
+  expect(card).toHaveClass('w-full', 'max-w-3xl')
+  expect(card).not.toHaveClass('absolute', 'fixed', 'sticky', 'z-40')
+  expect(card).not.toHaveAttribute('style')
 })
 
 it('does not show a handoff when already viewing the unarchived executor', () => {
   view(runnerId, `req-runner-${req}`)
-  expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
+  expect(screen.queryByRole('note')).not.toBeInTheDocument()
 })
 
 it('shows an archived executor explicitly without restoring it or offering a send link', () => {
@@ -59,7 +63,7 @@ it('validates legacy name and metadata identities and leaves unrelated robots al
   expect(linkedRunnerId({ runner_instance_id: 'invalid' })).toBeNull()
   expect(linkedRunnerId({ runner_instance_id: runnerId })).toBe(runnerId)
   view('free', 'Free Agent')
-  expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
+  expect(screen.queryByRole('note')).not.toBeInTheDocument()
   expect(mockSWR.mock.calls[0][0]).toBeNull()
 })
 

@@ -80,6 +80,7 @@ const { className, activeRobotInstance, isBrowserVisible, hasTopHeaderSpace, ski
           {/* Spacer for sticky header and topbar blur effect */}
           <div className={cn("h-[135px] shrink-0", !hasTopHeaderSpace && "hidden lg:block")} aria-hidden="true" />
           <div className="space-y-6 pt-6 pb-6">
+            {props.conversationContext}
             {latestRequirementStatus?.stage === 'blocked' && (
               <RequirementStatusCard status={latestRequirementStatus} />
             )}
