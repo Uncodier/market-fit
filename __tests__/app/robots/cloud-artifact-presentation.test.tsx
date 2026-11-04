@@ -11,11 +11,26 @@ jest.mock('@/app/robots/artifact-navigation-shortcut', () => ({ pinArtifactToNav
 it('preserves an existing source_code artifact revision URL without iframe query decoration', () => {
   const url = `/api/robots/instance/${randomUUID()}/cloud-files/${randomUUID()}?version=2&format=zip`
   const input = {
-    requirementStatuses: [], artifacts: [{ screen: 'source_code', url }],
+    requirementStatuses: [], artifacts: [{ screen: 'source_code', url }], artifactScreens: [{ screen: 'source_code', url }],
     activeRobotInstance: { id: randomUUID(), site_id: randomUUID() },
     currentSite: { id: randomUUID() }, activeBrowserTab: { kind: 'artifact', screen: 'source_code' },
     setActiveBrowserTab: jest.fn(), setMobileWorkspaceTab: jest.fn(), workspaceLayout: 'split',
     mobileWorkspaceTab: 'preview', theme: 'dark', viewportSize: 'imac',
+    iframeRef: createRef<HTMLIFrameElement>(), containerRef: createRef<HTMLDivElement>(), setScale: jest.fn(),
+  } as unknown as Parameters<typeof useBrowserPresentation>[0]
+  const { result } = renderHook(() => useBrowserPresentation(input))
+  expect(result.current.activeUrlToDisplay).toBe(url)
+  expect(result.current.isZipUrl).toBe(true)
+})
+
+it('opens an independently discovered file without a persisted artifact row', () => {
+  const url = `/api/robots/instance/${randomUUID()}/cloud-files/${randomUUID()}?version=3&format=zip`
+  const input = {
+    requirementStatuses: [], artifacts: [], artifactScreens: [{ screen: 'cloud-file-test', url }],
+    activeRobotInstance: { id: randomUUID(), site_id: randomUUID() },
+    currentSite: { id: randomUUID() }, activeBrowserTab: { kind: 'artifact', screen: 'cloud-file-test' },
+    setActiveBrowserTab: jest.fn(), setMobileWorkspaceTab: jest.fn(), workspaceLayout: 'split',
+    mobileWorkspaceTab: 'artifact-cloud-file-test', theme: 'dark', viewportSize: 'imac', hasRequirementPreview: true,
     iframeRef: createRef<HTMLIFrameElement>(), containerRef: createRef<HTMLDivElement>(), setScale: jest.fn(),
   } as unknown as Parameters<typeof useBrowserPresentation>[0]
   const { result } = renderHook(() => useBrowserPresentation(input))

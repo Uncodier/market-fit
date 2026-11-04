@@ -28,9 +28,10 @@ not gain remote access or erase stored POS work.
   update or reload the document.
 - The update action is deferred while any `/pos` route is open. Finish and sync
   work, reconcile unconfirmed payments, and leave POS before updating.
-- Outside POS, the action requires an online browser and explicit confirmation
-  warning about unsaved work. It does not clear cookies, site selection, IndexedDB
-  or the outbox.
+- Outside POS, the action requires an online browser and reloads directly on an
+  explicit update-button click, without an additional confirmation dialog. The
+  notice reminds users to save and sync first. It does not clear cookies, site
+  selection, IndexedDB or the outbox.
 - This is deferred, consent-only document replacement, not hot-swapping running
   application code. Old deployed Server Actions can still require a planned update.
 

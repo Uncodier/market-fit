@@ -49,6 +49,8 @@ export function useWorkspaceTabs(input: ReturnType<typeof useBrowserPresentation
     }
     
     artifactScreens.forEach(a => {
+      const isCloudFile = a.screen.startsWith('cloud-file-')
+      if (isCloudFile && a.url === input.latestPreviewUrl) return
       if (hasRequirementPreview && !cloudOnly && a.screen === 'database') return;
       const isActive = activeBrowserTab.kind === 'artifact' && activeBrowserTab.screen === a.screen;
       const metadata = getScreenMetadata(a.screen, t);
@@ -56,8 +58,8 @@ export function useWorkspaceTabs(input: ReturnType<typeof useBrowserPresentation
         id: `artifact-${a.screen}`,
         kind: 'artifact',
         screen: a.screen,
-        label: metadata.label,
-        icon: metadata.icon,
+        label: isCloudFile ? a.title ?? 'File' : metadata.label,
+        icon: isCloudFile ? Folder : metadata.icon,
         isActive
       });
     });
@@ -74,7 +76,7 @@ export function useWorkspaceTabs(input: ReturnType<typeof useBrowserPresentation
     ...allArtifactItems.map((item) => {
       const Icon = item.icon
       const canManageArtifact =
-        item.kind === 'artifact' && item.screen && item.screen !== 'database'
+        item.kind === 'artifact' && item.screen && item.screen !== 'database' && !item.screen.startsWith('cloud-file-')
 
       return {
         value: item.id,

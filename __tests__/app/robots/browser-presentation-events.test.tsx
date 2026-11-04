@@ -3,6 +3,8 @@ import { act, renderHook } from '@testing-library/react'
 import { useBrowserWorkspace } from '@/app/robots/use-browser-workspace'
 import { useBrowserPresentation } from '@/app/robots/use-browser-presentation'
 
+jest.mock('@/app/robots/use-cloud-tool-deliverables', () => ({ useCloudToolDeliverables: () => [] }))
+
 jest.mock('@/app/components/simple-messages-view/hooks/useRequirementStatus', () => ({
   useRequirementStatus: () => ({ requirementStatuses: [], isLoading: true, isValidating: true }),
 }))

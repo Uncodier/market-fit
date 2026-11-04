@@ -59,7 +59,7 @@ export function useVersionCheck(): void {
     let lastLocalCheck: number | null = null
 
     const requestUpdate = (event: { preventDefault: () => void }) => {
-      // Keep the update available after deferral or a cancelled confirmation.
+      // Keep the update available after deferral.
       event.preventDefault()
       if (disposed) return
       const pathname = window.location.pathname
@@ -79,9 +79,7 @@ export function useVersionCheck(): void {
         })
         return
       }
-      if (window.confirm("Reload to update? Unsaved changes may be lost. Continue only after saving your work and confirming that POS orders and payments have finished syncing.")) {
-        window.location.reload()
-      }
+      window.location.reload()
     }
 
     const notifyIfStale = async () => {

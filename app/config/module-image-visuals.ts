@@ -140,6 +140,8 @@ const SECOND_GENERATION_PASS_MODULE_IMAGE_KEYS = new Set([
 ])
 
 const MODULE_IMAGE_PALETTES: Partial<Record<string, string>> = {
+  accountsPayable:
+    "Use a luminous cream receipt with warm golden details against a saturated amber-orange background; keep the receipt clearly separated from the background with crisp edges and soft dimensional shadows. Do not use a green, emerald, sage, or teal background",
   campaigns:
     "Use vivid red with medium-to-high saturation as the unmistakable dominant hue across the target, supported by a smaller harmonious warm accent. Black, charcoal, gray, and white may appear only in small details, shadows, highlights, or separators; do not use pink, orange, neutrals, or any other hue as the dominant color, while maintaining strong contrast, clear separation between adjacent parts, defined edges, and a readable silhouette",
   billing:
@@ -268,7 +270,7 @@ export function getModuleImagePrompt(
   const clarifier = MODULE_IMAGE_CLARIFIERS[imageKey]
   const isFullSize = FULL_SIZE_MODULE_IMAGE_KEYS.has(imageKey)
   const isContainerFree = CONTAINER_FREE_MODULE_IMAGE_KEYS.has(imageKey)
-  const palette = MODULE_IMAGE_PALETTES[imageKey]
+  const palette = MODULE_IMAGE_PALETTES[itemKey] ?? MODULE_IMAGE_PALETTES[imageKey]
   const isAlternative = ALTERNATIVE_MODULE_IMAGE_KEYS.has(imageKey)
   const needsSecondGenerationPass =
     SECOND_GENERATION_PASS_MODULE_IMAGE_KEYS.has(imageKey)
@@ -294,7 +296,9 @@ export function getModuleImagePrompt(
       : DEFAULT_MODULE_IMAGE_PALETTE),
     "Keep the composition simple, with one primary symbol, few large components, no tiny details, and strong legibility at small UI sizes",
     "Pearlescent finish, gentle ambient inner glow, soft studio lighting",
-    !isFullSize &&
+    itemKey === "accountsPayable"
+      ? "Set against a clean, seamless saturated amber-orange background, not a green background"
+      : !isFullSize &&
       "Set against a clean, seamless background chosen to provide maximum contrast with the object",
     "Dreamy, modern UI asset style, clean geometry, Octane render, 8k resolution",
   ].filter(Boolean).join(". ")

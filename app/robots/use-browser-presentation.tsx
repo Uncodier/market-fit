@@ -68,7 +68,7 @@ export function useBrowserPresentation(input: ReturnType<typeof useBrowserWorksp
         return databaseArtifactUrl
       }
       
-      const artifact = artifacts.find(a => a.screen === activeBrowserTab.screen)
+      const artifact = input.artifactScreens.find(a => a.screen === activeBrowserTab.screen)
       if (artifact?.url) {
         // Downloads are not embedded app pages; preserve the exact revision query.
         if (cloudRevisionFormat(artifact.url)) return artifact.url

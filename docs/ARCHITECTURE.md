@@ -17,6 +17,15 @@ Primary external boundaries:
 
 ### Workflow execution debugging
 
+The Robots file viewer loads historical `write_cloud_file` receipts independently
+of the chat's visible log window. The user-scoped query filters by instance, site
+and tool, selects only receipt fields, and pages in batches of 500. A separate
+SWR key deduplicates background reads; the existing chat cache supplies live
+receipts without another realtime channel or polling. Discovery keeps the highest
+revision per distinct file and exposes read-only file tabs through the existing
+authenticated archive viewer. It does not fetch archive contents until opened,
+persist synthetic artifacts, or infer repository/database capabilities from files.
+
 Temporal execution metadata supersedes the former per-activity `cron_status`
 debugging view. The unused `ActivitiesView` component and `/api/cron-status`
 endpoint are retired; do not reintroduce a parallel activity status API for this

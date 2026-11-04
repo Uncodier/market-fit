@@ -1,8 +1,13 @@
 import { randomUUID } from 'node:crypto'
-import { act, renderHook } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { SWRConfig, useSWRConfig } from 'swr'
 import { cloudToolDeliverables, cloudViewerUrl, isCloudOnlyContent } from '@/app/robots/cloud-tool-deliverables'
 import { useCloudToolDeliverables } from '@/app/robots/use-cloud-tool-deliverables'
+import { fetchCloudToolDeliverables } from '@/app/robots/fetch-cloud-tool-deliverables'
+
+jest.mock('@/app/robots/fetch-cloud-tool-deliverables', () => ({ fetchCloudToolDeliverables: jest.fn(async () => []) }))
+
+beforeEach(() => jest.mocked(fetchCloudToolDeliverables).mockReset().mockResolvedValue([]))
 
 const instanceId = randomUUID()
 const siteId = randomUUID()
@@ -65,7 +70,9 @@ it('does not infer application capabilities from cloud files', () => {
   expect(isCloudOnlyContent(null, null)).toBe(false)
 })
 
-it('observes the existing activity cache without fetching and resets on instance changes', async () => {
+it('merges background files with live receipts, preserves files outside the log window and resets scope', async () => {
+  const olderFile = { fileId: randomUUID(), version: 1, url: 'history', createdAt: '2026-01-01' }
+  jest.mocked(fetchCloudToolDeliverables).mockResolvedValueOnce([olderFile])
   const fetcher = jest.fn()
   const cache = new Map()
   const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -75,11 +82,21 @@ it('observes the existing activity cache without fetching and resets on instance
     files: useCloudToolDeliverables(id, siteId), mutate: useSWRConfig().mutate,
   }), { wrapper, initialProps: { id: instanceId } })
   expect(view.result.current.files).toEqual([])
+  await waitFor(() => expect(view.result.current.files).toEqual([olderFile]))
   await act(async () => { await view.result.current.mutate(['instance_logs', instanceId], [activity()], false) })
   expect(view.result.current.files[0]?.url).toBe(url(1))
   await act(async () => { await view.result.current.mutate(['instance_logs', instanceId], [activity(2)], false) })
   expect(view.result.current.files[0]?.url).toBe(url(2))
+  await act(async () => { await view.result.current.mutate(['instance_logs', instanceId], [], false) })
+  expect(view.result.current.files.map(file => file.fileId)).toEqual([fileId, olderFile.fileId])
+  expect(fetchCloudToolDeliverables).toHaveBeenCalledTimes(1)
   view.rerender({ id: randomUUID() })
   expect(view.result.current.files).toEqual([])
+  await act(async () => { await Promise.resolve() })
   expect(fetcher).not.toHaveBeenCalled()
+})
+
+it('does not query without both instance and site scope', () => {
+  renderHook(() => useCloudToolDeliverables(instanceId, null))
+  expect(fetchCloudToolDeliverables).not.toHaveBeenCalled()
 })

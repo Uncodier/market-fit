@@ -45,10 +45,13 @@ describe("accounts payable workspace integration", () => {
     expect(isScreenBlocked("admin", [key], key)).toBe(false)
   })
 
-  it("preserves the dedicated emerald/sage visual and receipt icon in Buying", () => {
+  it("distinguishes Payable with an amber/orange background while retaining the receipt icon", () => {
     expect(NAV_ITEM_ICON.accountsPayable).toBe(Receipt)
     expect(MODULE_VARIANTS.accountsPayable).toBeDefined()
     expect(getModuleVisual("buying", "accountsPayable")).toBe(MODULE_VARIANTS.accountsPayable)
+    expect(MODULE_VARIANTS.accountsPayable.accent).toBe("hsl(38 88% 52%)")
+    expect(MODULE_VARIANTS.accountsPayable.gradient).not.toBe(MODULE_VARIANTS.accountsReceivable.gradient)
+    expect(MODULE_VARIANTS.accountsPayable.meshOrbs).not.toEqual(MODULE_VARIANTS.accountsReceivable.meshOrbs)
   })
 
   it("builds the receipt with the same shared 3D prompt style and image endpoint", () => {
@@ -64,7 +67,11 @@ describe("accounts payable workspace integration", () => {
     expect(prompt.length).toBeLessThanOrEqual(2_000)
     expect(getModuleImagePrompt("buying", "accountsPayable", "Another title")).toBe(prompt)
     expect(getModuleImagePrompt("finance", "accountsPayable", "Accounts Payable")).toBe(prompt)
+    const receivablePrompt = getModuleImagePrompt("sales", "accountsReceivable", "Accounts Receivable")
+    expect(prompt).toContain("saturated amber-orange background")
+    expect(prompt).not.toBe(receivablePrompt)
     const url = getModuleImageUrl("buying", "accountsPayable", "Accounts Payable")
+    expect(url).not.toBe(getModuleImageUrl("sales", "accountsReceivable", "Accounts Receivable"))
     expect(url).toContain(`/api/public/image/prompt/${encodeURIComponent(prompt)}?width=256&height=256`)
   })
 })

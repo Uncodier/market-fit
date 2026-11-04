@@ -94,22 +94,19 @@ describe("explicit, non-destructive version updates", () => {
     click()
     expect(reload).not.toHaveBeenCalled()
     window.location.pathname = "/projects"
-    const confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(false)
     click()
-    expect(reload).not.toHaveBeenCalled()
-    confirmSpy.mockReturnValue(true)
-    click()
+    expect(confirm).not.toHaveBeenCalled()
     expect(reload).toHaveBeenCalledTimes(1)
     hook.unmount()
   })
 
-  it("does not mistake another route prefix for POS and requires confirmation", async () => {
+  it("reloads on an explicit click without confirmation and does not mistake another route prefix for POS", async () => {
     window.location.pathname = "/positions"
-    const confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(true)
+    confirm.mockReturnValue(false)
     const hook = await mount()
     expect(reload).not.toHaveBeenCalled()
     click()
-    expect(confirmSpy).toHaveBeenCalledWith(expect.stringContaining("Unsaved changes"))
+    expect(confirm).not.toHaveBeenCalled()
     expect(reload).toHaveBeenCalledTimes(1)
     hook.unmount()
   })
@@ -121,6 +118,10 @@ describe("explicit, non-destructive version updates", () => {
     click()
     expect(toast.warning).toHaveBeenCalledWith("Update deferred while offline", expect.anything())
     expect(reload).not.toHaveBeenCalled()
+    Object.defineProperty(navigator, "onLine", { configurable: true, value: true })
+    click()
+    expect(confirm).not.toHaveBeenCalled()
+    expect(reload).toHaveBeenCalledTimes(1)
     hook.unmount()
   })
 

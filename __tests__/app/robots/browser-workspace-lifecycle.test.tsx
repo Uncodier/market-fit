@@ -35,6 +35,7 @@ let previewKnown: boolean
 let statuses: Array<{ instance_id: string; site_id: string; preview_url?: string; source_code?: string }>
 
 beforeEach(() => {
+  jest.clearAllMocks()
   localStorage.clear()
   artifacts = []
   artifactsLoading = false
@@ -46,6 +47,21 @@ beforeEach(() => {
 })
 
 describe('Robots browser workspace render lifecycle', () => {
+  it('keeps independently discovered file screens available across workspace updates', () => {
+    jest.mocked(useCloudToolDeliverables).mockReturnValue([
+      { fileId: 'first', version: 2, url: 'first-url', createdAt: '2026-11-03T21:10:00Z' },
+      { fileId: 'second', version: 1, url: 'second-url', createdAt: '2026-11-02T21:10:00Z' },
+    ])
+    previewKnown = true
+    const view = renderHook(useBrowserWorkspace, { initialProps: input() })
+    expect(view.result.current.artifactScreens.map(file => file.screen)).toEqual(['cloud-file-first', 'cloud-file-second'])
+    expect(view.result.current.artifacts).toEqual([])
+    act(() => view.result.current.setActiveBrowserTab({ kind: 'artifact', screen: 'cloud-file-second' }))
+    statuses = [{ instance_id: 'a', site_id: 'site-a', preview_url: 'https://example.com/preview' }]
+    view.rerender(input())
+    expect(view.result.current.activeBrowserTab).toEqual({ kind: 'artifact', screen: 'cloud-file-second' })
+  })
+
   it('shows a cloud tool receipt without a requirement and preserves a real deployment preview', () => {
     const url = '/api/robots/instance/12345678-1234-1234-1234-123456789012/cloud-files/12345678-1234-1234-1234-123456789013?version=2&format=zip'
     jest.mocked(useCloudToolDeliverables).mockReturnValue([

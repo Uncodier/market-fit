@@ -1,6 +1,6 @@
 import { cloudRevisionFormat } from '@/lib/cloud-file-url'
 
-interface Activity {
+export interface CloudFileActivity {
   instance_id?: string
   site_id?: string
   tool_name?: string
@@ -31,7 +31,7 @@ export function isCloudOnlyContent(previewUrl: unknown, sourceUrl: unknown): boo
 }
 
 /** Inspect only known result envelopes, not document content, arguments or prose. */
-export function cloudToolDeliverables(logs: readonly Activity[], instanceId: string, siteId: string): CloudDeliverable[] {
+export function cloudToolDeliverables(logs: readonly CloudFileActivity[], instanceId: string, siteId: string): CloudDeliverable[] {
   const files = new Map<string, CloudDeliverable>()
   for (const log of logs) {
     if (log.instance_id !== instanceId || log.site_id !== siteId || log.tool_name !== 'write_cloud_file') continue
@@ -54,6 +54,16 @@ export function cloudToolDeliverables(logs: readonly Activity[], instanceId: str
       }
       result = receipt.output ?? receipt.result ?? receipt.data
     }
+  }
+  return [...files.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.version - a.version)
+}
+
+export function mergeCloudDeliverables(...groups: readonly CloudDeliverable[][]): CloudDeliverable[] {
+  const files = new Map<string, CloudDeliverable>()
+  for (const next of groups.flat()) {
+    const previous = files.get(next.fileId)
+    if (!previous || next.version > previous.version ||
+      (next.version === previous.version && next.createdAt > previous.createdAt)) files.set(next.fileId, next)
   }
   return [...files.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.version - a.version)
 }

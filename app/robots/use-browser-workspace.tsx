@@ -43,8 +43,18 @@ export function useBrowserWorkspace(input: ReturnType<typeof useInstanceActions>
         screensMap.set(a.screen, a)
       }
     })
+    // File screens are read-only navigation entries, not persisted artifact rows.
+    cloudDeliverables.forEach((file, index) => {
+      if (artifacts.some(artifact => artifact.url === file.url)) return
+      const screen = `cloud-file-${file.fileId}`
+      screensMap.set(screen, {
+        id: screen, instance_id: instanceId!, site_id: siteId!, user_id: null,
+        screen, url: file.url, title: `File ${index + 1}`, description: null,
+        should_reload: false, context: {}, created_at: file.createdAt,
+      })
+    })
     return Array.from(screensMap.values())
-  }, [artifacts])
+  }, [artifacts, cloudDeliverables, instanceId, siteId])
 
   const latestPreviewUrl = useMemo(() => {
     if (!requirementStatuses || requirementStatuses.length === 0) return latestCloudUrl;
@@ -111,7 +121,7 @@ export function useBrowserWorkspace(input: ReturnType<typeof useInstanceActions>
     searchParams,
   )
   const [state, setState] = useState(restore)
-  const observation = { artifacts, isArtifactsLoading, hasRequirementPreview, isRequirementPreviewStatusKnown }
+  const observation = { artifacts: artifactScreens, isArtifactsLoading, hasRequirementPreview, isRequirementPreviewStatusKnown }
   // Guarded render adjustment resets only this hook's state, before children or
   // persistence can observe a previous instance's workspace. No effect cascade.
   let workspace = state

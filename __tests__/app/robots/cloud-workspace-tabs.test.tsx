@@ -24,3 +24,18 @@ it('preserves application tabs when a real deployment preview exists', () => {
   const { result } = renderHook(() => useWorkspaceTabs(input('https://preview.example.test')))
   expect(result.current.allArtifactItems.map(item => item.id)).toEqual(['preview', 'source', 'database'])
 })
+
+it('exposes distinct files as read-only tabs and avoids duplicating the main file', () => {
+  const model = input()
+  model.artifactScreens = [
+    { screen: 'cloud-file-first', url, title: 'File 1' },
+    { screen: 'cloud-file-second', url: url.replace('version=1', 'version=2'), title: 'File 2' },
+  ] as typeof model.artifactScreens
+  const { result } = renderHook(() => useWorkspaceTabs(model))
+  expect(result.current.allArtifactItems.map(item => item.label)).toEqual(['Files', 'File 2'])
+  const fileTab = result.current.workspaceTabs[2]
+  expect(fileTab.leadingAction).toBeUndefined()
+  expect(fileTab.trailingAction).toBeUndefined()
+  result.current.handleWorkspaceTabChange(fileTab.value)
+  expect(model.setActiveBrowserTab).toHaveBeenCalledWith({ kind: 'artifact', screen: 'cloud-file-second' })
+})
