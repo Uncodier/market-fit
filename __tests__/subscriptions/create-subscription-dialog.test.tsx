@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { SWRConfig } from "swr"
 import { CreateSubscriptionDialog } from "@/app/subscriptions/components/CreateSubscriptionDialog"
 import { listCatalogItems } from "@/app/catalog/actions"
@@ -66,6 +66,19 @@ it("shows a skeleton while loading rather than an empty catalog", async () => {
   finish({ data: [], count: 0 })
   await openCatalog()
   expect(screen.getByText("No recurring plans found")).toBeInTheDocument()
+})
+
+it("makes a recurring service searchable after a delayed successful response", async () => {
+  let finish!: (value: { data: CatalogItem[]; count: number }) => void
+  jest.mocked(listCatalogItems).mockReturnValue(new Promise(resolve => { finish = resolve }))
+  render(dialog())
+  expect(screen.queryByPlaceholderText("Select a recurring plan...")).not.toBeInTheDocument()
+  finish({ data: [{ id: "service", name: "Cowork", kind: "service", is_recurring: true }] as CatalogItem[], count: 1 })
+  await openCatalog()
+  fireEvent.change(screen.getByPlaceholderText("Select a recurring plan..."), { target: { value: "c" } })
+  expect(screen.getByText("Cowork")).toBeInTheDocument()
+  await act(async () => { fireEvent.click(screen.getByText("Cowork")) })
+  expect(screen.getByPlaceholderText("Select a recurring plan...")).toHaveValue("Cowork")
 })
 
 it.each(["returned", "thrown"])("shows a safe error and retries a %s load failure", async failure => {

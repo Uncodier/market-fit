@@ -21,6 +21,7 @@ Use the guides below before relying on older implementation notes.
   public links, webhooks, and outbound requests.
 - [Database migrations](DATABASE_MIGRATIONS.md) — safe Supabase migration workflow.
 - [Accounts payable](ACCOUNTS_PAYABLE.md) — supplier bill balances, aging filters and existing bill payment entry.
+- [Catalog item sales](CATALOG_SALES.md) — item revenue, variant history, filters, access boundaries and reporting limits.
 - [Critical flow security rollout](SECURITY_FINDINGS_ROLLOUT.md) — purchase permissions,
   internal webhook visibility, task reordering, and deployment validation.
 - [Environment variables](ENVIRONMENT_VARIABLES.md) — configuration by subsystem.
