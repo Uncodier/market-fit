@@ -57,14 +57,14 @@ afterEach(() => jest.restoreAllMocks())
 
 it("persists Amount and updates header, recurring value, and manual invoice default", async () => {
   const header = await open()
-  const row = screen.getByText("Amount").closest(".group") as HTMLElement
+  const row = screen.getByText("Recurring").closest(".group") as HTMLElement
   fireEvent.click(within(row).getByText("$125.00"))
-  fireEvent.change(screen.getByLabelText("Amount"), { target: { value: "250" } })
-  fireEvent.click(screen.getByRole("button", { name: "Save amount" }))
+  fireEvent.change(screen.getByLabelText("Recurring"), { target: { value: "250" } })
+  fireEvent.click(screen.getByRole("button", { name: "Save recurring" }))
   await waitFor(() => expect(header).toHaveTextContent("250 per cycle"))
   expect(updateSubscriptionAmount).toHaveBeenCalledWith(subscription.site_id, subscription.id, 250)
   expect(screen.getByTestId("invoice-default")).toHaveTextContent("250")
-  expect(screen.getAllByText("$250.00")).toHaveLength(2)
+  expect(screen.getAllByText("$250.00")).toHaveLength(1)
   expect(screen.getByText("Existing invoice: $125.00")).toBeInTheDocument()
   expect(toast.success).toHaveBeenCalledWith("Subscription amount saved")
 })
@@ -84,14 +84,14 @@ it("retains the prior amount and editor if the server rejects an update", async 
   jest.spyOn(console, "error").mockImplementation(() => {})
   jest.mocked(updateSubscriptionAmount).mockResolvedValueOnce({ error: "Concurrent update" })
   const header = await open()
-  const row = screen.getByText("Amount").closest(".group") as HTMLElement
+  const row = screen.getByText("Recurring").closest(".group") as HTMLElement
   fireEvent.click(within(row).getByText("$125.00"))
-  fireEvent.change(screen.getByLabelText("Amount"), { target: { value: "250" } })
-  fireEvent.click(screen.getByRole("button", { name: "Save amount" }))
+  fireEvent.change(screen.getByLabelText("Recurring"), { target: { value: "250" } })
+  fireEvent.click(screen.getByRole("button", { name: "Save recurring" }))
   await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Could not save field"))
   expect(header).toHaveTextContent("125 per cycle")
   expect(screen.getByTestId("invoice-default")).toHaveTextContent("125")
-  expect(screen.getByLabelText("Amount")).toHaveValue(250)
+  expect(screen.getByLabelText("Recurring")).toHaveValue(250)
   expect(toast.success).not.toHaveBeenCalled()
 })
 

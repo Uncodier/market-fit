@@ -22,6 +22,7 @@ import { EmptyCard } from "@/app/components/ui/empty-card"
 import { siteMembersService } from "@/app/services/site-members-service"
 import { assignableSiteMembers } from "@/lib/auth/assignable-site-members"
 import { ConfirmDialog } from "@/app/components/ui/confirm-dialog"
+import { copyToClipboard } from "@/app/utils/clipboard"
 
 export function CalendarSection() {
   const { currentSite, updateSettings } = useSite()
@@ -131,13 +132,17 @@ export function CalendarSection() {
     setEditingCalendar({ ...editingCalendar, member_ids: newMembers })
   }
 
-  const handleCopyUrl = (slug: string) => {
+  const handleCopyUrl = async (slug: string) => {
     const siteSlug = getSiteSlug()
     const url = typeof window !== 'undefined' 
       ? `${window.location.origin}/book/${siteSlug}/rr/${slug}` 
       : `/book/${siteSlug}/rr/${slug}`
-    navigator.clipboard.writeText(url)
-    toast.success("URL copied to clipboard")
+    const copied = await copyToClipboard(url)
+    if (copied) {
+      toast.success("URL copied to clipboard")
+    } else {
+      toast.error("Failed to copy URL")
+    }
   }
 
   const getSiteSlug = () => {
@@ -307,6 +312,8 @@ export function CalendarSection() {
                             <LinkIcon className="h-3.5 w-3.5 shrink-0" />
                             <span className="truncate hover:text-primary transition-colors cursor-pointer">{bookingUrl}</span>
                             <Button 
+                              type="button"
+                              aria-label="Copy calendar URL"
                               variant="ghost" 
                               size="icon" 
                               className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity ml-1" 

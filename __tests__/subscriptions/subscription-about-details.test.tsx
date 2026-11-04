@@ -31,9 +31,9 @@ function setup(overrides: Partial<SubscriptionDetail> = {}) {
 }
 
 function openAmount() {
-  const row = screen.getByText("Amount").closest(".group")!
+  const row = screen.getByText("Recurring").closest(".group")!
   fireEvent.click(within(row as HTMLElement).getByText("$125.00"))
-  return screen.getByLabelText("Amount")
+  return screen.getByLabelText("Recurring")
 }
 
 describe("inline subscription amount and end date", () => {
@@ -43,13 +43,16 @@ describe("inline subscription amount and end date", () => {
   })
   afterEach(() => jest.restoreAllMocks())
 
-  it("opens the next-cycle amount editor with an explicit keyboard-accessible button", () => {
+  it("edits the existing recurring row without a duplicate field or helper copy", () => {
     const { onUpdateAmount } = setup()
-    const edit = screen.getByRole("button", { name: "Edit amount for next billing cycle" })
-    expect(edit).toHaveAccessibleDescription("Amount for the next billing cycle and subsequent renewals. Existing invoices are unchanged.")
-    fireEvent.click(edit)
-    expect(screen.getByLabelText("Amount")).toHaveValue(125)
-    expect(screen.getByText("Applies from the next billing cycle onward. Existing invoices and payments are unchanged.")).toBeInTheDocument()
+    const row = screen.getByText("Recurring").closest(".group") as HTMLElement
+    expect(within(row).queryByRole("button")).not.toBeInTheDocument()
+    expect(screen.queryByText("Amount")).not.toBeInTheDocument()
+    expect(screen.queryByText(/Amount for the next billing cycle/)).not.toBeInTheDocument()
+    openAmount()
+    expect(screen.getByLabelText("Recurring")).toHaveValue(125)
+    expect(screen.queryByText(/Applies from the next billing cycle onward/)).not.toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Save recurring" }).parentElement).not.toHaveClass("flex-wrap")
     expect(onUpdateAmount).not.toHaveBeenCalled()
   })
 
@@ -58,30 +61,28 @@ describe("inline subscription amount and end date", () => {
     const input = openAmount()
     fireEvent.change(input, { target: { value } })
     expect(onUpdateAmount).not.toHaveBeenCalled()
-    fireEvent.click(screen.getByRole("button", { name: "Save amount" }))
+    fireEvent.click(screen.getByRole("button", { name: "Save recurring" }))
     await waitFor(() => expect(onUpdateAmount).toHaveBeenCalledWith(Number(value)))
-    await waitFor(() => expect(screen.queryByLabelText("Amount")).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.queryByLabelText("Recurring")).not.toBeInTheDocument())
     rerender(<SubscriptionAboutPanel {...props} subscription={{ ...subscription, amount: Number(value) }} />)
-    for (const label of ["Recurring", "Amount"]) {
-      const row = screen.getByText(label).closest(".group") as HTMLElement
-      expect(within(row).getByText(value === "0" ? "$0.00" : "$250.50")).toBeInTheDocument()
-    }
+    const row = screen.getByText("Recurring").closest(".group") as HTMLElement
+    expect(within(row).getByText(value === "0" ? "$0.00" : "$250.50")).toBeInTheDocument()
   })
 
   it.each(["", "-1", "1.001"])("rejects invalid amount draft %s", (value) => {
     const { onUpdateAmount } = setup()
     fireEvent.change(openAmount(), { target: { value } })
     expect(screen.getByRole("alert")).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "Save amount" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Save recurring" })).toBeDisabled()
     expect(onUpdateAmount).not.toHaveBeenCalled()
   })
 
   it("cancels amount changes and saves by Enter", async () => {
     const { onUpdateAmount } = setup()
     fireEvent.change(openAmount(), { target: { value: "250" } })
-    fireEvent.click(screen.getByRole("button", { name: "Cancel amount edit" }))
+    fireEvent.click(screen.getByRole("button", { name: "Cancel recurring edit" }))
     expect(onUpdateAmount).not.toHaveBeenCalled()
-    expect(screen.getAllByText("$125.00")).toHaveLength(2)
+    expect(screen.getAllByText("$125.00")).toHaveLength(1)
     const input = openAmount()
     fireEvent.change(input, { target: { value: "250" } })
     fireEvent.keyDown(input, { key: "Enter" })
@@ -140,12 +141,12 @@ describe("inline subscription amount and end date", () => {
     onUpdateAmount.mockRejectedValueOnce(new Error("Unable to save"))
     const input = openAmount()
     fireEvent.change(input, { target: { value: "250" } })
-    fireEvent.click(screen.getByRole("button", { name: "Save amount" }))
+    fireEvent.click(screen.getByRole("button", { name: "Save recurring" }))
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Could not save field"))
     expect(input).toHaveValue(250)
-    await waitFor(() => expect(screen.getByRole("button", { name: "Save amount" })).toBeEnabled())
-    fireEvent.click(screen.getByRole("button", { name: "Save amount" }))
-    await waitFor(() => expect(screen.queryByLabelText("Amount")).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole("button", { name: "Save recurring" })).toBeEnabled())
+    fireEvent.click(screen.getByRole("button", { name: "Save recurring" }))
+    await waitFor(() => expect(screen.queryByLabelText("Recurring")).not.toBeInTheDocument())
   })
 
   it("disables save and cancel while saving Amount", async () => {
@@ -153,10 +154,10 @@ describe("inline subscription amount and end date", () => {
     const { onUpdateAmount } = setup()
     onUpdateAmount.mockReturnValueOnce(new Promise<void>((resolve) => { finish = resolve }))
     openAmount()
-    const save = screen.getByRole("button", { name: "Save amount" })
+    const save = screen.getByRole("button", { name: "Save recurring" })
     fireEvent.click(save)
     expect(save).toBeDisabled()
-    expect(screen.getByRole("button", { name: "Cancel amount edit" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Cancel recurring edit" })).toBeDisabled()
     fireEvent.click(save)
     expect(onUpdateAmount).toHaveBeenCalledTimes(1)
     await act(async () => finish())
@@ -166,9 +167,9 @@ describe("inline subscription amount and end date", () => {
     jest.mocked(useOptionalPermissions).mockReturnValue({ siteId: subscription.site_id, capabilities: null, isViewOnly: true, can: () => false })
     setup()
     expect(screen.queryByRole("button", { name: "Edit amount for next billing cycle" })).not.toBeInTheDocument()
-    fireEvent.click(screen.getAllByText("$125.00")[1])
+    fireEvent.click(screen.getByText("$125.00"))
     fireEvent.click(screen.getByText("Dec 20, 2026"))
-    expect(screen.queryByLabelText("Amount")).not.toBeInTheDocument()
+    expect(screen.queryByLabelText("Recurring")).not.toBeInTheDocument()
     expect(screen.queryByLabelText("End date")).not.toBeInTheDocument()
   })
 })

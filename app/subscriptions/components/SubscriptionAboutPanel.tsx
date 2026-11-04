@@ -13,7 +13,6 @@ import {
   FileText,
   Mail,
   Phone,
-  Pencil,
   Tag,
   User,
 } from "@/app/components/ui/icons"
@@ -83,7 +82,25 @@ export function SubscriptionAboutPanel({
               icon={<DollarSign />}
               label="Recurring"
               value={formatCurrency(Number(subscription.amount) || 0, currency)}
-              readOnly
+              editValue={String(subscription.amount ?? "")}
+              readOnly={readOnly}
+              validate={(value) => value.trim() === "" ? "Enter an amount" : getSubscriptionAmountError(Number(value))}
+              onCommit={(value) => onUpdateAmount(Number(value))}
+              renderEditor={(draft, setDraft) => (
+                <>
+                  <Label htmlFor="subscription-amount" className="sr-only">Recurring</Label>
+                  <Input
+                    id="subscription-amount"
+                    type="number"
+                    min="0"
+                    max="999999999999"
+                    step="0.01"
+                    value={draft}
+                    onChange={(event) => setDraft(event.target.value)}
+                    className="h-8 w-full min-w-0 text-sm"
+                  />
+                </>
+              )}
             />
             <PropertyRow
               icon={<DollarSign />}
@@ -105,46 +122,6 @@ export function SubscriptionAboutPanel({
               showEmpty
               readOnly
             />
-            <PropertyRow
-              icon={<DollarSign />}
-              label="Amount"
-              value={readOnly ? formatCurrency(Number(subscription.amount) || 0, currency) : (
-                <button
-                  type="button"
-                  aria-label="Edit amount for next billing cycle"
-                  aria-describedby="subscription-amount-help"
-                  className="flex w-full items-center justify-between gap-2 text-left"
-                >
-                  <span>{formatCurrency(Number(subscription.amount) || 0, currency)}</span>
-                  <Pencil className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden={true} />
-                </button>
-              )}
-              editValue={String(subscription.amount ?? "")}
-              readOnly={readOnly}
-              editorLayout="stacked"
-              validate={(value) => value.trim() === "" ? "Enter an amount" : getSubscriptionAmountError(Number(value))}
-              onCommit={(value) => onUpdateAmount(Number(value))}
-              renderEditor={(draft, setDraft) => (
-                <div className="grid min-w-0 gap-2">
-                  <Label htmlFor="subscription-amount" className="sr-only">Amount</Label>
-                  <Input
-                    id="subscription-amount"
-                    type="number"
-                    min="0"
-                    max="999999999999"
-                    step="0.01"
-                    value={draft}
-                    onChange={(event) => setDraft(event.target.value)}
-                    aria-describedby="subscription-amount-description"
-                    className="h-8 w-full min-w-0 text-sm"
-                  />
-                  <p id="subscription-amount-description" className="text-xs text-muted-foreground">Applies from the next billing cycle onward. Existing invoices and payments are unchanged.</p>
-                </div>
-              )}
-            />
-            <p id="subscription-amount-help" className="mb-2 ml-[30px] text-xs text-muted-foreground">
-              Amount for the next billing cycle and subsequent renewals. Existing invoices are unchanged.
-            </p>
             <PropertyRow
               icon={<Calendar />}
               label="Start date"
