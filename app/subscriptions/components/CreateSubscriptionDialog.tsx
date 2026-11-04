@@ -18,6 +18,7 @@ import { Input } from "@/app/components/ui/input"
 import { DueDateField } from "@/app/components/finance/DueDateField"
 import { DatePicker } from "@/app/components/ui/date-picker"
 import { Label } from "@/app/components/ui/label"
+import { Skeleton } from "@/app/components/ui/skeleton"
 import { format } from "date-fns"
 import { toast } from "sonner"
 import { useSite } from "@/app/context/SiteContext"
@@ -64,9 +65,14 @@ export function CreateSubscriptionDialog({ open, onOpenChange, onSuccess }: Crea
     () => getLeads(currentSite!.id)
   )
 
-  const { data: catalogData } = useSWR(
+  const { data: catalogData, error: catalogLoadError, isLoading: catalogLoading, mutate: reloadCatalog } = useSWR(
     open && currentSite ? ['catalog', currentSite.id, 'subscriptions'] : null,
-    () => listCatalogItems({ siteId: currentSite!.id, isRecurring: true, pageSize: 100 })
+    async () => {
+      const result = await listCatalogItems({ siteId: currentSite!.id, isRecurring: true, pageSize: 100 })
+      if (result.error) throw new Error('Unable to load products and services')
+      return result
+    },
+    { shouldRetryOnError: false }
   )
 
   const leads = leadsData?.leads || []
@@ -101,7 +107,7 @@ export function CreateSubscriptionDialog({ open, onOpenChange, onSuccess }: Crea
 
         // See if this lead has a buyer_user_id we can copy
         if (finalLeadId) {
-          const matchingLead = leads.find((l: any) => l.id === finalLeadId)
+          const matchingLead = leads.find((lead) => lead.id === finalLeadId)
           if (matchingLead?.buyer_user_id) {
             finalBuyerUserId = matchingLead.buyer_user_id
           }
@@ -112,7 +118,7 @@ export function CreateSubscriptionDialog({ open, onOpenChange, onSuccess }: Crea
         "catalog_item", 
         data.catalog_item_value, 
         currentSite.id,
-        { kind: "digital_asset" } // defaults to a digital asset since it's recurring
+        { kind: "digital_asset" }
       )
       if (catalogError) throw new Error(`Catalog error: ${catalogError}`)
 
@@ -140,8 +146,8 @@ export function CreateSubscriptionDialog({ open, onOpenChange, onSuccess }: Crea
       setBuyerUser(null)
       onSuccess()
       onOpenChange(false)
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to create subscription')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to create subscription')
     } finally {
       setIsSubmitting(false)
     }
@@ -160,13 +166,26 @@ export function CreateSubscriptionDialog({ open, onOpenChange, onSuccess }: Crea
           <DialogBody className="grid gap-4">
             <div className="grid gap-2">
               <Label htmlFor="catalog_item_value">Service / Product</Label>
-              <RelationSelect
-                options={items.map((i: any) => ({ id: i.id, label: i.name }))}
-                value={catalogItemValue}
-                onValueChange={(val) => setValue('catalog_item_value', val, { shouldValidate: true })}
-                placeholder="Select a recurring plan..."
-                emptyMessage="No recurring plans found"
-              />
+              {catalogLoading ? (
+                <div role="status" aria-label="Loading products and services">
+                  <Skeleton className="h-12 w-full" />
+                </div>
+              ) : catalogLoadError ? (
+                <div role="alert" className="grid gap-2">
+                  <p className="text-sm text-destructive">Unable to load products and services.</p>
+                  <Button type="button" variant="outline" onClick={() => { void reloadCatalog() }}>
+                    Retry
+                  </Button>
+                </div>
+              ) : (
+                <RelationSelect
+                  options={items.map((item) => ({ id: item.id, label: item.name }))}
+                  value={catalogItemValue}
+                  onValueChange={(val) => setValue('catalog_item_value', val, { shouldValidate: true })}
+                  placeholder="Select a recurring plan..."
+                  emptyMessage="No recurring plans found"
+                />
+              )}
             </div>
             <div className="grid gap-2">
               <Label>Buyer</Label>
@@ -179,7 +198,7 @@ export function CreateSubscriptionDialog({ open, onOpenChange, onSuccess }: Crea
             <div className="grid gap-2">
               <Label htmlFor="lead_value">Customer</Label>
               <RelationSelect
-                options={leads.map((l: any) => ({ id: l.id, label: l.name || l.email }))}
+                options={leads.map((lead) => ({ id: lead.id, label: lead.name || lead.email }))}
                 value={leadValue}
                 onValueChange={(val) => setValue('lead_value', val, { shouldValidate: true })}
                 placeholder={buyerUser ? "Optional: Customer will be auto-created" : "Select customer..."}

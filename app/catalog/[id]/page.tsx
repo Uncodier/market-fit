@@ -21,7 +21,6 @@ import {
 import { ActionFooter } from "@/app/components/ui/card-footer"
 import { ResponsiveTabsList, TabItem } from "@/app/components/ui/responsive-tabs-list"
 import { Tabs, TabsContent } from "@/app/components/ui/tabs"
-import { EmptyCard } from "@/app/components/ui/empty-card"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,7 +32,7 @@ import {
   AlertDialogTitle,
 } from "@/app/components/ui/alert-dialog"
 import { toast } from "sonner"
-import { Trash2, Activity, RotateCcw } from "@/app/components/ui/icons"
+import { Trash2, RotateCcw } from "@/app/components/ui/icons"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { Textarea } from "@/app/components/ui/textarea"
 import { ImageUpload } from "@/app/components/ui/image-upload"
@@ -54,6 +53,7 @@ import { StorefrontDisplayCard } from "../components/StorefrontDisplayCard"
 import { ProcurementTab } from "../procurement/ProcurementTab"
 import { CatalogItemAvailabilityCard } from "../components/CatalogItemAvailabilityCard"
 import { ProductInventoryCard } from "../components/ProductInventoryCard"
+import { CatalogSalesTab } from "../components/CatalogSalesTab"
 
 export default function CatalogItemDetail(props: { params: Promise<{ id: string }> }) {
   const params = React.use(props.params)
@@ -456,12 +456,7 @@ export default function CatalogItemDetail(props: { params: Promise<{ id: string 
           </TabsContent>
 
           <TabsContent value="sales" className="m-0 border-0 p-4 md:p-6 w-full focus-visible:outline-none">
-            <div className="mx-auto max-w-[800px]">
-              <EmptyCard
-                icon={<Activity className="h-12 w-12 text-muted-foreground/50" />}
-                title={t('catalog.tabs.salesHistory') || "Sales History (Coming Soon)"}
-                description={t('catalog.tabs.salesHistoryDesc') || "Track revenue and units sold over time for this item."} />
-            </div>
+            {item && currentSite && <CatalogSalesTab key={`${currentSite.id}:${item.id}`} catalogItemId={item.id} siteId={currentSite.id} />}
           </TabsContent>
         </div>
       </Tabs>

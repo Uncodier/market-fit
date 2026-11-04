@@ -68,6 +68,34 @@ function setup(overrides = {}, invoices?: InvoiceRow[]) {
 describe("subscription period invoice generation", () => {
   beforeEach(() => jest.resetAllMocks())
 
+  it("uses the updated recurring amount for the next cycle without modifying a previous invoice", async () => {
+    const previousInvoice = {
+      id: "previous-invoice", status: "completed", site_id: siteId, subscription_id: subscriptionId,
+      sale_date: "2026-09-20", amount: 125.5, amount_due: 0,
+      product_details: { billing_period_start: "2026-09-20" },
+    }
+    const snapshot = JSON.parse(JSON.stringify(previousInvoice))
+    const { write } = setup({ amount: "250.50" }, [previousInvoice])
+    expect(await generateSubscriptionPeriodInvoice(input)).toEqual({ data: { id: "invoice-1" } })
+    expect(write.insert).toHaveBeenCalledWith(expect.objectContaining({
+      amount: 250.5, amount_due: 250.5, sale_date: input.billingDate,
+    }))
+    expect(previousInvoice).toEqual(snapshot)
+  })
+
+  it("keeps an already generated next-cycle invoice when the recurring amount changes", async () => {
+    const invoice = {
+      id: "existing-invoice", status: "pending", site_id: siteId, subscription_id: subscriptionId,
+      sale_date: input.billingDate, amount: 125.5, amount_due: 125.5,
+      product_details: { billing_period_start: input.billingDate },
+    }
+    const { write } = setup({ amount: "250.50" }, [invoice])
+    expect(await generateSubscriptionPeriodInvoice(input)).toEqual({ data: { id: invoice.id }, existing: true })
+    expect(write.insert).not.toHaveBeenCalled()
+    expect(invoice.amount).toBe(125.5)
+    expect(invoice.amount_due).toBe(125.5)
+  })
+
   it("generates the first cycle using server-owned amount, currency, and dates without advancing billing", async () => {
     const { read, lookup, write, from } = setup()
     expect(await generateSubscriptionPeriodInvoice(input)).toEqual({ data: { id: "invoice-1" } })

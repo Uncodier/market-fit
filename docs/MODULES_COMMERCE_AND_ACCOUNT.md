@@ -6,6 +6,12 @@ provider-dependent. See the main guide for shared concepts and limitations.
 
 ## Workspace and personal tools
 
+### Customer subscriptions — `/subscriptions`
+- **Amount changes:** Open a subscription and use the pencil button beside **Amount** in its About panel. Enter the recurring amount and confirm with Save. The new amount is used for the next ungenerated billing cycle and subsequent renewals; existing invoices and payments remain unchanged, including invoices already generated for the next period.
+- **Controls:** Editing requires subscription update permission and server-side site authorization. Amounts must be non-negative with at most two decimal places; period invoice generation requires an amount greater than zero. Concurrent subscription edits are rejected for reload and retry.
+- **Scope:** This updates the workspace subscription record, not a Stripe price or the platform billing plan at `/billing`.
+- **Source:** [Amount editor](../app/subscriptions/components/SubscriptionAboutPanel.tsx); [authorized update](../app/subscriptions/update-details.ts); [period invoices](../app/subscriptions/generate-period-invoice.ts).
+
 ### Projects — `/projects`
 - **Purpose/capabilities:** Choose an accessible business workspace; open project management or start creating a business. Selecting a project opens AI Workspace.
 - **Use:** Confirm the business before opening its CRM, commerce, or operational records. Use `/projects?manage=1` to manage projects even when one is already selected.

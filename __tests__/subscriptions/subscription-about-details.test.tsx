@@ -43,6 +43,16 @@ describe("inline subscription amount and end date", () => {
   })
   afterEach(() => jest.restoreAllMocks())
 
+  it("opens the next-cycle amount editor with an explicit keyboard-accessible button", () => {
+    const { onUpdateAmount } = setup()
+    const edit = screen.getByRole("button", { name: "Edit amount for next billing cycle" })
+    expect(edit).toHaveAccessibleDescription("Amount for the next billing cycle and subsequent renewals. Existing invoices are unchanged.")
+    fireEvent.click(edit)
+    expect(screen.getByLabelText("Amount")).toHaveValue(125)
+    expect(screen.getByText("Applies from the next billing cycle onward. Existing invoices and payments are unchanged.")).toBeInTheDocument()
+    expect(onUpdateAmount).not.toHaveBeenCalled()
+  })
+
   it.each(["250.50", "0"])("saves Amount %s only after confirmation and updates the recurring display", async (value) => {
     const { onUpdateAmount, props, rerender } = setup()
     const input = openAmount()
@@ -155,6 +165,7 @@ describe("inline subscription amount and end date", () => {
   it("does not open editors without update permission", () => {
     jest.mocked(useOptionalPermissions).mockReturnValue({ siteId: subscription.site_id, capabilities: null, isViewOnly: true, can: () => false })
     setup()
+    expect(screen.queryByRole("button", { name: "Edit amount for next billing cycle" })).not.toBeInTheDocument()
     fireEvent.click(screen.getAllByText("$125.00")[1])
     fireEvent.click(screen.getByText("Dec 20, 2026"))
     expect(screen.queryByLabelText("Amount")).not.toBeInTheDocument()
