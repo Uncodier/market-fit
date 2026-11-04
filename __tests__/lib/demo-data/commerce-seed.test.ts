@@ -1,6 +1,18 @@
-import { getDemoData } from "@/lib/demo-data"
+import { availableDemos, getDemoData } from "@/lib/demo-data"
 
 describe("demo commerce seed", () => {
+  it("uses the Cowork deployment URL for the demo and robot preview", async () => {
+    const previewUrl = "https://apps-5ouihsnwt-uncodie.vercel.app"
+    const data = await getDemoData("demo-habituall")
+    expect(availableDemos.find(demo => demo.id === "demo-habituall")?.url).toBe(previewUrl)
+    expect(data?.requirement_status.find((status: { id: string }) =>
+      status.id === "reqstat-habituall-1"
+    )?.preview_url).toBe(previewUrl)
+    expect(data?.requirement_status.filter((status: { preview_url?: string }) =>
+      status.preview_url
+    )).toHaveLength(1)
+  })
+
   it("fills HabitUall catalog, records, reservations, and commerce settings", async () => {
     const data = await getDemoData("demo-habituall")
     expect(data?.catalog_items?.length).toBeGreaterThan(0)

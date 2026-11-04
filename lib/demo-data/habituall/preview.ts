@@ -1,0 +1,1 @@
+export const COWORK_PREVIEW_URL = "https://apps-5ouihsnwt-uncodie.vercel.app"

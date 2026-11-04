@@ -9,6 +9,7 @@ import { attachDemoTraffic } from "./traffic-seed"
 import { attachDemoAnalytics } from "./analytics-seed"
 import { attachDemoSocial } from "./social-seed"
 import { attachDemoPayables } from "./accounts-payable"
+import { COWORK_PREVIEW_URL } from "./habituall/preview"
 
 function finalizeDemoData(data: Record<string, unknown>) {
   const overview = attachDemoOverview(applyDemoTimeline(data))
@@ -25,7 +26,7 @@ export const availableDemos = [
     id: 'demo-habituall',
     name: 'Cowork',
     description: 'Gestión de espacios de coworking, clubes y estudios de clases deportivas.',
-    url: 'https://apps-o8a3yagp1.preview.makinari.com'
+    url: COWORK_PREVIEW_URL
   },
   {
     id: 'demo-saas-en-123',
@@ -91,7 +92,12 @@ export const getDemoData = async (siteId: string | null) => {
         import('./habituall/context'),
       ]);
       return finalizeDemoData(mergeDemoData(
-        base.habituall_data,
+        {
+          ...base.habituall_data,
+          requirement_status: base.habituall_data.requirement_status.map(status =>
+            status.preview_url ? { ...status, preview_url: COWORK_PREVIEW_URL } : status
+          ),
+        },
         commerce.habituallCommerce,
         records.habituallRecords,
         workflows.habituallWorkflows,
