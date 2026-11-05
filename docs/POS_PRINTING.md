@@ -87,6 +87,16 @@ badge. Test printing remains an explicit action in Settings.
 
 Connection availability does not prove paper, ink, or successful physical output.
 
+WebUSB probes, reconnects and complete ticket writes share an exclusive session.
+The device is closed after each operation, including failures, releasing its
+interfaces without forgetting browser permission. Web Locks coordinate same-origin
+tabs; a local queue also serializes operations within a tab. Probes cannot close
+an in-progress ticket, and failed writes are never automatically replayed.
+After deploying this change, close or reload older application tabs once: their
+previous code may still hold a USB interface indefinitely and does not participate
+in this coordination. This fix cannot forcibly release another application's or
+an OS driver's claim. Physical acceptance on the affected Mac remains required.
+
 1. Use a browser exposing WebUSB/Web Serial (typically desktop Chrome or Edge).
 2. In Settings > Printers, select USB and the actual paper width (58 or 80 mm).
 3. Enable the POS module, connect the device on the cashier's computer, and save.

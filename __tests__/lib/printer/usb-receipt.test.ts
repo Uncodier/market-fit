@@ -23,6 +23,7 @@ describe("direct USB receipt output", () => {
       productId: 2,
       serialNumber: "receipt-usb",
       opened: true,
+      close: jest.fn(async () => { device.opened = false }),
       configuration: {
         interfaces: [{
           claimed: true,

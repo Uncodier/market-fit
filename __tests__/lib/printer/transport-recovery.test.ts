@@ -29,6 +29,7 @@ function createUsbDevice(vendorId = 1, productId = 2) {
     }),
     close: jest.fn(async () => {
       device.opened = false
+      printerInterface.claimed = false
     }),
     selectConfiguration: jest.fn(async () => undefined),
     claimInterface: jest.fn(async () => {

@@ -14,6 +14,12 @@ const run = (devices = [printer, system]) => printRegisterReport(closedRegisterS
 function installUsb() {
   const device = {
     vendorId: 1, productId: 2, opened: true,
+    open: jest.fn(async () => { device.opened = true }),
+    close: jest.fn(async () => {
+      device.opened = false
+      device.configuration.interfaces[0].claimed = false
+    }),
+    claimInterface: jest.fn(async () => { device.configuration.interfaces[0].claimed = true }),
     configuration: { interfaces: [{ claimed: true, interfaceNumber: 0,
       alternates: [{ endpoints: [{ direction: "out", endpointNumber: 1, type: "bulk" }] }],
     }] },

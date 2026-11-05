@@ -1,3 +1,5 @@
+import { withUsbSession } from "./usb-session"
+
 type UsbDeviceLike = {
   vendorId: number
   productId: number
@@ -151,16 +153,9 @@ export async function requestWebUsbPrinter(binding?: {
   const device = existing || await usb.requestDevice({ filters: USB_FILTERS })
   cached = device
   try {
-    await claimBulkOut(device)
+    await withUsbSession(device, () => claimBulkOut(device))
   } catch (err) {
     cached = null
-    if (device.opened) {
-      try {
-        await device.close()
-      } catch {
-        // ignore
-      }
-    }
     throw err
   }
   return {
@@ -179,7 +174,7 @@ export async function warmWebUsbPrinter(
   const device = await findDevice(vendorId, productId, serialNumber)
   if (!device) return false
   try {
-    await claimBulkOut(device)
+    await withUsbSession(device, () => claimBulkOut(device))
     return true
   } catch {
     if (cached === device) cached = null
@@ -204,16 +199,19 @@ export async function writeWebUsbBytes(
     device = await usb.requestDevice({ filters: USB_FILTERS })
     cached = device
   }
-  const endpoint = await claimBulkOut(device)
-  const chunkSize = 64
+  const target = device
   try {
-    for (let i = 0; i < data.length; i += chunkSize) {
-      const chunk = data.slice(i, i + chunkSize)
-      const result = await device.transferOut(endpoint, chunk)
-      if (result.status !== "ok" || result.bytesWritten !== chunk.length) {
-        throw new Error("USB printer transfer failed or was incomplete")
+    await withUsbSession(target, async () => {
+      const endpoint = await claimBulkOut(target)
+      const chunkSize = 64
+      for (let i = 0; i < data.length; i += chunkSize) {
+        const chunk = data.slice(i, i + chunkSize)
+        const result = await target.transferOut(endpoint, chunk)
+        if (result.status !== "ok" || result.bytesWritten !== chunk.length) {
+          throw new Error("USB printer transfer failed or was incomplete")
+        }
       }
-    }
+    })
   } catch (err) {
     if (cached === device) cached = null
     throw err

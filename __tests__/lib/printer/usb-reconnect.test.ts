@@ -14,7 +14,7 @@ function installDevices() {
     configuration: { interfaces: [iface] } as { interfaces: typeof iface[] } | null,
     configurations: [{ configurationValue: 3 }],
     open: jest.fn(async () => { device.opened = true }),
-    close: jest.fn(async () => { device.opened = false }),
+    close: jest.fn(async () => { device.opened = false; iface.claimed = false }),
     selectConfiguration: jest.fn(async () => { device.configuration = { interfaces: [iface] } }),
     claimInterface: jest.fn(async () => { iface.claimed = true }),
     selectAlternateInterface: jest.fn(async (_interfaceNumber: number, setting: number) => {
