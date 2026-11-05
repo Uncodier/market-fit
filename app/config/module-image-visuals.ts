@@ -63,6 +63,7 @@ export const MODULE_IMAGE_HINTS: Record<string, string> = {
 
   financeReports: "stack of books",
   accountsReceivable: "invoice receipt",
+  accountsPayable: "invoice receipt",
   journalEntries: "ledger",
   chartOfAccounts: "ledger book",
   payments: "wallet",

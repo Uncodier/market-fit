@@ -78,8 +78,11 @@ Reports, Database, Code (`applicationsRepositories`), and Billing. These images
 load directly from static files for every site, without credentials, database
 lookups, generation requests, or site-credit charges.
 
-Procurement modules and Inventory Minimums use `/api/images/modules/{itemKey}`.
-The route accepts only seven fixed module keys, derives the prompt and 256px
+Procurement modules, Accounts Payable, Inventory Minimums and Modifier Groups use
+`/api/images/modules/{itemKey}`. Accounts Payable's distinct amber receipt is not
+part of the legacy platform cache set, so it needs this authorized cache-miss
+generation path rather than a direct unauthenticated public API request.
+The route accepts only the fixed keys in `app/config/shared-module-images.ts`, derives the prompt and 256px
 dimensions on the server, and uses Makinari's existing `SUPPORT_SITE_ID`, never
 the selected site's cookies or a caller-supplied tenant. Public cached bytes are
 read first. Cache misses require a real authenticated same-origin workspace

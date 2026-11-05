@@ -72,6 +72,7 @@ describe("accounts payable workspace integration", () => {
     expect(prompt).not.toBe(receivablePrompt)
     const url = getModuleImageUrl("buying", "accountsPayable", "Accounts Payable")
     expect(url).not.toBe(getModuleImageUrl("sales", "accountsReceivable", "Accounts Receivable"))
-    expect(url).toContain(`/api/public/image/prompt/${encodeURIComponent(prompt)}?width=256&height=256`)
+    expect(url).toBe("/api/images/modules/accountsPayable")
+    expect(getModuleImageUrl("finance", "accountsPayable", "Another title")).toBe(url)
   })
 })

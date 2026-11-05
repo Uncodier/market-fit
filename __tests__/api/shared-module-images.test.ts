@@ -57,9 +57,9 @@ it('serves the public Makinari cache without authenticating or generating', asyn
   expect(fetch).not.toHaveBeenCalled()
 })
 
-it('generates only the fixed prompt under Makinari with server credentials', async () => {
+it.each(['suppliers', 'accountsPayable'])('generates only the fixed %s prompt under Makinari with server credentials', async itemKey => {
   const response = await run(request({ authorization: 'Bearer forged', 'x-api-key': 'forged',
-    referer: 'https://app.example.test/navigation' }))
+    referer: 'https://app.example.test/navigation' }), itemKey)
   expect(response.status).toBe(200)
   expect(new Uint8Array(await response.arrayBuffer())).toEqual(bytes)
   expect(response.headers.get('cache-control')).toBe('private, no-store')
@@ -68,7 +68,7 @@ it('generates only the fixed prompt under Makinari with server credentials', asy
   const [target, options] = jest.mocked(fetch).mock.calls[0]
   const url = new URL(String(target))
   expect(url.origin).toBe('https://api.example.test')
-  expect(decodeURIComponent(url.pathname)).toBe(`/api/public/image/prompt/${getModuleImagePrompt('buying', 'suppliers', '')}`)
+  expect(decodeURIComponent(url.pathname)).toBe(`/api/public/image/prompt/${getModuleImagePrompt('buying', itemKey, '')}`)
   expect(Object.fromEntries(url.searchParams)).toEqual({ site_id: SUPPORT_SITE_ID, width: '256', height: '256' })
   expect(options).toMatchObject({ headers: { 'x-api-key': 'server-test-key', Accept: 'image/*' },
     credentials: 'omit', cache: 'no-store', redirect: 'error', signal: expect.any(AbortSignal) })

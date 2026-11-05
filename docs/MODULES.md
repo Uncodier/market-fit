@@ -409,17 +409,20 @@ Reproduce locally: `node scripts/docs/module-maturity.cjs --check`. [Inputs and 
 | Customer Orders | Implemented record workflow | 2026-07-21 | 74 | 6 | own: public.sale_orders / 575 | Strong evidence | 9.5 | 10.0 | 9.6 |
 | POS | Implemented service-backed flow | 2026-07-17 | 1217 | 5 | shared: public.sale_orders / 575 | Strong evidence | 9.4 | 10.0 | 9.6 |
 | Projects | Implemented record workflow | 2025-09-19 | 58 | 12 | own: public.sites / 66 | Strong evidence | 9.5 | 9.3 | 9.4 |
+| Content | Implemented record workflow | 2025-03-11 | 167 | 4 | own: public.content / 278 | Strong evidence | 9.0 | 10.0 | 9.3 |
 | Control Center | Implemented record workflow | 2025-04-07 | 32 | 2 | own: public.tasks / 5,891 | Strong evidence | 9.0 | 10.0 | 9.3 |
 | Leads | Implemented record workflow | 2025-02-26 | 170 | 3 | own: public.leads / 34,704 | Strong evidence | 9.0 | 10.0 | 9.3 |
 | Security | Implemented configuration | 2025-03-03 | 254 | 2 | shared: public.api_keys / 5,020 | Strong evidence | 8.8 | 10.0 | 9.2 |
 | Requirements | Implemented record workflow | 2025-02-26 | 39 | 2 | own: public.requirements / 615 | Strong evidence | 9.0 | 9.2 | 9.1 |
 | Catalog | Implemented record workflow | 2026-07-17 | 284 | 3 | own: public.catalog_items / 2,186 | Strong evidence | 8.5 | 10.0 | 9.0 |
 | Chart of Accounts | Implemented record workflow | 2026-08-01 | 165 | 3 | own: public.accounting_accounts / 108 | Strong evidence | 8.5 | 10.0 | 9.0 |
+| Deals | Implemented record workflow | 2026-03-06 | 25 | 2 | own: public.deals / 85 | Strong evidence | 8.5 | 10.0 | 9.0 |
 | Marketplace | Implemented read surface | 2026-08-01 | 341 | 3 | filtered: public.catalog_items [is_marketplace_listed IS TRUE] / 328 | Strong evidence | 8.5 | 10.0 | 9.0 |
 | Public tenders | Implemented read surface | 2026-10-27 | 20 | 6 | shared: public.procurement_tender_publications / 1 | Strong evidence | 8.1 | 10.0 | 8.7 |
 | Agent Configuration | Implemented configuration | 2025-02-26 | 104 | 2 | own: public.agents / 415 | Strong evidence | 9.0 | 7.8 | 8.6 |
 | Context | Implemented configuration | 2025-07-31 | 124 | 2 | shared: public.settings / 64 | Strong evidence | 8.8 | 8.1 | 8.6 |
 | People and company details | Implemented record workflow | 2025-09-24 | 64 | 2 | shared: public.companies / 26,621 | Strong evidence | 8.8 | 8.2 | 8.6 |
+| Quotations | Implemented record workflow | 2026-08-01 | 87 | 3 | filtered: public.quotations [procurement_tender_id IS NULL] / 12 | Strong evidence | 8.0 | 10.0 | 8.6 |
 | Chat | Implemented record workflow | 2025-03-05 | 149 | 1 | own: public.conversations / 21,327 | Strong evidence | 8.0 | 9.6 | 8.5 |
 | Profile | Implemented configuration | 2025-02-27 | 9 | 2 | own: public.profiles / 112 | Strong evidence | 8.0 | 9.5 | 8.5 |
 | Vendor Bills | Implemented record workflow | 2026-08-07 | 67 | 2 | own: public.purchases / 71 | Strong evidence | 8.0 | 9.5 | 8.5 |
@@ -436,6 +439,7 @@ Reproduce locally: `node scripts/docs/module-maturity.cjs --check`. [Inputs and 
 | Shipments | Implemented record workflow | 2026-07-17 | 20 | 2 | own: public.shipments / 9 | Strong evidence | 7.5 | 10.0 | 8.3 |
 | Team | Implemented configuration | 2025-04-24 | 107 | 1 | own: public.site_members / 39 | Strong evidence | 7.5 | 10.0 | 8.3 |
 | Tenders | Implemented record workflow | 2026-10-27 | 115 | 5 | own: public.procurement_tenders / 1 | Strong evidence | 7.5 | 10.0 | 8.3 |
+| Transactions | Implemented record workflow | 2026-08-01 | 7 | 2 | own: public.transactions / 110 | Strong evidence | 7.5 | 10.0 | 8.3 |
 | Reservations | Implemented record workflow | 2026-07-21 | 126 | 2 | own: public.reservations / 191 | Strong evidence | 8.5 | 7.6 | 8.2 |
 | Shop | Implemented read surface | 2026-07-17 | 183 | 2 | shared: public.catalog_items / 2,186 | Strong evidence | 8.1 | 8.5 | 8.2 |
 | Agent Channels | Implemented configuration | 2025-04-30 | 40 | 1 | shared: public.settings / 64 | Strong evidence | 7.5 | 9.1 | 8.0 |
@@ -448,7 +452,9 @@ Reproduce locally: `node scripts/docs/module-maturity.cjs --check`. [Inputs and 
 | Campaigns | Implemented record workflow | 2025-05-16 | 7 | 2 | own: public.campaigns / 130 | Established evidence | 8.0 | 7.0 | 7.7 |
 | Payments / Balances | Implemented record workflow | 2026-09-10 | 20 | 2 | own: public.payments / 410 | Established evidence | 8.0 | 7.1 | 7.7 |
 | Price Lists | Implemented record workflow | 2026-07-17 | 5 | 2 | own: public.price_lists / 71 | Established evidence | 7.0 | 9.4 | 7.7 |
+| Inventory | Implemented record workflow | 2026-07-17 | 10 | 2 | own: public.inventory_levels / 2 | Established evidence | 6.5 | 10.0 | 7.6 |
 | Supplier participation | Implemented record workflow | 2026-10-27 | 66 | 2 | filtered: public.quotations [procurement_source = 'supplier_submitted'] / 1 | Established evidence | 6.5 | 10.0 | 7.6 |
+| Workflows | Implemented service-backed flow | 2026-08-24 | 63 | 1 | own: public.workflow_runs / 96 | Established evidence | 6.5 | 10.0 | 7.6 |
 | Segments | Implemented record workflow | 2025-02-26 | 6 | 3 | own: public.segments / 221 | Established evidence | 8.0 | 6.3 | 7.5 |
 | Records | Implemented record workflow | 2026-08-19 | 96 | 2 | own: public.records / 24 | Established evidence | 7.5 | 7.0 | 7.4 |
 | Business Overview | Implemented read surface | 2026-09-29 | 21 | 1 | shared: public.sales / 598 | Established evidence | 6.3 | 10.0 | 7.4 |
@@ -457,36 +463,31 @@ Reproduce locally: `node scripts/docs/module-maturity.cjs --check`. [Inputs and 
 | Social | Implemented read surface | 2026-09-29 | 34 | 1 | shared: public.content_performance / 26 | Established evidence | 6.3 | 10.0 | 7.4 |
 | Traffic | Implemented read surface | 2026-09-29 | 63 | 1 | shared: public.visitor_sessions / 324,239 | Established evidence | 6.3 | 10.0 | 7.4 |
 | Visits | Implemented record workflow | 2026-08-10 | 35 | 1 | shared: public.reservations / 191 | Established evidence | 6.3 | 10.0 | 7.4 |
-| Content | Implemented record workflow | 2025-03-11 | 166 | 4 | own: public.content / 278 | Established evidence | 9.0 | 3.2 | 7.3 |
 | Notifications | Implemented record workflow | 2025-03-04 | 17 | 1 | own: public.notifications / 14,128 | Established evidence | 7.0 | 7.0 | 7.0 |
 | Visit Settings | Implemented configuration | 2026-08-10 | 35 | 1 | shared: public.settings / 64 | Established evidence | 6.3 | 8.7 | 7.0 |
 | Integrations | Implemented configuration | 2025-09-14 | 7 | 1 | own: public.webhooks_endpoints / 5 | Established evidence | 6.0 | 9.5 | 7.0 |
-| Quotations | Implemented record workflow | 2026-08-01 | 84 | 3 | filtered: public.quotations [procurement_tender_id IS NULL] / 12 | Established evidence | 8.0 | 4.4 | 6.9 |
 | Order Lines | Implemented record workflow | 2026-09-21 | 26 | 0 | own: public.sale_order_items / 1,106 | Established evidence | 6.0 | 9.0 | 6.9 |
 | Applications hub | Implemented read surface | 2026-05-26 | 4 | 2 | none: N/A | Established evidence | 5.6 | 10.0 | 6.9 |
 | Marketplace / Shop Settings | Implemented configuration | 2026-07-21 | 12 | 1 | shared: public.settings / 64 | Established evidence | 5.6 | 10.0 | 6.9 |
 | Purchased Subscriptions | Implemented read surface | 2026-08-01 | 7 | 1 | shared: public.subscriptions / 9 | Established evidence | 5.6 | 10.0 | 6.9 |
 | Purchased Orders | Implemented record workflow | 2026-08-01 | 19 | 2 | own: public.purchase_orders / 0 | Established evidence | 5.5 | 10.0 | 6.9 |
-| Transactions | Implemented record workflow | 2026-08-01 | 7 | 2 | own: public.transactions / 110 | Established evidence | 7.5 | 5.3 | 6.8 |
 | Printers | Implemented configuration | 2026-08-12 | 105 | 1 | shared: public.settings / 64 | Established evidence | 6.3 | 8.0 | 6.8 |
-| Deals | Implemented record workflow | 2026-03-06 | 25 | 2 | own: public.deals / 85 | Established evidence | 8.5 | 2.6 | 6.7 |
 | Assets | Implemented record workflow | 2025-02-26 | 1 | 1 | own: public.assets / 1,613 | Established evidence | 6.0 | 8.3 | 6.7 |
 | Public booking | Implemented service-backed flow | 2026-05-20 | 25 | 0 | shared: public.reservations / 191 | Established evidence | 5.6 | 9.1 | 6.7 |
 | Skills | Implemented configuration | 2026-04-21 | 10 | 2 | own: public.site_skills / 0 | Established evidence | 6.0 | 7.9 | 6.6 |
 | Calendar | Implemented configuration | 2026-05-20 | 5 | 1 | shared: public.settings / 64 | Established evidence | 5.6 | 8.3 | 6.4 |
 | General Settings | Implemented configuration | 2025-04-24 | 0 | 2 | shared: public.settings / 64 | Established evidence | 5.0 | 9.6 | 6.4 |
-| Workflows | Implemented service-backed flow | 2026-08-24 | 59 | 1 | own: public.workflow_runs / 96 | Established evidence | 6.5 | 5.7 | 6.3 |
 | Approvals | Implemented record workflow | 2026-10-27 | 48 | 0 | own: public.procurement_event_approvals / 6 | Established evidence | 4.5 | 10.0 | 6.2 |
 | Personal credentials | Implemented record workflow | 2026-10-27 | 26 | 1 | own: public.procurement_credentials / 0 | Established evidence | 4.5 | 10.0 | 6.2 |
 | Procurement Rules | Implemented configuration | 2026-10-27 | 36 | 0 | own: public.procurement_policy_versions / 5 | Established evidence | 4.5 | 10.0 | 6.2 |
 | Suppliers | Implemented record workflow | 2026-10-27 | 24 | 0 | own: public.suppliers / 1 | Established evidence | 4.5 | 10.0 | 6.2 |
-| Inventory | Implemented record workflow | 2026-07-17 | 10 | 2 | own: public.inventory_levels / 2 | Established evidence | 6.5 | 5.2 | 6.1 |
 | Sales | Implemented record workflow | 2025-05-02 | 0 | 2 | own: public.sales / 598 | Established evidence | 6.0 | 6.2 | 6.1 |
 | Database | Implemented record workflow | 2026-05-26 | 7 | 1 | shared: public.apps_tenants / 0 | Established evidence | 5.6 | 7.4 | 6.1 |
 | Accounts Payable | Implemented read surface | 2026-11-03 | 44 | 0 | shared: public.purchases / 71 | Established evidence | 4.4 | 10.0 | 6.1 |
 | Accounts Receivable | Implemented read surface | 2026-10-14 | 38 | 0 | shared: public.sales / 598 | Established evidence | 4.4 | 10.0 | 6.1 |
 | Check-in | Implemented record workflow | 2026-08-01 | 0 | 2 | shared: public.reservations / 191 | Established evidence | 4.4 | 10.0 | 6.1 |
 | Social Networks | Implemented configuration | 2025-04-24 | 2 | 1 | shared: public.settings / 64 | Developing evidence | 5.0 | 8.1 | 5.9 |
+| Secrets | Implemented configuration | 2026-09-09 | 3 | 1 | own: public.site_secrets / 3 | Developing evidence | 4.0 | 10.0 | 5.8 |
 | Repositories | Implemented record workflow | 2026-05-26 | 2 | 1 | shared: public.cloud_files / 2 | Developing evidence | 4.4 | 8.7 | 5.7 |
 | Company | Implemented configuration | 2025-04-24 | 0 | 1 | shared: public.settings / 64 | Developing evidence | 3.8 | 10.0 | 5.7 |
 | Inventory Minimums | Implemented record workflow | 2026-10-30 | 88 | 0 | own: public.procurement_replenishment_rules / 0 | Developing evidence | 3.5 | 10.0 | 5.4 |
@@ -495,4 +496,3 @@ Reproduce locally: `node scripts/docs/module-maturity.cjs --check`. [Inputs and 
 | Procurement / Tender Settings | Implemented configuration | 2026-10-27 | 17 | 0 | shared: public.procurement_tender_portals / 1 | Developing evidence | 3.1 | 10.0 | 5.2 |
 | Purchased Library | Implemented read surface | 2026-08-01 | 0 | 1 | shared: public.entitlements / 2 | Developing evidence | 3.1 | 10.0 | 5.2 |
 | Sales Home | Hidden legacy entry | 2026-05-26 | 0 | 1 | none: N/A | Developing evidence | 3.1 | 10.0 | 5.2 |
-| Secrets | Implemented configuration | 2026-09-09 | 1 | 1 | own: public.site_secrets / 3 | Developing evidence | 4.0 | 5.4 | 4.4 |
