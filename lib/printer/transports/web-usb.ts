@@ -4,17 +4,21 @@ type UsbDeviceLike = {
   serialNumber?: string
   opened: boolean
   configuration?: { interfaces: UsbInterfaceLike[] } | null
+  configurations?: { configurationValue: number }[]
   open: () => Promise<void>
   close: () => Promise<void>
   selectConfiguration: (value: number) => Promise<void>
   claimInterface: (n: number) => Promise<void>
+  selectAlternateInterface?: (interfaceNumber: number, alternateSetting: number) => Promise<void>
   transferOut: (endpointNumber: number, data: BufferSource) => Promise<{ status: string; bytesWritten: number }>
 }
 
 type UsbInterfaceLike = {
   claimed: boolean
   interfaceNumber: number
+  alternate?: { alternateSetting: number }
   alternates: {
+    alternateSetting?: number
     endpoints: { direction: string; endpointNumber: number; type: string }[]
   }[]
 }
@@ -91,14 +95,11 @@ async function claimBulkOut(device: UsbDeviceLike): Promise<number> {
   if (!device.opened) await device.open()
   
   if (!device.configuration) {
-    try {
-      await device.selectConfiguration(1)
-    } catch {
-      // ignore
-    }
+    await device.selectConfiguration(device.configurations?.[0]?.configurationValue ?? 1)
   }
 
   const interfaces = device.configuration?.interfaces || []
+  let connectionError: unknown
   
   // Prefer a bulk or interrupt output endpoint.
   for (const iface of interfaces) {
@@ -107,43 +108,36 @@ async function claimBulkOut(device: UsbDeviceLike): Promise<number> {
         (e) => e.direction === "out" && (e.type === "bulk" || e.type === "interrupt"),
       )
       if (endpoint) {
-        if (!iface.claimed) {
-          try {
+        try {
+          if (!iface.claimed) {
             await device.claimInterface(iface.interfaceNumber)
-          } catch (e) {
-            console.error("Could not claim USB printer interface", iface.interfaceNumber, e)
-            continue
           }
+          if (alternate.alternateSetting != null &&
+              iface.alternate?.alternateSetting !== alternate.alternateSetting) {
+            if (!device.selectAlternateInterface) throw new Error("USB alternate interface selection is unavailable")
+            await device.selectAlternateInterface(iface.interfaceNumber, alternate.alternateSetting)
+          }
+          return endpoint.endpointNumber
+        } catch (err) {
+          connectionError = err
         }
-        return endpoint.endpointNumber
       }
     }
   }
 
-  // Fall back to any output endpoint exposed by the printer.
-  for (const iface of interfaces) {
-    for (const alternate of iface.alternates || []) {
-      const endpoint = alternate.endpoints?.find(
-        (e) => e.direction === "out"
-      )
-      if (endpoint) {
-        if (!iface.claimed) {
-          try {
-            await device.claimInterface(iface.interfaceNumber)
-            return endpoint.endpointNumber
-          } catch {
-             continue
-          }
-        }
-        return endpoint.endpointNumber
-      }
-    }
+  if (connectionError) {
+    const detail = connectionError instanceof Error ? connectionError.message : String(connectionError)
+    throw new Error(`Could not access the USB printer interface: ${detail}`)
   }
 
-  throw new Error("No USB bulk endpoint found on this printer")
+  throw new Error("This device has no USB bulk or interrupt output endpoint. It may require a serial connection or the system printer driver.")
 }
 
-export async function requestWebUsbPrinter(): Promise<{
+export async function requestWebUsbPrinter(binding?: {
+  usbVendorId?: number
+  usbProductId?: number
+  usbSerialNumber?: string
+}): Promise<{
   kind: "webusb"
   vendorId: number
   productId: number
@@ -151,7 +145,10 @@ export async function requestWebUsbPrinter(): Promise<{
 }> {
   const usb = getUsb()
   if (!usb) throw new Error("WebUSB is not supported in this browser")
-  const device = await usb.requestDevice({ filters: USB_FILTERS })
+  const existing = binding
+    ? await findDevice(binding.usbVendorId, binding.usbProductId, binding.usbSerialNumber)
+    : null
+  const device = existing || await usb.requestDevice({ filters: USB_FILTERS })
   cached = device
   try {
     await claimBulkOut(device)

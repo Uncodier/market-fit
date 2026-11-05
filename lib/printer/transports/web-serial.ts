@@ -1,4 +1,5 @@
 import { isWebUsbSupported, requestWebUsbPrinter } from "./web-usb"
+import type { WorkstationBind } from "../core/types"
 
 type SerialPortLike = {
   open: (options: { baudRate: number }) => Promise<void>
@@ -85,18 +86,30 @@ async function findPort(vendorId?: number, productId?: number): Promise<SerialPo
   return candidates[0] || null
 }
 
-export async function requestUsbPrinter(): Promise<{
+export async function requestUsbPrinter(binding?: WorkstationBind | null): Promise<{
   kind: "serial" | "webusb"
   vendorId?: number
   productId?: number
   serialNumber?: string
   baudRate?: number
 } | null> {
+  // Reconnect the saved transport before opening a permission chooser. A serial
+  // printer may also appear in WebUSB without exposing a usable print interface.
+  if (binding?.usbKind === "webusb") return requestWebUsbPrinter(binding)
+  const baudRate = binding?.baudRate || DEFAULT_BAUD
+  if (binding) {
+    const port = await findPort(binding.usbVendorId, binding.usbProductId)
+    if (port) {
+      await ensureOpen(port, baudRate)
+      const info = port.getInfo?.() || {}
+      return { kind: "serial", vendorId: info.usbVendorId, productId: info.usbProductId, baudRate }
+    }
+  }
   let usbError: unknown = null
   
-  if (isWebUsbSupported()) {
+  if (binding?.usbKind !== "serial" && isWebUsbSupported()) {
     try {
-      return await requestWebUsbPrinter()
+      return await requestWebUsbPrinter(binding || undefined)
     } catch (err) {
       if (isUserCancel(err)) throw err
       usbError = err
@@ -108,12 +121,12 @@ export async function requestUsbPrinter(): Promise<{
     try {
       const port = await serial.requestPort()
       const info = port.getInfo?.() || {}
-      await ensureOpen(port, DEFAULT_BAUD)
+      await ensureOpen(port, baudRate)
       return {
         kind: "serial",
         vendorId: info.usbVendorId,
         productId: info.usbProductId,
-        baudRate: DEFAULT_BAUD,
+        baudRate,
       }
     } catch (err) {
       if (!isUserCancel(err)) {

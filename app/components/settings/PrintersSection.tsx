@@ -160,7 +160,7 @@ export function PrintersSection({ active, onSave }: PrintersSectionProps) {
           toast.error(t("settings.printers.usbUnsupported") || "USB printing needs Chrome or Edge")
           return
         }
-        const info = await requestUsbPrinter()
+        const info = await requestUsbPrinter(getPrinterBind(device.id))
         if (info) {
           await applyConnected(device, {
             printerId: device.id,

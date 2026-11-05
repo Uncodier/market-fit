@@ -166,7 +166,7 @@ export function usePrinterStationStatus(module: PrinterModule): LivePrinterStatu
       let nextDevices = settings.devices
       for (const device of devices) {
         if (device.transport === "usb") {
-          const info = await requestUsbPrinter()
+          const info = await requestUsbPrinter(getPrinterBind(device.id))
           if (info) {
             const bind = usbBind(device.id, info)
             setPrinterBind(bind)

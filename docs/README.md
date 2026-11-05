@@ -9,10 +9,16 @@ Use the guides below before relying on older implementation notes.
   commercial proxy checks, merge preparation and outstanding release gates.
 
 - [Licensing](LICENSING.md) — source-available procurement scope, permitted internal use, commercial licensing requirements and base-license limitations.
-- [Module guide](MODULES.md) — current module purposes, capabilities, practical usage,
-  cross-module workflows, and implementation limits.
-- [Workspace and public commerce guide](MODULES_COMMERCE_AND_ACCOUNT.md) — account tools,
-  storefronts, checkout, booking, buyer portal, and public documents.
+- [Module guide](MODULES.md) — consolidated summary of all workspace and public/account
+  modules, including procurement/tenders, capabilities, usage, maturity and limits.
+- [Module workflows and shared limits](MODULES_WORKFLOWS.md) — cross-module paths,
+  completion evidence and maintenance boundaries.
+- [Buying and procurement detailed reference](MODULES_PROCUREMENT.md) — suppliers,
+  requests, approvals, tenders, rules, minimums, sourcing, quotations/orders,
+  settings, maturity and deployment boundaries.
+- [Workspace and public commerce detailed reference](MODULES_COMMERCE_AND_ACCOUNT.md) — account tools,
+  storefronts, checkout, booking, additive `/home` portal, search, credentials,
+  supplier participation, public tenders, legacy buyer routes and public documents.
 - [Development](DEVELOPMENT.md) — local setup, scripts, tests, and validation.
 - [Architecture](ARCHITECTURE.md) — runtime boundaries and repository layout.
 - [Localization coverage and repair](LOCALIZATION_AUDIT.md) — dictionary checks,
@@ -132,8 +138,8 @@ environment variables before changing production configuration.
 - [Procurement UI reuse](PROCUREMENT_UI_REUSE.md) — prescribed screen references, shared components, verification evidence and visual acceptance limits.
 - [Procurement settings and rules](PROCUREMENT_POLICIES_DESIGN.md) — direct purchases and tenders, net thresholds, cumulative requirements, human/AI approvals, supervisor exceptions, urgent presets and deadlines; design only, with remaining decisions tracked explicitly.
 - [Team Settings location-scoped access](LOCATION_ACCESS_DESIGN.md) — target restricted-location model and module matrix; implementation, supported boundaries, limitations, and deployment steps are in the enforcement guide.
-- [Suppliers, procurement, tenders, and the unified account portal](/Users/prado/Desktop/Proyectos/Uncodie/Code/market-fit/docs/PROCUREMENT_AND_TENDERS_DESIGN.md) — planned model, screens, Marketplace-style global `/tenders`, UI/UX reuse references, and `/buyer` to `/home` migration; not implemented behavior.
-- [Procurement certifications and tender evidence](PROCUREMENT_CERTIFICATIONS_DESIGN.md) — profile credentials, optional representation evidence, provisional AI review, scoped acceptance and platform retention; not implemented behavior.
+- [Suppliers, procurement, tenders, and the unified account portal](/Users/prado/Desktop/Proyectos/Uncodie/Code/market-fit/docs/PROCUREMENT_AND_TENDERS_DESIGN.md) — broader target model and UX references; current implemented slices and remaining scope are in the procurement module guide, not inferred from this design.
+- [Procurement certifications and tender evidence](PROCUREMENT_CERTIFICATIONS_DESIGN.md) — target evidence/assessment model; personal credentials and selective revision sharing have implemented slices, while AI/issuer verification and organization authority remain incomplete.
 
 ## Architecture reviews
 

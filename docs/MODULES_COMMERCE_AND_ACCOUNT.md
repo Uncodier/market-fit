@@ -1,7 +1,8 @@
 # Workspace, personal tools, and public commerce
 
 Companion to [the Makinari module guide](MODULES.md). Reviewed against local
-source on **2026-10-23**; availability remains permission-, deployment-, and
+source for new account/procurement capabilities on **2026-11-04**; unchanged
+commerce entries retain their **2026-10-23** review. Availability remains permission-, deployment-, and
 provider-dependent. See the main guide for shared concepts and limitations.
 
 ## Workspace and personal tools
@@ -39,16 +40,45 @@ provider-dependent. See the main guide for shared concepts and limitations.
 
 ## Public commerce and buyer portal
 
+These experiences are not seller sidebar modules. They have their own identity,
+visibility and payment/access contracts; buyer identity is not workspace membership.
+
+### Unified account — `/home`
+- **Purpose/capabilities:** Account hub combining existing buyer purchases, quotations, subscriptions and library with Marketplace/public-tender discovery, personal credentials and supplier activity. It reuses BuyerShell and does not require creating a business workspace to use account tools.
+- **Use:** Open `/home/orders`, `/home/quotes`, `/home/subscriptions` or `/home/library` to review personal commerce; use `/home/profile` for profile/credentials and `/home/submissions` for invitations, drafts and submitted quotations.
+- **Limits/maturity:** Additive, transitional alias, not a completed replacement for `/buyer`. Live detail, course, download, ticket and booking experiences still use existing buyer routes. `/home/preview/[kind]/[id]` is demo-only and never evidence of a real purchase or access grant.
+- **Source:** [Home](../app/home/page.tsx); [account shell](../app/home/layout.tsx); [entitlement destinations](../app/buyer/experience-routes.ts); [demo previews](../app/home/preview/[kind]/[id]/page.tsx).
+
+### Account search — `/home/search?q=…`
+- **Purpose/capabilities:** Search across personal purchases, quotations, subscriptions, library, reservations, accessible businesses, credentials, submissions, drafts, supplier opportunities, Marketplace products and public tenders; filter by collection and open its matching record.
+- **Use:** Enter a term in the Home search field, choose a collection if needed and open the original record for its authorized actions.
+- **Limits/maturity:** Implemented aggregation, not an unrestricted tenant-wide index or file-content search. Sources retain personal/public authorization. Paginated sources are read within a bounded limit; failures/truncation are disclosed rather than presented as complete empty collections. Some search UI labels remain English-only.
+- **Source:** [Search view](../app/home/search/search-view.tsx); [source loading](../app/home/search/load-sources.ts).
+
+### Personal credentials — `/home/profile`
+- **Purpose/capabilities:** Maintain personal credential metadata, private files, immutable revisions, authorized downloads and archival alongside the buyer profile. Select exact revisions when sharing submission evidence; buyers cannot browse the holder's complete private profile.
+- **Use:** Create the credential, finish uploading its revision, then explicitly choose evidence in the relevant proposal. Updating a credential never silently replaces an already submitted revision.
+- **Limits/maturity:** Implemented, Storage/migration-gated slice. Person-owned credentials only; uploading legal evidence does not establish organization authority, authenticity, eligibility or AI acceptance. No issuer verification, assessment worker, malware scanning or automated abandoned-upload cleanup is claimed.
+- **Storage:** PDF/PNG/JPEG, up to 8 MiB per file and 128 MiB account reserved storage; archived/pending revisions still count. Archival retains history and is not erasure. Downloads are private attachments, not public bearer links.
+- **Source:** [Profile](../app/home/profile/page.tsx); [credential manager](../app/home/profile/credential-manager.tsx); [evidence controls and rollout](../app/purchases/procurement/evidence/README.md).
+
+### Public tenders
+- **Routes:** Global directory `/tenders`, buyer portal `/tenders/[siteSlug]` and publication detail `/tenders/[siteSlug]/[tenderSlug]`.
+- **Purpose/capabilities:** Discover eligible public publications, inspect published requirements and deadlines and follow the authenticated participation action. Unlisted visibility and global-directory opt-in are separate choices; public pages expose minimal published data, not internal estimates or competitor proposals.
+- **Use:** Review the publication and choose an applicant authorized by the server before preparing the proposal. Readable site URLs derive from site names using the Shop resolver; legacy portal UUID links redirect while underlying publication/RLS checks remain intact.
+- **Limits/maturity:** Implemented, deployment-gated slice. Discovery does not confer representation or submission rights. Public pages do not establish legal acceptance, supplier authenticity, stock or award. Full branding/legal/clarification workflows remain incomplete.
+- **Source:** [Directory](../app/tenders/page.tsx); [publication route](../app/tenders/[siteSlug]/[tenderSlug]/page.tsx); [identity resolver](../app/tenders/site-identity.ts); [buyer tender module](MODULES_PROCUREMENT.md#tenders--purchasestenders).
+
 ### Supplier participation — `/home/submissions`
+- **Purpose/use:** Review direct invitations, saved drafts and immutable submitted quotations; `/home/tenders` aliases the same activity page. Publication-specific links offer personal, represented supplier or business applicants only when the server permits them. Internal buyer supplier grants are distinct from personal/business participation choices.
 - **Discovery:** The account activity list shows only direct buyer invitations, not general public opportunities or approved-supplier eligibility. Public tenders remain discoverable at `/tenders`; publication-specific links open their applicant selector and quotation form.
 - **Drafts:** Save draft persists incomplete quotation fields privately in the database, scoped to the authenticated account, publication version and applicant. Browser storage is not used for these drafts. Uploaded files must finish processing before saving their selected revision IDs.
 - **Saved draft list:** The Drafts tab lists database-backed drafts, including public-tender drafts, independently of current invitation eligibility. Saving confirms success, opens this tab, and refreshes the list. A draft can be resumed only when the server permits its applicant/publication or an immutable receipt retry.
 - **Submission:** The immutable receipt key and attempted payload are persisted before sending. Optimistic draft revisions prevent stale browser tabs from overwriting a newer draft; reload after a conflict. A confirmed quotation clears its saved draft without treating a cleanup failure as a failed submission.
+- **Evidence/opening:** Explicitly selected evidence revisions remain pinned to the publication/submission; authorized buying managers cannot inspect sealed proposal contents before the opening gate. Supplier submissions are quotations, not payments or automatic awards. Replacement/withdrawal and complete clarification workflows remain incomplete.
+- **Maturity:** Implemented slice with database-backed drafts and immutable receipts; authenticated applicant eligibility is enforced independently of public discovery or draft existence.
 - **Deployment:** Requires the forward-only `20261030170000_procurement_submission_drafts.sql` migration. Without its RPCs the UI reports a persistence failure and does not silently fall back to local storage. Applying the migration to a remote database requires separate explicit approval.
 - **Source:** [Supplier activity](../app/home/submissions); [draft API](../app/api/procurement/credentials/drafts/route.ts).
-
-These experiences are not seller sidebar modules. They have their own identity,
-visibility and payment/access contracts; buyer identity is not workspace membership.
 
 ### Shop — `/shop/[siteSlug]`
 - **Purpose/capabilities:** Browse a single seller's catalog, item details and promotions; choose supported booking/fulfillment options and prepare its cart.
@@ -78,7 +108,7 @@ visibility and payment/access contracts; buyer identity is not workspace members
 - **Purpose/capabilities:** Personal account hub with purchase history (`/buyer/orders`), received quotations (`/buyer/quotes`), acquired subscriptions (`/buyer/subscriptions`) and digital access (`/buyer/library`).
 - **Use:** Review purchased items, proceed through eligible quotation checkout, use acquired content/pass/ticket access, or manage supported subscription actions.
 - **Additional tools:** `/buyer/profile` maintains buyer profile information; `/buyer/visits/new` registers enabled online visits. The hub can show an expiring identity QR and business-management links.
-- **Limits:** Personal queries are buyer-identity scoped. Purchased-site views in Buying do not grant everyone identical redemption rights; the proposed `/home` migration is not current behavior.
+- **Limits/maturity:** Personal queries are buyer-identity scoped. Purchased-site views in Buying do not grant everyone identical redemption rights. `/home` now provides additive account list/hub routes; `/buyer` remains supported for legacy URLs and live detail/access experiences, not fully migrated.
 - **Source:** [Buyer hub](../app/buyer/components/BuyerHomeView.tsx); [buyer actions](../app/buyer/actions.ts); [experience routes](../app/buyer/experience-routes.ts).
 
 #### Purchase detail
