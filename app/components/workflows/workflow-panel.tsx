@@ -68,20 +68,16 @@ export function WorkflowPanel({ activeInstanceId }: { activeInstanceId?: string 
   const [connectionPoint, setConnectionPoint] = useState<WFPoint | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
   const [positions, setPositions] = useState<Record<string, WFPoint>>({})
-  const [heightTick, setHeightTick] = useState(0)
+  const [heights, setHeights] = useState<Record<string, number>>({})
   const heightsRef = useRef<Record<string, number>>({})
   const nodeElsRef = useRef<Record<string, HTMLDivElement | null>>({})
   const graphElRef = useRef<HTMLDivElement>(null)
   const positionsRef = useRef(positions)
   const lastDragPosRef = useRef<WFPoint | null>(null)
-  positionsRef.current = positions
+  useEffect(() => { positionsRef.current = positions }, [positions])
 
   const graphSig = nodes.map((node) => node.id).join(",")
   const resultSig = resultNodes.map((node) => node.id).join(",")
-  const nodesRef = useRef(nodes)
-  const resultNodesRef = useRef(resultNodes)
-  nodesRef.current = nodes
-  resultNodesRef.current = resultNodes
   const selectedRelation = nodes.find((node) => node.id === selectedRelationId && node.type === "wf-step" && node.parent_node_id)
 
   const closeRelationEditor = () => {
@@ -89,10 +85,18 @@ export function WorkflowPanel({ activeInstanceId }: { activeInstanceId?: string 
     setRelationAnchor(null)
   }
 
-  useEffect(() => {
+  const [previousInstanceId, setPreviousInstanceId] = useState(activeInstanceId)
+  if (previousInstanceId !== activeInstanceId) {
+    setPreviousInstanceId(activeInstanceId)
     setSelectedRelationId(null)
     setRelationAnchor(null)
-  }, [activeInstanceId])
+    setConnectionSourceId(null)
+    setConnectionPoint(null)
+  }
+  if (connectionSourceId && !nodes.some((node) => node.id === connectionSourceId)) {
+    setConnectionSourceId(null)
+    setConnectionPoint(null)
+  }
 
   const cancelConnection = useCallback(() => {
     setConnectionSourceId(null)
@@ -101,10 +105,6 @@ export function WorkflowPanel({ activeInstanceId }: { activeInstanceId?: string 
 
   useEffect(() => {
     if (!connectionSourceId) return
-    if (!nodes.some((node) => node.id === connectionSourceId)) {
-      cancelConnection()
-      return
-    }
     let frame = 0
     const onMove = (event: MouseEvent) => {
       const { clientX, clientY } = event
@@ -126,11 +126,7 @@ export function WorkflowPanel({ activeInstanceId }: { activeInstanceId?: string 
       window.removeEventListener("mousemove", onMove)
       window.removeEventListener("keydown", onEscape)
     }
-  }, [connectionSourceId, graphSig, viewportStore, cancelConnection])
-
-  useEffect(() => {
-    cancelConnection()
-  }, [activeInstanceId, cancelConnection])
+  }, [connectionSourceId, viewportStore, cancelConnection])
 
   const startConnection = (nodeId: string) => {
     if (connectionSourceId === nodeId) {
@@ -168,23 +164,24 @@ export function WorkflowPanel({ activeInstanceId }: { activeInstanceId?: string 
     }
   }
 
-  useEffect(() => {
-    if (dragId) return
-    const graph = nodesRef.current
-    const results = resultNodesRef.current
-    setPositions((prev) => {
-      const incoming: Record<string, WFPoint> = {}
-      graph.forEach((node, index) => {
-        incoming[node.id] = prev[node.id] || readSavedPosition(node, index)
-      })
-      results.forEach((node) => {
-        if (prev[node.id]) incoming[node.id] = prev[node.id]
-      })
-      const spaced = spaceWorkflowColumns(graph, incoming)
-      const placed = placeResultNodes(graph, results, spaced, heightsRef.current)
-      return unstackOverlaps([...graph, ...results], placed, heightsRef.current)
+  const layoutKey = `${graphSig}|${resultSig}`
+  const [layoutInputs, setLayoutInputs] = useState({ key: "", heights, dragId })
+  const cardsMeasured = canvasNodes.every((node) => heights[node.id] > 0)
+  if (!dragId && cardsMeasured && (layoutInputs.key !== layoutKey || layoutInputs.heights !== heights || layoutInputs.dragId !== dragId)) {
+    setLayoutInputs({ key: layoutKey, heights, dragId })
+    const incoming: Record<string, WFPoint> = {}
+    nodes.forEach((node, index) => {
+      incoming[node.id] = positions[node.id] || readSavedPosition(node, index)
     })
-  }, [graphSig, resultSig, dragId, heightTick])
+    resultNodes.forEach((node) => {
+      if (positions[node.id]) incoming[node.id] = positions[node.id]
+    })
+    const spaced = spaceWorkflowColumns(nodes, incoming)
+    const placed = placeResultNodes(nodes, resultNodes, spaced, heights)
+    setPositions(unstackOverlaps(canvasNodes, placed, heights))
+  } else if (dragId && layoutInputs.dragId !== dragId) {
+    setLayoutInputs({ ...layoutInputs, dragId })
+  }
 
   const observerRef = useRef<ResizeObserver | null>(null)
 
@@ -203,8 +200,11 @@ export function WorkflowPanel({ activeInstanceId }: { activeInstanceId?: string 
       }
       if (changed) {
         cancelAnimationFrame(frame)
-        frame = requestAnimationFrame(() => setHeightTick((tick) => tick + 1))
+        frame = requestAnimationFrame(() => setHeights({ ...heightsRef.current }))
       }
+    })
+    Object.values(nodeElsRef.current).forEach((el) => {
+      if (el) observerRef.current?.observe(el)
     })
     return () => {
       cancelAnimationFrame(frame)
@@ -226,12 +226,12 @@ export function WorkflowPanel({ activeInstanceId }: { activeInstanceId?: string 
     const height = el.offsetHeight
     if (height <= 0 || heightsRef.current[id] === height) return
     heightsRef.current[id] = height
-    setHeightTick((tick) => tick + 1)
+    setHeights({ ...heightsRef.current })
   }, [])
 
   const graphBounds = useMemo(
-    () => computeGraphBounds(canvasNodes, positions, heightsRef.current),
-    [canvasNodes, positions, heightTick],
+    () => computeGraphBounds(canvasNodes, positions, heights),
+    [canvasNodes, positions, heights],
   )
 
   const persistPositions = (next: Record<string, WFPoint>) => {
@@ -375,7 +375,7 @@ export function WorkflowPanel({ activeInstanceId }: { activeInstanceId?: string 
           <WorkflowEdges
             nodes={canvasNodes}
             positions={positions}
-            heights={heightsRef.current}
+            heights={heights}
             preview={connectionSourceId && connectionPoint ? { fromNode: connectionSourceId, to: connectionPoint } : null}
             selectedRelationId={selectedRelationId}
             onSelectRelation={(id, anchor) => {
@@ -387,7 +387,7 @@ export function WorkflowPanel({ activeInstanceId }: { activeInstanceId?: string 
           <ImprentaLoadingRouteEdges
             edges={loadingEdges}
             positions={positions}
-            nodeHeights={heightsRef.current}
+            nodeHeights={heights}
             nodeW={NODE_W}
             rowH={NODE_H}
           />

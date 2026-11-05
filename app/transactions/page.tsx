@@ -1,6 +1,6 @@
 "use client"
 
-import { MobileFiltersDrawer, FilterContainer, FilterSection, FilterSeparator } from "@/app/components/ui/mobile-filters-drawer"
+import { MobileFiltersDrawer, FilterContainer, FilterSection } from "@/app/components/ui/mobile-filters-drawer"
 import { SortDropdown } from "@/app/components/ui/sort-dropdown"
 
 import React, { useState, useEffect } from "react"
@@ -37,11 +37,11 @@ export default function TransactionsPage() {
   const [categoryFilter, setCategoryFilter] = useState("all")
   const [campaignFilter, setCampaignFilter] = useState("all")
   const [locationFilter, setLocationFilter] = useState("all")
-  const [campaigns, setCampaigns] = useState<any[]>([])
-  const [locations, setLocations] = useState<any[]>([])
+  const [campaigns, setCampaigns] = useState<{ id: string; title: string }[]>([])
+  const [locations, setLocations] = useState<{ id: string; name: string }[]>([])
   const [expenseAccounts, setExpenseAccounts] = useState<AccountingAccount[]>([])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [expenseToEdit, setExpenseToEdit] = useState<any | null>(null)
+  const [expenseToEdit, setExpenseToEdit] = useState<ExpenseRow | null>(null)
 
   const categoryLabels = Object.fromEntries(
     expenseAccounts.map((a) => [a.key || a.code, a.label])
@@ -82,12 +82,15 @@ export default function TransactionsPage() {
   }, [t])
 
   useEffect(() => {
-    const handleCreateEvent = () => handleCreate()
+    const handleCreateEvent = () => {
+      setExpenseToEdit(null)
+      setIsDialogOpen(true)
+    }
     window.addEventListener("transactions:create", handleCreateEvent)
     return () => window.removeEventListener("transactions:create", handleCreateEvent)
   }, [])
 
-  const fetcher = async (params: any) => {
+  const fetcher = async (params: Parameters<typeof listExpenses>[0]) => {
     const res = await listExpenses(params)
     if (res.error) throw new Error(res.error)
     return res
@@ -156,11 +159,6 @@ export default function TransactionsPage() {
     }
   }, [currentSite?.id, mutate])
 
-  const handleCreate = () => {
-    setExpenseToEdit(null)
-    setIsDialogOpen(true)
-  }
-
   const handleEdit = (expense: ExpenseRow) => {
     setExpenseToEdit(expense)
     setIsDialogOpen(true)
@@ -189,8 +187,8 @@ export default function TransactionsPage() {
       await upsertPolizaForExpense(expense.id, currentSite.id)
       toast.success(t("expenses.success.published") || "Expense published to journal")
       mutate()
-    } catch (e: any) {
-      toast.error(e.message || (t("expenses.error.publish") || "Failed to publish"))
+    } catch (e: unknown) {
+      toast.error((e instanceof Error ? e.message : "") || (t("expenses.error.publish") || "Failed to publish"))
     }
   }
 
@@ -200,8 +198,8 @@ export default function TransactionsPage() {
       await removePolizaForSource("expense", expense.id)
       toast.success(t("expenses.success.unpublished") || "Expense unpublished")
       mutate()
-    } catch (e: any) {
-      toast.error(e.message || (t("expenses.error.unpublish") || "Failed to unpublish"))
+    } catch (e: unknown) {
+      toast.error((e instanceof Error ? e.message : "") || (t("expenses.error.unpublish") || "Failed to unpublish"))
     }
   }
 

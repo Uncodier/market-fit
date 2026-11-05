@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import useSWR from "swr"
 import { Button } from "@/app/components/ui/button"
 import { SearchInput } from "@/app/components/ui/search-input"
@@ -34,7 +34,8 @@ import { ContentFiltersDialog } from "./components/ContentFiltersDialog"
 import { ContentTypeViews } from "./components/ContentTypeViews"
 import { ContentPublishDialog } from "./components/ContentPublishDialog"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/app/components/ui/sheet"
-import { EmptyCard } from "@/app/components/ui/empty-card"
+import type { SiteSettings } from "@/app/context/site-types"
+import type { TrendsSegments } from "@/app/components/trends/trends-presentation"
 import { TrendsSection, TrendsColumn } from "@/app/components/trends"
 import { cn } from "@/lib/utils"
 
@@ -44,9 +45,9 @@ export default function ContentPage() {
   const { isLayoutCollapsed } = useLayout()
   const isMobile = useIsMobile()
   const router = useRouter()
-  const { data: segmentsData = [], isLoading: isLoadingSegments } = useSWR(
+  const { data: segmentsData = [] } = useSWR(
     currentSite?.id ? ['segments', currentSite.id] : null,
-    async ([_, siteId]) => {
+    async ([, siteId]) => {
       const { segments, error } = await getSegments(siteId);
       if (error) throw new Error(error);
       return segments ? segments.map(s => ({ id: s.id, name: s.name, description: s.description })) : [];
@@ -57,7 +58,7 @@ export default function ContentPage() {
 
   const { data: campaignsData = [], isLoading: isLoadingCampaigns } = useSWR(
     currentSite?.id ? ['campaigns', currentSite.id] : null,
-    async ([_, siteId]) => {
+    async ([, siteId]) => {
       const response = await getCampaigns(siteId);
       if (response.error) throw new Error(response.error);
       return response.data || [];
@@ -66,9 +67,9 @@ export default function ContentPage() {
   );
   const campaigns = campaignsData;
 
-  const { data: contentData, isLoading: isContentLoading, mutate: mutateContent, isValidating: isContentValidating } = useSWR(
+  const { data: contentData, isLoading: isContentLoading, mutate: mutateContent } = useSWR(
     currentSite?.id ? ['content', currentSite.id] : null,
-    async ([_, siteId]) => {
+    async ([, siteId]) => {
       const result = await getContent(siteId);
       if (result.error) throw new Error(result.error);
       
@@ -87,7 +88,7 @@ export default function ContentPage() {
 
   const { data: performanceData } = useSWR(
     currentSite?.id ? ['content_performance', currentSite.id] : null,
-    async ([_, siteId]) => {
+    async ([, siteId]) => {
       const res = await getSocialPerformanceSnapshots(siteId);
       if (res.error) {
         console.error("Failed to load content performance:", res.error);
@@ -98,15 +99,13 @@ export default function ContentPage() {
     {}
   );
 
-  const contentItems = contentData?.content || [];
-  const totalContent = contentData?.count || 0;
   const assetsByContentId = contentData?.assetsByContentId || {};
   const isLoading = isSiteLoading || !currentSite?.id || isContentLoading;
 
-  const [socialMedia, setSocialMedia] = useState<any[]>([])
-  const [error, setError] = useState<string | null>(null)
+  const [socialMedia, setSocialMedia] = useState<NonNullable<SiteSettings["social_media"]>>([])
+  const [error] = useState<string | null>(null)
   const [viewType, setViewType] = useState<ViewType>('kanban')
-  const [selectedContent, setSelectedContent] = useState<ContentItem | null>(null)
+  const [selectedContent] = useState<ContentItem | null>(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [filters, setFilters] = useState<ContentFilters>({
     status: [],
@@ -123,34 +122,36 @@ export default function ContentPage() {
   const defaultSort = urlSort === 'updated_at' ? 'newest' : (urlSort === 'created_at' || urlSort === 'newest' ? 'newest' : (urlSort === 'oldest' ? 'oldest' : (urlSort === 'rate_desc' ? 'rate_desc' : (urlSort === 'rate_asc' ? 'rate_asc' : 'newest'))))
 
   // Sort state
-  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "rate_desc" | "rate_asc">(defaultSort as any)
+  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "rate_desc" | "rate_asc">(defaultSort)
 
   // Initialize command+k hook
   useCommandK()
   
+  const getSettingsRef = useRef(getSettings)
   useEffect(() => {
-    if (currentSite?.id) {
-      // Load social media settings for publishing
-      const loadSettings = async () => {
-        try {
-          const settings = await getSettings(currentSite.id)
-          if (settings?.social_media) {
-            const allowedPlatforms = ['facebook', 'linkedin', 'tiktok', 'twitter', 'x', 'instagram', 'youtube', 'threads', 'pinterest', 'bluesky']
-            setSocialMedia(settings.social_media.filter((s: any) => s.isActive && allowedPlatforms.includes(s.platform?.toLowerCase())))
-          }
-        } catch (e) {
-          console.error('Failed to load social media settings', e)
+    getSettingsRef.current = getSettings
+  }, [getSettings])
+  useEffect(() => {
+    if (!currentSite?.id) return
+    const loadSettings = async () => {
+      try {
+        const settings = await getSettingsRef.current(currentSite.id)
+        if (settings?.social_media) {
+          const allowedPlatforms = ['facebook', 'linkedin', 'tiktok', 'twitter', 'x', 'instagram', 'youtube', 'threads', 'pinterest', 'bluesky']
+          setSocialMedia(settings.social_media.filter(s => s.isActive && allowedPlatforms.includes(s.platform?.toLowerCase())))
         }
+      } catch (e) {
+        console.error('Failed to load social media settings', e)
       }
-      loadSettings()
     }
+    void loadSettings()
   }, [currentSite?.id])
 
   const refreshContentList = mutateContent;
 
   const filteredContent = React.useMemo(
-    () => filterAndSortContent(contentItems, searchTerm, filters, sortBy),
-    [contentItems, sortBy, searchTerm, filters]
+    () => filterAndSortContent(contentData?.content || [], searchTerm, filters, sortBy),
+    [contentData?.content, sortBy, searchTerm, filters]
   )
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -164,7 +165,7 @@ export default function ContentPage() {
 
   const handleUpdateContentStatus = async (contentId: string, newStatus: string) => {
     // Optimistic update
-    mutateContent((data: any) => {
+    mutateContent((data) => {
       if (!data) return data;
       return {
         ...data,
@@ -172,7 +173,7 @@ export default function ContentPage() {
           item.id === contentId 
             ? { 
                 ...item, 
-                status: newStatus as any,
+                status: newStatus,
                 updated_at: new Date().toISOString(),
                 ...(newStatus === 'published' ? { published_at: new Date().toISOString() } : {})
               } 
@@ -184,7 +185,7 @@ export default function ContentPage() {
     try {
       const result = await updateContentStatus({
         contentId,
-        status: newStatus as any
+        status: newStatus as Parameters<typeof updateContentStatus>[0]["status"]
       })
 
       if (result.error) {
@@ -222,7 +223,7 @@ export default function ContentPage() {
 
   // Handle content rating changes
   const handleContentRatingChange = (contentId: string, rating: number) => {
-      mutateContent((data: any) => {
+      mutateContent((data) => {
         if (!data) return data;
         return {
           ...data,
@@ -253,9 +254,6 @@ export default function ContentPage() {
       </div>
     )
   }
-
-
-
   const sidebarLeft = isMobile ? '0px' : (isLayoutCollapsed ? '64px' : '256px')
 
   return (
@@ -406,7 +404,7 @@ export default function ContentPage() {
           {/* Trends Section - Only for Table View */}
           {viewType === 'table' && (
             <div className="px-8">
-              <TrendsSection segments={segments as any} currentSiteId={currentSite?.id} displayMode="table" />
+              <TrendsSection segments={segments as TrendsSegments} currentSiteId={currentSite?.id} displayMode="table" />
             </div>
           )}
           
@@ -418,7 +416,7 @@ export default function ContentPage() {
                 <div className="flex-shrink-0 pt-0 mt-0 flex flex-col justify-start self-stretch min-h-0">
                   <TrendsColumn
                     className="self-stretch"
-                    segments={segments as any}
+                    segments={segments as TrendsSegments}
                     currentSiteId={currentSite?.id} />
                 </div>
               )}
@@ -431,7 +429,7 @@ export default function ContentPage() {
                   filteredContent={filteredContent}
                   currentPage={currentPage}
                   itemsPerPage={itemsPerPage}
-                  segments={segments as any}
+                  segments={segments as TrendsSegments}
                   campaigns={campaigns}
                   isLoadingCampaigns={isLoadingCampaigns}
                   assetsByContentId={assetsByContentId}
@@ -490,7 +488,7 @@ export default function ContentPage() {
         segments={segments} />
       
       <CreateContentDialog 
-        segments={segments as any}
+        segments={segments as TrendsSegments}
         campaigns={campaigns}
         onSuccess={refreshContentList} />
     </div>

@@ -4,7 +4,7 @@
 
 import { useState, useEffect } from "react"
 import useSWR from "swr"
-import { useRouter , useSearchParams} from "next/navigation"
+import { useRouter} from "next/navigation"
 import { useSite } from "@/app/context/SiteContext"
 import { getDeals } from "./actions"
 import { Deal } from "./types"
@@ -13,18 +13,16 @@ import { DealsKanban, DealsKanbanSkeleton } from "./components/DealsKanban"
 import { updateDeal } from "./actions"
 import { toast } from "sonner"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { MobileFiltersDrawer, FilterContainer, FilterSection, FilterSeparator } from "@/app/components/ui/mobile-filters-drawer"
+import { MobileFiltersDrawer, FilterContainer, FilterSection } from "@/app/components/ui/mobile-filters-drawer"
 import { SearchInput } from "@/app/components/ui/search-input"
-import { Search, Briefcase, ListOrdered, Check, ChevronDown } from "@/app/components/ui/icons"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
+import { Briefcase } from "@/app/components/ui/icons"
 import { cn } from "@/lib/utils"
 import { Skeleton } from "@/app/components/ui/skeleton"
-import { ViewSelector, ViewType } from "@/app/components/view-selector"
+import { ViewSelector } from "@/app/components/view-selector"
 import { useMobileView } from "@/app/hooks/use-mobile-view"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { navigateToDeal } from "@/lib/navigation/navigation-helpers"
 import { IsEmpty } from "@/app/components/ui/empty-state"
-import { Button } from "@/app/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { LayoutGrid, Target, XCircle, TrendingUp } from "@/app/components/ui/icons"
@@ -74,7 +72,7 @@ export default function DealsPage() {
 
   const { data: dbDealsData, isLoading: loading, mutate: mutateDeals } = useSWR(
     currentSite?.id ? ['deals', currentSite.id] : null,
-    async ([_, siteId]) => {
+    async ([, siteId]) => {
       const result = await getDeals(siteId)
       if (result.error) throw new Error(result.error)
       return result.deals || []
@@ -84,24 +82,11 @@ export default function DealsPage() {
 
   const dbDeals = dbDealsData || []
 
-  const loadDeals = async (silent = false) => {
-    await mutateDeals()
-  }
-
   useEffect(() => {
-    // Register global refresh function for when deals are created
-    if (typeof window !== 'undefined') {
-      (window as any).refreshDealsList = () => {
-        loadDeals(true)
-      }
-    }
-    
-    return () => {
-      if (typeof window !== 'undefined') {
-        delete (window as any).refreshDealsList
-      }
-    }
-  }, [currentSite])
+    const refreshWindow = window as Window & { refreshDealsList?: () => Promise<Deal[] | undefined> }
+    refreshWindow.refreshDealsList = () => mutateDeals()
+    return () => { delete refreshWindow.refreshDealsList }
+  }, [mutateDeals])
 
 
   const getFilteredDeals = (status: string) => {
@@ -143,9 +128,10 @@ export default function DealsPage() {
 
   const handlePageChange = (page: number) => setCurrentPage(page)
   
-  useEffect(() => {
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab)
     setCurrentPage(1)
-  }, [activeTab])
+  }
   
   const handleItemsPerPageChange = (value: string) => {
     setItemsPerPage(Number(value))
@@ -175,7 +161,7 @@ export default function DealsPage() {
       if (result.error) {
         toast.error(result.error)
         // Revert on error
-        loadDeals(true)
+        mutateDeals()
       } else {
         toast.success(t('deals.success.updated') || "Deal stage updated")
       }
@@ -183,13 +169,13 @@ export default function DealsPage() {
       console.error("Error updating deal stage:", error)
       toast.error(t('deals.error.updateFailed') || "Failed to update deal stage")
       // Revert on error
-      loadDeals(true)
+      mutateDeals()
     }
   }
 
   return (
     <div className="flex-1 min-w-0 w-full p-0 bg-muted/30 h-[calc(100vh-var(--topbar-height,64px))] flex flex-col">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex-1 flex flex-col min-h-0">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full flex-1 flex flex-col min-h-0">
         <StickyHeader className="border-b min-h-[71px] bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80">
           <div className="w-full pt-0">
               <div className="flex items-center justify-between w-full">

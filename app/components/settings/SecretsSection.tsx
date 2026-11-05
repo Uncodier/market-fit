@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useSite } from "@/app/context/SiteContext";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
@@ -22,15 +22,44 @@ import { createClient } from "@/lib/supabase/client";
 import { useLocalization } from "@/app/context/LocalizationContext";
 import { SettingsSecretsLoadingRows } from "./settings-loading";
 
+interface SiteSecret {
+  id: string;
+  name: string;
+  provider: string;
+  use_case: string;
+  created_at: string;
+}
+
+function errorMessage(error: unknown): string {
+  return error && typeof error === "object" && "message" in error
+    ? String(error.message)
+    : String(error);
+}
+
+async function readSecrets(siteId: string, instanceId?: string): Promise<SiteSecret[]> {
+  const supabase = createClient();
+  let query = supabase.from("site_secrets")
+    .select("id, name, provider, use_case, created_at")
+    .eq("site_id", siteId);
+  query = instanceId ? query.eq("instance_id", instanceId) : query.is("instance_id", null);
+  const { data, error } = await query;
+  if (error) throw error;
+  return data || [];
+}
+
 export function SecretsSection({ instanceId }: { instanceId?: string }) {
   const { currentSite } = useSite();
+  return <ScopedSecretsSection key={`${currentSite?.id ?? ""}:${instanceId ?? ""}`} siteId={currentSite?.id} instanceId={instanceId} />;
+}
+
+function ScopedSecretsSection({ siteId, instanceId }: { siteId?: string; instanceId?: string }) {
   const { t } = useLocalization();
   const { toast } = useToast();
-  const [secrets, setSecrets] = useState<any[]>([]);
+  const [secrets, setSecrets] = useState<SiteSecret[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [secretToDelete, setSecretToDelete] = useState<any>(null);
+  const [secretToDelete, setSecretToDelete] = useState<SiteSecret | null>(null);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -44,48 +73,28 @@ export function SecretsSection({ instanceId }: { instanceId?: string }) {
     Record<string, string>
   >({});
 
-  useEffect(() => {
-    if (currentSite?.id) {
-      loadSecrets();
-    }
-  }, [currentSite?.id, instanceId]);
-
-  const loadSecrets = async () => {
-    if (!currentSite?.id) return;
-    setLoading(true);
-
-    try {
-      const supabase = createClient();
-
-      let query = supabase
-        .from("site_secrets")
-        .select("id, name, provider, use_case, created_at")
-        .eq("site_id", currentSite.id);
-
-      if (instanceId) {
-        query = query.eq("instance_id", instanceId);
-      } else {
-        query = query.is("instance_id", null);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-      setSecrets(data || []);
-    } catch (error: any) {
+  const loadSecrets = useCallback(() => {
+    if (!siteId) return;
+    return readSecrets(siteId, instanceId).then(setSecrets).catch((error: unknown) => {
       console.error("Error loading secrets:", error);
       toast({
         title: "Error loading secrets",
-        description: error.message,
+        description: errorMessage(error),
         variant: "destructive",
       });
-    } finally {
+    }).finally(() => {
       setLoading(false);
+    });
+  }, [siteId, instanceId, toast]);
+
+  useEffect(() => {
+    if (siteId) {
+      void loadSecrets();
     }
-  };
+  }, [siteId, loadSecrets]);
 
   const handleSaveSecret = async () => {
-    if (!currentSite?.id) return;
+    if (!siteId) return;
     if (
       !formData.name ||
       !formData.provider ||
@@ -106,7 +115,7 @@ export function SecretsSection({ instanceId }: { instanceId?: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           operation: "store",
-          siteId: currentSite.id,
+          siteId,
           instanceId: instanceId,
           name: formData.name,
           provider: formData.provider,
@@ -127,18 +136,19 @@ export function SecretsSection({ instanceId }: { instanceId?: string }) {
 
       setFormData({ name: "", provider: "", useCase: "", secretValue: "" });
       setIsDialogOpen(false);
+      setLoading(true);
       loadSecrets();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error saving secret",
-        description: error.message,
+        description: errorMessage(error),
         variant: "destructive",
       });
     }
   };
 
-  const handleDeleteSecret = async (secret: any) => {
-    if (!currentSite?.id) return;
+  const handleDeleteSecret = async (secret: SiteSecret) => {
+    if (!siteId) return;
 
     try {
       const response = await fetch("/api/secrets", {
@@ -146,7 +156,7 @@ export function SecretsSection({ instanceId }: { instanceId?: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           operation: "delete",
-          siteId: currentSite.id,
+          siteId,
           instanceId: instanceId,
           provider: secret.provider,
           useCase: secret.use_case,
@@ -163,11 +173,12 @@ export function SecretsSection({ instanceId }: { instanceId?: string }) {
         description: "The secret has been removed.",
       });
 
+      setLoading(true);
       loadSecrets();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error deleting secret",
-        description: error.message,
+        description: errorMessage(error),
         variant: "destructive",
       });
     } finally {
@@ -176,7 +187,7 @@ export function SecretsSection({ instanceId }: { instanceId?: string }) {
     }
   };
 
-  const toggleSecretVisibility = async (secret: any) => {
+  const toggleSecretVisibility = async (secret: SiteSecret) => {
     const isVisible = showValues[secret.id];
 
     if (isVisible) {
@@ -195,7 +206,7 @@ export function SecretsSection({ instanceId }: { instanceId?: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           operation: "retrieve",
-          siteId: currentSite?.id,
+          siteId,
           instanceId: instanceId,
           provider: secret.provider,
           useCase: secret.use_case,
@@ -211,10 +222,10 @@ export function SecretsSection({ instanceId }: { instanceId?: string }) {
 
       setDecryptedValues((prev) => ({ ...prev, [secret.id]: secretValue }));
       setShowValues((prev) => ({ ...prev, [secret.id]: true }));
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error retrieving secret",
-        description: error.message,
+        description: errorMessage(error),
         variant: "destructive",
       });
     }

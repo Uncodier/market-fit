@@ -6,8 +6,7 @@ interface ToastOptions {
   variant?: "default" | "destructive"
 }
 
-export function useToast() {
-  const toast = ({ title, description, variant = "default" }: ToastOptions) => {
+const toast = ({ title, description, variant = "default" }: ToastOptions) => {
     if (variant === "destructive") {
       sonnerToast.error(title, {
         description
@@ -17,7 +16,8 @@ export function useToast() {
         description
       })
     }
-  }
+}
 
+export function useToast() {
   return { toast }
 } 

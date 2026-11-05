@@ -153,7 +153,7 @@ export default function InventoryPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Locations</SelectItem>
-                    {locations.map((loc: any) => (
+                    {locations.map((loc: { id: string; name: string }) => (
                       <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -197,14 +197,14 @@ export default function InventoryPage() {
 
 function CommerceSettingsTab({ siteId }: { siteId?: string }) {
   const { data, isLoading, mutate } = useSWR(siteId ? ['commerce_settings', siteId] : null, () => getCommerceSettings(siteId!))
-  const [settings, setSettings] = useState<any>(null)
+  const [settings, setSettings] = useState<Record<string, string> | null>(() => data?.data ?? null)
   const [saving, setSaving] = useState(false)
 
-  useEffect(() => {
-    if (data?.data) {
-      setSettings(data.data)
-    }
-  }, [data])
+  const [loadedData, setLoadedData] = useState(data)
+  if (data !== loadedData) {
+    setLoadedData(data)
+    if (data?.data) setSettings(data.data)
+  }
 
   if (isLoading || !settings) return <Skeleton className="h-64 w-full" />
 
@@ -243,7 +243,7 @@ function CommerceSettingsTab({ siteId }: { siteId?: string }) {
               <SelectItem value="block">Block (Reject sale when qty insufficient)</SelectItem>
             </SelectContent>
           </Select>
-          <p className="text-sm text-muted-foreground">Only applies to items where Availability Mode is "Inventory".</p>
+          <p className="text-sm text-muted-foreground">Only applies to items where Availability Mode is &quot;Inventory&quot;.</p>
         </div>
 
         <div className="space-y-2">
@@ -275,7 +275,7 @@ function CommerceSettingsTab({ siteId }: { siteId?: string }) {
               <SelectItem value="never">Never (Do not auto-decrement)</SelectItem>
             </SelectContent>
           </Select>
-          <p className="text-sm text-muted-foreground">Determines when inventory is subtracted during the fulfillment lifecycle. Walk-in and pickup sales decrement immediately unless set to "Never".</p>
+          <p className="text-sm text-muted-foreground">Determines when inventory is subtracted during the fulfillment lifecycle. Walk-in and pickup sales decrement immediately unless set to &quot;Never&quot;.</p>
         </div>
 
         <div className="pt-4 border-t">

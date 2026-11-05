@@ -1,17 +1,17 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
+import { useWorkspaceQuotations, type WorkspaceQuote } from "./use-workspace-quotations"
 import { useSite } from "@/app/context/SiteContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
-import { listWorkspaceQuotations } from "./workspace-read-actions"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { MobileFiltersDrawer, FilterContainer, FilterSection, FilterSeparator } from "@/app/components/ui/mobile-filters-drawer"
+import { MobileFiltersDrawer, FilterContainer, FilterSection } from "@/app/components/ui/mobile-filters-drawer"
 import { SearchInput } from "@/app/components/ui/search-input"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { LayoutGrid, FileText, CheckCircle2, Ban, Send } from "@/app/components/ui/icons"
 import { useRouter , useSearchParams} from "next/navigation"
 import { QuotesTable, QuotesTableSkeleton } from "@/app/components/documents/quotes-table"
-import { retryOnError, useOptimisticLoadState } from "@/app/hooks/use-optimistic-error"
+import { useOptimisticLoadState } from "@/app/hooks/use-optimistic-error"
 import { SortDropdown } from "@/app/components/ui/sort-dropdown"
 import { cn } from "@/lib/utils"
 import { useAuthContext } from "@/app/components/auth/auth-provider"
@@ -37,37 +37,10 @@ function WorkspaceQuotations() {
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
 
-  const [data, setData] = useState<any>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<Error | null>(null)
-
-  const fetchData = async () => {
-    if (!currentSite?.id) return
-    setIsLoading(true)
-    try {
-      const res = await retryOnError(async () => {
-        const result = await listWorkspaceQuotations({ siteId: currentSite.id, page, pageSize, q: searchQuery, status: statusFilter, sort: sortBy })
-        if (result.error) throw new Error(result.error)
-        return result
-      })
-      setData(res)
-      setError(null)
-    } catch (err: any) {
-      setError(err)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const { error: visibleError, isLoading: showLoading } = useOptimisticLoadState(isLoading, error)
-
-  useEffect(() => {
-    fetchData()
-  }, [currentSite?.id, page, pageSize, searchQuery, statusFilter, sortBy])
-
-  const mutate = () => {
-    fetchData()
-  }
+  const { data, error, isLoading, reload } = useWorkspaceQuotations({
+    siteId: currentSite!.id, page, pageSize, q: searchQuery, status: statusFilter, sort: sortBy,
+  })
+  const { error: visibleError, isLoading: showLoading } = useOptimisticLoadState(isLoading, error ?? null)
 
   useEffect(() => {
     const event = new CustomEvent("breadcrumb:update", {
@@ -81,10 +54,10 @@ function WorkspaceQuotations() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     setPage(1)
-    mutate()
+    reload()
   }
 
-  const rows = (data?.data || []).map((quote: any) => ({
+  const rows = (data?.data || []).map((quote: WorkspaceQuote) => ({
     id: quote.id,
     entityName: quote.lead?.name || t("quotations.list.unknown") || "Unknown",
     entityEmail: quote.lead?.email || null,

@@ -1,5 +1,5 @@
 import React from "react"
-import { fireEvent, render, screen, within } from "@testing-library/react"
+import { fireEvent, render, screen, within, waitFor } from "@testing-library/react"
 import useSWR from "swr"
 import ContentPage from "@/app/content/page"
 import { useSite } from "@/app/context/SiteContext"
@@ -210,6 +210,21 @@ describe.each(["kanban", "table"] as const)("Content page %s loading", view => {
     rerender(<ContentPage />)
     expectSettled()
     expect(screen.getAllByText("No content")).toHaveLength(view === "kanban" ? 5 : 1)
+  })
+
+  it("loads settings only on site changes, not settings-reader identity changes", async () => {
+    setSite("site-one")
+    const { rerender } = mount()
+    await waitFor(() => expect(getSettings).toHaveBeenCalledWith("site-one"))
+    const replacement = jest.fn().mockResolvedValue(null)
+    site.mockReturnValue({ ...site(), getSettings: replacement })
+    rerender(<ContentPage />)
+    expect(replacement).not.toHaveBeenCalled()
+
+    setSite("site-two")
+    site.mockReturnValue({ ...site(), getSettings: replacement })
+    rerender(<ContentPage />)
+    await waitFor(() => expect(replacement).toHaveBeenCalledWith("site-two"))
   })
 
   it("does not turn a settled request error into perpetual loading", () => {
