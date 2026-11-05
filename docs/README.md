@@ -10,7 +10,8 @@ Use the guides below before relying on older implementation notes.
 
 - [Licensing](LICENSING.md) — source-available procurement scope, permitted internal use, commercial licensing requirements and base-license limitations.
 - [Module guide](MODULES.md) — consolidated summary of all workspace and public/account
-  modules, including procurement/tenders, capabilities, usage, maturity and limits.
+  modules, including procurement/tenders, capabilities, usage and comparative evidence-based maturation scores.
+- [Module maturation inputs](MODULE_MATURITY_INPUT.json) and [attributed evidence](MODULE_MATURITY_EVIDENCE.json) — creation sources, static Jest/E2E counts, exact DB aggregates, measured ESLint quality and final composite Meta Score; the module matrix sorts highest to lowest by final Meta Score, with ascending generation supported. Not execution/pass-rate evidence.
 - [Module workflows and shared limits](MODULES_WORKFLOWS.md) — cross-module paths,
   completion evidence and maintenance boundaries.
 - [Buying and procurement detailed reference](MODULES_PROCUREMENT.md) — suppliers,

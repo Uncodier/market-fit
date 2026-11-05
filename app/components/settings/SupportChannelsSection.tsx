@@ -43,6 +43,8 @@ import { useEmailConnectionReconciliation } from "./use-email-connection-reconci
 import { useAgentChannelActivation } from "./use-agent-channel-activation"
 import { isActiveAgentChannel, isManuallyDisabledAgentChannel } from "@/lib/agent-channel-state"
 import { PartnerSupportChannelSetup } from "./PartnerSupportChannelSetup"
+import { PARTNER_LINK_TYPES } from "./zavu-invitation-helpers"
+import { ZavuChannelActivationRecovery, canRecoverZavuActivation } from "./ZavuChannelActivationRecovery"
 interface SupportChannelsSectionProps {
   active: boolean
   siteId?: string
@@ -108,6 +110,7 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
   }, [form, onSave])
 
   const { checkStatus } = useZavuInvitationSync({
+    siteId: siteId || currentSite?.id,
     connections,
     enabled: active,
     update: (index, value) => update(index, channelsSchema.removeDefault().unwrap().shape.connections.parse([value])[0]),
@@ -175,6 +178,10 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
       toast.error("Select a channel type first")
       return
     }
+    if (!PARTNER_LINK_TYPES.has(channel.type)) {
+      toast.error("Partner invitation setup is not available for this channel")
+      return
+    }
 
     const invitationUrl = channel.metadata?.invitation_url
     if (invitationUrl) {
@@ -230,7 +237,7 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
     const channel = form.getValues(`channels.connections.${index}`)
     try {
       if (!channel?.zavu_sender_id || shouldDeleteZavuSender(channel, connections, index)) {
-        await disconnectZavuChannel(channel || {})
+        await disconnectZavuChannel(channel || {}, siteId || currentSite?.id)
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to disconnect channel")
@@ -270,6 +277,7 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
           const channel = connections[index] || field
           const type = channel.type
           const hasType = !!type
+          const recoverActivation = canRecoverZavuActivation(channel)
           const paused = isManuallyDisabledAgentChannel(channel) || channel.status === "disabled" || channel.status === "license_suspended"
           const isConnected = paused || (isActiveAgentChannel(channel) &&
             (type !== "email" || channel.metadata?.emailChannelActive === true))
@@ -316,6 +324,17 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
                       </Button>
                     )}
                   </SectionCardContent>
+                )}
+
+                {recoverActivation && (
+                  <ZavuChannelActivationRecovery siteId={siteId || currentSite?.id} channel={channel}
+                    onActivated={() => {
+                      const latest = form.getValues("channels.connections")
+                      const target = latest.findIndex(item => item.id === channel.id)
+                      if (target >= 0) update(target, { ...latest[target], status: "connected", metadata: {
+                        ...latest[target].metadata, activation_pending: false, provider_channel_active: true,
+                      } })
+                    }} />
                 )}
 
                 {isConnected && !paused && type === "voice" && siteId && (
@@ -382,7 +401,7 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
                   )
                 )}
 
-                {hasType && !isConnected && type === "telegram" && siteId && (
+                {hasType && !isConnected && !recoverActivation && type === "telegram" && siteId && (
                   canConnectAgentChannel(currentSite) ? (
                   <TelegramChannelSetup
                     siteId={siteId}
@@ -398,6 +417,8 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
                         zavu_sender_id: payload.senderId,
                         metadata: {
                           ...(channel.metadata || {}),
+                          provider_channel_active: true,
+                          activation_pending: false,
                           bot_username: payload.telegram?.botUsername,
                           bot_id: payload.telegram?.botId,
                         },
@@ -413,9 +434,10 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
                   )
                 )}
 
-                {hasType && !isConnected && type !== "telegram" && type !== "email" && type !== "voice" && type !== "sms" && (
+                {hasType && !isConnected && !recoverActivation && type !== "telegram" && type !== "email" && type !== "voice" && type !== "sms" && (
                   <PartnerSupportChannelSetup type={type} status={channel.status}
                     invitationUrl={invitationUrl} failureReason={failureReason}
+                    activationPending={channel.metadata?.activation_pending === true}
                     connecting={connectingIndex === index} checking={checkingIndex === index}
                     onConnect={() => { void handleConnect(index) }}
                     onCheck={async () => {

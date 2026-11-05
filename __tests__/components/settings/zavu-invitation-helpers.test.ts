@@ -10,6 +10,20 @@ describe("mapInvitationStatus", () => {
     expect(mapInvitationStatus("completed")).toBe("connected")
   })
 
+  it("keeps provider completion pending until activation finishes", () => {
+    expect(mapInvitationStatus("completed", true)).toBe("in_progress")
+    const connection = mapInvitationToConnection({ status: "completed", activationPending: true }, { type: "whatsapp", zavu_invitation_id: "inv_1" })
+    expect(connection.status).toBe("in_progress")
+    expect(connection.metadata?.activation_pending).toBe(true)
+    expect(shouldSyncInvitation(connection)).toBe(true)
+  })
+
+  it.each(["disabled", "license_suspended"])("preserves the server-owned %s state", (status) => {
+    const connection = mapInvitationToConnection({ status, activationPending: true }, { type: "whatsapp", zavu_invitation_id: "inv_1" })
+    expect(connection.status).toBe(status)
+    expect(shouldSyncInvitation(connection)).toBe(false)
+  })
+
   it("keeps in_progress, failed, and pending", () => {
     expect(mapInvitationStatus("in_progress")).toBe("in_progress")
     expect(mapInvitationStatus("failed")).toBe("failed")
@@ -40,6 +54,7 @@ describe("shouldSyncInvitation", () => {
   })
 
   it("does not sync telegram or channels without invitation id", () => {
+    expect(shouldSyncInvitation({ type: "instagram", status: "pending", zavu_invitation_id: "inv_1" })).toBe(false)
     expect(shouldSyncInvitation({ type: "telegram", status: "pending" })).toBe(false)
     expect(shouldSyncInvitation({ type: "whatsapp", status: "pending" })).toBe(false)
   })

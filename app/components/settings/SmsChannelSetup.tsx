@@ -16,7 +16,6 @@ import { AlertTriangle } from "@/app/components/ui/icons"
 import {
   buildAvailablePhoneNumbersQuery,
   canAssignPhoneNumber,
-  createPhoneConnectionMetadata,
   formatPhoneNumber,
   formatPhoneCapabilities,
   getRequirementSummary,
@@ -28,6 +27,7 @@ import {
 } from "./zavu-phone-number-utils"
 import { ChannelSetupStepper } from "./ChannelSetupStepper"
 import { buildPhoneSetupSteps } from "./channel-setup-steps"
+import { normalizeSmsSetupResponse } from "./sms-setup-readiness"
 
 export function SmsChannelSetup({ 
   siteId, 
@@ -35,8 +35,8 @@ export function SmsChannelSetup({
   onConnected 
 }: { 
   siteId: string, 
-  channel: any, 
-  onConnected: (payload: any) => void | Promise<void>
+  channel: Parameters<typeof buildPhoneSetupSteps>[0] & { id?: string; name?: string },
+  onConnected: (payload: ReturnType<typeof normalizeSmsSetupResponse>) => void | Promise<void>
 }) {
   const [tab, setTab] = useState<"existing" | "new">("existing")
   
@@ -110,8 +110,8 @@ export function SmsChannelSetup({
       }
       
       setSearchResults(numbers)
-    } catch (error: any) {
-      toast.error(error.message || "An error occurred while searching")
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "An error occurred while searching")
     } finally {
       setIsSearching(false)
     }
@@ -167,8 +167,7 @@ export function SmsChannelSetup({
         throw new Error(response.error?.message || "Failed to connect SMS channel")
       }
 
-      const payload = createPhoneConnectionMetadata({
-        channel: "sms",
+      const payload = normalizeSmsSetupResponse({
         selected,
         purchased: purchasedNumber,
         responseData: response.data,
@@ -176,17 +175,14 @@ export function SmsChannelSetup({
       if (!payload.senderId) {
         throw new Error("Zavu did not return a sender ID for the SMS channel")
       }
-      await onConnected({
-        ...payload,
-        status: payload.regulatoryStatus === "pending_review" ? "in_progress" : "connected",
-      })
-      toast.success(
-        payload.regulatoryStatus === "pending_review"
-          ? "Number purchased. SMS will be available after regulatory approval."
-          : "SMS channel connected successfully."
-      )
-    } catch (error: any) {
-      const message = error.message || "An error occurred"
+      await onConnected(payload)
+      if (payload.status === "connected") {
+        toast.success("SMS channel connected successfully.")
+      } else {
+        toast.info("SMS setup saved. Activation and regulatory approval must finish before messaging is available.")
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "An error occurred"
       toast.error(
         purchasedNumber
           ? `${message}. The number was purchased and remains available under Existing Number; retry activation there.`
@@ -208,7 +204,7 @@ export function SmsChannelSetup({
           </p>
         </div>
 
-        <Tabs value={tab} onValueChange={(v) => { setTab(v as any); setSelectedNumber(""); }}>
+        <Tabs value={tab} onValueChange={(v) => { if (v === "existing" || v === "new") setTab(v); setSelectedNumber(""); }}>
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="existing">Use Existing Number</TabsTrigger>
             <TabsTrigger value="new">Buy New Number</TabsTrigger>
@@ -219,7 +215,7 @@ export function SmsChannelSetup({
               <SettingsSelectionLoading label="Loading SMS phone numbers" variant="phone" />
             ) : eligibleOwnedNumbers.length === 0 ? (
               <div className="text-center py-6 bg-muted/30 rounded-md">
-                <p className="text-sm text-muted-foreground">You don't have any phone numbers yet.</p>
+                <p className="text-sm text-muted-foreground">You don&apos;t have any phone numbers yet.</p>
                 <Button variant="link" onClick={() => setTab("new")} className="mt-2 h-auto p-0">
                   Search for a new number
                 </Button>

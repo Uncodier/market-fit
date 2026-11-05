@@ -15,6 +15,7 @@ const POLL_INTERVAL_MS = 3000
 const POLL_DEADLINE_MS = 10 * 60 * 1000
 
 type UseZavuInvitationSyncOptions = {
+  siteId?: string
   connections: ConnectionLike[]
   enabled: boolean
   update: (index: number, value: ConnectionLike) => void
@@ -23,6 +24,7 @@ type UseZavuInvitationSyncOptions = {
 }
 
 export function useZavuInvitationSync({
+  siteId,
   connections,
   enabled,
   update,
@@ -30,17 +32,22 @@ export function useZavuInvitationSync({
   onSave,
 }: UseZavuInvitationSyncOptions) {
   const connectionsRef = useRef(connections)
-  connectionsRef.current = connections
   const updateRef = useRef(update)
-  updateRef.current = update
   const getValuesRef = useRef(getValues)
-  getValuesRef.current = getValues
   const onSaveRef = useRef(onSave)
-  onSaveRef.current = onSave
-  const inflightRef = useRef<Promise<void> | null>(null)
+  const inflightRef = useRef<{ siteId: string; promise: Promise<void> } | null>(null)
+  const scopeRef = useRef({ siteId, enabled })
+  useEffect(() => {
+    connectionsRef.current = connections
+    updateRef.current = update
+    getValuesRef.current = getValues
+    onSaveRef.current = onSave
+    scopeRef.current = { siteId, enabled }
+  })
 
   const sync = useCallback(async () => {
-    if (inflightRef.current) return inflightRef.current
+    if (!siteId || !enabled) return
+    if (inflightRef.current?.siteId === siteId) return inflightRef.current.promise
     if (document.visibilityState === "hidden" || !navigator.onLine) return
 
     const pending = connectionsRef.current
@@ -56,9 +63,10 @@ export function useZavuInvitationSync({
 
       for (const { channel, index } of pending) {
         const response = await apiClient.get(
-          `/api/integrations/zavu/invitations/${channel.zavu_invitation_id}`
+          `/api/integrations/zavu/invitations/${encodeURIComponent(channel.zavu_invitation_id!)}?siteId=${encodeURIComponent(siteId)}`
         )
-        if (!response.success) continue
+        if (scopeRef.current.siteId !== siteId || !scopeRef.current.enabled) return
+        if (!response.success) throw new Error(response.error?.message || "Could not check channel setup status. Please try again.")
 
         const invitation = response.data?.invitation || response.data
         if (!invitation) continue
@@ -70,7 +78,7 @@ export function useZavuInvitationSync({
         updateRef.current(index, next)
         if (next.status === "connected") {
           justConnected = true
-        } else {
+        } else if (["failed", "expired", "cancelled"].includes(next.status || "")) {
           persistFailed = true
         }
       }
@@ -92,13 +100,13 @@ export function useZavuInvitationSync({
       }
     })()
 
-    inflightRef.current = run
+    inflightRef.current = { siteId, promise: run }
     try {
       await run
     } finally {
-      inflightRef.current = null
+      if (inflightRef.current?.promise === run) inflightRef.current = null
     }
-  }, [])
+  }, [siteId, enabled])
 
   const pendingKey = connections
     .filter(shouldSyncInvitation)
@@ -106,7 +114,7 @@ export function useZavuInvitationSync({
     .join(",")
 
   useEffect(() => {
-    if (!enabled || !pendingKey) return
+    if (!enabled || !siteId || !pendingKey) return
     let cancelled = false
     let timeoutId: number | null = null
     const deadline = Date.now() + POLL_DEADLINE_MS
@@ -118,8 +126,13 @@ export function useZavuInvitationSync({
       }
     }
     const run = async () => {
-      await sync()
-      schedule()
+      try {
+        await sync()
+      } catch {
+        // Keep pending connections retryable; manual checks surface the error.
+      } finally {
+        schedule()
+      }
     }
 
     const onVisible = () => {
@@ -145,7 +158,15 @@ export function useZavuInvitationSync({
       window.removeEventListener("focus", onVisible)
       window.removeEventListener("online", onVisible)
     }
-  }, [enabled, pendingKey, sync])
+  }, [enabled, siteId, pendingKey, sync])
 
-  return { checkStatus: sync }
+  const checkStatus = useCallback(async () => {
+    try {
+      await sync()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not check channel setup status")
+    }
+  }, [sync])
+
+  return { checkStatus }
 }

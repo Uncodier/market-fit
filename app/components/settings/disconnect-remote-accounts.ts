@@ -7,7 +7,7 @@ export type ZavuChannelDisconnect = {
   phoneNumber?: string
   metadata?: {
     phone_number?: string
-    [key: string]: any
+    [key: string]: unknown
   }
 }
 
@@ -32,7 +32,7 @@ export function shouldDeleteZavuSender(
   )
 }
 
-export async function disconnectZavuChannel(channel: ZavuChannelDisconnect): Promise<void> {
+export async function disconnectZavuChannel(channel: ZavuChannelDisconnect, siteId?: string): Promise<void> {
   if (channel.zavu_sender_id) {
     const phoneNumber = channel.metadata?.phone_number || channel.phoneNumber
     const query = phoneNumber ? `?phoneNumber=${encodeURIComponent(phoneNumber)}` : ''
@@ -46,8 +46,9 @@ export async function disconnectZavuChannel(channel: ZavuChannelDisconnect): Pro
   }
 
   if (channel.zavu_invitation_id) {
+    if (!siteId) throw new Error("Select a site before cancelling a channel invitation")
     const response = await apiClient.delete(
-      `/api/integrations/zavu/invitations/${encodeURIComponent(channel.zavu_invitation_id)}`
+      `/api/integrations/zavu/invitations/${encodeURIComponent(channel.zavu_invitation_id)}?siteId=${encodeURIComponent(siteId)}`
     )
     if (!response.success && !isAlreadyGone(response.status)) {
       throw new Error(response.error?.message || "Failed to cancel Zavu invitation")

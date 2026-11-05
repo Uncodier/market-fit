@@ -21,6 +21,48 @@ authorization never relies on browser refresh timing.
 
 ## Protected state and account limits
 
+### Zavu setup completion
+
+Partner invitations support WhatsApp and Messenger only. Instagram partner-link
+onboarding is not offered; an already linked Instagram sender can use the explicit
+activation recovery action. Invitation polling and manual checks send the selected
+`siteId` in the GET query, and invitation cancellation sends it in the DELETE
+query. The API must still verify manager access and invitation ownership.
+
+Provider authorization is not channel readiness. The invitation API returns
+`completed` only after activation and webhook finalization. A `502` leaves setup
+retryable and cannot produce a Connected badge. An explicit
+`invitation.activationPending: true` also keeps the UI in progress. Manual checks
+surface errors; background polling retries without success notifications. Disabled
+and license-suspended responses remain inactive.
+
+Existing sender-backed WhatsApp, Messenger, Instagram, and Telegram setup failures
+can be retried explicitly through
+`POST /api/integrations/zavu/senders/[id]/channels/[channel]/activate` with
+`{ siteId, channelId }`. The UI requires `status: "connected"` and
+`activationPending: false` before showing success, and does not resave stale form
+data over server-owned webhook metadata. Telegram token retries preserve the
+channel ID so the API can reuse its pending sender.
+
+Legacy connected sender-backed channels without
+`metadata.provider_channel_active: true` expose **Verify activation**. This is
+never automatic: the confirmation warns that activation may incur Zavu channel
+fees. Successful recovery adopts the canonical active marker and clears
+`metadata.activation_pending`; disabled channels are not activated by this action.
+Projected `enabled: false`, `license_suspended: true`, and manual-disable flags
+also suppress recovery. Initial partner-link and Telegram setup disclose potential
+Zavu activation fees before connection.
+
+SMS setup adopts the API's canonical `status` and `activationPending`, not the
+selected number's cached regulatory state. A failed response never updates the
+connection, and missing or pending activation confirmation never displays SMS
+success. API regulatory metadata takes precedence over stale selector metadata.
+Regression coverage: `__tests__/components/settings/sms-setup-readiness.test.tsx`.
+
+Offline regressions: `zavu-invitation-helpers.test.ts`,
+`use-zavu-invitation-sync.test.ts`, `disconnect-remote-accounts.test.ts`, and
+`zavu-channel-recovery.test.tsx` under `__tests__/components/settings/`.
+
 `supabase/migrations/20261020002000_manual_agent_channel_activation.sql` adds the
 service-only `set_site_agent_channel_enabled` RPC. The HTTP boundary is
 `POST /api/agent-channels/[siteId]/enabled` with only `{ connectionId, enabled }`.

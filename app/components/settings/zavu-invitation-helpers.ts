@@ -2,6 +2,8 @@ export const PARTNER_LINK_TYPES = new Set(["whatsapp", "messenger"])
 
 const TERMINAL_STATUSES = new Set([
   "connected",
+  "disabled",
+  "license_suspended",
   "failed",
   "expired",
   "cancelled",
@@ -13,6 +15,7 @@ export type InvitationLike = {
   senderId?: string | null
   connectedAccount?: unknown
   failureReason?: string | null
+  activationPending?: boolean
 }
 
 export type ConnectionLike = {
@@ -20,13 +23,18 @@ export type ConnectionLike = {
   type?: string
   name?: string
   status?: string
+  enabled?: boolean
+  license_suspended?: boolean
+  _license?: { manually_disabled?: unknown; [key: string]: unknown } | null
   zavu_sender_id?: string
   zavu_invitation_id?: string
   connected_account?: unknown
   metadata?: Record<string, unknown>
 }
 
-export function mapInvitationStatus(status: string | undefined): string {
+export function mapInvitationStatus(status: string | undefined, activationPending = false): string {
+  if (status === "disabled" || status === "license_suspended") return status
+  if (activationPending) return "in_progress"
   if (status === "completed") return "connected"
   return status || "pending"
 }
@@ -48,7 +56,7 @@ export function mapInvitationToConnection(
   invitation: InvitationLike,
   channel: ConnectionLike
 ): ConnectionLike {
-  const status = mapInvitationStatus(invitation.status)
+  const status = mapInvitationStatus(invitation.status, invitation.activationPending)
   const accountName = connectedAccountName(invitation.connectedAccount)
   const failureReason = invitation.failureReason || undefined
 
@@ -60,6 +68,8 @@ export function mapInvitationToConnection(
     name: accountName || channel.name,
     metadata: {
       ...(channel.metadata || {}),
+      ...(status === "connected" ? { provider_channel_active: true, activation_pending: false } : {}),
+      ...(invitation.activationPending !== undefined ? { activation_pending: invitation.activationPending } : {}),
       ...(failureReason ? { failure_reason: failureReason } : {}),
     },
   }
@@ -71,6 +81,7 @@ export function hasConnectionChanged(previous: ConnectionLike, next: ConnectionL
     previous.zavu_sender_id !== next.zavu_sender_id ||
     previous.name !== next.name ||
     JSON.stringify(previous.connected_account) !== JSON.stringify(next.connected_account) ||
-    previous.metadata?.failure_reason !== next.metadata?.failure_reason
+    previous.metadata?.failure_reason !== next.metadata?.failure_reason ||
+    previous.metadata?.activation_pending !== next.metadata?.activation_pending
   )
 }

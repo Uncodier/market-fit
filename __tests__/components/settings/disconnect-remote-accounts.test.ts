@@ -37,8 +37,19 @@ describe("disconnectZavuChannel", () => {
 
   it("cancels the invitation when there is no sender", async () => {
     deleteMock.mockResolvedValue({ success: true })
-    await disconnectZavuChannel({ zavu_invitation_id: "inv_1" })
-    expect(deleteMock).toHaveBeenCalledWith("/api/integrations/zavu/invitations/inv_1")
+    await disconnectZavuChannel({ zavu_invitation_id: "inv_1" }, "site-1")
+    expect(deleteMock).toHaveBeenCalledWith("/api/integrations/zavu/invitations/inv_1?siteId=site-1")
+  })
+
+  it("requires a site to cancel an invitation", async () => {
+    await expect(disconnectZavuChannel({ zavu_invitation_id: "inv_1" })).rejects.toThrow("Select a site")
+    expect(deleteMock).not.toHaveBeenCalled()
+  })
+
+  it("encodes invitation and site IDs for cancellation", async () => {
+    deleteMock.mockResolvedValue({ success: true })
+    await disconnectZavuChannel({ zavu_invitation_id: "inv/1" }, "site&1")
+    expect(deleteMock).toHaveBeenCalledWith("/api/integrations/zavu/invitations/inv%2F1?siteId=site%261")
   })
 
   it("treats 404 as already disconnected", async () => {

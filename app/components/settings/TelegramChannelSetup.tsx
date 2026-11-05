@@ -13,8 +13,8 @@ export function TelegramChannelSetup({
   onConnected 
 }: { 
   siteId: string, 
-  channel: any, 
-  onConnected: (payload: any) => void 
+  channel: { id?: string; name?: string },
+  onConnected: (payload: { senderId?: string; telegram?: { botUsername?: string; botId?: string } }) => void
 }) {
   const [botToken, setBotToken] = useState("")
   const [isConnecting, setIsConnecting] = useState(false)
@@ -42,8 +42,8 @@ export function TelegramChannelSetup({
 
       onConnected(response.data)
       toast.success("Telegram connected successfully")
-    } catch (error: any) {
-      toast.error(error.message || "An error occurred")
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "An error occurred")
     } finally {
       setIsConnecting(false)
     }
@@ -57,6 +57,7 @@ export function TelegramChannelSetup({
           <p className="text-xs text-muted-foreground">
             Create a bot via <a href="https://t.me/BotFather" target="_blank" rel="noreferrer" className="underline text-blue-500">@BotFather</a> on Telegram, then paste the token below.
           </p>
+          <p className="text-xs text-muted-foreground">Connecting this bot activates the channel and may incur Zavu channel fees.</p>
         </div>
 
         <div className="space-y-2">

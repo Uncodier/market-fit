@@ -7,6 +7,9 @@ import type { SiteFormValues } from "@/app/components/settings/form-schema"
 import { apiClient } from "@/app/services/api-client-service"
 import { reconcileSupportConnectionById } from "@/app/components/settings/support-channel-connection-utils"
 
+const checkStatus = jest.fn()
+const invitationSync = jest.fn()
+
 const canonicalConnections = [{
   id: "voice-1",
   type: "voice",
@@ -49,7 +52,10 @@ jest.mock("@/lib/supabase/client", () => ({
   createClient: jest.fn(),
 }))
 jest.mock("@/app/components/settings/use-zavu-invitation-sync", () => ({
-  useZavuInvitationSync: () => ({ checkStatus: jest.fn() }),
+  useZavuInvitationSync: (options: unknown) => {
+    invitationSync(options)
+    return { checkStatus }
+  },
 }))
 jest.mock("@/app/components/settings/use-zavu-phone-status-sync", () => ({
   useZavuPhoneStatusSync: jest.fn(),
@@ -117,6 +123,56 @@ function TestForm({
 }
 
 describe("SupportChannelsSection", () => {
+  it("uses the site-scoped invitation hook for manual status checks", async () => {
+    render(<TestForm onSave={jest.fn()} initialConnections={[{
+      id: "wa-pending", type: "whatsapp", name: "WhatsApp", status: "pending", zavu_invitation_id: "inv-1",
+      metadata: { invitation_url: "https://example.test/invite" },
+    }]} />)
+    expect(invitationSync).toHaveBeenCalledWith(expect.objectContaining({ siteId: "site-1", enabled: true }))
+    fireEvent.click(screen.getByRole("button", { name: "Check setup status" }))
+    await waitFor(() => expect(checkStatus).toHaveBeenCalled())
+    expect(screen.queryByText("Connected")).not.toBeInTheDocument()
+  })
+
+  it("does not offer Messenger invitations for unsupported Instagram onboarding", () => {
+    render(<TestForm onSave={jest.fn()} initialConnections={[{
+      id: "ig-pending", type: "instagram", name: "Instagram", status: "pending",
+    }]} />)
+    expect(screen.getByText("Partner invitation setup is not available for this channel.")).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Connect Account" })).not.toBeInTheDocument()
+  })
+
+  it("keeps a pending linked account unconnected when activation fails", async () => {
+    jest.spyOn(apiClient, "post").mockResolvedValue({ success: false, status: 502 })
+    const onSave = jest.fn()
+    render(<TestForm onSave={onSave} initialConnections={[{
+      id: "ig-pending", type: "instagram", name: "Instagram", status: "pending", zavu_sender_id: "snd-1",
+    }]} />)
+    fireEvent.click(screen.getByRole("button", { name: "Activate channel" }))
+    fireEvent.click(screen.getByRole("button", { name: "Confirm activation" }))
+    await waitFor(() => expect(apiClient.post).toHaveBeenCalled())
+    expect(screen.queryByText("Connected")).not.toBeInTheDocument()
+    expect(JSON.parse(screen.getByTestId("connections").textContent || "[]")[0].status).toBe("pending")
+    expect(onSave).not.toHaveBeenCalled()
+  })
+
+  it("adopts confirmed activation without resaving server-owned metadata", async () => {
+    jest.spyOn(apiClient, "post").mockResolvedValue({ success: true, data: { status: "connected", activationPending: false } })
+    const onSave = jest.fn()
+    render(<TestForm onSave={onSave} initialConnections={[{
+      id: "ig-pending", type: "instagram", name: "Instagram", status: "pending", zavu_sender_id: "snd-1",
+      metadata: { activation_pending: true },
+    }]} />)
+    fireEvent.click(screen.getByRole("button", { name: "Activate channel" }))
+    fireEvent.click(screen.getByRole("button", { name: "Confirm activation" }))
+    await waitFor(() => expect(screen.getByText("Connected")).toBeInTheDocument())
+    expect(JSON.parse(screen.getByTestId("connections").textContent || "[]")[0]).toEqual(expect.objectContaining({
+      status: "connected", metadata: { activation_pending: false, provider_channel_active: true },
+    }))
+    expect(screen.queryByRole("button", { name: "Verify activation" })).not.toBeInTheDocument()
+    expect(onSave).not.toHaveBeenCalled()
+  })
+
   afterEach(() => {
     jest.restoreAllMocks()
   })
