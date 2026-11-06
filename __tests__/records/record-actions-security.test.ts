@@ -38,9 +38,19 @@ describe("record action authorization", () => {
     expect(from).not.toHaveBeenCalled()
   })
 
+  it.each([null, undefined, { message: 42 }])(
+    "returns the existing error response when client creation rejects with %p",
+    async (error) => {
+      jest.mocked(createClient).mockRejectedValueOnce(error)
+
+      await expect(getRecords("00000000-0000-4000-8000-000000000300"))
+        .resolves.toEqual({ records: null, error: "Failed to fetch records" })
+    },
+  )
+
   it("allows a validated category change through the authenticated client", async () => {
     const update = jest.fn()
-    const query: any = {
+    const query = {
       update: jest.fn((value) => {
         update(value)
         return query

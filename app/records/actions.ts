@@ -1,6 +1,7 @@
 "use server"
 
 import { z } from "zod"
+import { getRecordActionError } from "./lib/action-error"
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import { after } from "next/server"
@@ -97,9 +98,9 @@ export async function getRecordCategories(siteId: string): Promise<{ categories:
 
     if (error) throw error
     return { categories: data as RecordCategory[], error: null }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in getRecordCategories:", error)
-    return { categories: null, error: error.message || "Failed to fetch categories" }
+    return { categories: null, error: getRecordActionError(error, "Failed to fetch categories") }
   }
 }
 
@@ -137,9 +138,9 @@ export async function createRecordCategory({
     if (error) throw error
     revalidatePath("/records")
     return { category: data }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error creating category:", error)
-    return { error: error.message || "Failed to create category" }
+    return { error: getRecordActionError(error, "Failed to create category") }
   }
 }
 
@@ -161,9 +162,9 @@ export async function updateRecordCategory(
     if (error) throw error
     revalidatePath("/records")
     return { category: data }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error updating category:", error)
-    return { error: error.message || "Failed to update category" }
+    return { error: getRecordActionError(error, "Failed to update category") }
   }
 }
 
@@ -182,9 +183,9 @@ export async function deleteRecordCategory(id: string) {
     if (!data) throw new Error("Category not found or access denied")
     revalidatePath("/records")
     return { success: true }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error deleting category:", error)
-    return { error: error.message || "Failed to delete category" }
+    return { error: getRecordActionError(error, "Failed to delete category") }
   }
 }
 
@@ -215,9 +216,9 @@ export async function getRecords(siteId: string, categoryId?: string): Promise<{
     if (error) throw error
     
     return { records: data as RecordItem[], error: null }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in getRecords:", error)
-    return { records: null, error: error.message || "Failed to fetch records" }
+    return { records: null, error: getRecordActionError(error, "Failed to fetch records") }
   }
 }
 
@@ -233,9 +234,9 @@ export async function getRecordById(id: string): Promise<{ record: RecordItem | 
 
     if (error) throw error
     return { record: data as RecordItem, error: null }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in getRecordById:", error)
-    return { record: null, error: error.message || "Failed to fetch record" }
+    return { record: null, error: getRecordActionError(error, "Failed to fetch record") }
   }
 }
 
@@ -277,9 +278,9 @@ export async function createRecord({
     revalidatePath("/records")
     scheduleRecordEmbedding(record.id)
     return { record }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error creating record:", error)
-    return { error: error.message || "Failed to create record" }
+    return { error: getRecordActionError(error, "Failed to create record") }
   }
 }
 
@@ -302,9 +303,9 @@ export async function updateRecord(
     revalidatePath("/records")
     scheduleRecordEmbedding(record.id)
     return { record }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error updating record:", error)
-    return { error: error.message || "Failed to update record" }
+    return { error: getRecordActionError(error, "Failed to update record") }
   }
 }
 
@@ -323,9 +324,9 @@ export async function deleteRecord(id: string) {
     if (!data) throw new Error("Record not found or access denied")
     revalidatePath("/records")
     return { success: true }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error deleting record:", error)
-    return { error: error.message || "Failed to delete record" }
+    return { error: getRecordActionError(error, "Failed to delete record") }
   }
 }
 
@@ -345,9 +346,9 @@ export async function getVectorRelatedRecords(
 
     if (error) throw error
     return { records: data, error: null }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in getVectorRelatedRecords:", error)
-    return { records: null, error: error.message || "Failed to fetch vector related records" }
+    return { records: null, error: getRecordActionError(error, "Failed to fetch vector related records") }
   }
 }
 
@@ -368,9 +369,9 @@ export async function getHistoricalRelatedRecords(
 
     if (error) throw error
     return { records: data as RecordItem[], error: null }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in getHistoricalRelatedRecords:", error)
-    return { records: null, error: error.message || "Failed to fetch historical records" }
+    return { records: null, error: getRecordActionError(error, "Failed to fetch historical records") }
   }
 }
 
@@ -397,9 +398,9 @@ export async function getRecordsSimilarityEdges(
 
     if (error) throw error
     return { edges: data, error: null }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in getRecordsSimilarityEdges:", error)
-    return { edges: null, error: error.message || "Failed to fetch similarity edges" }
+    return { edges: null, error: getRecordActionError(error, "Failed to fetch similarity edges") }
   }
 }
 
