@@ -16,6 +16,13 @@ jest.mock('@/app/hooks/use-optimistic-error', () => ({
 }))
 
 beforeEach(() => { jest.clearAllMocks(); jest.mocked(listWorkspaceQuotations).mockReset(); siteId = 'company-a' })
+it.each(['demo-habituall', 'demo-ecom-es-456', 'demo-saas-en-123'])('loads local quotations without server actions for %s', async demoId => {
+  siteId = demoId
+  render(<QuotationsPage />)
+  await waitFor(() => expect(screen.getByRole('table')).toBeInTheDocument())
+  expect(screen.getAllByRole('row').length).toBeGreaterThan(1)
+  expect(listWorkspaceQuotations).not.toHaveBeenCalled()
+})
 it('loads the selected status with the existing workspace parameters and displays load errors', async () => {
   jest.mocked(listWorkspaceQuotations).mockResolvedValue({ data: [], count: 0 })
   render(<QuotationsPage />)

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react"
 import { retryOnError } from "@/app/hooks/use-optimistic-error"
 import { listWorkspaceQuotations } from "./workspace-read-actions"
+import { isKnownDemoSite } from '@/lib/demo-data'
+import { listDemoWorkspaceQuotations } from './demo-workspace-quotations'
 
 export type WorkspaceQuote = {
   id: string
@@ -30,6 +32,7 @@ export function useWorkspaceQuotations(params: Parameters<typeof listWorkspaceQu
     let obsolete = false
     const [input] = JSON.parse(key) as [Parameters<typeof listWorkspaceQuotations>[0], number]
     void retryOnError(async () => {
+      if (isKnownDemoSite(input.siteId)) return listDemoWorkspaceQuotations(input)
       const result = await listWorkspaceQuotations(input)
       if (result.error) throw new Error(result.error)
       return result as Result

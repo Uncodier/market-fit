@@ -1,6 +1,8 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
+import { isKnownDemoSite } from '@/lib/demo-data'
+import { DemoWorkspaceQuotationDetail } from '../components/DemoWorkspaceQuotationDetail'
 import { useRouter } from "next/navigation"
 import {
   updateQuotationStatus,
@@ -45,6 +47,7 @@ export default function QuotationDetail({ params }: { params: Promise<{ id: stri
   const resolvedParams = React.use(params)
   const { currentSite } = useSite()
   const { user } = useAuthContext()
+  if (currentSite && isKnownDemoSite(currentSite.id)) return <DemoWorkspaceQuotationDetail key={`${currentSite.id}:${resolvedParams.id}`} siteId={currentSite.id} id={resolvedParams.id} />
   return currentSite && user ? <ScopedQuotationDetail key={`${user.id}:${currentSite.id}:${resolvedParams.id}`} siteId={currentSite.id} id={resolvedParams.id} /> : <div className="p-8"><Skeleton className="h-64 w-full" /></div>
 }
 

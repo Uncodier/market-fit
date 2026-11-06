@@ -10,6 +10,7 @@ import { attachDemoAnalytics } from "./analytics-seed"
 import { attachDemoSocial } from "./social-seed"
 import { attachDemoPayables } from "./accounts-payable"
 import { COWORK_PREVIEW_URL } from "./habituall/preview"
+import { attachDemoQuotations } from "./quotations"
 
 function finalizeDemoData(data: Record<string, unknown>) {
   const overview = attachDemoOverview(applyDemoTimeline(data))
@@ -18,7 +19,7 @@ function finalizeDemoData(data: Record<string, unknown>) {
   const analytics = attachDemoAnalytics(performance)
   const traffic = attachDemoTraffic(analytics)
   const social = attachDemoSocial(traffic)
-  return attachDemoOrderLineUnits(attachDemoAccounting(attachDemoPayables(social)))
+  return attachDemoQuotations(attachDemoOrderLineUnits(attachDemoAccounting(attachDemoPayables(social))))
 }
 
 export const availableDemos = [

@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
+import { isKnownDemoSite } from '@/lib/demo-data'
 import { useWorkspaceQuotations, type WorkspaceQuote } from "./use-workspace-quotations"
 import { useSite } from "@/app/context/SiteContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
@@ -19,7 +20,7 @@ import { useAuthContext } from "@/app/components/auth/auth-provider"
 export default function QuotationsPage() {
   const { currentSite } = useSite()
   const { user } = useAuthContext()
-  return currentSite && user ? <WorkspaceQuotations key={`${user.id}:${currentSite.id}`} /> : <QuotesTableSkeleton />
+  return currentSite && (user || isKnownDemoSite(currentSite.id)) ? <WorkspaceQuotations key={`${user?.id || 'demo'}:${currentSite.id}`} /> : <QuotesTableSkeleton />
 }
 
 function WorkspaceQuotations() {
