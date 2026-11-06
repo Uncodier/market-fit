@@ -23,8 +23,10 @@ it.each(['smoke', 'regression', 'buyer', 'roles', 'project-lifecycle', 'account-
   expect(files.length).toBeGreaterThan(0);
   expect(files.join('\n')).not.toMatch(/arch\.yaml|example\.yaml|tests\/agent\//);
   if (suite === 'smoke') {
-    expect(files).toEqual(expect.arrayContaining(['auth.setup.ts', 'tests/smoke/public.spec.ts', 'tests/smoke/workspace.spec.ts']));
-    expect(found.flatMap(item => item.specs || [])).toHaveLength(7);
+    expect([...new Set(files)].sort()).toEqual(['auth.setup.ts', 'tests/smoke/account-reads.spec.ts',
+      'tests/smoke/module-reads.spec.ts', 'tests/smoke/public.spec.ts', 'tests/smoke/visits.spec.ts',
+      'tests/smoke/workspace.spec.ts']);
+    expect(found.flatMap(item => item.specs || [])).toHaveLength(24);
   }
   if (suite === 'buyer') expect(files.join('\n')).not.toContain('auth.setup.ts');
   if (suite === 'regression') expect(files.join('\n')).not.toContain('buyer-navigation');

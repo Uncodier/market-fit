@@ -33,7 +33,7 @@ const projects = suite === 'roles' ? [{ name: 'roles', testMatch: /tests\/bounda
   ] : [
     { name: 'setup', testMatch: /(^|\/)auth\.setup\.ts$/, use: { storageState: { cookies: [], origins: [] } } },
     { name: 'public', testMatch: suite === 'smoke' ? /tests\/smoke\/public\.spec\.ts$/ : /tests\/public-commerce-navigation\.yaml\.spec\.ts$/, use: { ...shared, baseURL: process.env.TEST_COMMERCE_BASE_URL, storageState: { cookies: [], origins: [] } } },
-    { name: 'admin', testMatch: suite === 'smoke' ? /tests\/smoke\/workspace\.spec\.ts$/ : path.join(__dirname, 'tests/*.yaml.spec.ts'), testIgnore: ['**/tests/agent/**', /(?:example|browser-quality-mobile|buyer-navigation|public-commerce-navigation)\.yaml\.spec\.ts$/], use: { ...shared, storageState: adminState }, dependencies: ['setup'] },
+    { name: 'admin', testMatch: suite === 'smoke' ? /tests\/smoke\/(?:workspace|visits|module-reads|account-reads)\.spec\.ts$/ : path.join(__dirname, 'tests/*.yaml.spec.ts'), testIgnore: ['**/tests/agent/**', /(?:example|browser-quality-mobile|buyer-navigation|public-commerce-navigation)\.yaml\.spec\.ts$/], use: { ...shared, storageState: adminState }, dependencies: ['setup'] },
     ...(suite === 'regression' ? [{ name: 'mobile-chromium', testMatch: /tests\/browser-quality-mobile\.yaml\.spec\.ts$/, use: { ...shared, storageState: adminState, viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }, dependencies: ['setup'] }] : []),
   ];
 

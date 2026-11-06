@@ -1,5 +1,6 @@
 "use client"
 
+import { useId } from "react"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
 import { useLocalization } from "@/app/context/LocalizationContext"
@@ -31,6 +32,7 @@ export function VisitIdentityFields({
   onPhoneChange: (value: string) => void
 }) {
   const { t } = useLocalization()
+  const fieldId = useId()
 
   if (mode === "buyer") {
     return (
@@ -52,8 +54,9 @@ export function VisitIdentityFields({
   return (
     <>
       <div className="grid gap-2">
-        <Label className="text-sm font-semibold">{t("visits.fields.fullName")}</Label>
+        <Label htmlFor={`${fieldId}-name`} className="text-sm font-semibold">{t("visits.fields.fullName")}</Label>
         <Input
+          id={`${fieldId}-name`}
           className={cn("h-12 bg-background", nameError && "border-destructive focus-visible:ring-destructive")}
           autoComplete="name"
           value={visitorName}
@@ -67,8 +70,9 @@ export function VisitIdentityFields({
         {contactHintError || t("visits.identity.contactHint")}
       </p>
       <div className="grid gap-2">
-        <Label className="text-sm font-semibold">{t("visits.fields.email")}</Label>
+        <Label htmlFor={`${fieldId}-email`} className="text-sm font-semibold">{t("visits.fields.email")}</Label>
         <Input
+          id={`${fieldId}-email`}
           className={cn("h-12 bg-background", emailError && "border-destructive focus-visible:ring-destructive")}
           type="email"
           autoComplete="email"
@@ -80,8 +84,9 @@ export function VisitIdentityFields({
         {emailError && <p className="text-xs text-destructive">{emailError}</p>}
       </div>
       <div className="grid gap-2">
-        <Label className="text-sm font-semibold">{t("visits.fields.phone")}</Label>
+        <Label htmlFor={`${fieldId}-phone`} className="text-sm font-semibold">{t("visits.fields.phone")}</Label>
         <Input
+          id={`${fieldId}-phone`}
           className={cn("h-12 bg-background", phoneError && "border-destructive focus-visible:ring-destructive")}
           type="text"
           inputMode="tel"

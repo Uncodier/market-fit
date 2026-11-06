@@ -1,7 +1,41 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { selectWorkspace, assertWorkspace, dismissConsent } from '../support/workspace';
 import { startReadObservation, assertReadObservation, waitForObservedReads } from '../support/read-observation';
 import { required } from '../support/environment';
+import operations from '../../app/context/locales/screens/operations-en.json';
+
+async function verifyBalanceSearch(page: Page, route: string, area: 'payables' | 'receivables') {
+  await selectWorkspace(page);
+  await waitForObservedReads(page);
+  const response = await page.goto(route, { waitUntil: 'domcontentloaded' });
+  expect(response?.ok()).toBe(true);
+  await dismissConsent(page);
+  const labels = operations as Record<string, string>;
+  const search = page.getByPlaceholder(labels[`operations.${area}.search`], { exact: true })
+    .filter({ visible: true });
+  const empty = page.getByText(labels[`operations.${area}.emptyTitle`], { exact: true });
+  const table = page.getByRole('table', { name: labels[`operations.${area}.tableAria`], exact: true });
+  await expect(search).toBeVisible();
+  await expect(table.or(empty)).toBeVisible({ timeout: 45_000 });
+  // The global announcer has an empty alert; module load errors contain text.
+  await expect(page.getByRole('alert').filter({ hasText: /\S/ })).toHaveCount(0);
+  await search.fill(`e2e-no-balance-${required(process.env, 'SHIPLIGHT_RUN_ID')}`);
+  await expect(empty).toBeVisible();
+  await expect(table).toHaveCount(0);
+  await search.fill('');
+  await expect(table.or(empty)).toBeVisible();
+  await expect(page.locator('.animate-pulse:visible')).toHaveCount(0);
+  await expect(page.locator('input[name="password"]')).toHaveCount(0);
+  await assertWorkspace(page);
+}
+
+test('Accounts Payable completes balance reads and reversible empty search without payments', async ({ page }) => {
+  await verifyBalanceSearch(page, '/accounts-payable', 'payables');
+});
+
+test('Accounts Receivable completes balance reads and reversible empty search without settlement', async ({ page }) => {
+  await verifyBalanceSearch(page, '/accounts-receivable', 'receivables');
+});
 
 test.beforeEach(async ({ page }) => { startReadObservation(page); });
 test.afterEach(async ({ page }) => { await assertReadObservation(page); });

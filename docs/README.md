@@ -39,6 +39,8 @@ Use the guides below before relying on older implementation notes.
   and data assumptions.
 - [E2E execution and evidence](E2E_TESTING.md) — safe suite selection, fixtures,
   run provenance, strict assertions and unresolved live-verification blockers.
+- [Complementary module read coverage](E2E_MODULE_READS_2026-11-06.md) — Visits and
+  low-coverage module journeys, local repairs and production evidence boundaries.
 - [Local QA provisioning](QA_PROVISIONING.md) — deterministic disposable fixtures,
   local safety gates, private ownership journal and offline regression tests.
 - [Production harness canaries](HARNESS_PRODUCTION_CANARIES.md) — five explicitly

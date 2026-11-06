@@ -78,6 +78,9 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
   const [shortcuts, setShortcuts] = useState<ShortcutRecord[]>([])
   const [loadedScope, setLoadedScope] = useState<string | null>(null)
   const isLoaded = shortcutScope !== null && loadedScope === shortcutScope
+  // Tracks observed/submitted content, not confirmed DB durability: storage logs
+  // DB failures internally. Keep this scoped and dedupe even pending writes.
+  const persistenceRef = useRef<{ scope: string; content: string } | null>(null)
 
   // Load from DB or local storage
   useEffect(() => {
@@ -90,13 +93,17 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
         const loadedShortcuts = await loadShortcuts(user?.id, siteId)
 
         if (isMounted) {
-          setShortcuts(prepareSidebarShortcuts(loadedShortcuts))
+          const prepared = prepareSidebarShortcuts(loadedShortcuts)
+          persistenceRef.current = { scope: shortcutScope, content: JSON.stringify(prepared) }
+          setShortcuts(prepared)
           setLoadedScope(shortcutScope)
         }
       } catch (error) {
         console.error("Failed to load shortcuts", error)
         if (isMounted) {
-          setShortcuts(prepareSidebarShortcuts([]))
+          const prepared = prepareSidebarShortcuts([])
+          persistenceRef.current = { scope: shortcutScope, content: JSON.stringify(prepared) }
+          setShortcuts(prepared)
           setLoadedScope(shortcutScope)
         }
       }
@@ -129,10 +136,17 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
 
   // Save to DB and local storage
   useEffect(() => {
-    if (!isLoaded || !siteId) return
+    if (!isLoaded || !siteId || isAuthLoading || isSiteLoading || !shortcutScope) return
 
-    void saveShortcuts(user?.id, siteId, shortcuts)
-  }, [shortcuts, isLoaded, siteId, user?.id])
+    const content = JSON.stringify(shortcuts)
+    if (persistenceRef.current?.scope === shortcutScope && persistenceRef.current.content === content) return
+    const submission = { scope: shortcutScope, content }
+    persistenceRef.current = submission
+    void saveShortcuts(user?.id, siteId, shortcuts).catch((error) => {
+      if (persistenceRef.current === submission) persistenceRef.current = null
+      console.error("Failed to save shortcuts", error)
+    })
+  }, [shortcuts, isLoaded, siteId, user?.id, shortcutScope, isAuthLoading, isSiteLoading])
 
   // Check if current route matches any item and add it if not exists
   useEffect(() => {
