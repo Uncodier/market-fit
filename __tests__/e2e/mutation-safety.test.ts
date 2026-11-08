@@ -67,8 +67,8 @@ describe('owned mutation YAML governance', () => {
     expect(journey.fail).toBeUndefined()
     expect(source).toContain('.assertReadObservation(page)')
   })
-  it('fails closed for two unavailable fixtures rather than silently skipping', () => {
-    for (const file of ['crud-robot.test.yaml', 'crud-settings-social.test.yaml']) {
+  it('fails closed for unavailable social fixtures rather than silently skipping', () => {
+    for (const file of ['crud-settings-social.test.yaml']) {
       const source = fs.readFileSync(path.join(root, 'tests', file), 'utf8')
       expect(source).toContain('throw new Error(')
       expect(source).not.toContain('action: click')

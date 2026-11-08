@@ -1,20 +1,70 @@
-# Intended journey: create session, capture UUID, verify its tab, delete that exact session, reload.
-# Blocked until failed placeholder creation can be cleaned up by exact run ownership.
-goal: Create, read, and delete a Robot session
+# Real UI inserts/rename/delete; exact IDs are journaled before inserts reach Supabase.
+# No assistant messages, provider startup, fixture-wide reset, or mocked backend.
+goal: Create, read, rename, and delete a Robot session
 tags:
   - regression
   - mutation
 statements:
-  - description: Require explicit TEST_SITE_NAME and TEST_SITE_ID and a disposable mutation environment
-    js: require(process.cwd() + '/tests/support/mutation-safety').requireMutationEnvironment();
-  - description: Fail closed for the unavailable isolated fixture instead of reporting an empty success
-    js: throw new Error("[E2E_BLOCKED] Robot creation assigns a server-generated placeholder before a run-specific name can be saved. A failed create can leave an unidentifiable session. A disposable robot provisioning and exact-ID cleanup fixture is required before this mutating journey can run.");
+  - description: Require explicit TEST_SITE_NAME and TEST_SITE_ID, disposable mutation environment and public-key fixture configuration
+    js: |-
+      require(process.cwd() + '/tests/support/mutation-safety').requireMutationEnvironment();
+      require(process.cwd() + '/tests/support/mutation-safety').fixtureConnection();
+  - URL: /projects?manage=1
+  - description: Bind browser identity and register exact-ID capture before workspace auto-creation
+    js: await require(process.cwd() + '/tests/support/robot-fixtures').prepare(page, testContext);
   - description: Select and verify the explicit workspace
     js: |-
-      await require(process.cwd() + '/tests/support/workspace').selectWorkspace(page);
       testContext.set("mutationObservationStarted", true);
+      await require(process.cwd() + '/tests/support/workspace').selectWorkspace(page);
+      await expect(page.locator('[role="tab"][data-testid^="robot-tab-"][data-state="active"]')).toBeVisible({ timeout: 30000 });
+      testContext.set('robotCountBefore', require(process.cwd() + '/tests/support/robot-fixtures').count(testContext));
+      testContext.set('robotName', `Shiplight Robot ${Date.now()}-${Math.random().toString(36).slice(2, 10)}`);
+  - description: Create a new placeholder through the actual UI
+    js: |-
+      await page.getByTitle('Create new agent', { exact: true }).click();
+      await expect.poll(() => require(process.cwd() + '/tests/support/robot-fixtures').count(testContext)).toBe(testContext.get('robotCountBefore') + 1);
+      const id = require(process.cwd() + '/tests/support/robot-fixtures').createdId(testContext, testContext.get('robotCountBefore'));
+      testContext.set('robotId', id);
+      await expect(page.getByTestId(`robot-tab-${id}`)).toHaveAttribute('data-state', 'active', { timeout: 30000 });
+      await require(process.cwd() + '/tests/support/robot-fixtures').assertPersisted(testContext, id, 'Assistant Session');
+  - description: Rename only the captured session
+    js: |-
+      const tab = page.getByTestId(`robot-tab-${testContext.get('robotId')}`);
+      await tab.getByRole('button', { name: 'Actions for Assistant Session', exact: true }).click();
+      await page.getByRole('menuitem', { name: 'Rename', exact: true }).click();
+      const dialog = page.getByRole('dialog', { name: 'Edit instance' });
+      await dialog.getByLabel('Name', { exact: true }).fill(testContext.get('robotName'));
+      await dialog.getByRole('button', { name: 'Save changes', exact: true }).click();
+      await expect(tab).toContainText(testContext.get('robotName'));
+      await expect.poll(async () => {
+        await require(process.cwd() + '/tests/support/robot-fixtures').assertPersisted(testContext, testContext.get('robotId'), testContext.get('robotName'));
+        return true;
+      }).toBe(true);
+  - description: Verify the same session and saved name after reload
+    js: |-
+      await page.reload();
+      await expect(page.getByTestId(`robot-tab-${testContext.get('robotId')}`)).toContainText(testContext.get('robotName'), { timeout: 30000 });
+      await require(process.cwd() + '/tests/support/robot-fixtures').assertPersisted(testContext, testContext.get('robotId'), testContext.get('robotName'));
+  - description: Delete only the exact run-owned tab through the confirmation dialog
+    js: |-
+      await page.getByTestId(`robot-tab-${testContext.get('robotId')}`).getByRole('button', { name: `Actions for ${testContext.get('robotName')}`, exact: true }).click();
+      await page.getByRole('menuitem', { name: 'Delete', exact: true }).click();
+      const dialog = page.getByRole('alertdialog', { name: 'Delete agent instance' });
+      await expect(dialog).toContainText(`${testContext.get('robotName')}-${testContext.get('robotId').slice(-4)}`);
+      await dialog.getByRole('button', { name: 'Delete', exact: true }).click();
+      await expect(dialog).not.toBeVisible({ timeout: 60000 });
+      await require(process.cwd() + '/tests/support/robot-fixtures').assertRemoved(testContext, testContext.get('robotId'));
+  - description: Reload and prove persisted removal before cleanup can affect the result
+    js: |-
+      await page.reload();
+      await expect(page.getByTitle('Create new agent', { exact: true })).toBeVisible({ timeout: 30000 });
+      await require(process.cwd() + '/tests/support/robot-fixtures').assertRemoved(testContext, testContext.get('robotId'));
+      await expect(page.getByTestId(`robot-tab-${testContext.get('robotId')}`)).toHaveCount(0);
 teardown:
-  - description: "No mutation occurred: validate the environment again instead of deleting arbitrary existing records"
-    js: require(process.cwd() + '/tests/support/mutation-safety').requireMutationEnvironment();
-  - description: Fail on observed HTTP, application, network, or console errors even when UI assertions passed
-    js: if (testContext.get("mutationObservationStarted")) await require(process.cwd() + '/tests/support/read-observation').assertReadObservation(page);
+  - description: Cleanup exact run-owned IDs including automatic or ambiguous placeholder inserts and always check observation
+    js: |-
+      try {
+        await require(process.cwd() + '/tests/support/robot-fixtures').cleanup(page, testContext);
+      } finally {
+        if (testContext.get('mutationObservationStarted')) await require(process.cwd() + '/tests/support/read-observation').assertReadObservation(page);
+      }

@@ -68,6 +68,7 @@ export function InstanceHeader(input: ReturnType<typeof useWorkspaceTabs>) {
                             <TabsTrigger
                               key={`${inst.id}-${siteChangeKey}`}
                               value={inst.id}
+                              data-testid={`robot-tab-${inst.id}`}
                               className={cn(
                                 "group",
                                 hasMultipleNodes && "bg-primary/10 hover:bg-primary/20 data-[state=active]:bg-primary/15 transition-colors",

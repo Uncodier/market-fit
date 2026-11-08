@@ -90,6 +90,7 @@ describe('Robots creation asynchronous lifecycle', () => {
     expect(mockCheck).toHaveBeenCalledTimes(1)
     expect(mockInsert).toHaveBeenCalledTimes(1)
     expect(mockInsert).toHaveBeenCalledWith([expect.objectContaining({
+      id: expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/),
       site_id: 'site-a', user_id: 'user-a', created_by: 'user-a', status: 'pending',
     })])
     expect(mockEq).toHaveBeenCalledWith('remote_instances', 'site_id', 'site-a')

@@ -1,4 +1,5 @@
 import { useEffect, useCallback, useRef } from "react"
+import { v4 as uuidv4 } from "uuid"
 
 import { createClient } from "@/lib/supabase/client"
 
@@ -45,6 +46,8 @@ export function useInstanceCreation(input: ReturnType<typeof useRobotsController
       const { data, error } = await supabase
         .from('remote_instances')
         .insert([{
+          // Allocate identity before sending so ambiguous responses remain correlatable.
+          id: uuidv4(),
           site_id: siteId, user_id: user.id, created_by: user.id,
           name: 'Assistant Session', status: 'pending', instance_type: 'ubuntu',
         }])
