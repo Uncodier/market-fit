@@ -50,7 +50,7 @@ describe("record action authorization", () => {
 
   it("allows a validated category change through the authenticated client", async () => {
     const update = jest.fn()
-    const query = {
+    const query: { update: jest.Mock; eq: jest.Mock; select: jest.Mock; single: jest.Mock } = {
       update: jest.fn((value) => {
         update(value)
         return query

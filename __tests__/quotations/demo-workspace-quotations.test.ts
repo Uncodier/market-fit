@@ -9,6 +9,8 @@ describe('workspace demo quotations', () => {
     for (const row of result.data) {
       expect(row.lead).toBeTruthy()
       const detail = await getDemoWorkspaceQuotation(siteId, row.id)
+      expect(detail).not.toBeNull()
+      if (!detail) throw new Error(`Missing demo quotation ${row.id}`)
       expect(detail.site_id).toBe(siteId)
       expect(detail.items.length).toBeGreaterThan(0)
       expect(detail.items.reduce((sum: number, item: { subtotal: number; catalog_item_id: string }) => sum + item.subtotal, 0)).toBe(detail.subtotal)

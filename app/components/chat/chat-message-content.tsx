@@ -6,6 +6,8 @@ import { isMimeMultipartMessage } from "@/app/utils/email-formatter"
 import { parseSocialCommentContext } from "@/lib/chat/social-comment-context"
 import { CommentReplyContext, useCommentDisplayContext } from "./CommentReplyContext"
 import { PostContextCard } from "./PostContextCard"
+import { ChatAttachments } from "./ChatAttachments"
+import { chatAttachmentText, getChatAttachments } from "@/lib/chat/attachments"
 
 const EMAIL_CONTENT_TOKEN = "email-content-token"
 
@@ -82,7 +84,8 @@ const markdownComponents: Components = {
 }
 
 export function ChatMessageContent({ message }: { message: ChatMessage }) {
-  const formattedContent = formatMessageContent(message.text)
+  const attachments = getChatAttachments(message.metadata)
+  const formattedContent = formatMessageContent(chatAttachmentText(message.text, attachments))
   const postContext = parseSocialCommentContext(message.metadata)
   const { showMessagePostContext } = useCommentDisplayContext()
 
@@ -90,9 +93,10 @@ export function ChatMessageContent({ message }: { message: ChatMessage }) {
     <div className="flex flex-col gap-2 w-full">
       {postContext && showMessagePostContext && <PostContextCard context={postContext} compact />}
       <CommentReplyContext message={message} />
+      <ChatAttachments attachments={attachments} />
       {formattedContent === EMAIL_CONTENT_TOKEN ? (
         <EmailViewer emailContent={message.text} className="w-full" />
-      ) : (
+      ) : formattedContent ? (
         <div
           className="text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words word-wrap hyphens-auto"
           style={{
@@ -105,7 +109,7 @@ export function ChatMessageContent({ message }: { message: ChatMessage }) {
             {formattedContent}
           </ReactMarkdown>
         </div>
-      )}
+      ) : null}
 
     </div>
   )

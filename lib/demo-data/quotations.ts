@@ -1,7 +1,14 @@
 import { isoDaysAgo, isoDaysFromNow, isoNow } from './factories'
 
 /** Fill missing sales quotation fixtures using each workspace's own customers and catalog. */
-export function attachDemoQuotations(data: { sites?: { id: string }[]; leads?: { id: string }[]; catalog_items?: { id: string; name: string; parent_id?: string | null; target_sale_price: number; currency?: string }[]; quotations?: unknown[] }) {
+type QuotationFixture = {
+  sites?: { id: string }[]
+  leads?: { id: string }[]
+  catalog_items?: { id: string; name: string; parent_id?: string | null; target_sale_price: number; currency?: string }[]
+  quotations?: unknown[]
+}
+
+export function attachDemoQuotations<T extends QuotationFixture>(data: T) {
   if (data.quotations?.length) return data
   const siteId = data.sites?.[0]?.id
   const customers = data.leads || []
