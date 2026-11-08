@@ -15,7 +15,7 @@ const row = { id, site_id: 'site', user_id: 'user', created_by: 'user', name: 'A
 let data: unknown[] = []
 let error: unknown = null
 const mockClient = { from: jest.fn(() => {
-  const query = { select: jest.fn(() => query), eq: jest.fn(() => query),
+  const query = { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(),
     then: (resolve: (value: unknown) => unknown) => Promise.resolve({ data, error }).then(resolve) }
   return query
 }) }
