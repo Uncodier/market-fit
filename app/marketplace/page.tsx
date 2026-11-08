@@ -7,7 +7,7 @@ import { getBuyerGeoApprox } from "@/app/commerce/buyer-geo"
 export const revalidate = 60
 
 export const metadata = buildShareMetadata({
-  title: "Marketplace | Makinari",
+  title: "Marketplace | MAKINARI",
   description: "Discover and purchase products, services, and digital assets across Makinari shops.",
   imageUrl: "/opengraph-image.jpg",
   url: "/marketplace",

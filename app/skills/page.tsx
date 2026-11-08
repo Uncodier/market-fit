@@ -44,10 +44,10 @@ export default function SkillsPage() {
       ...systemSkillSections,
       {
         id: "skills",
-        title: t("settings.nav.skills") || "Makinari Skills",
+        title: t("settings.nav.skills") || "MAKINARI Skills",
         children: [
           { id: "skill-frontend-blog-seo", title: "Frontend Blog & SEO" },
-          { id: "skill-makinari", title: "Makinari MCP" },
+          { id: "skill-makinari", title: "MAKINARI MCP" },
         ],
       },
     ],

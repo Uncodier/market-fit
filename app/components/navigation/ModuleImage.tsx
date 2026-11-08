@@ -27,6 +27,7 @@ export function ModuleImage({
   loading = "lazy",
 }: ModuleImageProps) {
   const [failed, setFailed] = useState(false)
+  const isSupplierMark = itemKey === "suppliers"
   const isFullSize = FULL_SIZE_MODULE_IMAGE_KEYS.has(itemKey)
   const FallbackIcon = NAV_ITEM_ICON[itemKey] ?? AREA_ICON[area]
 
@@ -34,13 +35,13 @@ export function ModuleImage({
     <span
       className={cn(
         "relative inline-flex shrink-0 overflow-hidden",
-        !isFullSize && "bg-muted/50",
+        isSupplierMark ? "bg-white" : !isFullSize && "bg-muted/50",
         className,
       )}
     >
       {!failed ? (
         <img
-          src={getModuleImageUrl(area, itemKey, title)}
+          src={isSupplierMark ? "/images/isotipo.svg" : getModuleImageUrl(area, itemKey, title)}
           alt={`${title} app icon`}
           width={256}
           height={256}
@@ -48,8 +49,10 @@ export function ModuleImage({
           decoding="async"
           draggable={false}
           className={cn(
-            "h-full w-full dark:brightness-[0.82]",
-            isFullSize ? "object-contain" : "object-cover",
+            "h-full w-full",
+            isSupplierMark
+              ? "object-contain p-2 brightness-0"
+              : ["dark:brightness-[0.82]", isFullSize ? "object-contain" : "object-cover"],
             imageClassName,
           )}
           onError={() => setFailed(true)}

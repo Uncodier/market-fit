@@ -20,11 +20,11 @@ export const revalidate = 60;
 export async function generateMetadata({ params }: { params: Promise<{ siteSlug: string }> | { siteSlug: string } }): Promise<Metadata> {
   const resolvedParams = await params;
   const siteSlug = 'siteSlug' in resolvedParams ? resolvedParams.siteSlug : undefined;
-  if (!siteSlug) return { title: 'Shop | Makinari' };
+  if (!siteSlug) return { title: 'Shop | MAKINARI' };
 
   const context = await getShopRouteContext(siteSlug);
   const site = context?.site;
-  if (!site) return { title: 'Shop Not Found | Makinari' };
+  if (!site) return { title: 'Shop Not Found | MAKINARI' };
 
   return buildShopShareMetadata(site, `/shop/${siteSlug}`);
 }

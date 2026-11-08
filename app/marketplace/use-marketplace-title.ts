@@ -19,6 +19,6 @@ const subtypeKeys: Record<string, string> = {
 export function useMarketplaceTitle(kind: string, subtype: string) {
   const { t } = useLocalization()
   const key = subtype !== "all" ? subtypeKeys[subtype] : kindKeys[kind]
-  const title = key ? `${t(key)} | Marketplace` : "Marketplace | Makinari"
+  const title = key ? `${t(key)} | Marketplace` : "Marketplace | MAKINARI"
   useEffect(() => { document.title = title }, [title])
 }

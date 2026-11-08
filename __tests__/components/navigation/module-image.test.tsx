@@ -2,6 +2,18 @@ import { fireEvent, render, screen } from "@testing-library/react"
 import { ModuleImage } from "@/app/components/navigation/ModuleImage"
 
 describe("ModuleImage", () => {
+  it("renders Suppliers with the current black isotipo on white in both themes", () => {
+    const { container } = render(
+      <ModuleImage area="buying" itemKey="suppliers" title="Suppliers" />,
+    )
+    const image = screen.getByRole("img", { name: "Suppliers app icon" })
+    expect(image).toHaveAttribute("src", "/images/isotipo.svg")
+    expect(image).toHaveClass("object-contain", "brightness-0", "p-2")
+    expect(image).not.toHaveClass("dark:brightness-[0.82]")
+    expect(container.firstChild).toHaveClass("bg-white")
+    expect(container.firstChild).not.toHaveClass("bg-muted/50")
+  })
+
   it("keeps a visible accessible icon when generated procurement artwork fails", () => {
     render(<ModuleImage area="buying" itemKey="suppliers" title="Suppliers" />)
     fireEvent.error(screen.getByRole("img", { name: "Suppliers app icon" }))

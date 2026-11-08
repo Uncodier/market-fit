@@ -21,10 +21,10 @@ export async function generateMetadata({ params }: { params: Promise<{ siteSlug:
   const siteSlug = 'siteSlug' in resolvedParams ? resolvedParams.siteSlug : undefined;
   const itemId = 'itemId' in resolvedParams ? resolvedParams.itemId : undefined;
   
-  if (!itemId) return { title: 'Shop Item | Makinari' };
+  if (!itemId) return { title: 'Shop Item | MAKINARI' };
   
   const item = await getPdpShareItem(itemId, { requireStorefront: true });
-  if (!item) return { title: 'Shop Item | Makinari' };
+  if (!item) return { title: 'Shop Item | MAKINARI' };
 
   const path = siteSlug
     ? `/shop/${siteSlug}/${itemId}`

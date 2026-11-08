@@ -24,8 +24,11 @@ export const metadata: Metadata = {
   title: 'MAKINARI',
   description: 'Find your product market fit.',
   icons: {
-    icon: '/images/logo.png',
-    apple: '/images/logo.png',
+    icon: [
+      { url: '/favicon.ico?v=white-transparent-2', sizes: 'any' },
+      { url: '/favicon.svg?v=white-transparent-2', type: 'image/svg+xml', sizes: 'any' },
+    ],
+    apple: '/apple-touch-icon.png',
   },
   openGraph: {
     title: 'MAKINARI',

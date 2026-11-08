@@ -20,7 +20,7 @@ export async function generateMetadata({
   const shopAuth = isShopAuthContext(returnTo)
 
   return {
-    title: "Sign In | Makinari",
+    title: "Sign In | MAKINARI",
     description: shopAuth
       ? "Sign in to view your orders and continue shopping."
       : "Sign in to your workspace.",

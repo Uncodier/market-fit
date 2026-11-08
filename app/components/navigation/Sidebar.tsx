@@ -191,12 +191,12 @@ export function Sidebar({
           )}
         >
           <img
-            src={renderCollapsed ? "/images/logo.png" : "/images/combination_mark.png"}
-            alt="Market Fit Logo"
+            src={renderCollapsed ? "/images/isotipo.svg" : "/images/combination_mark.png"}
+            alt="Makinari Logo"
             className={cn(
               "transition-all duration-200 object-contain",
               renderCollapsed ? "h-6 w-6" : "h-5 w-auto",
-              "dark:brightness-0 dark:invert"
+              renderCollapsed ? "brightness-0 dark:invert" : "dark:brightness-0 dark:invert"
             )}
           />
         </NavigationLink>

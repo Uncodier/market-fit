@@ -26,7 +26,7 @@ export function McpSkillCard() {
       <SectionCardHeader>
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-2">
-            <SectionCardTitle>Makinari MCP</SectionCardTitle>
+            <SectionCardTitle>MAKINARI MCP</SectionCardTitle>
             <p className="text-sm text-muted-foreground leading-relaxed">
               {siteId
                 ? "Connect your agent to the selected site with its site ID and a site-bound API key valid for 90 days."

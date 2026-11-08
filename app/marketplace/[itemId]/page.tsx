@@ -10,7 +10,7 @@ export async function generateMetadata({ params }: { params: Promise<{ itemId: s
   const { itemId } = await params
   const item = await getPdpShareItem(itemId, { requireMarketplace: true })
   
-  if (!item) return { title: 'Marketplace Item | Makinari' }
+  if (!item) return { title: 'Marketplace Item | MAKINARI' }
 
   return buildCatalogItemShareMetadata(item as any, `/marketplace/${itemId}`)
 }

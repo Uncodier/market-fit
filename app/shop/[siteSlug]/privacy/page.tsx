@@ -7,10 +7,10 @@ import { PrivacyClient } from "./PrivacyClient"
 export async function generateMetadata({ params }: { params: Promise<{ siteSlug: string }> | { siteSlug: string } }): Promise<Metadata> {
   const resolvedParams = await params;
   const siteSlug = 'siteSlug' in resolvedParams ? resolvedParams.siteSlug : undefined;
-  if (!siteSlug) return { title: 'Privacy Policy | Makinari' };
+  if (!siteSlug) return { title: 'Privacy Policy | MAKINARI' };
 
   const site = (await getShopRouteContext(siteSlug))?.site;
-  if (!site) return { title: 'Privacy Policy | Makinari' };
+  if (!site) return { title: 'Privacy Policy | MAKINARI' };
 
   return {
     title: `Privacy Policy | ${site.name}`,
