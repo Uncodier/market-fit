@@ -14,6 +14,27 @@ jest.mock('@/app/components/chat/CommentReplyContext', () => ({
 jest.mock('@/app/components/chat/PostContextCard', () => ({ PostContextCard: () => null }))
 
 describe('chat attachments', () => {
+  it('limits valid results after validation and deduplication, not before', () => {
+    const url = 'https://files.example.test/photo.jpg'
+    expect(normalizeChatAttachments([...Array(10).fill({ url: 'invalid' }), { url }])).toHaveLength(1)
+    expect(normalizeChatAttachments([...Array(10).fill({ url }), { url: 'https://files.example.test/audio.ogg' }])).toHaveLength(2)
+    expect(getChatAttachments({ source: 'outstand_dm', attachments: Array(100).fill({ url: 'invalid' }), media_urls: [url] })).toHaveLength(1)
+    expect(normalizeChatAttachments([...Array(100).fill(null), { url }])).toEqual([])
+  })
+
+  it.each([
+    [{ type: 'audio' }, 'audio'],
+    [{ type: 'voice_note' }, 'audio'],
+    [{ type: 'video' }, 'video'],
+    [{ type: 'document' }, 'document'],
+    [{ type: 'sticker' }, 'sticker'],
+    [{ type: 'sticker', mimeType: 'video/mp4' }, 'video'],
+    [{ type: 'audio', mimeType: 'image/jpeg' }, 'image'],
+    [{ type: 'image', mimeType: 'application/pdf' }, 'document'],
+  ])('gives MIME and explicit type precedence over URL extension: %j', (fields, kind) => {
+    expect(normalizeChatAttachments([{ url: 'https://files.example.test/preview.jpg', ...fields }])[0].kind).toBe(kind)
+  })
+
   it.each(['web', 'website_chat', 'email', 'whatsapp', 'instagram', 'messenger', 'facebook', 'threads', 'linkedin', 'x', 'youtube', 'sms', 'telegram', 'voice'])(
     'renders the persisted attachment contract independently of channel %s', channel => {
       render(<ChatMessageContent message={{ role: 'user', timestamp: new Date(), text: '[image]',
