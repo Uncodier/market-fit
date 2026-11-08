@@ -2,16 +2,20 @@ import { fireEvent, render, screen } from "@testing-library/react"
 import { ModuleImage } from "@/app/components/navigation/ModuleImage"
 
 describe("ModuleImage", () => {
-  it("renders Suppliers with the current black isotipo on white in both themes", () => {
+  it("renders Suppliers with contact artwork without inset padding", () => {
     const { container } = render(
       <ModuleImage area="buying" itemKey="suppliers" title="Suppliers" />,
     )
     const image = screen.getByRole("img", { name: "Suppliers app icon" })
-    expect(image).toHaveAttribute("src", "/images/isotipo.svg")
-    expect(image).toHaveClass("object-contain", "brightness-0", "p-2")
-    expect(image).not.toHaveClass("dark:brightness-[0.82]")
-    expect(container.firstChild).toHaveClass("bg-white")
-    expect(container.firstChild).not.toHaveClass("bg-muted/50")
+    expect(image).toHaveAttribute("src", "/images/modules/makinari-2026-09-30/leads.webp")
+    expect(image).toHaveClass("object-cover", "dark:brightness-[0.82]", "hue-rotate-60")
+    expect(image).not.toHaveClass("brightness-0", "p-2")
+    expect(container.firstChild).toHaveClass("bg-muted/50")
+  })
+
+  it("preserves the original contact artwork colors", () => {
+    render(<ModuleImage area="sales" itemKey="leads" title="Contacts" />)
+    expect(screen.getByRole("img", { name: "Contacts app icon" })).not.toHaveClass("hue-rotate-60")
   })
 
   it("keeps a visible accessible icon when generated procurement artwork fails", () => {
