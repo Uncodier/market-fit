@@ -10,6 +10,7 @@ import {
 import type { OrderWithRelations } from "@/app/orders/types"
 import { markKitchenItemsPrinted } from "@/app/printer/actions"
 import { usePrinter } from "@/lib/printer/hooks/use-printer"
+import { printJobManually } from "@/lib/printer/transports/manual-print"
 import { providerAccepted, providerCancellationConfirmed } from "@/lib/marketplace/presentation"
 import { cancellationOnlyDelta } from "@/lib/printer/core/marketplace-printing"
 import {
@@ -25,14 +26,14 @@ type UseOrderPrintingArgs = {
 }
 
 export function useOrderPrinting({ siteId, site }: UseOrderPrintingArgs) {
-  const { printJob } = usePrinter()
+  const { settings } = usePrinter()
   const [printingKey, setPrintingKey] = useState<string | null>(null)
 
   const printOrder = async (
     listedOrder: OrderWithRelations,
     mode: OrderPrintMode,
   ) => {
-    if (!siteId) return
+    if (!siteId || printingKey) return
     const key = `${listedOrder.id}:${mode}`
     setPrintingKey(key)
 
@@ -87,7 +88,8 @@ export function useOrderPrinting({ siteId, site }: UseOrderPrintingArgs) {
         delta: ticket.delta,
       }
 
-      await printJob({
+      await printJobManually(settings, {
+        id: crypto.randomUUID(),
         module: "orders",
         template: mode === "full" ? "kitchen" : "kitchen-delta",
         orderId: result.data.id,
