@@ -1,7 +1,7 @@
 "use client"
 
 import { useFormContext } from "react-hook-form"
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 import { type SiteFormValues } from "./form-schema"
 import { Button } from "../ui/button"
@@ -60,11 +60,12 @@ export function PrintersSection({ active, onSave }: PrintersSectionProps) {
   const [testDevice, setTestDevice] = useState<PrinterDevice | null>(null)
   const [testing, setTesting] = useState(false)
   const [stationName, setStationName] = useState(() => getPrinterWorkstation().name)
-  const devices = (form.watch("printers.devices") || []) as PrinterDevice[]
+  const watchedDevices = form.watch("printers.devices")
+  const devices = useMemo(() => (watchedDevices || []) as PrinterDevice[], [watchedDevices])
   const printersDirty = Boolean(form.formState.dirtyFields.printers)
 
   const setDevices = (next: PrinterDevice[]) => {
-    form.setValue("printers.devices", next as SiteFormValues["printers"] extends { devices: infer D } ? D : any, {
+    form.setValue("printers.devices", next, {
       shouldDirty: true,
       shouldValidate: true,
     })
@@ -194,12 +195,12 @@ export function PrintersSection({ active, onSave }: PrintersSectionProps) {
       } else {
         toast.message(t("settings.printers.systemHint") || "System printers are chosen in the print dialog")
       }
-    } catch (err: any) {
+    } catch (err) {
       const mapped = bluetoothErrorMessage(err)
       toast.error(
         mapped.includes("Bluetooth Classic")
           ? (t("settings.printers.btClassicError") || mapped)
-          : mapped || err?.message || "Could not connect printer",
+          : mapped || (err instanceof Error ? err.message : "Could not connect printer"),
       )
     } finally {
       setConnectingId(null)
@@ -207,6 +208,7 @@ export function PrintersSection({ active, onSave }: PrintersSectionProps) {
   }
 
   const formatLabel = (template: PrintFormatOption["template"]) => {
+    if (template === "packing-slip") return "Packing slip"
     if (template === "receipt") return t("settings.printers.format.receipt") || "Receipt"
     if (template === "kitchen") return t("settings.printers.format.kitchen") || "Kitchen ticket"
     if (template === "kitchen-delta") return t("settings.printers.format.delta") || "Order update"
@@ -224,12 +226,12 @@ export function PrintersSection({ active, onSave }: PrintersSectionProps) {
       })
       toast.success(t("settings.printers.testSent") || "Test print sent")
       setTestDevice(null)
-    } catch (err: any) {
+    } catch (err) {
       const mapped = bluetoothErrorMessage(err)
       toast.error(
         mapped.includes("Bluetooth Classic")
           ? (t("settings.printers.btClassicError") || mapped)
-          : mapped || err?.message || "Test print failed",
+          : mapped || (err instanceof Error ? err.message : "Test print failed"),
       )
     } finally {
       setTesting(false)

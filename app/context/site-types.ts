@@ -265,12 +265,13 @@ export interface SiteSettings {
       paperWidthMm: 58 | 80
       copies: number
       enabled?: boolean
-      modules: { pos: boolean; orders: boolean; inventory: boolean }
+      modules: { pos: boolean; orders: boolean; inventory: boolean; shipments?: boolean }
       autoPrint: {
         posReceipt: boolean
         kitchenTicket: boolean
         orderDelta: boolean
         inventoryLabel: boolean
+        shipmentPackingSlip?: boolean
       }
       station?: {
         workstationId: string

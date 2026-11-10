@@ -19,6 +19,14 @@ beforeEach(() => {
 
 afterEach(() => jest.restoreAllMocks())
 
+it('serializes explicit text for the agent request', async () => {
+  jest.mocked(fetch).mockResolvedValueOnce(Response.json(accepted))
+  await sendAgentMessage('conversation-1', 'Draft', 'agent-1', {
+    site_id: 'site-1', team_member_id: 'user-1', response_format: 'text',
+  })
+  expect(JSON.parse(String(jest.mocked(fetch).mock.calls[0][1]?.body)).response_format).toBe('text')
+})
+
 it('uses the authenticated same-origin route, not an anonymous external request', async () => {
   jest.mocked(fetch).mockResolvedValueOnce(Response.json(accepted))
   await expect(send()).resolves.toEqual(accepted)

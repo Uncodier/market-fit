@@ -2,7 +2,7 @@ import type { RegisterReportPayload } from "./register-report-types"
 export type { RegisterReportPayload } from "./register-report-types"
 
 export type PrinterTransport = "usb" | "bluetooth" | "system"
-export type PrinterModule = "pos" | "orders" | "inventory"
+export type PrinterModule = "pos" | "orders" | "inventory" | "shipments"
 export type PaperWidthMm = 58 | 80
 export type PrintTemplateKind =
   | "receipt"
@@ -10,15 +10,18 @@ export type PrintTemplateKind =
   | "kitchen"
   | "kitchen-delta"
   | "inventory-label"
+  | "packing-slip"
   | "test"
 
 export interface PrinterModuleFlags {
+  shipments?: boolean
   pos: boolean
   orders: boolean
   inventory: boolean
 }
 
 export interface PrinterAutoPrint {
+  shipmentPackingSlip?: boolean
   posReceipt: boolean
   kitchenTicket: boolean
   orderDelta: boolean
@@ -166,7 +169,20 @@ export interface TestPrintPayload {
   hardwareName?: string | null
 }
 
+export interface PackingSlipPayload extends TicketBrand {
+  shipmentId: string
+  orderNumber?: string | null
+  trackingNumber?: string | null
+  carrier?: string | null
+  customerName?: string | null
+  shippingAddress?: string | null
+  createdAt?: string | null
+  notes?: string | null
+  lines: { name: string; quantity: number }[]
+}
+
 export type PrintJobPayload =
+  | PackingSlipPayload
   | RegisterReportPayload
   | ReceiptPayload
   | KitchenPayload

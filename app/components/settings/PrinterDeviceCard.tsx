@@ -9,7 +9,6 @@ import {
   SectionCardTitle,
   SectionCardDescription,
   SectionCardContent,
-  SectionCardFooter,
 } from "@/app/components/ui/section-card"
 import { ActionFooter } from "../ui/card-footer"
 import { Button } from "../ui/button"
@@ -71,6 +70,7 @@ export function PrinterDeviceCard({
     const paper = device.paperWidthMm
     const samples = samplePayloads(ticketBrandFromSite(currentSite))
     return {
+      packingSlip: htmlForJob({ id: "p", module: "shipments", template: "packing-slip", payload: samples.packingSlip }, paper),
       receipt: htmlForJob({ id: "p", module: "pos", template: "receipt", payload: samples.receipt }, paper),
       kitchen: htmlForJob({ id: "p", module: "orders", template: "kitchen", payload: samples.kitchen }, paper),
       delta: htmlForJob({ id: "p", module: "orders", template: "kitchen-delta", payload: samples.delta }, paper),
@@ -91,6 +91,7 @@ export function PrinterDeviceCard({
       autoPrint.orderDelta = false
     }
     if (key === "inventory" && !value) autoPrint.inventoryLabel = false
+    if (key === "shipments" && !value) autoPrint.shipmentPackingSlip = false
     onChange({ modules, autoPrint })
   }
 
@@ -98,6 +99,7 @@ export function PrinterDeviceCard({
     device.modules.pos ? (t("layout.sidebar.pos") || "Point of Sale") : null,
     device.modules.orders ? (t("layout.sidebar.orders") || "Orders") : null,
     device.modules.inventory ? (t("layout.sidebar.inventory") || "Inventory") : null,
+    device.modules.shipments ? "Shipments" : null,
   ].filter(Boolean).join(" · ")
 
   return (
@@ -243,6 +245,13 @@ export function PrinterDeviceCard({
             checked={device.modules.inventory}
             onCheckedChange={(inventory) => setModule("inventory", inventory)}
           />
+          <SettingToggle
+            id={`${device.id}-shipments`}
+            title="Shipments"
+            description="Print internal packing slips. Carrier PDFs use system printing."
+            checked={Boolean(device.modules.shipments)}
+            onCheckedChange={(shipments) => setModule("shipments", shipments)}
+          />
         </div>
 
         <div className="space-y-3 pt-4 border-t">
@@ -288,7 +297,16 @@ export function PrinterDeviceCard({
               onCheckedChange={(inventoryLabel) => onChange({ autoPrint: { ...device.autoPrint, inventoryLabel } })}
             />
           )}
-          {!device.modules.pos && !device.modules.orders && !device.modules.inventory && (
+          {device.modules.shipments && device.transport !== "system" && (
+            <SettingToggle
+              id={`${device.id}-auto-packing-slip`}
+              title="Auto-print packing slips"
+              description="Attempt once when a preparing shipment is open in its detail view. Keep this station open. Failed or partial prints require manual reprint."
+              checked={Boolean(device.autoPrint.shipmentPackingSlip)}
+              onCheckedChange={(shipmentPackingSlip) => onChange({ autoPrint: { ...device.autoPrint, shipmentPackingSlip } })}
+            />
+          )}
+          {!device.modules.pos && !device.modules.orders && !device.modules.inventory && !device.modules.shipments && (
             <p className="text-sm text-muted-foreground">
               {t("settings.printers.auto.empty") || "Turn on a module to configure auto-print."}
             </p>
@@ -297,7 +315,7 @@ export function PrinterDeviceCard({
 
         {device.transport !== "system" && <PrinterStationBindPanel device={device} />}
 
-        {(device.modules.pos || device.modules.orders || device.modules.inventory) && (
+        {(device.modules.pos || device.modules.orders || device.modules.inventory || device.modules.shipments) && (
           <div className="space-y-3 pt-4 border-t">
             <p className="text-sm font-medium">{t("settings.printers.preview") || "Preview"}</p>
             <SectionCardDescription>
@@ -309,6 +327,7 @@ export function PrinterDeviceCard({
               {device.modules.orders && <PreviewFrame title="Kitchen" html={preview.kitchen} />}
               {device.modules.orders && <PreviewFrame title="Update" html={preview.delta} />}
               {device.modules.inventory && <PreviewFrame title="Label" html={preview.label} />}
+              {device.modules.shipments && <PreviewFrame title="Packing slip" html={preview.packingSlip} />}
             </div>
           </div>
         )}

@@ -15,6 +15,7 @@ interface ZipViewerProps {
   url: string
   isDarkMode?: boolean
   onFileSelect?: (path: string) => void
+  folderNavigation?: (tree: React.ReactNode) => React.ReactNode
 }
 
 
@@ -23,7 +24,7 @@ export const ZipViewer: React.FC<ZipViewerProps & { className?: string }> = (pro
   <ArchiveRevisionViewer key={props.url} {...props} />
 )
 
-const ArchiveRevisionViewer: React.FC<ZipViewerProps & { className?: string }> = ({ url, isDarkMode: propIsDarkMode, className, onFileSelect }) => {
+const ArchiveRevisionViewer: React.FC<ZipViewerProps & { className?: string }> = ({ url, isDarkMode: propIsDarkMode, className, onFileSelect, folderNavigation }) => {
   const { isDarkMode: contextIsDarkMode } = useTheme()
   const isDarkMode = propIsDarkMode ?? contextIsDarkMode
 
@@ -44,7 +45,7 @@ const ArchiveRevisionViewer: React.FC<ZipViewerProps & { className?: string }> =
     ?? archiveFiles.find(file => isPreviewableHtml(file.path)) ?? archiveFiles[0] ?? null
   const selectedFile = chosenFile ?? initialFile
   const [filesVisibilityOverride, setFilesVisibilityOverride] = useState<boolean | null>(null)
-  const filesVisible = filesVisibilityOverride ?? archiveFiles.length > 1
+  const filesVisible = filesVisibilityOverride ?? (!!folderNavigation || archiveFiles.length > 1)
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set(['/']))
   const [, setRawZip] = useState<Blob | null>(null)
   const [editorFailed, setEditorFailed] = useState(false)
@@ -165,7 +166,7 @@ const ArchiveRevisionViewer: React.FC<ZipViewerProps & { className?: string }> =
       return (
         <div key={child.path} className="w-full">
           <div 
-            className={`flex items-center gap-1.5 py-1 px-2 cursor-pointer text-sm rounded hover:bg-muted/50 transition-colors ${isSelected ? 'bg-primary/10 text-primary font-medium' : 'text-muted-foreground'}`}
+            className={`flex justify-start items-center gap-1.5 py-1 px-2 cursor-pointer text-left text-sm rounded hover:bg-muted/50 transition-colors ${isSelected ? 'bg-primary/10 text-primary font-medium' : 'text-muted-foreground'}`}
             style={{ paddingLeft: `${level * 12 + 8}px` }}
             onClick={() => {
               if (child.isDir) {
@@ -269,7 +270,7 @@ const ArchiveRevisionViewer: React.FC<ZipViewerProps & { className?: string }> =
       <div className="flex flex-1 overflow-hidden min-h-0">
         {/* Sidebar */}
         {filesVisible && <div role="navigation" aria-label="Archive files" className="w-64 min-w-[200px] border-r border-border overflow-y-auto bg-muted/10 p-2 shrink-0">
-          {renderTree(fileTree)}
+          {folderNavigation ? folderNavigation(renderTree(fileTree)) : renderTree(fileTree)}
         </div>}
 
         {/* Main View */}

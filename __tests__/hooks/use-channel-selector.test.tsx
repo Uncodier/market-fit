@@ -49,6 +49,76 @@ describe("channel selector availability", () => {
     expect(mockUpdate).toHaveBeenCalledTimes(1)
   })
 
+  it('blocks sends while the authoritative channel loads after switching conversations', async () => {
+    const { result, rerender } = renderHook(({ conversationId }) => useChannelSelector({ conversationId, leadData }), {
+      initialProps: { conversationId: 'first' },
+    })
+    await waitFor(() => expect(result.current.isUpdatingChannel).toBe(false))
+    let resolve!: (value: unknown) => void
+    mockSingle.mockReturnValueOnce(new Promise(done => { resolve = done }))
+    rerender({ conversationId: 'second' })
+    expect(result.current.isUpdatingChannel).toBe(true)
+    await act(async () => { resolve({ data: { channel: 'email' }, error: null }) })
+    expect(result.current.selectedChannel).toBe('email')
+    expect(result.current.isUpdatingChannel).toBe(false)
+  })
+
+  it.each(['error', 'exception', 'missing'])('recovers a failed channel load (%s) through explicit retry', async failure => {
+    if (failure === 'exception') mockSingle.mockRejectedValueOnce(new Error('offline'))
+    else mockSingle.mockResolvedValueOnce({ data: null, error: failure === 'error' ? { message: 'offline' } : null })
+    const { result } = renderHook(() => useChannelSelector({ conversationId: 'conversation', leadData }))
+    await waitFor(() => expect(result.current.channelLoadError).toContain('Retry'))
+    expect(result.current.isUpdatingChannel).toBe(true)
+    await act(async () => result.current.retryChannelLoad?.())
+    await waitFor(() => expect(result.current.isUpdatingChannel).toBe(false))
+    expect(result.current.channelLoadError).toBeUndefined()
+    expect(result.current.selectedChannel).toBe('whatsapp')
+  })
+
+  it.each(['fetch', 'update'])('releases A when navigating to B during its channel %s', async stage => {
+    const { result, rerender } = renderHook(({ conversationId }) => useChannelSelector({ conversationId, leadData }), {
+      initialProps: { conversationId: 'A' },
+    })
+    await waitFor(() => expect(result.current.isUpdatingChannel).toBe(false))
+    let resolve!: (value: unknown) => void
+    const delayed = new Promise(done => { resolve = done })
+    if (stage === 'fetch') mockSingle.mockReturnValueOnce(delayed)
+    else mockUpdate.mockReturnValueOnce({ eq: () => delayed })
+    let operation: unknown
+    act(() => { operation = result.current.setSelectedChannel('web') })
+    await waitFor(() => expect(result.current.isUpdatingChannel).toBe(true))
+    if (stage === 'update') await waitFor(() => expect(mockUpdate).toHaveBeenCalled())
+    rerender({ conversationId: 'B' })
+    await waitFor(() => expect(result.current.isUpdatingChannel).toBe(false))
+    await act(async () => { resolve({ data: { custom_data: {} }, error: null }); await operation })
+    rerender({ conversationId: 'A' })
+    await waitFor(() => expect(result.current.isUpdatingChannel).toBe(false))
+  })
+
+  it('completion of A cannot clear B newer in-flight channel update', async () => {
+    const { result, rerender } = renderHook(({ conversationId }) => useChannelSelector({ conversationId, leadData }), {
+      initialProps: { conversationId: 'A' },
+    })
+    await waitFor(() => expect(result.current.isUpdatingChannel).toBe(false))
+    let resolveA!: (value: unknown) => void
+    let resolveB!: (value: unknown) => void
+    mockUpdate.mockReturnValueOnce({ eq: () => new Promise(done => { resolveA = done }) })
+    let operationA: unknown
+    act(() => { operationA = result.current.setSelectedChannel('web') })
+    await waitFor(() => expect(resolveA).toBeDefined())
+    rerender({ conversationId: 'B' })
+    await waitFor(() => expect(result.current.isUpdatingChannel).toBe(false))
+    mockUpdate.mockReturnValueOnce({ eq: () => new Promise(done => { resolveB = done }) })
+    let operationB: unknown
+    act(() => { operationB = result.current.setSelectedChannel('web') })
+    await waitFor(() => expect(resolveB).toBeDefined())
+    await act(async () => { resolveA({ error: null }); await operationA })
+    expect(result.current.isUpdatingChannel).toBe(true)
+    await act(async () => { resolveB({ error: null }); await operationB })
+    expect(result.current.isUpdatingChannel).toBe(false)
+    expect(result.current.selectedChannel).toBe('web')
+  })
+
   it("responds to manual disablement and explicit reactivation without altering historical selection", () => {
     mockSite = { settings: { channels: { connections: [{ type: "voice", status: "synced" }] } } }
     const { result, rerender } = renderHook(() => useChannelSelector({ leadData, defaultChannel: "voice" }))

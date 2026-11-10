@@ -31,6 +31,7 @@ import { useOptionalPermissions } from "@/app/context/PermissionContext"
 import { ShipmentStatusBar } from "../components/ShipmentStatusBar"
 import { ShipmentIdentityHeader } from "../components/ShipmentIdentityHeader"
 import { ShipmentAboutPanel } from "../components/ShipmentAboutPanel"
+import { ShipmentDocumentsPanel } from "../components/ShipmentDocumentsPanel"
 
 export default function ShipmentDetail(props: { params: Promise<{ id: string }> }) {
   const params = React.use(props.params)
@@ -146,6 +147,7 @@ export default function ShipmentDetail(props: { params: Promise<{ id: string }> 
 
         <div className="px-4 lg:px-8 py-5">
           <ShipmentIdentityHeader shipment={shipment} external={external} onOpenOrder={openOrder} />
+          <div className="mt-5"><ShipmentDocumentsPanel key={`${currentSite?.id}:${shipment.id}`} shipment={shipment} /></div>
           <div className="mt-5 flex flex-col lg:flex-row border-t border-border/50">
             <div className="w-full lg:min-w-0 lg:flex-1 pt-5 lg:pr-8">
               <TabsContent value="details" className="m-0 border-0 p-0 space-y-5">

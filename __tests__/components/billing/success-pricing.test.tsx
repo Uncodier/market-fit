@@ -24,6 +24,15 @@ it('uses stored annual interval rather than the query for returned checkout pric
   expect(screen.queryByText(/is now active/)).not.toBeInTheDocument()
 })
 
+it('displays Reactor for an enterprise checkout without changing its price', async () => {
+  mockQuery = 'plan=enterprise'
+  mockBilling.plan = 'enterprise'
+  render(<BillingSuccessPage />)
+  await waitFor(() => expect(screen.getByText('$5,400.00/year')).toBeInTheDocument())
+  expect(screen.getByText('Reactor Plan')).toBeInTheDocument()
+  expect(screen.queryByText(/Enterprise/)).not.toBeInTheDocument()
+})
+
 it('does not present query plan price as settled before the record matches', async () => {
   mockBilling.plan = 'commission'
   render(<BillingSuccessPage />)

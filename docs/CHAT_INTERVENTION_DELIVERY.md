@@ -34,6 +34,37 @@ so after an ambiguous timeout without checking the conversation first.
 
 ## Voice and Temporal are different paths
 
+### Text and audio responses
+
+The composer shows **Text / Audio** immediately to the right of the channel
+selector only for WhatsApp, Telegram, and Messenger direct conversations.
+New sends explicitly use `response_format: "text"` by default; **Audio** requests
+use `response_format: "audio"`. Switching to an unsupported channel or another
+conversation resets the selection to Text. Failed draft submissions retain the
+selection. Channel loading/updates block submission until routing is ready.
+
+A failed channel lookup displays an error and a **Retry channel** button without
+discarding the draft or permitting a send through an unverified channel. Retry
+loads the authoritative channel again. In-flight channel updates are tracked per
+conversation and operation; completing an older update releases only its own
+lock, including when the user navigated away, without unlocking a newer update.
+
+The optional API field accepts only `text` or `audio`; omission remains available
+for legacy callers. The intervention proxy uses the RLS-loaded conversation
+channel, not a browser channel override, and rejects unsupported audio (including
+public comments). Internal agent requests explicitly send Text; their proxy still
+rejects external conversations and does not permit Audio.
+
+Saved-row retries restore `custom_data.response_format`, retain `message_id`, and
+reject changing the saved format. Legacy rows without a format keep omission.
+Audio receipts in `preparing`, `preparation_failed`, `dispatching`, `sent`, or
+`unknown` state block replay in both the UI and proxy, even if a stale command
+reports failure. Only a `ready` receipt can reuse its prepared audio on retry.
+The API must persist this metadata and propagate the format to delivery workers;
+the frontend does not synthesize audio or fall back to text. Provider playback,
+audio generation and actual delivery require coordinated API/worker rollout and
+separate live verification.
+
 Public social-comment threads require an explicit persisted `reply_to_message_id`.
 The composer labels the action **Reply publicly**; the proxy and API validate the
 same-conversation inbound target and preserve it on retry. Public replies cannot

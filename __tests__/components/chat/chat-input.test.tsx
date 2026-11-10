@@ -54,6 +54,73 @@ describe('ChatInput send guards', () => {
   afterAll(() => { Reflect.deleteProperty(HTMLElement.prototype, 'scrollIntoView') })
   beforeEach(() => { jest.mocked(useChannelSelector).mockReturnValue(channelState()) })
 
+  it('offers a safe retry when the authoritative channel could not load', () => {
+    const retryChannelLoad = jest.fn()
+    jest.mocked(useChannelSelector).mockReturnValue({ ...channelState(true),
+      channelLoadError: 'Unable to verify the conversation channel. Retry before sending.', retryChannelLoad })
+    const callbacks = props()
+    render(<ChatInput {...callbacks} message="Draft preserved" />)
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Draft preserved' } })
+    expect(screen.getByRole('alert')).toHaveTextContent('Unable to verify')
+    expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: 'Retry channel' }))
+    expect(retryChannelLoad).toHaveBeenCalledTimes(1)
+    expect(callbacks.handleSendMessage).not.toHaveBeenCalled()
+    expect(screen.getByRole('textbox')).toHaveValue('Draft preserved')
+  })
+
+  it.each(['whatsapp', 'telegram', 'messenger'])('selects Text/Audio on %s and propagates through click, submit and Enter', channel => {
+    jest.mocked(useChannelSelector).mockReturnValue({ ...channelState(), selectedChannel: channel, availableChannels: ['web', channel] })
+    const callbacks = props()
+    render(<ChatInput {...callbacks} message="Draft" />)
+    expect(screen.getByRole('button', { name: 'Text' })).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    expect(callbacks.handleSendMessage).toHaveBeenLastCalledWith(expect.anything(), 'text')
+    fireEvent.click(screen.getByRole('button', { name: 'Audio' }))
+    expect(callbacks.handleSendMessage).toHaveBeenCalledTimes(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    fireEvent.submit(screen.getByRole('textbox').closest('form')!)
+    expect(callbacks.handleSendMessage).toHaveBeenLastCalledWith(expect.anything(), 'audio')
+    fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Enter' })
+    expect(callbacks.handleKeyDown).toHaveBeenLastCalledWith(expect.anything(), 'audio')
+    expect(screen.getByRole('button', { name: 'Audio' })).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it.each(['web', 'email', 'instagram', 'sms', 'voice', 'facebook'])('hides formats on %s', selectedChannel => {
+    jest.mocked(useChannelSelector).mockReturnValue({ ...channelState(), selectedChannel })
+    render(<ChatInput {...props()} />)
+    expect(screen.queryByRole('group', { name: 'Response format' })).not.toBeInTheDocument()
+  })
+
+  it('resets audio after an unsupported channel or conversation change without discarding the draft', () => {
+    const callbacks = props()
+    const state = { ...channelState(), selectedChannel: 'whatsapp', availableChannels: ['web', 'whatsapp'] }
+    jest.mocked(useChannelSelector).mockReturnValue(state)
+    const { rerender } = render(<ChatInput {...callbacks} message="Draft" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Audio' }))
+    jest.mocked(useChannelSelector).mockReturnValue({ ...state, selectedChannel: 'web' })
+    rerender(<ChatInput {...callbacks} message="Draft kept" />)
+    expect(screen.queryByRole('group', { name: 'Response format' })).not.toBeInTheDocument()
+    jest.mocked(useChannelSelector).mockReturnValue(state)
+    rerender(<ChatInput {...callbacks} message="Draft" />)
+    expect(screen.getByRole('button', { name: 'Text' })).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.click(screen.getByRole('button', { name: 'Audio' }))
+    rerender(<ChatInput {...callbacks} message="Draft" conversationId="conversation-2" />)
+    expect(screen.getByRole('button', { name: 'Text' })).toHaveAttribute('aria-pressed', 'true')
+    expect(callbacks.setMessage).not.toHaveBeenCalled()
+  })
+
+  it('disables the format while sending and preserves Audio on failure', () => {
+    jest.mocked(useChannelSelector).mockReturnValue({ ...channelState(), selectedChannel: 'telegram', availableChannels: ['telegram'] })
+    const callbacks = props()
+    const { rerender } = render(<ChatInput {...callbacks} message="Draft" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Audio' }))
+    rerender(<ChatInput {...callbacks} message="Draft" isLoading />)
+    expect(screen.getByRole('button', { name: 'Audio' })).toBeDisabled()
+    rerender(<ChatInput {...callbacks} message="Draft" />)
+    expect(screen.getByRole('button', { name: 'Audio' })).toHaveAttribute('aria-pressed', 'true')
+  })
+
   it('keeps the floating margins transparent and interactive controls usable', () => {
     const { container } = render(<ChatInput {...props()} />)
     const surface = container.querySelector('.chat-input-container')

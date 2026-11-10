@@ -7,6 +7,7 @@ import { conversationChannel, VOICE_LEAD_REQUIRED } from '@/lib/chat/conversatio
 import { getVoiceCallBlock } from '@/lib/chat/voice-call-eligibility'
 import { isSocialCommentMetadata } from '@/lib/chat/social-comment-context'
 import { validateCommentReplyTarget } from './comment-reply-preflight'
+import { isAudioRetryBlocked, isChatResponseFormat, supportsAudioResponse } from '@/lib/chat/response-format'
 
 export const maxDuration = 120
 const PATH = '/api/agents/chat/intervention'
@@ -18,6 +19,7 @@ const inputSchema = z.object({
   message: z.string().trim().min(1).max(20_000),
   message_id: uuid.optional(),
   reply_to_message_id: uuid.optional(),
+  response_format: z.enum(['text', 'audio']).optional(),
 }).refine(input => Boolean(input.conversationId || input.conversation_id))
   .refine(input => !input.conversationId || !input.conversation_id || input.conversationId === input.conversation_id)
 
@@ -86,6 +88,7 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   let message = input.message
+  let responseFormat = input.response_format
   let replyToMessageId = input.reply_to_message_id
   if (input.message_id) {
     const { data: saved, error } = await access.supabase.from('messages')
@@ -95,7 +98,7 @@ export async function POST(request: Request): Promise<Response> {
     if (error) return failure('Unable to verify the saved message', 503)
     if (!saved) return failure('Saved message not found', 404)
     const state = saved.custom_data as Record<string, unknown> | null
-    if (state?.comment_delivery_status || state?.provider_call_id || state?.call_status === 'placement_unknown' || state?.status === 'placement_unknown' ||
+    if (isAudioRetryBlocked(state) || state?.comment_delivery_status || state?.provider_call_id || state?.call_status === 'placement_unknown' || state?.status === 'placement_unknown' ||
       ['sent', 'delivered', 'sending', 'queued', 'running', 'in_progress'].includes(String(state?.status)) ||
       ['placing', 'queued', 'ringing', 'in_progress', 'completed'].includes(String(state?.call_status)) ||
       state?.command_status === 'success' ||
@@ -103,6 +106,15 @@ export async function POST(request: Request): Promise<Response> {
       return failure('This message cannot be retried while delivery is active or unconfirmed', 409)
     }
     message = saved.content
+    // Retry the persisted format, never the composer's current selection.
+    const savedFormat = state?.response_format
+    if (savedFormat !== undefined && !isChatResponseFormat(savedFormat)) {
+      return failure('The saved response format is invalid.', 409, 'RESPONSE_FORMAT_INVALID')
+    }
+    if (input.response_format !== undefined && input.response_format !== savedFormat) {
+      return failure('A retry must use the original response format.', 409, 'RESPONSE_FORMAT_MISMATCH')
+    }
+    responseFormat = savedFormat
     // Retries cannot retarget a saved public reply to another comment.
     replyToMessageId = typeof state?.reply_to_message_id === 'string' ? state.reply_to_message_id : undefined
     if (input.reply_to_message_id && input.reply_to_message_id !== replyToMessageId) {
@@ -111,6 +123,9 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const isComment = isSocialCommentMetadata(conversation.custom_data)
+  if (responseFormat === 'audio' && (isComment || !supportsAudioResponse(conversationChannel(conversation)))) {
+    return failure('Audio responses are only supported on WhatsApp, Telegram, and Messenger.', 400, 'RESPONSE_FORMAT_UNSUPPORTED')
+  }
   if (isComment || replyToMessageId) {
     if (!replyToMessageId || !uuid.safeParse(replyToMessageId).success) {
       return failure('Select the comment you want to reply to.', 409, 'COMMENT_REPLY_TARGET_REQUIRED')
@@ -152,6 +167,7 @@ export async function POST(request: Request): Promise<Response> {
         lead_id: conversation.lead_id || undefined, visitor_id: conversation.visitor_id || undefined,
         message, message_id: input.message_id,
         reply_to_message_id: replyToMessageId,
+        response_format: responseFormat,
       }),
       cache: 'no-store', redirect: 'error',
       signal: AbortSignal.any([request.signal, AbortSignal.timeout(110_000)]),

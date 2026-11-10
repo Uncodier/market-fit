@@ -19,7 +19,7 @@ function activity(version = 1) {
     instance_id: instanceId, site_id: siteId, tool_name: 'write_cloud_file',
     created_at: `2026-11-03T21:10:0${version}Z`,
     tool_result: { success: true, output: { ok: true, output: {
-      file_id: fileId, instance_id: instanceId, version, saved: true, git_status: 'pending',
+      file_id: fileId, instance_id: instanceId, version, saved: true, git_status: 'pending', name: 'animation.html',
       archive_url: url(version), download_url: url(version, 'text'),
     } } },
   }
@@ -35,6 +35,30 @@ it('deduplicates replays and keeps the highest version even when older receipts 
   const replay = { ...activity(1), created_at: '2026-11-04T00:00:00Z' }
   expect(cloudToolDeliverables([activity(2), activity(1), replay, activity(2)], instanceId, siteId))
     .toEqual([{ fileId, version: 2, url: url(2), createdAt: activity(2).created_at }])
+})
+
+function dispatchedActivity(version = 1, name = 'deliver_file') {
+  const log = activity(version)
+  return { ...log, tool_name: 'tools', tool_result: {
+    success: true, error: null, output: { name, success: true, result: log.tool_result.output },
+  } }
+}
+
+it.each(['deliver_file', 'write_cloud_file'])('accepts direct and dispatched %s receipts', name => {
+  expect(cloudToolDeliverables([{ ...activity(), tool_name: name }, dispatchedActivity(2, name)], instanceId, siteId))
+    .toEqual([{ fileId, version: 2, url: url(2), createdAt: activity(2).created_at }])
+})
+
+it('rejects unidentified dispatch, lookup metadata, unrelated tools and failed dispatch receipts', () => {
+  const log = dispatchedActivity()
+  expect(cloudToolDeliverables([
+    { ...activity(), tool_name: 'tools' },
+    dispatchedActivity(1, 'read_cloud_file'),
+    { ...log, tool_result: { success: false, output: log.tool_result.output } },
+    { ...log, tool_result: { output: { name: 'deliver_file', parameters: activity().tool_result } } },
+    { ...activity(), tool_name: 'deliver_file', tool_result: { ...activity().tool_result.output.output, saved: false } },
+    { ...log, site_id: randomUUID() },
+  ], instanceId, siteId)).toEqual([])
 })
 
 it('rejects failed, conflicting, foreign, forged and argument-only receipts', () => {
@@ -85,7 +109,7 @@ it('merges background files with live receipts, preserves files outside the log 
   await waitFor(() => expect(view.result.current.files).toEqual([olderFile]))
   await act(async () => { await view.result.current.mutate(['instance_logs', instanceId], [activity()], false) })
   expect(view.result.current.files[0]?.url).toBe(url(1))
-  await act(async () => { await view.result.current.mutate(['instance_logs', instanceId], [activity(2)], false) })
+  await act(async () => { await view.result.current.mutate(['instance_logs', instanceId], [dispatchedActivity(2)], false) })
   expect(view.result.current.files[0]?.url).toBe(url(2))
   await act(async () => { await view.result.current.mutate(['instance_logs', instanceId], [], false) })
   expect(view.result.current.files.map(file => file.fileId)).toEqual([fileId, olderFile.fileId])

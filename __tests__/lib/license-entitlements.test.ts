@@ -1,6 +1,11 @@
-import { getMemberLimit, licensePlan, memberUpgradePayload, requiredLicensePlan, requiredMemberPlan } from "@/lib/license-entitlements"
+import { getMemberLimit, licensePlan, licensePlanLabel, memberUpgradePayload, requiredLicensePlan, requiredMemberPlan } from "@/lib/license-entitlements"
 
 describe("per-site license entitlements", () => {
+  it.each(["enterprise", "reactor"])("displays %s as Reactor without changing the internal plan", (plan) => {
+    expect(licensePlanLabel(plan)).toBe("Reactor")
+    expect(licensePlan(plan)).toBe("enterprise")
+  })
+
   it.each([[0, "commission"], [1, "commission"], [2, "engine"], [5, "engine"], [6, "foundry"], [10, "foundry"], [11, "enterprise"], [1000, "enterprise"]])("requires %s seats to use %s", (seats, plan) => {
     expect(requiredMemberPlan(seats as number)).toBe(plan)
   })

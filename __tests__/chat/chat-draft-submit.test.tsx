@@ -29,7 +29,7 @@ describe('chat draft submission', () => {
     act(() => { result.current.setMessage('  Unsaved draft  ') })
     await act(async () => { await result.current.submit(submitEvent()) })
 
-    expect(send).toHaveBeenCalledWith('Unsaved draft')
+    expect(send).toHaveBeenCalledWith('Unsaved draft', 'text')
     expect(result.current.messageRef.current).toBe('  Unsaved draft  ')
     expect(result.current.message).toBe('  Unsaved draft  ')
     expect(window.localStorage.getItem(inputCacheStorageKey('chat-conversation-1'))).toBe(JSON.stringify('  Unsaved draft  '))
@@ -40,6 +40,15 @@ describe('chat draft submission', () => {
     act(() => { result.current.setMessage('Keep me') })
     await act(async () => { await result.current.submit(submitEvent()) })
     expect(result.current.messageRef.current).toBe('Keep me')
+  })
+
+  it('preserves the selected audio format across a failed draft submission', async () => {
+    const send = jest.fn().mockResolvedValue(false)
+    const { result } = setup(send)
+    act(() => { result.current.setMessage('Audio draft') })
+    await act(async () => { await result.current.submit(submitEvent(), 'audio') })
+    expect(send).toHaveBeenCalledWith('Audio draft', 'audio')
+    expect(result.current.messageRef.current).toBe('Audio draft')
   })
 
   it('clears the live and cached draft only after explicit confirmation', async () => {

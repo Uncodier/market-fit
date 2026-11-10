@@ -1,4 +1,7 @@
+import type { ChatResponseFormat } from '@/lib/chat/response-format'
+
 export type InterventionRequestOptions = {
+  response_format?: ChatResponseFormat
   conversation_title?: string
   lead_id?: string
   visitor_id?: string
@@ -73,5 +76,6 @@ export function buildInterventionRequestBody(
     site_id: options?.site_id,
     message_id: options?.message_id,
     reply_to_message_id: options?.reply_to_message_id,
+    response_format: options?.response_format,
   }
 }

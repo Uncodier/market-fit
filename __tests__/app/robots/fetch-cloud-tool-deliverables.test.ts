@@ -17,7 +17,7 @@ function receipt(version: number, id = fileId) {
 
 function client() {
   const query = {
-    select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(),
+    select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), in: jest.fn().mockReturnThis(),
     not: jest.fn().mockReturnThis(), order: jest.fn().mockReturnThis(), range: jest.fn(),
   }
   const from = jest.fn(() => query)
@@ -36,9 +36,10 @@ it('pages only file results and deduplicates all revisions without loading chat 
   expect(from).toHaveBeenCalledWith('instance_logs')
   expect(query.select).toHaveBeenCalledWith('instance_id, site_id, tool_name, tool_result, created_at')
   expect(query.eq.mock.calls).toEqual([
-    ['instance_id', instanceId], ['site_id', siteId], ['tool_name', 'write_cloud_file'],
-    ['instance_id', instanceId], ['site_id', siteId], ['tool_name', 'write_cloud_file'],
+    ['instance_id', instanceId], ['site_id', siteId],
+    ['instance_id', instanceId], ['site_id', siteId],
   ])
+  expect(query.in).toHaveBeenCalledWith('tool_name', ['write_cloud_file', 'deliver_file', 'tools'])
   expect(query.not).toHaveBeenCalledWith('tool_result', 'is', null)
   expect(query.order.mock.calls.slice(0, 2)).toEqual([['created_at', { ascending: true }], ['id', { ascending: true }]])
   expect(query.range.mock.calls).toEqual([[0, 499], [500, 999]])
@@ -48,6 +49,19 @@ it('rejects failed reads instead of returning an incomplete or falsely empty lis
   const { query } = client()
   query.range.mockResolvedValue({ data: null, error: { message: 'private database error' } })
   await expect(fetchCloudToolDeliverables(instanceId, siteId)).rejects.toThrow('Failed to load instance files')
+})
+
+it('loads dispatched deliver_file history alongside legacy receipts', async () => {
+  const { query } = client()
+  const delivered = receipt(2)
+  query.range.mockResolvedValue({ data: [receipt(1), {
+    ...delivered, tool_name: 'tools', tool_result: { success: true, output: {
+      name: 'deliver_file', success: true, result: { ok: true, output: delivered.tool_result },
+    } },
+  }], error: null })
+  const files = await fetchCloudToolDeliverables(instanceId, siteId)
+  expect(files).toHaveLength(1)
+  expect(files[0].version).toBe(2)
 })
 
 it('returns no files for an empty instance', async () => {

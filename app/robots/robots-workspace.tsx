@@ -12,10 +12,13 @@ import dynamic from "next/dynamic"
 import { WorkflowPanel } from '@/app/components/workflows/workflow-panel'
 
 import { cn } from "@/lib/utils"
+import { cloudRevisionFormat } from '@/lib/cloud-file-url'
 const ZipViewer = dynamic(
   () => import("@/app/components/simple-messages-view/components/ZipViewer").then((m) => m.ZipViewer),
   { ssr: false }
 )
+
+const CloudFilesViewer = dynamic(() => import('./cloud-files-viewer').then(m => m.CloudFilesViewer), { ssr: false })
 const ImprentaPanel = dynamic(
   () => import("@/app/components/agents/imprenta-panel").then((m) => m.ImprentaPanel),
   { ssr: false }
@@ -210,12 +213,18 @@ export function RobotsWorkspace(input: ReturnType<typeof useWorkspaceTabs>) {
                         <div className="absolute inset-0 bg-background robot-browser-session" style={{ isolation: 'isolate', zIndex: 0 }}>
                           {isZipUrl ? (
                             <div className="absolute inset-0 flex flex-col items-center justify-center bg-background">
-                              <ZipViewer
+                              {cloudRevisionFormat(activeUrlToDisplay) ? <CloudFilesViewer
+                                key={activeRobotInstance?.id}
+                                url={activeUrlToDisplay}
+                                files={input.artifactScreens.filter(file => cloudRevisionFormat(file.url))}
+                                className="w-full h-full"
+                                onFileSelect={setSelectedFilePath}
+                              /> : <ZipViewer
                                 key={`${activeUrlToDisplay}|${requirementPreviewFrameKey}`}
                                 url={activeUrlToDisplay}
                                 className="w-full h-full"
                                 onFileSelect={setSelectedFilePath}
-                              />
+                              />}
                             </div>
                           ) : activeBrowserTab.kind === 'artifact' ? (
                             <iframe

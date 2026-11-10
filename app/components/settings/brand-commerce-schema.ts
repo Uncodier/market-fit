@@ -140,12 +140,14 @@ export const brandCommerceFields = {
         pos: z.boolean(),
         orders: z.boolean(),
         inventory: z.boolean(),
+        shipments: z.boolean().optional(),
       }),
       autoPrint: z.object({
         posReceipt: z.boolean(),
         kitchenTicket: z.boolean(),
         orderDelta: z.boolean(),
         inventoryLabel: z.boolean(),
+        shipmentPackingSlip: z.boolean().optional(),
       }),
       station: z.object({
         workstationId: z.string(),

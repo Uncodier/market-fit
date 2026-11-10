@@ -34,13 +34,21 @@ export function isCloudOnlyContent(previewUrl: unknown, sourceUrl: unknown): boo
 export function cloudToolDeliverables(logs: readonly CloudFileActivity[], instanceId: string, siteId: string): CloudDeliverable[] {
   const files = new Map<string, CloudDeliverable>()
   for (const log of logs) {
-    if (log.instance_id !== instanceId || log.site_id !== siteId || log.tool_name !== 'write_cloud_file') continue
+    if (log.instance_id !== instanceId || log.site_id !== siteId ||
+      !['write_cloud_file', 'deliver_file', 'tools'].includes(log.tool_name ?? '')) continue
     let result = log.tool_result
+    let identified = log.tool_name !== 'tools'
     for (let depth = 0; depth < 8; depth++) {
       if (!result || typeof result !== 'object' || Array.isArray(result)) break
       const receipt = result as Record<string, unknown>
       if (receipt.ok === false || receipt.success === false || receipt.error || receipt.state === 'conflict') break
+      // Generic tool dispatch must identify a file tool, not just contain a receipt-shaped object.
+      if (!identified && typeof receipt.name === 'string') {
+        if (!['write_cloud_file', 'deliver_file'].includes(receipt.name)) break
+        identified = true
+      }
       if (typeof receipt.file_id === 'string' && Number.isInteger(receipt.version)) {
+        if (!identified || receipt.saved === false) break
         const url = cloudViewerUrl(receipt.archive_url) ?? cloudViewerUrl(receipt.download_url)
         if (!url || receipt.instance_id !== instanceId) break
         const [path, query] = url.split('?')

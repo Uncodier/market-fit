@@ -88,6 +88,16 @@ it('uses server-only API configuration with the public URL as fallback', async (
   expect(String(jest.mocked(fetch).mock.calls[1][0])).toBe('https://api.example.test/api/agents/chat/message')
 })
 
+it('forwards explicit text for internal chat', async () => {
+  expect((await POST(request({ response_format: 'text' }))).status).toBe(200)
+  expect(JSON.parse(String(jest.mocked(fetch).mock.calls[0][1]?.body)).response_format).toBe('text')
+})
+
+it.each(['audio', 'video', null])('rejects unsupported/invalid internal response format %j', async response_format => {
+  expect((await POST(request({ response_format, channel: 'whatsapp' }))).status).toBe(400)
+  expect(fetch).not.toHaveBeenCalled()
+})
+
 it.each([
   { channel: 'voice', lead_id: null, visitor_id: null },
   { channel: 'email', lead_id: null, visitor_id: null },

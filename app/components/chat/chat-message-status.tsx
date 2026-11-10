@@ -1,5 +1,6 @@
 import { ChatMessage } from "@/app/types/chat"
 import { isSocialCommentMetadata } from '@/lib/chat/social-comment-context'
+import { isAudioRetryBlocked } from '@/lib/chat/response-format'
 import * as Icons from "@/app/components/ui/icons"
 import {
   Tooltip,
@@ -99,6 +100,7 @@ export function MessageStatus({
   acceptedLabel?: "scheduled" | "accepted"
 }) {
   const estimatedSendTime = getEstimatedSendTime(message)
+  const audioRetryBlocked = isAudioRetryBlocked(message.metadata)
   const isCommentProposal = isSocialCommentMetadata(message.metadata) &&
     (message.role === 'assistant' || message.role === 'agent') && !message.metadata?.comment_delivery_status
 
@@ -142,7 +144,10 @@ export function MessageStatus({
           </Tooltip>
         </TooltipProvider>
       )}
-      {message.metadata?.command_status === "failed" && (
+      {audioRetryBlocked && message.metadata?.command_status === 'failed' && (
+        <span className="text-xs text-amber-500">Check audio delivery status before retrying.</span>
+      )}
+      {message.metadata?.command_status === "failed" && !audioRetryBlocked && (
         <>
           <TooltipProvider>
             <Tooltip>

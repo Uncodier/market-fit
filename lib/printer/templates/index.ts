@@ -1,4 +1,5 @@
 import { encodeReceipt } from "./receipt"
+import { encodePackingSlip } from "./packing-slip"
 import { encodeRegisterReport } from "./register-report"
 import { encodeKitchenTicket } from "./kitchen"
 import { encodeKitchenDelta } from "./kitchen-delta"
@@ -7,6 +8,7 @@ import { encodeTestPrint } from "./test"
 import { htmlForJob } from "./html"
 import type {
   InventoryLabelPayload,
+  PackingSlipPayload,
   KitchenPayload,
   PaperWidthMm,
   PrintJob,
@@ -17,6 +19,8 @@ import type {
 
 export function encodeJob(job: PrintJob, paper: PaperWidthMm): Uint8Array {
   switch (job.template) {
+    case "packing-slip":
+      return encodePackingSlip(job.payload as PackingSlipPayload, paper)
     case "register-report":
       return encodeRegisterReport(job.payload as RegisterReportPayload, paper)
     case "receipt":

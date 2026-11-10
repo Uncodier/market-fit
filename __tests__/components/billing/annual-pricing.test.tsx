@@ -11,6 +11,15 @@ jest.mock('@/app/context/LocalizationContext', () => ({ useLocalization: () => (
 describe('billing interval selection', () => {
   beforeEach(() => { localStorage.clear(); window.history.replaceState({}, '', '/') })
 
+  it('displays Reactor while preserving the enterprise plan identifier', () => {
+    const onChange = jest.fn()
+    render(<SubscriptionPlans currentPlan="commission" isSaving={false} onChangePlan={onChange} />)
+    expect(screen.getByText('Reactor')).toBeInTheDocument()
+    expect(screen.queryByText('Enterprise')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Upgrade to Reactor monthly' }))
+    expect(onChange).toHaveBeenCalledWith('enterprise')
+  })
+
   it('allows the same plan on another interval and keeps only exact plan+interval current', () => {
     const onChange = jest.fn()
     const { container, rerender } = render(<SubscriptionPlans currentPlan="engine" currentInterval="month" billingInterval="year" isSaving={false} onChangePlan={onChange} />)

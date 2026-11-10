@@ -11,6 +11,7 @@ const inputSchema = z.object({
   conversationId: uuid,
   site_id: uuid,
   message: z.string().trim().min(1).max(20_000),
+  response_format: z.enum(['text', 'audio']).optional(),
 })
 
 // Only expose the persisted assistant reply consumed by the chat UI.
@@ -58,6 +59,9 @@ export async function POST(request: Request): Promise<Response> {
     return failure('This conversation uses an external channel. Reload the conversation and send an intervention instead. No call or message was started.', 409)
   }
   if (!conversation.agent_id) return failure('This conversation has no assigned agent.', 409)
+  if (input.response_format === 'audio') {
+    return failure('Audio responses are not supported in internal agent conversations.', 400)
+  }
 
   const { data: agent, error: agentError } = await access.supabase
     .from('agents').select('id').eq('id', conversation.agent_id).eq('site_id', conversation.site_id).maybeSingle()
@@ -80,6 +84,7 @@ export async function POST(request: Request): Promise<Response> {
         agentId: agent.id, team_member_id: access.userId,
         lead_id: conversation.lead_id || undefined, visitor_id: conversation.visitor_id || undefined,
         message: input.message,
+        response_format: input.response_format,
       }),
       cache: 'no-store', redirect: 'error',
       signal: AbortSignal.any([request.signal, AbortSignal.timeout(110_000)]),

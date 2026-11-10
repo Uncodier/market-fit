@@ -76,6 +76,65 @@ it('forwards one authenticated intervention using server-owned identities and re
   expect(rpc).toHaveBeenCalledWith('user_can', { p_site_id: siteId, p_command: 'insert' })
 })
 
+it.each(['whatsapp', 'telegram', 'messenger'])('forwards audio for authoritative %s channel', async channel => {
+  from.mockReturnValueOnce(query({ id: conversationId, site_id: siteId, channel }))
+  expect((await POST(request({ response_format: 'audio', channel: 'email' }))).status).toBe(200)
+  expect(JSON.parse(String(jest.mocked(fetch).mock.calls[0][1]?.body))).toMatchObject({ response_format: 'audio' })
+})
+
+it('uses legacy persisted channel metadata when the direct channel is absent', async () => {
+  from.mockReturnValueOnce(query({ id: conversationId, site_id: siteId, custom_data: { channel: 'telegram' } }))
+  expect((await POST(request({ response_format: 'audio' }))).status).toBe(200)
+})
+
+it.each(['web', 'email', 'instagram', 'sms', 'voice', 'facebook', 'unknown'])('rejects audio on %s despite a forged supported channel', async channel => {
+  from.mockReturnValueOnce(query({ id: conversationId, site_id: siteId, lead_id: leadId, channel, custom_data: { channel: 'whatsapp' } }))
+  const response = await POST(request({ response_format: 'audio', channel: 'whatsapp' }))
+  expect(response.status).toBe(400)
+  expect(await response.json()).toMatchObject({ execution_started: false, error: { code: 'RESPONSE_FORMAT_UNSUPPORTED' } })
+  expect(fetch).not.toHaveBeenCalled()
+})
+
+it.each([null, '', 'video', 'Audio', 1, {}])('rejects invalid response format %j', async response_format => {
+  expect((await POST(request({ response_format }))).status).toBe(400)
+  expect(fetch).not.toHaveBeenCalled()
+})
+
+it.each(['text', undefined])('preserves optional response format %s', async response_format => {
+  expect((await POST(request({ response_format }))).status).toBe(200)
+  expect(JSON.parse(String(jest.mocked(fetch).mock.calls[0][1]?.body)).response_format).toBe(response_format)
+})
+
+it.each(['audio', undefined])('restores saved audio on retry with request format %s', async response_format => {
+  from.mockReturnValueOnce(query({ id: conversationId, site_id: siteId, channel: 'whatsapp' }))
+    .mockReturnValueOnce(query({ content: 'Original', custom_data: { command_status: 'failed', response_format: 'audio' } }))
+  expect((await POST(request({ message_id: messageId, response_format }))).status).toBe(200)
+  expect(JSON.parse(String(jest.mocked(fetch).mock.calls[0][1]?.body))).toMatchObject({ response_format: 'audio', message_id: messageId, message: 'Original' })
+})
+
+it('rejects changing the saved response format on retry', async () => {
+  from.mockReturnValueOnce(query({ id: conversationId, site_id: siteId, channel: 'whatsapp' }))
+    .mockReturnValueOnce(query({ content: 'Original', custom_data: { command_status: 'failed', response_format: 'audio' } }))
+  expect((await POST(request({ message_id: messageId, response_format: 'text' }))).status).toBe(409)
+  expect(fetch).not.toHaveBeenCalled()
+})
+
+it.each(['preparing', 'preparation_failed', 'dispatching', 'sent', 'unknown'])('does not replay an audio receipt in %s state', async state => {
+  from.mockReturnValueOnce(query({ id: conversationId, site_id: siteId, channel: 'whatsapp' }))
+    .mockReturnValueOnce(query({ content: 'Original', custom_data: {
+      command_status: 'failed', response_format: 'audio', audio_delivery: { state },
+    } }))
+  expect((await POST(request({ message_id: messageId }))).status).toBe(409)
+  expect(fetch).not.toHaveBeenCalled()
+})
+
+it('rejects a saved audio retry after switching to an unsupported channel', async () => {
+  from.mockReturnValueOnce(query({ id: conversationId, site_id: siteId, channel: 'email' }))
+    .mockReturnValueOnce(query({ content: 'Original', custom_data: { command_status: 'failed', response_format: 'audio' } }))
+  expect((await POST(request({ message_id: messageId }))).status).toBe(400)
+  expect(fetch).not.toHaveBeenCalled()
+})
+
 it('does not start a voice call or invent a recipient when the inbound conversation has no linked lead', async () => {
   from.mockReturnValueOnce(query({ id: conversationId, site_id: siteId, agent_id: agentId,
     channel: 'voice', lead_id: null, visitor_id: null,

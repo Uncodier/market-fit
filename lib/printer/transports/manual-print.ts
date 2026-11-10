@@ -21,7 +21,7 @@ export async function printJobManually(
     // A failed transfer may already have printed part of the report or receipt.
     try {
       // Orders fans out to kitchen stations; POS keeps its single-printer behavior.
-      const targets = job.module === "orders" ? hardwarePrinters : hardwarePrinters.slice(0, 1)
+      const targets = job.module === "orders" || job.module === "shipments" ? hardwarePrinters : hardwarePrinters.slice(0, 1)
       for (const device of targets) {
         await printOnDevice(device, job, { allowPrompt: false })
       }
@@ -40,7 +40,7 @@ export async function printJobManually(
     (device) => device.transport === "system" && isPrinterReadyOnStation(device),
   )
   if (systemPrinters.length > 0) {
-    const targets = job.module === "orders" ? systemPrinters : systemPrinters.slice(0, 1)
+    const targets = job.module === "orders" || job.module === "shipments" ? systemPrinters : systemPrinters.slice(0, 1)
     for (const device of targets) {
       await printOnDevice(device, job, { allowPrompt: false })
     }

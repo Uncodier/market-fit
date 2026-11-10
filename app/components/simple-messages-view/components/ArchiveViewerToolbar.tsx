@@ -28,7 +28,7 @@ export function ArchiveViewerToolbar({ canPreview, mode, onModeChange, filesVisi
         </Tabs>
       ) : <span />}
       <span className="justify-self-end text-xs text-muted-foreground hidden sm:block">
-        {canPreview ? 'Static preview' : ''}
+        {canPreview ? 'Isolated preview' : ''}
       </span>
     </div>
   )

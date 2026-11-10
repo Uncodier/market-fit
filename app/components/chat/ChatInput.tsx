@@ -8,6 +8,8 @@ import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
 import { cn } from "@/lib/utils"
 import { useLayout } from "@/app/context/LayoutContext"
 import { ChannelSelector } from "./ChannelSelector"
+import { ResponseFormatSelector } from './ResponseFormatSelector'
+import { supportsAudioResponse, type ChatResponseFormat } from '@/lib/chat/response-format'
 import { useChannelSelector } from "@/app/hooks/useChannelSelector"
 import { getVoiceCallBlock, type VoiceCallLead } from "@/lib/chat/voice-call-eligibility"
 import { CommentReplyPicker } from './CommentReplyPicker'
@@ -20,8 +22,8 @@ interface ChatInputProps {
   handleMessageChange?: (e: React.ChangeEvent<HTMLTextAreaElement>) => void
   textareaRef?: React.MutableRefObject<HTMLTextAreaElement | null>
   isLoading: boolean
-  handleSendMessage: (e: FormEvent) => Promise<void>
-  handleKeyDown: (e: React.KeyboardEvent) => void
+  handleSendMessage: (e: FormEvent, responseFormat?: ChatResponseFormat) => Promise<void>
+  handleKeyDown: (e: React.KeyboardEvent, responseFormat?: ChatResponseFormat) => void
   conversationId?: string
   isChatListCollapsed?: boolean
   leadData?: VoiceCallLead & {
@@ -70,12 +72,22 @@ export const ChatInput = memo(function ChatInput({
     selectedChannel,
     setSelectedChannel,
     availableChannels,
-    isUpdatingChannel
+    isUpdatingChannel,
+    channelLoadError,
+    retryChannelLoad,
   } = useChannelSelector({
     conversationId,
     leadData,
     isAgentOnlyConversation
   })
+  const audioSupported = !commentReplySelection && !isAgentOnlyConversation && supportsAudioResponse(selectedChannel)
+  const [formatSelection, setFormatSelection] = useState<{ conversationId?: string; value: ChatResponseFormat }>({ conversationId, value: 'text' })
+  const responseFormat = audioSupported && formatSelection.conversationId === conversationId ? formatSelection.value : 'text'
+  useEffect(() => {
+    if (!audioSupported || formatSelection.conversationId !== conversationId) {
+      setFormatSelection({ conversationId, value: 'text' })
+    }
+  }, [audioSupported, conversationId, formatSelection.conversationId])
   const isVoice = !commentReplySelection && selectedChannel === 'voice'
   const voiceBlock = isVoice ? getVoiceCallBlock(leadData) : null
   const channelUnavailable = !commentReplySelection && !isAgentOnlyConversation && !availableChannels.includes(selectedChannel)
@@ -109,15 +121,15 @@ export const ChatInput = memo(function ChatInput({
     }
     
     // Delegate complex logic to parent
-    handleKeyDown(e)
-  }, [handleKeyDown, sendingBlocked])
+    handleKeyDown(e, responseFormat)
+  }, [handleKeyDown, sendingBlocked, responseFormat])
   
   // Memoize form submit handler
   const handleSubmit = useCallback((e: FormEvent) => {
     e.preventDefault()
     if (sendingBlocked) return
-    handleSendMessage(e)
-  }, [handleSendMessage, sendingBlocked])
+    handleSendMessage(e, responseFormat)
+  }, [handleSendMessage, sendingBlocked, responseFormat])
   
   // Memoize conversation validation
   const hasSelectedConversation = useMemo(() => {
@@ -216,12 +228,25 @@ export const ChatInput = memo(function ChatInput({
               </div>
               
               {/* Channel selector centered */}
-      <div className="absolute bottom-[15px] left-1/2 -translate-x-1/2 w-fit flex items-center justify-center" style={{ zIndex: 52 }}>
+              {channelLoadError && !commentReplySelection && (
+                <div role="alert" className="flex items-center gap-2 px-3 pb-14 text-xs text-destructive">
+                  <span>{channelLoadError}</span>
+                  <Button type="button" variant="outline" size="sm" onClick={retryChannelLoad} disabled={isLoading}>
+                    Retry channel
+                  </Button>
+                </div>
+              )}
+      <div className="absolute bottom-[15px] left-[15px] right-[64px] flex items-center justify-center gap-2 overflow-x-auto [&>*]:shrink-0" style={{ zIndex: 52 }}>
         {!commentReplySelection && <ChannelSelector
           selectedChannel={selectedChannel}
           onChannelChange={setSelectedChannel}
           availableChannels={availableChannels}
           isUpdating={isUpdatingChannel}
+        />}
+        {audioSupported && <ResponseFormatSelector
+          value={responseFormat}
+          onChange={value => setFormatSelection({ conversationId, value })}
+          disabled={sendingBlocked}
         />}
       </div>
       

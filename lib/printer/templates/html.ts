@@ -1,4 +1,5 @@
 import { resolveTicketLocale, ticketCopy } from "../core/copy"
+import { thermalHtmlForJob } from "./html-thermal"
 import { registerReportHtml } from "./register-report"
 import {
   formatMoney,
@@ -286,6 +287,8 @@ export function testPrintHtml(payload: TestPrintPayload, paper: PaperWidthMm): s
 
 export function htmlForJob(job: PrintJob, paper: PaperWidthMm): string {
   switch (job.template) {
+    case "packing-slip":
+      return thermalHtmlForJob(job, paper)
     case "register-report":
       return registerReportHtml(job.payload as RegisterReportPayload, paper)
     case "receipt":

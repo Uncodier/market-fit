@@ -35,7 +35,7 @@ export function licensePlan(value: unknown): LicensePlan {
 }
 
 export function licensePlanLabel(plan: unknown): string {
-  return { commission: "Toolbox", engine: "Engine", foundry: "Foundry", enterprise: "Reactor / Enterprise" }[licensePlan(plan)]
+  return { commission: "Toolbox", engine: "Engine", foundry: "Foundry", enterprise: "Reactor" }[licensePlan(plan)]
 }
 
 export function getMemberLimit(plan: unknown): number | null {

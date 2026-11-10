@@ -48,7 +48,7 @@ const PLANS: Array<{
   {
     id: "enterprise",
     titleKey: "billing.plan.enterprise.title",
-    titleFallback: "Enterprise",
+    titleFallback: "Reactor",
     monthlyPrice: 500,
     detail: (t) => t("billing.plan.enterprise.allowances", { credits: 500, agentChannels: 10, socialAccounts: 10 }) || "500 credits/month + 10 agent channels, 10 social accounts",
   },

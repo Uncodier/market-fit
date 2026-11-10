@@ -1,4 +1,5 @@
 import type { InterventionAcceptedResponse, InterventionRequestOptions } from "@/app/services/intervention-request"
+import type { ChatResponseFormat } from '@/lib/chat/response-format'
 import { buildInterventionRequestBody } from "@/app/services/intervention-request"
 import { InterventionRequestError } from "@/app/services/mark-intervention-message-failed"
 import { isInterventionDeliveryUnconfirmed, shouldTreatInterventionAsFailed } from "@/app/services/intervention-request"
@@ -94,6 +95,7 @@ export async function sendAgentMessage(
     lead_id?: string,
     visitor_id?: string,
     team_member_id: string
+    response_format?: ChatResponseFormat
   }
 ): Promise<{
   success?: boolean
@@ -104,7 +106,7 @@ export async function sendAgentMessage(
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     credentials: 'same-origin',
-    body: JSON.stringify({ conversationId, message, site_id: options.site_id }),
+    body: JSON.stringify({ conversationId, message, site_id: options.site_id, response_format: options.response_format }),
     signal: AbortSignal.timeout(120_000),
   })
   const responseData = await response.json().catch(() => null)

@@ -66,6 +66,33 @@ describe('useChatOperations send lifecycle', () => {
 
   afterEach(() => { jest.restoreAllMocks() })
 
+  it.each(['text', 'audio'] as const)('propagates %s and retains it with the accepted row', async responseFormat => {
+    jest.mocked(sendTeamMemberIntervention).mockResolvedValue({ success: true, data: { message: { message_id: 'message-1' } } })
+    const { result } = setup()
+    await act(async () => { await result.current.handleSendMessage('Draft', responseFormat) })
+    expect(sendTeamMemberIntervention).toHaveBeenCalledWith('conversation-1', 'Draft', 'user-1', 'agent-1',
+      expect.objectContaining({ response_format: responseFormat }))
+    expect(result.current.messages[0].metadata?.response_format).toBe(responseFormat)
+  })
+
+  it('defaults new frontend sends to explicit text', async () => {
+    jest.mocked(sendTeamMemberIntervention).mockResolvedValue(accepted)
+    const { result } = setup()
+    await act(async () => { await result.current.handleSendMessage('Draft') })
+    expect(sendTeamMemberIntervention).toHaveBeenCalledWith('conversation-1', 'Draft', 'user-1', 'agent-1',
+      expect.objectContaining({ response_format: 'text' }))
+  })
+
+  it.each(['text', 'audio', undefined] as const)('retries the persisted format %s, retaining the same ID', async response_format => {
+    jest.mocked(sendTeamMemberIntervention).mockResolvedValue(accepted)
+    const { result } = setup()
+    const failed: ChatMessage = { id: 'failed-1', role: 'team_member', text: 'Original', timestamp: new Date(),
+      metadata: { command_status: 'failed', response_format } }
+    await act(async () => { await result.current.handleRetryMessage(failed) })
+    expect(sendTeamMemberIntervention).toHaveBeenCalledWith('conversation-1', 'Original', 'user-1', 'agent-1',
+      expect.objectContaining({ response_format, message_id: 'failed-1' }))
+  })
+
   it('preserves the draft and does not insert an optimistic row without a selected comment', async () => {
     const { result } = setup(false, 'conversation-1', true, { isCommentConversation: true })
     await act(async () => { expect(await result.current.handleSendMessage('Public reply')).toBe(false) })

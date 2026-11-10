@@ -1,6 +1,7 @@
 "use client"
 
 import { useRef, useState } from 'react'
+import { isAudioRetryBlocked, isChatResponseFormat, type ChatResponseFormat } from '@/lib/chat/response-format'
 import { useChatConversationActions } from './useChatConversationActions'
 import { reconcileInterventionMessage } from './reconcile-intervention-message'
 import { withMappedCommandStatus } from '@/app/services/map-chat-command-status'
@@ -73,7 +74,7 @@ export function useChatOperations({
   
   // True consumes the draft: the API accepted it or its saved failure is visible.
   // Rejected, skipped, and unconfirmed sends must leave the composer untouched.
-  const handleSendMessage = async (message: string): Promise<boolean> => {
+  const handleSendMessage = async (message: string, responseFormat: ChatResponseFormat = 'text'): Promise<boolean> => {
     if (!message.trim() || sendInFlightRef.current || !currentSite?.id || !user?.id) return false
     if (!isConversationReady) {
       toast.error('Wait for the conversation to load before sending.')
@@ -94,8 +95,10 @@ export function useChatOperations({
       sender_id: user.id,
       sender_name: userName,
       sender_avatar: userAvatar || undefined,
+      metadata: { response_format: responseFormat },
       ...(isCommentConversation && commentReplyTarget ? { metadata: {
         source: 'comment',
+        response_format: 'text',
         reply_to_message_id: commentReplyTarget.id,
         reply_to_comment_id: commentReplyTarget.metadata?.platform_comment_id,
         outstand_post_id: commentReplyTarget.metadata?.outstand_post_id,
@@ -133,6 +136,7 @@ export function useChatOperations({
           site_id: currentSite.id,
           lead_id: leadData?.id,
           team_member_id: user.id,
+          response_format: 'text',
         })
         if (result?.success !== true) throw new Error("Message acceptance could not be confirmed.")
 
@@ -152,6 +156,7 @@ export function useChatOperations({
           site_id: currentSite.id,
           lead_id: leadData?.id || undefined,
           reply_to_message_id: isCommentConversation ? commentReplyTarget?.id : undefined,
+          response_format: isCommentConversation ? 'text' : responseFormat,
         })
         if (result?.success !== true) throw new Error("Message acceptance could not be confirmed.")
 
@@ -222,6 +227,7 @@ export function useChatOperations({
 
   // Retry a failed message using the same row
   const handleRetryMessage = async (failedMessage: ChatMessage) => {
+    if (isAudioRetryBlocked(failedMessage.metadata)) return
     if (!failedMessage.text || !failedMessage.id || sendInFlightRef.current || !currentSite?.id || !user?.id) return
     if (failedMessage.id.startsWith("temp-") || failedMessage.id.startsWith("error-")) return
 
@@ -254,6 +260,8 @@ export function useChatOperations({
           lead_id: leadData?.id || undefined,
           visitor_id: undefined,
           message_id: failedMessage.id,
+          response_format: isChatResponseFormat(failedMessage.metadata?.response_format)
+            ? failedMessage.metadata.response_format : undefined,
         }
       )
 

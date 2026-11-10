@@ -22,7 +22,7 @@ it('renders single-file HTML by default and toggles source without downloading a
   const view = render(<ZipViewer url={url} />)
   await waitFor(() => expect(screen.getByTitle('Preview: landing.html')).toBeInTheDocument())
   const iframe = screen.getByTitle('Preview: landing.html')
-  expect(iframe).toHaveAttribute('sandbox', '')
+   expect(iframe).toHaveAttribute('sandbox', 'allow-scripts')
   expect(iframe).toHaveAttribute('referrerpolicy', 'no-referrer')
   expect(iframe.getAttribute('srcdoc')).toContain('<h1>Landing</h1>')
   expect(iframe.getAttribute('srcdoc')).toContain('h1{color:orange}')
@@ -58,14 +58,15 @@ it('shows the file tree by default for multiple files and keeps visibility choic
   expect(fetch).toHaveBeenCalledTimes(1)
 })
 
-it('removes active embeds, scripts, base URLs and refresh directives without changing the original source', () => {
+it('preserves inline animations but removes external scripts, embeds, base URLs and refresh directives', () => {
   const source = '<head><base href="https://evil.example.test"><meta http-equiv="refresh" content="0;url=https://evil.example.test"></head><body><script>window.parent.document</script><iframe src="/private"></iframe><object></object><embed><h1>Safe content</h1></body>'
   const result = buildArchivePreview(source)
-  expect(result).not.toContain('<script')
+  expect(result).toContain('<script>window.parent.document</script>')
+  expect(buildArchivePreview('<script src="https://evil.example.test/code.js"></script>')).not.toContain('evil.example.test')
   expect(result).not.toContain('<iframe')
   expect(result).not.toContain('<base')
   expect(result).not.toContain('evil.example.test')
-  expect(result).toContain("script-src 'none'")
+  expect(result).toContain("script-src 'unsafe-inline'")
   expect(result).toContain("connect-src 'none'")
   expect(result).toContain("form-action 'none'")
   expect(result).toContain('<h1>Safe content</h1>')

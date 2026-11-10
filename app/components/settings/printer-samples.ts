@@ -14,12 +14,22 @@ export function enabledPrintFormats(device: PrinterDevice): PrintFormatOption[] 
     formats.push({ template: "kitchen-delta", module: "orders" })
   }
   if (device.modules.inventory) formats.push({ template: "inventory-label", module: "inventory" })
+  if (device.modules.shipments) formats.push({ template: "packing-slip", module: "shipments" })
   return formats
 }
 
 export function samplePayloads(brand: ReturnType<typeof ticketBrandFromSite>) {
   const createdAt = new Date().toISOString()
   return {
+    packingSlip: {
+      ...brand,
+      shipmentId: "SAMPLE-SHIPMENT",
+      orderNumber: "ORD-1001",
+      createdAt,
+      customerName: "Sample customer",
+      shippingAddress: "123 Sample Street",
+      lines: [{ name: "Sample product", quantity: 2 }],
+    },
     receipt: {
       ...brand,
       siteName: brand.siteName || "Makinari",
@@ -78,6 +88,7 @@ export function payloadForFormat(
   brand: ReturnType<typeof ticketBrandFromSite>,
 ) {
   const samples = samplePayloads(brand)
+  if (template === "packing-slip") return samples.packingSlip
   if (template === "receipt") return samples.receipt
   if (template === "kitchen") return samples.kitchen
   if (template === "kitchen-delta") return samples.delta

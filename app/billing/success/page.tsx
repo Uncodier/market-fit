@@ -34,7 +34,7 @@ function SuccessContent() {
     commission: { name: t('billing.success.freePlan') || 'Free Plan', monthlyPrice: 0 },
     engine: { name: t('billing.plan.engine.title') || 'Engine', monthlyPrice: 23 },
     foundry: { name: t('billing.plan.foundry.title') || 'Foundry', monthlyPrice: 99 },
-    enterprise: { name: t('billing.plan.enterprise.title') || 'Enterprise', monthlyPrice: 500 }
+    enterprise: { name: t('billing.plan.enterprise.title') || 'Reactor', monthlyPrice: 500 }
   }
   
   const currentPlan = plan ? planDetails[plan as keyof typeof planDetails] : null

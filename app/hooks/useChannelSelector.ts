@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react"
+import { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { useSite } from "@/app/context/SiteContext"
 import { getEnabledSiteChannels, leadHasChannel, normalizeChannel } from "@/lib/site-channels"
 
@@ -22,6 +22,8 @@ interface UseChannelSelectorReturn {
   setSelectedChannel: (channel: Channel) => void
   availableChannels: Channel[]
   isUpdatingChannel?: boolean
+  channelLoadError?: string
+  retryChannelLoad?: () => void
 }
 
 export function useChannelSelector({
@@ -32,7 +34,24 @@ export function useChannelSelector({
 }: UseChannelSelectorProps): UseChannelSelectorReturn {
   const { currentSite } = useSite()
   const [selectedChannel, setSelectedChannelState] = useState<Channel>(defaultChannel)
-  const [isUpdatingChannel, setIsUpdatingChannel] = useState(false)
+  const [updatingOperations, setUpdatingOperations] = useState<Record<string, number>>({})
+  const operationCounter = useRef(0)
+  const pendingOperations = useRef(new Map<string, number>())
+  const isUpdatingChannel = Boolean(conversationId && updatingOperations[conversationId] !== undefined)
+  const [loadedConversationId, setLoadedConversationId] = useState<string>()
+  const [loadAttempt, setLoadAttempt] = useState(0)
+  const [loadFailure, setLoadFailure] = useState<{ conversationId: string; message: string }>()
+  const channelLoadError = loadFailure && loadFailure.conversationId === conversationId ? loadFailure.message : undefined
+  const retryChannelLoad = useCallback(() => {
+    setLoadFailure(undefined)
+    setLoadedConversationId(undefined)
+    setLoadAttempt(value => value + 1)
+  }, [])
+  const activeConversationRef = useRef(conversationId)
+  useEffect(() => {
+    activeConversationRef.current = conversationId
+    return () => { activeConversationRef.current = undefined }
+  }, [conversationId])
 
   // Log channel selection for diagnostics.
   console.log(`[useChannelSelector] Hook called - conversationId: ${conversationId}, selectedChannel: ${selectedChannel}`)
@@ -67,13 +86,16 @@ export function useChannelSelector({
   // Enhanced setSelectedChannel with database update
   const setSelectedChannel = useCallback(async (channel: Channel) => {
     // Only update if the channel is available and different
-    if (!availableChannels.includes(channel) || channel === selectedChannel) {
+    if (!availableChannels.includes(channel) || channel === selectedChannel
+      || (conversationId && pendingOperations.current.has(conversationId))) {
       return
     }
 
     // If we have a valid conversation ID (not new conversation), update database
     if (conversationId && !conversationId.startsWith("new-")) {
-      setIsUpdatingChannel(true)
+      const token = ++operationCounter.current
+      pendingOperations.current.set(conversationId, token)
+      setUpdatingOperations(current => ({ ...current, [conversationId]: token }))
       
       try {
         const { createClient } = await import("@/lib/supabase/client")
@@ -86,9 +108,10 @@ export function useChannelSelector({
           .eq("id", conversationId)
           .single()
 
+        if (activeConversationRef.current !== conversationId) return
+
         if (fetchError) {
           console.error("Error fetching conversation for channel update:", fetchError)
-          setIsUpdatingChannel(false)
           return
         }
 
@@ -108,9 +131,10 @@ export function useChannelSelector({
           })
           .eq("id", conversationId)
 
+        if (activeConversationRef.current !== conversationId) return
+
         if (updateError) {
           console.error("Error updating conversation channel:", updateError)
-          setIsUpdatingChannel(false)
           return
         }
 
@@ -122,7 +146,14 @@ export function useChannelSelector({
       } catch (error) {
         console.error("Unexpected error updating conversation channel:", error)
       } finally {
-        setIsUpdatingChannel(false)
+        if (pendingOperations.current.get(conversationId) === token) pendingOperations.current.delete(conversationId)
+        // Completing A while viewing B must release A without clearing B's newer operation.
+        setUpdatingOperations(current => {
+          if (current[conversationId] !== token) return current
+          const next = { ...current }
+          delete next[conversationId]
+          return next
+        })
       }
     } else {
       // For new conversations, just update local state
@@ -148,6 +179,10 @@ export function useChannelSelector({
     let isCancelled = false
 
     async function getConversationChannel() {
+      const fail = () => {
+        if (!isCancelled) setLoadFailure({ conversationId: conversationId!,
+          message: 'Unable to verify the conversation channel. Retry before sending.' })
+      }
       try {
         console.log(`[getConversationChannel] Loading channel for conversation: ${conversationId}`)
         
@@ -167,8 +202,9 @@ export function useChannelSelector({
         })
           
         // Don't update state if component was unmounted or conversation changed
-        if (isCancelled || error) {
+        if (isCancelled || error || !conversation) {
           if (error) console.error("Error fetching conversation channel:", error)
+          if (!isCancelled) fail()
           return
         }
         
@@ -192,9 +228,12 @@ export function useChannelSelector({
         
         // Set the channel from database
         setSelectedChannelState(conversationChannel)
+        setLoadedConversationId(conversationId)
+        setLoadFailure(undefined)
       } catch (error) {
         if (!isCancelled) {
           console.error("Error getting conversation channel:", error)
+          fail()
         }
       }
     }
@@ -205,7 +244,7 @@ export function useChannelSelector({
     return () => {
       isCancelled = true
     }
-  }, [conversationId])
+  }, [conversationId, loadAttempt])
 
   // Log current channel status for debugging
   useEffect(() => {
@@ -223,6 +262,9 @@ export function useChannelSelector({
     selectedChannel,
     setSelectedChannel,
     availableChannels,
-    isUpdatingChannel
+    channelLoadError,
+    retryChannelLoad,
+    isUpdatingChannel: isUpdatingChannel || Boolean(channelLoadError)
+      || Boolean(conversationId && !conversationId.startsWith('new-') && loadedConversationId !== conversationId)
   }
 } 

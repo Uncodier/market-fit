@@ -9,6 +9,7 @@ export type {
   KitchenDelta,
   KitchenLine,
   KitchenPayload,
+  PackingSlipPayload,
   ReceiptPayload,
   RegisterReportPayload,
   InventoryLabelPayload,

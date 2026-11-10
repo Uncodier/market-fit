@@ -188,6 +188,8 @@ export function autoPrintFlagForJob(
   job: PrintJob,
 ): keyof PrinterDevice["autoPrint"] | undefined {
   switch (job.template) {
+    case "packing-slip":
+      return "shipmentPackingSlip"
     case "receipt":
       return "posReceipt"
     case "kitchen":

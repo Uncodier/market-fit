@@ -1,9 +1,10 @@
 import { useCallback, useRef } from 'react'
+import type { ChatResponseFormat } from '@/lib/chat/response-format'
 
 interface UseOptimizedKeyboardHandlerProps {
   messageRef: React.MutableRefObject<string>
   isLoading: boolean
-  onSendMessage: (e: React.FormEvent) => Promise<void>
+  onSendMessage: (e: React.FormEvent, responseFormat?: ChatResponseFormat) => Promise<void>
 }
 
 export function useOptimizedKeyboardHandler({
@@ -14,7 +15,7 @@ export function useOptimizedKeyboardHandler({
   
   const isProcessingRef = useRef(false)
   
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+  const handleKeyDown = useCallback((e: React.KeyboardEvent, responseFormat: ChatResponseFormat = 'text') => {
     // Prevent multiple rapid fire sends
     if (isProcessingRef.current) {
       return
@@ -42,7 +43,7 @@ export function useOptimizedKeyboardHandler({
             currentTarget: e.currentTarget
           } as React.FormEvent
           
-          await onSendMessage(syntheticEvent)
+          await onSendMessage(syntheticEvent, responseFormat)
         } finally {
           isProcessingRef.current = false
         }

@@ -13,7 +13,7 @@ export async function fetchCloudToolDeliverables(instanceId: string, siteId: str
       .select('instance_id, site_id, tool_name, tool_result, created_at')
       .eq('instance_id', instanceId)
       .eq('site_id', siteId)
-      .eq('tool_name', 'write_cloud_file')
+      .in('tool_name', ['write_cloud_file', 'deliver_file', 'tools'])
       .not('tool_result', 'is', null)
       .order('created_at', { ascending: true })
       .order('id', { ascending: true })

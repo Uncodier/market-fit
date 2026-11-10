@@ -12,6 +12,8 @@ import {
   type TestPrintPayload,
 } from "../core/types"
 import { writeReceipt } from "./receipt"
+import { writePackingSlip } from "./packing-slip"
+import type { PackingSlipPayload } from "../core/types"
 import { writeRegisterReport } from "./register-report"
 import { writeKitchenTicket } from "./kitchen"
 import { writeKitchenDelta } from "./kitchen-delta"
@@ -176,6 +178,9 @@ export class HtmlThermalBuilder implements TicketBuilder {
 
 function writeJob(builder: TicketBuilder, job: PrintJob) {
   switch (job.template) {
+    case "packing-slip":
+      writePackingSlip(builder, job.payload as PackingSlipPayload)
+      break
     case "register-report":
       writeRegisterReport(builder, job.payload as RegisterReportPayload)
       break

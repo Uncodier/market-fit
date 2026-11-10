@@ -16,6 +16,16 @@ function accepted(channel_send: Record<string, unknown> = {}) {
 
 beforeEach(() => jest.mocked(fetch).mockReset())
 
+it.each(['text', 'audio'] as const)('serializes %s for new sends and same-row retries', async response_format => {
+  for (const message_id of [undefined, 'message-1']) {
+    jest.mocked(fetch).mockResolvedValueOnce(Response.json(accepted({ success: true })))
+    await sendTeamMemberIntervention('conversation-1', 'Draft', 'user-1', 'agent-1', { site_id: 'site-1', response_format, message_id })
+    const body = JSON.parse(String(jest.mocked(fetch).mock.calls.at(-1)?.[1]?.body))
+    expect(body.response_format).toBe(response_format)
+    expect(body.message_id).toBe(message_id)
+  }
+})
+
 it('sends through the same-origin authenticated proxy once and accepts a voice call ID', async () => {
   const response = accepted({ success: true, method: 'voice_agent_call', callId: 'call-1' })
   jest.mocked(fetch).mockResolvedValueOnce(Response.json(response))
