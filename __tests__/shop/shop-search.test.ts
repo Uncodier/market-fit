@@ -13,6 +13,7 @@ import { slimCartItem } from "@/app/commerce/cart-storage"
 import { publicListingMetadata } from "@/app/catalog/public-listing-metadata"
 
 jest.mock("server-only", () => ({}))
+jest.mock("@/app/price-lists/buyer-prices", () => ({ applyBuyerPricesToItems: async (items: unknown[]) => items }))
 jest.mock("@/app/shop/[siteSlug]/search-catalog", () => {
   const actual = jest.requireActual("@/app/shop/[siteSlug]/search-catalog")
   return { ...actual, loadShopSearch: jest.fn(actual.loadShopSearch) }

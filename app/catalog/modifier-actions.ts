@@ -4,6 +4,7 @@ import { createClient, createServiceClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import type { ModifierGroupWithItems } from "./modifier-types"
 import { requirePosSiteAccess } from "@/app/pos/actions/site-access"
+import { getStorefrontModifierGroups } from "./storefront-modifier-groups"
 
 export async function listModifierGroups(siteId: string, q?: string) {
   const supabase = await createClient()
@@ -224,7 +225,9 @@ function mapGroupWithItems(
 /** Groups attached to a host (or its parent), with option products. */
 export async function getModifierGroupsForCatalogItem(
   catalogItemId: string,
+  channel?: "shop" | "marketplace",
 ): Promise<{ data: ModifierGroupWithItems[]; error?: string }> {
+  if (channel !== undefined) return getStorefrontModifierGroups(catalogItemId, channel)
   // Service role: shop/marketplace PDP are public; RLS only allows site members.
   const supabase = await createServiceClient(true, { access: 'public' })
 

@@ -15,6 +15,13 @@ It combines:
   five languages after the existing catalogs. See
   [Procurement localization](PROCUREMENT_LOCALIZATION.md) for module scope and
   validation that does not count English fallback.
+- Chat widget overlays in `app/context/locales/chat/`, registered for English,
+  Spanish, French, German, and Japanese. These cover composer hints, response
+  formats, channel descriptions, delivery statuses, and attachment/audio labels.
+  Message timestamps and date separators use the selected locale. Template
+  receipt helpers retain canonical English labels and unchanged retry logic;
+  only rendering translates them. Customer content and real filenames are not
+  translated. Offline coverage: `__tests__/components/chat/chat-localization.test.tsx`.
 
 `rawLocaleMessages` exposes each language's own entries, without fallback.
 `localeMessages` retains the existing English fallback for incomplete languages.

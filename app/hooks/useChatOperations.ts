@@ -1,7 +1,7 @@
 "use client"
 
 import { useRef, useState } from 'react'
-import { isAudioRetryBlocked, isChatResponseFormat, type ChatResponseFormat } from '@/lib/chat/response-format'
+import { isDeliveryRetryBlocked, isChatResponseFormat, requestedResponseFormat, type ChatResponseFormat } from '@/lib/chat/response-format'
 import { useChatConversationActions } from './useChatConversationActions'
 import { reconcileInterventionMessage } from './reconcile-intervention-message'
 import { withMappedCommandStatus } from '@/app/services/map-chat-command-status'
@@ -227,7 +227,7 @@ export function useChatOperations({
 
   // Retry a failed message using the same row
   const handleRetryMessage = async (failedMessage: ChatMessage) => {
-    if (isAudioRetryBlocked(failedMessage.metadata)) return
+    if (isDeliveryRetryBlocked(failedMessage.metadata)) return
     if (!failedMessage.text || !failedMessage.id || sendInFlightRef.current || !currentSite?.id || !user?.id) return
     if (failedMessage.id.startsWith("temp-") || failedMessage.id.startsWith("error-")) return
 
@@ -250,6 +250,7 @@ export function useChatOperations({
     ))
 
     try {
+      const savedFormat = requestedResponseFormat(failedMessage.metadata)
       await sendTeamMemberIntervention(
         conversationId,
         failedMessage.text,
@@ -260,8 +261,7 @@ export function useChatOperations({
           lead_id: leadData?.id || undefined,
           visitor_id: undefined,
           message_id: failedMessage.id,
-          response_format: isChatResponseFormat(failedMessage.metadata?.response_format)
-            ? failedMessage.metadata.response_format : undefined,
+          response_format: isChatResponseFormat(savedFormat) ? savedFormat : undefined,
         }
       )
 

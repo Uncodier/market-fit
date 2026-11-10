@@ -1,4 +1,5 @@
 "use client"
+import { useStorefrontCartPricing } from "@/app/components/commerce/use-storefront-cart-pricing"
 
 import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
@@ -35,6 +36,7 @@ export function useShopCart({
 }: Options) {
   const router = useRouter()
   const [cart, setCart] = useState<ShopCartItem[]>([])
+  const pricing = useStorefrontCartPricing(cart, setCart, "shop")
   const [loadedSiteId, setLoadedSiteId] = useState<string | null>(null)
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [deviceOrders, setDeviceOrders] = useState<DeviceOrder[]>([])
@@ -129,5 +131,5 @@ export function useShopCart({
       .filter((line) => line.cartQty > 0))
   }, [])
 
-  return { cart, setCart, isCartOpen, setIsCartOpen, deviceOrders, setDeviceOrders, addToCart, updateQty }
+  return { cart, setCart, isCartOpen, setIsCartOpen, deviceOrders, setDeviceOrders, addToCart, updateQty, ...pricing }
 }

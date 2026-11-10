@@ -7,7 +7,10 @@ import type { RelationSelectValue } from "@/app/components/ui/relation-select";
 import { enqueueCreateLead } from "@/app/pos/local/outbox";
 import { getPosDb } from "@/app/pos/local/db";
 
+import { withCustomerPricing } from "../customer-pricing";
+
 type LeadRecord = {
+  default_price_list_id?: string | null;
   id: string;
   name?: string | null;
   email?: string | null;
@@ -79,11 +82,11 @@ export function usePosLead({
     if (typeof leadValue !== "string") return;
     const lead = leads.find((l) => l.id === leadValue);
     if (!lead) return;
-    setLeadValue({
+    setLeadValue(withCustomerPricing({
       mode: "existing",
       id: lead.id,
       label: leadLabel(lead),
-    });
+    }, lead));
   }, [leadValue, leads, setLeadValue]);
 
   const handleLeadUpdated = (lead: {

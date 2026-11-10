@@ -3,6 +3,7 @@ import { roundMoney } from "@/app/commerce/taxes"
 
 export type CheckoutMoneyLine = {
   currency?: string | null
+  quantity?: number
   unit_price: number
   subtotal: number
 }
@@ -58,6 +59,7 @@ export function normalizeCheckoutLinesToCurrency<T extends CheckoutMoneyLine>(
   lines: T[],
   targetCurrency: string,
   rates: Record<string, number>,
+  options: { roundUnitBeforeQuantity?: boolean } = {},
 ): { lines: T[]; subtotal: number } {
   const target = targetCurrency.toUpperCase()
   const converted = lines.map((line) => {
@@ -74,7 +76,11 @@ export function normalizeCheckoutLinesToCurrency<T extends CheckoutMoneyLine>(
       ...line,
       currency: target,
       unit_price: roundMoney(unit),
-      subtotal: roundMoney(sub),
+      // New storefront carts display the converted unit price. Charge that same
+      // rounded unit times quantity, including expanded modifier quantities.
+      // Historical/internal callers retain their existing subtotal conversion.
+      subtotal: options.roundUnitBeforeQuantity && line.quantity !== undefined
+        ? roundMoney(roundMoney(unit) * line.quantity) : roundMoney(sub),
     }
   })
   const subtotal = roundMoney(

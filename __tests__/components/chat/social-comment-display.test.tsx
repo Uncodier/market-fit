@@ -1,5 +1,7 @@
+import { LocalizationProvider } from '@/app/context/LocalizationContext'
+import type { ReactNode } from 'react'
 import { createRef } from "react"
-import { render, screen, within } from "@testing-library/react"
+import { render as rtlRender, screen, within } from "@testing-library/react"
 import { ChatMessages } from "@/app/components/chat/ChatMessages"
 import { ChatMessageContent } from "@/app/components/chat/chat-message-content"
 import { CommentSourceLinks } from "@/app/components/chat/CommentSourceLinks"
@@ -126,3 +128,6 @@ it("preserves a meaningful custom title and shows the participant and post subti
   expect(screen.getByText("Reader")).toBeInTheDocument()
   expect(within(screen.getByRole("button", { name: "More options" })).queryByText("Reader")).not.toBeInTheDocument()
 })
+function render(ui: ReactNode) {
+  return rtlRender(ui, { wrapper: ({ children }) => <LocalizationProvider preferredLocale="en">{children}</LocalizationProvider> })
+}

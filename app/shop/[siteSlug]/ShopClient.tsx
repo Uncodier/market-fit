@@ -3,7 +3,8 @@
 import { useState, useEffect, useDeferredValue, useCallback, useMemo, useRef } from "react"
 import { CatalogItem } from "@/app/types"
 import { clearCart } from "@/app/commerce/cart-storage"
-import { cartLineExtendedTotal } from "@/app/commerce/cart-modifiers"
+import { cartLineExtendedTotal, cartLineKey } from "@/app/commerce/cart-modifiers"
+import { CartPricingRecovery } from "@/app/components/commerce/CartPricingRecovery"
 import { getDeviceOrders } from "@/app/commerce/device-order-storage"
 import { useGuestCheckoutPrefill } from "@/app/commerce/use-guest-checkout-prefill"
 import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider"
@@ -256,7 +257,7 @@ export default function ShopClient({
 
   const [promotionCode, setPromotionCode] = useState("")
   const [promotionId, setPromotionId] = useState<string | null>(null)
-  const { cart, setCart, isCartOpen, setIsCartOpen, deviceOrders, setDeviceOrders, addToCart, updateQty } = useShopCart({
+  const { cart, setCart, isCartOpen, setIsCartOpen, deviceOrders, setDeviceOrders, addToCart, updateQty, pricingPending, pricingError, ...pricingRecovery } = useShopCart({
     siteId: site.id,
     siteSlug: String(siteSlug),
     currency: site?.settings?.currency || "USD",
@@ -285,7 +286,7 @@ export default function ShopClient({
   const cartCount = cart.reduce((s, c) => s + c.cartQty, 0)
 
   const handleCheckout = (e: React.FormEvent) =>
-    runShopCheckout({
+    pricingPending || pricingError ? e.preventDefault() : runShopCheckout({
       e,
       cart,
       siteId: site.id,
@@ -353,6 +354,9 @@ export default function ShopClient({
 
   return (
     <div className="flex flex-col min-h-screen bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100">
+      {(pricingPending || pricingError) && <CartPricingRecovery items={cart} pricingError={pricingError}
+        {...pricingRecovery} open={isCartOpen} onOpenChange={setIsCartOpen}
+        onRemoveLines={ids => setCart(previous => previous.filter(line => !ids.includes(cartLineKey(line))))} />}
       <ShopHeader
         site={site}
         siteSlug={String(siteSlug)}
@@ -364,10 +368,10 @@ export default function ShopClient({
         setMobileSearchOpen={setMobileSearchOpen}
         session={session}
         signInLabel={t("shop.signIn") || "Sign In"}
-        cart={cart}
+        cart={pricingPending || pricingError ? [] : cart}
         cartCount={cartCount}
-        subtotal={subtotal}
-        isCartOpen={isCartOpen}
+        subtotal={pricingPending || pricingError ? 0 : subtotal}
+        isCartOpen={isCartOpen && !pricingPending && !pricingError}
         setIsCartOpen={setIsCartOpen}
         updateQty={updateQty}
         customerName={customerName}
@@ -388,7 +392,7 @@ export default function ShopClient({
         ownerSiteId={ownerSiteId}
         setOwnerSiteId={setOwnerSiteId}
         handleCheckout={handleCheckout}
-        checkoutLoading={checkoutLoading}
+        checkoutLoading={checkoutLoading || pricingPending || !!pricingError}
         paymentMethod={paymentMethod}
         setPaymentMethod={setPaymentMethod}
         orderTiming={orderTiming}
@@ -478,7 +482,7 @@ export default function ShopClient({
 
       <ShopSiteFooter siteName={site.name} />
 
-      {cart.length > 0 && !isCartOpen && (
+      {cart.length > 0 && !isCartOpen && !pricingPending && !pricingError && (
         <ShopMobileCartCta
           cartCount={cartCount}
           subtotal={subtotal}

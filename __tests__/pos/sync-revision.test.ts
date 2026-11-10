@@ -25,6 +25,7 @@ const timestamps: Record<string, string> = {
   catalog_items: "items-1",
   catalog_categories: "categories-1",
   price_lists: "prices-1",
+  price_list_items: "price-items-1",
   promotions: "promotions-1",
   modifier_groups: "modifier-groups-1",
   catalog_item_modifier_groups: "modifier-links-1",
@@ -37,6 +38,7 @@ const counts: Record<string, number> = {
   catalog_items: 10,
   catalog_categories: 2,
   price_lists: 1,
+  price_list_items: 1,
   promotions: 3,
   modifier_groups: 4,
   catalog_item_modifier_groups: 5,
@@ -82,6 +84,8 @@ function createSupabaseMock() {
 describe("getPosCatalogRevision", () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    timestamps.price_list_items = "price-items-1"
+    counts.price_list_items = 1
     timestamps.modifier_groups = "modifier-groups-1"
     timestamps.inventory_levels = "inventory-1"
     timestamps.locations = "locations-1"
@@ -147,6 +151,9 @@ describe("getPosCatalogRevision", () => {
   })
 
   it.each([
+    ["price edit without parent timestamp update", () => { timestamps.price_list_items = "price-items-2" }],
+    ["price deletion", () => { counts.price_list_items = 0 }],
+    ["price replacement", () => { timestamps.price_list_items = "price-items-3" }],
     ["stock quantity without a timestamp update", () => { stockRows[0].quantity = 3 }],
     ["stock update timestamp", () => { timestamps.inventory_levels = "inventory-2" }],
     ["stock deletion", () => { stockRows.pop(); counts.inventory_levels -= 1 }],

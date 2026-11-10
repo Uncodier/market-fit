@@ -22,8 +22,8 @@ import { CartButton } from "../CartButton"
 import { LocaleSelector } from "../LocaleSelector"
 import { CurrencySelector } from "../CurrencySelector"
 import { CommerceShareControl } from "../CommerceShareControl"
-import { getCartItems } from "@/app/commerce/cart-storage"
 import { cartLineExtendedTotal } from "@/app/commerce/cart-modifiers"
+import { usePersistedCartPricing } from "../use-persisted-cart-pricing"
 
 import { isAccessOnlyItem } from "@/app/catalog/product-details"
 import { PdpExperience } from "./pdp-experience"
@@ -49,8 +49,6 @@ export function ProductDetailPage({ item, site, backUrl, experience, catalogSize
   const pathname = usePathname()
   const { href: signInHref, onClick: onSignInClick } = useCommerceSignInHref()
   
-  const [cartCount, setCartCount] = useState(0)
-  const [subtotal, setSubtotal] = useState(0)
   const [clientExperience, setClientExperience] = useState<PdpExperience | undefined>(experience)
   const resolvedExperience = experience || clientExperience
 
@@ -58,24 +56,12 @@ export function ProductDetailPage({ item, site, backUrl, experience, catalogSize
   const storeCurrency = site?.settings?.currency || item.currency || 'USD'
   const cartSource = isMarketplace ? 'marketplace' : 'shop'
   const cartSiteId = site?.id || item.site_id || item.site?.id || null
+  const { cart, pricingPending, pricingError } = usePersistedCartPricing(cartSource, cartSiteId)
+  const cartCount = cart.reduce((sum, line) => sum + (line.cartQty || 0), 0)
+  const subtotal = pricingPending || pricingError ? 0 : cart.reduce((sum, line) => sum + cartLineExtendedTotal(line), 0)
   const effectiveCatalogSize = isMarketplace
     ? Math.max(catalogSize, PDP_ADD_TO_CART_PRIMARY_AFTER + 1)
     : catalogSize
-
-  useEffect(() => {
-    const checkCart = () => {
-      const cart = getCartItems('cart', cartSource, cartSource === 'shop' ? cartSiteId : null)
-        .filter((c: any) => cartSource !== 'shop' || !cartSiteId || !c.site_id || c.site_id === cartSiteId)
-      const count = cart.reduce((s: number, c: any) => s + (c.cartQty || 0), 0)
-      const sub = cart.reduce((s: number, c: any) => s + cartLineExtendedTotal(c), 0)
-      setCartCount(count)
-      setSubtotal(sub)
-    }
-    
-    checkCart()
-    window.addEventListener('storage', checkCart)
-    return () => window.removeEventListener('storage', checkCart)
-  }, [cartSource, cartSiteId])
 
   useEffect(() => {
     if (storeCurrency) setStoreCurrency(storeCurrency)

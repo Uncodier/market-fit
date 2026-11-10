@@ -13,6 +13,9 @@ let mockLocale: "en" | "es" = "es"
 let mockUser: { email?: string } | null = { email: "buyer@example.test" }
 let mockSite: { id: string; name: string } | null = { id: "site-fixture", name: "Example site" }
 let mockItem: { id: string; name: string; site_id: string } | null = null
+jest.mock("@/app/components/commerce/use-storefront-booking-item", () => ({
+  useStorefrontBookingItem: () => ({ item: mockItem, isLoading: false }),
+}))
 const mockPush = jest.fn()
 const mockAddToCart = jest.fn()
 const mockToastError = jest.fn()

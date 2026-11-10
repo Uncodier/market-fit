@@ -9,6 +9,7 @@ import { User } from "@/app/components/ui/icons";
 import { PosLeadDetailsDialog } from "./PosLeadDetailsDialog";
 import { usePosCustomerSearch } from "../hooks/use-pos-customer-search";
 import type { PosCustomer } from "../customer-search";
+import { withCustomerPricing } from "../customer-pricing";
 
 function getLeadDisplayName(lead: PosCustomer): string {
   // Extract name and company name
@@ -113,7 +114,8 @@ export function PosCustomerSelect({
         allowCreate={!customerSearch.searching}
         onValueChange={(val) => {
           setSearchQuery("");
-          setLeadValue(val);
+          setLeadValue(withCustomerPricing(val, val?.mode === "existing"
+            ? customerSearch.leads.find((lead) => lead.id === val.id) : undefined));
           if (val && typeof val === 'object' && val.mode === "create") {
             setLeadDetailsOpen(true);
           }

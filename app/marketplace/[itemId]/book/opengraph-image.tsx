@@ -13,7 +13,7 @@ export default async function Image({
   params: Promise<{ itemId: string }>
 }) {
   const { itemId } = await params
-  const item = await getPdpCatalogItem(itemId, { requireMarketplace: true })
+  const item = await getPdpCatalogItem(itemId, { requireMarketplace: true, publicOnly: true })
 
   if (!item) {
     return renderCommerceOgImage({

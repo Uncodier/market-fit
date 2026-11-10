@@ -1,3 +1,6 @@
+jest.mock("@/app/components/commerce/use-storefront-cart-pricing", () => ({
+  useStorefrontCartPricing: () => ({ pricingPending: false }),
+}))
 import React from "react"
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { useSearchParams } from "next/navigation"

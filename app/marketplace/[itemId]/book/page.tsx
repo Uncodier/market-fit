@@ -1,8 +1,7 @@
 "use client"
 
 import { use } from "react"
-import { getCatalogItem } from "@/app/catalog/actions"
-import useSWR from "swr"
+import { useStorefrontBookingItem } from "@/app/components/commerce/use-storefront-booking-item"
 import { BookingExperience } from "@/app/components/commerce/booking/BookingExperience"
 import { usePdpCart } from "@/app/components/commerce/pdp/usePdpCart"
 import { toast } from "sonner"
@@ -16,12 +15,7 @@ export default function MarketplaceBookingPage(props: { params: Promise<{ itemId
   const searchParams = use(props.searchParams as Promise<{ modifiers?: string }>);
   const router = useRouter()
   
-  const { data: itemData, isLoading } = useSWR(
-    ['catalog-item', params.itemId],
-    () => getCatalogItem(params.itemId)
-  )
-  
-  const item = itemData?.data
+  const { item, isLoading } = useStorefrontBookingItem(params.itemId, "marketplace")
   // Provide marketplace "site_id" which is handled dynamically or we can just pass empty string.
   // Actually, usePdpCart will handle marketplace items correctly if siteId is empty or matches.
   const { addToCartStorage } = usePdpCart(item?.site_id || "")

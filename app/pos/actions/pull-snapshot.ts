@@ -13,6 +13,7 @@ import { readThroughJsonCache } from "@/lib/redis/json-cache";
 import { requirePosSiteAccess } from "./site-access";
 import { pullPosInventorySnapshot } from "./inventory-snapshot";
 import type { PosInventorySnapshot } from "@/app/pos/inventory-availability";
+import { readPosPriceListItems } from "./price-list-snapshot";
 
 export type PosCatalogSnapshot = {
   catalogItems: any[];
@@ -79,21 +80,19 @@ export async function pullPosCatalogSnapshot(
         }
         const catalogIds = new Set(catalogItems.map((item) => item.id));
 
-        const activePriceLists = (priceListsRes?.data || []).filter(
+        const allPriceLists = [...(priceListsRes?.data || [])];
+        for (let page = 2; allPriceLists.length < priceListsRes.count; page += 1) {
+          const result = await listPriceLists({ siteId, pageSize: 100, page });
+          if (result.error || !result.data.length) throw new Error("Failed to load POS price list page");
+          allPriceLists.push(...result.data);
+        }
+        const activePriceLists = allPriceLists.filter(
           (pl: any) =>
             pl.is_active && isPriceListAllowedForChannel(pl.channels, "pos"),
         );
         const priceListIds = activePriceLists.map((pl: any) => pl.id);
 
-        let priceListItems: PosCatalogSnapshot["priceListItems"] = [];
-        if (priceListIds.length > 0) {
-          const { data: pli, error } = await supabase
-            .from("price_list_items")
-            .select("id, price_list_id, catalog_item_id, unit_price")
-            .in("price_list_id", priceListIds);
-          if (error || !pli) throw new Error("Failed to load POS price list items");
-          priceListItems = (pli || []) as PosCatalogSnapshot["priceListItems"];
-        }
+        const priceListItems = await readPosPriceListItems(supabase, siteId, priceListIds);
 
         const posPromos = (promotionsRes?.data || []).filter((promo: any) =>
           isPromotionAllowedForChannel(promo.channels, "pos"),

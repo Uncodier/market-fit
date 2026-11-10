@@ -4,7 +4,7 @@ import { requirePosSiteAccess } from "@/app/pos/actions/site-access";
 
 jest.mock("@/app/pos/actions/site-access", () => ({ requirePosSiteAccess: jest.fn() }));
 
-const leads = [{ id: "lead", site_id: "site", name: "Alice" }];
+const leads = [{ id: "lead", site_id: "site", name: "Alice", default_price_list_id: "personal" }];
 const query = {
   select: jest.fn(), eq: jest.fn(), or: jest.fn(), order: jest.fn(), limit: jest.fn(),
 };
@@ -25,6 +25,7 @@ it("searches all customer fields through the authorized user client with a bound
   expect(query.or).toHaveBeenCalledWith(expect.stringContaining('personal_email.ilike."%Alice%"'));
   expect(query.or).toHaveBeenCalledWith(expect.stringContaining('company->>name.ilike."%Alice%"'));
   expect(query.limit).toHaveBeenCalledWith(30);
+  expect(query.select).toHaveBeenCalledWith(expect.stringContaining("default_price_list_id"));
   expect(query.select.mock.calls[0][0]).not.toMatch(/user_id|notes|address/);
 });
 

@@ -175,9 +175,10 @@ export default function LeadDetailPage(props: { params: Promise<{ id: string }> 
   
   const handleUpdateLead = async (id: string, data: Partial<Lead>) => {
     const updatingCompanyLink = Object.prototype.hasOwnProperty.call(data, "company_id")
+    const updatingRelation = updatingCompanyLink || Object.prototype.hasOwnProperty.call(data, "default_price_list_id")
     if (!currentSite?.id || !lead) {
       toast.error("No site selected or lead not found")
-      if (updatingCompanyLink) throw new Error("No site selected or lead not found")
+      if (updatingRelation) throw new Error("No site selected or lead not found")
       return
     }
     
@@ -192,7 +193,7 @@ export default function LeadDetailPage(props: { params: Promise<{ id: string }> 
       const result = await updateLead(updateData)
       
       if (result.error) {
-        if (updatingCompanyLink) throw new Error(result.error)
+        if (updatingRelation) throw new Error(result.error)
         toast.error(result.error)
         return
       }
@@ -219,7 +220,7 @@ export default function LeadDetailPage(props: { params: Promise<{ id: string }> 
       console.error("Error updating lead:", error)
       toast.error("Error updating lead")
       // Field editors need a rejected save to retain their draft on failure.
-      if (updatingCompanyLink) throw error
+      if (updatingRelation) throw error
     }
   }
   

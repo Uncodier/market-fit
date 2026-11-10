@@ -7,6 +7,7 @@ import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
 import { WhatsAppIcon, InstagramIcon, TelegramIcon, MessengerIcon, FacebookIcon, ThreadsIcon, LinkedInIcon, TwitterIcon, YouTubeIcon } from "@/app/components/ui/social-icons"
 import { cn } from "@/lib/utils"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
+import { useLocalization } from '@/app/context/LocalizationContext'
 
 type Channel = 'web' | 'email' | 'whatsapp' | 'instagram' | 'messenger' | 'sms' | 'telegram' | 'voice' | 'website_chat' | string
 
@@ -19,79 +20,64 @@ interface ChannelSelectorProps {
 }
 
 const channelConfig: Record<string, {
-  icon: any;
+  icon: React.ComponentType<{ className?: string }>;
   label: string;
-  description: string;
 }> = {
   web: {
     icon: Icons.Globe,
-    label: "Web",
-    description: "Send via web chat"
+    label: "Web"
   },
   website_chat: {
     icon: Icons.Globe,
-    label: "Web",
-    description: "Send via web chat"
+    label: "Web"
   },
   email: {
     icon: Icons.Mail,
-    label: "Email",
-    description: "Send via email"
+    label: "Email"
   },
   whatsapp: {
     icon: ({ className }: { className?: string }) => <WhatsAppIcon size={16} className={className} />,
-    label: "WhatsApp",
-    description: "Send via WhatsApp"
+    label: "WhatsApp"
   },
   instagram: {
     icon: ({ className }: { className?: string }) => <InstagramIcon size={16} className={className} />,
-    label: "Instagram",
-    description: "Send via Instagram"
+    label: "Instagram"
   },
   messenger: {
     icon: ({ className }: { className?: string }) => <MessengerIcon size={16} className={className} />,
-    label: "Messenger",
-    description: "Send via Messenger"
+    label: "Messenger"
   },
   facebook: {
     icon: ({ className }: { className?: string }) => <FacebookIcon size={16} className={className} />,
-    label: "Facebook",
-    description: "Send via Facebook"
+    label: "Facebook"
   },
   threads: {
     icon: ({ className }: { className?: string }) => <ThreadsIcon size={16} className={className} />,
-    label: "Threads",
-    description: "Send via Threads"
+    label: "Threads"
   },
   linkedin: {
     icon: ({ className }: { className?: string }) => <LinkedInIcon size={16} className={className} />,
-    label: "LinkedIn",
-    description: "Send via LinkedIn"
+    label: "LinkedIn"
   },
   x: {
     icon: ({ className }: { className?: string }) => <TwitterIcon size={16} className={className} />,
-    label: "X",
-    description: "Send via X"
+    label: "X"
   },
   youtube: {
     icon: ({ className }: { className?: string }) => <YouTubeIcon size={16} className={className} />,
-    label: "YouTube",
-    description: "Send via YouTube"
+    label: "YouTube"
   },
   sms: {
     icon: Icons.MessageSquare,
-    label: "SMS",
-    description: "Send via SMS"
+    label: "SMS"
   },
   telegram: {
     icon: ({ className }: { className?: string }) => <TelegramIcon size={16} className={className} />,
-    label: "Telegram",
-    description: "Send via Telegram"
+    label: "Telegram"
   },
   voice: {
     icon: Icons.Phone,
-    label: "Voice",
-    description: "Send via Voice"
+    label: "Voice"
   }
 }
 
@@ -101,8 +87,7 @@ const getChannelConfig = (channel: string) => {
   }
   return {
     icon: Icons.Globe,
-    label: channel.charAt(0).toUpperCase() + channel.slice(1),
-    description: `Send via ${channel}`
+    label: channel.charAt(0).toUpperCase() + channel.slice(1)
   };
 }
 
@@ -113,6 +98,7 @@ export const ChannelSelector = memo(function ChannelSelector({
   className,
   isUpdating = false
 }: ChannelSelectorProps) {
+  const { t } = useLocalization()
   if (availableChannels.length <= 1) {
     return null
   }
@@ -131,6 +117,8 @@ export const ChannelSelector = memo(function ChannelSelector({
           <TooltipProvider delayDuration={300}>
             {availableChannels.map((channel) => {
               const config = getChannelConfig(channel)
+              const label = ['web', 'website_chat', 'email', 'voice', 'call'].includes(channel)
+                ? t(`chat.channel.${channel === 'website_chat' ? 'web' : channel === 'call' ? 'voice' : channel}`) : config.label
               const IconComponent = config.icon
               const isSelected = channel === selectedChannel
 
@@ -139,6 +127,7 @@ export const ChannelSelector = memo(function ChannelSelector({
                   <TooltipTrigger asChild>
                     <TabsTrigger
                       value={channel}
+                      aria-label={label}
                       disabled={isUpdating}
                       className={cn(
                         "h-7 w-7 px-0 flex items-center justify-center rounded-full font-inter transition-all duration-200 border-0 focus:outline-none focus:ring-0",
@@ -158,7 +147,7 @@ export const ChannelSelector = memo(function ChannelSelector({
                     </TabsTrigger>
                   </TooltipTrigger>
                   <TooltipContent side="bottom" sideOffset={6}>
-                    {isUpdating ? "Updating channel..." : config.description}
+                    {isUpdating ? t('chat.channel.updating') : t('chat.channel.sendVia', { channel: label })}
                   </TooltipContent>
                 </Tooltip>
               )

@@ -6,6 +6,9 @@ import { GET } from "@/app/api/marketplace/products/route"
 import { marketplaceItem } from "./catalog-fixture"
 import { searchCatalogWindow } from "@/lib/catalog-search/server"
 import { CatalogSearchError } from "@/lib/catalog-search/server"
+import { applyBuyerPricesToItems } from "@/app/price-lists/buyer-prices"
+
+jest.mock("@/app/price-lists/buyer-prices", () => ({ applyBuyerPricesToItems: jest.fn(async (items: unknown[]) => items), getBuyerPriceContext: async () => null }))
 
 jest.mock("server-only", () => ({}))
 jest.mock("@/lib/catalog-search/server", () => ({ searchCatalogWindow: jest.fn(), CatalogSearchError: jest.requireActual("@/lib/catalog-search/server").CatalogSearchError }))
@@ -68,6 +71,24 @@ function setup() {
 }
 
 beforeEach(() => jest.clearAllMocks())
+
+it("applies buyer prices before filtering and sorting the entire candidate window", async () => {
+  setup()
+  jest.mocked(applyBuyerPricesToItems).mockImplementation(async items => items.map(item => ({
+    ...item, target_sale_price: item.id === "499" ? 0.5 : item.target_sale_price,
+  })))
+  const result = await loadMarketplaceProducts({ sort: "price_asc", maxPrice: 0.5, limit: 1 })
+  expect(result.count).toBe(1)
+  expect(result.items[0]).toMatchObject({ id: "499", target_sale_price: 0.5 })
+  expect(jest.mocked(applyBuyerPricesToItems).mock.calls[0][0]).toHaveLength(501)
+  jest.mocked(applyBuyerPricesToItems).mockImplementation(async items => items)
+})
+
+it("never resolves buyer identity in the public cached-home loader", async () => {
+  setup()
+  await loadMarketplaceProducts({}, true)
+  expect(applyBuyerPricesToItems).not.toHaveBeenCalled()
+})
 
 it.each(["matched", "related", undefined] as const)("preserves %s in Marketplace hydration and public GET metadata", async result_kind => {
   setup()

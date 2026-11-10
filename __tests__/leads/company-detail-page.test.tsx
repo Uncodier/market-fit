@@ -9,6 +9,10 @@ import type { Company } from "@/app/companies/types"
 import type { Lead } from "@/app/leads/types"
 import type { SingleLeadResponse } from "@/app/leads/action-schemas"
 
+jest.mock("@/app/leads/price-list-actions", () => ({
+  getLeadPriceListOptions: async () => ({ data: [{ id: "price-vip", name: "VIP", currency: "USD", is_active: true }] }),
+}))
+
 jest.mock("@/app/context/SiteContext", () => ({ useSite: () => ({ currentSite: { id: "site-a" } }) }))
 jest.mock("@/app/leads/actions", () => ({ getLeadById: jest.fn(), updateLead: jest.fn(), deleteLead: jest.fn() }))
 jest.mock("@/app/segments/actions", () => ({ getSegments: async () => ({ segments: [] }) }))
@@ -19,7 +23,12 @@ jest.mock("sonner", () => ({ toast: { success: jest.fn(), error: jest.fn() } }))
 jest.mock("@/app/leads/components/LeadDetail", () => ({
   LeadDetail: (props: { lead: Lead; onUpdateLead: (id: string, data: Partial<Lead>) => Promise<void> }) => {
     const { CompanyTab } = jest.requireActual("@/app/leads/components/CompanyTab")
-    return <CompanyTab {...props} showEmpty={false} onToggleEmpty={() => {}} />
+    const { LeadPriceListField } = jest.requireActual("@/app/leads/components/LeadPriceListField")
+    return <>
+      <CompanyTab {...props} showEmpty={false} onToggleEmpty={() => {}} />
+      <LeadPriceListField siteId="site-a" value={props.lead.default_price_list_id || null} showEmpty
+        onCommit={(id: string | null) => props.onUpdateLead(props.lead.id, { default_price_list_id: id })} />
+    </>
   },
 }))
 jest.mock("@/app/leads/components/LeadIdentityHeader", () => ({
@@ -105,4 +114,29 @@ it("clears relation metadata in the header when the company is unlinked", async 
   await waitFor(() => expect(screen.getByTestId("header-company")).toHaveTextContent("No company"))
   expect(updateLead).toHaveBeenCalledWith({ id: lead.id, site_id: "site-a", company_id: null })
   expect(screen.queryByText("Old Company")).not.toBeInTheDocument()
+})
+
+it("persists the lead price-list selection through the page and updates the visible value", async () => {
+  render(<LeadDetailPage params={params} />)
+  fireEvent.click(await screen.findByText("Not specified"))
+  fireEvent.change(screen.getByPlaceholderText("Select price list"), { target: { value: "VIP" } })
+  fireEvent.keyDown(screen.getByPlaceholderText("Select price list"), { key: "Enter" })
+  fireEvent.click(screen.getByRole("button", { name: "Save price list" }))
+  await waitFor(() => expect(updateLead).toHaveBeenCalledWith({
+    id: lead.id, site_id: "site-a", default_price_list_id: "price-vip",
+  }))
+  expect(await screen.findByText("VIP (USD)", { selector: "div[title]" })).toBeInTheDocument()
+})
+
+it("keeps the price-list editor open when the server rejects the assignment", async () => {
+  jest.spyOn(console, "error").mockImplementation(() => {})
+  jest.mocked(updateLead).mockResolvedValueOnce({ error: "Write denied" })
+  render(<LeadDetailPage params={params} />)
+  fireEvent.click(await screen.findByText("Not specified"))
+  fireEvent.change(screen.getByPlaceholderText("Select price list"), { target: { value: "VIP" } })
+  fireEvent.keyDown(screen.getByPlaceholderText("Select price list"), { key: "Enter" })
+  fireEvent.click(screen.getByRole("button", { name: "Save price list" }))
+  await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Could not save field"))
+  expect(screen.getByPlaceholderText("Select price list")).toHaveValue("VIP (USD)")
+  expect(toast.success).not.toHaveBeenCalled()
 })

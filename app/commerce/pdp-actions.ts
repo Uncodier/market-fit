@@ -4,6 +4,7 @@ import { CatalogItem } from "@/app/types";
 import { mergeParentIntoCatalogItem } from "@/app/catalog/product-details";
 import { resolveVariantAxesForDisplay } from "@/app/catalog/variant-resolve";
 import { loadChannelPriceMap } from "@/app/price-lists/apply-channel-prices";
+import { applyBuyerPricesToItems } from "@/app/price-lists/buyer-prices";
 import { applyStorefrontAvailability } from "@/app/catalog/storefront-availability";
 import { loadStorefrontDisplay } from "@/app/commerce/storefront-display";
 
@@ -14,12 +15,14 @@ export function pdpCacheTag(itemId: string) {
 }
 
 type PdpLoadOptions = {
+  publicOnly?: boolean
   siteId?: string
   requireMarketplace?: boolean
   requireStorefront?: boolean
 }
 
 type PdpCatalogItem = CatalogItem & {
+  _buyerPriceBase?: { target_sale_price: number | null; currency: string | null }
   site?: {
     id: string
     name: string
@@ -30,10 +33,10 @@ type PdpCatalogItem = CatalogItem & {
 }
 
 export async function getPdpCatalogItem(itemId: string, options?: PdpLoadOptions) {
-  return unstable_cache(
+  const item = await unstable_cache(
     () => loadPdpCatalogItem(itemId, options),
     [
-      "pdp-item-v1",
+      "pdp-item-v3",
       itemId,
       options?.siteId || "",
       options?.requireMarketplace ? "m" : "",
@@ -41,6 +44,13 @@ export async function getPdpCatalogItem(itemId: string, options?: PdpLoadOptions
     ],
     { revalidate: PDP_REVALIDATE_SECONDS, tags: [pdpCacheTag(itemId)] }
   )()
+  if (!item) return null
+  if (options?.publicOnly) return item
+  const children = item._shop?.children || []
+  const [priced, ...pricedChildren] = await applyBuyerPricesToItems(
+    [item, ...children], options?.requireMarketplace ? "marketplace" : "shop",
+  )
+  return { ...priced, _shop: { ...item._shop, children: pricedChildren } } as typeof item
 }
 
 async function loadPdpCatalogItem(itemId: string, options?: PdpLoadOptions) {
@@ -62,9 +72,6 @@ async function loadPdpCatalogItem(itemId: string, options?: PdpLoadOptions) {
     query = query.eq("site_id", options.siteId);
   }
   
-  if (options?.requireMarketplace) {
-    query = query.eq("is_marketplace_listed", true);
-  }
   if (options?.requireMarketplace || options?.requireStorefront) {
     query = applyStorefrontAvailability(query);
   }
@@ -72,6 +79,26 @@ async function loadPdpCatalogItem(itemId: string, options?: PdpLoadOptions) {
   const { data: item, error } = await query.single();
   
   if (error || !item) return null;
+
+  // Public child URLs inherit visibility only from a valid same-site parent.
+  let parent: (CatalogItem & { item_specs?: any[] }) | null = null;
+  if (item.parent_id) {
+    let parentQuery = supabase.from("catalog_items").select(`
+      *, raw_specs:catalog_item_specs(sort_order, item_spec:item_specs(*, category:item_spec_categories(*)))
+    `).eq("id", item.parent_id).eq("site_id", item.site_id);
+    if (options?.requireMarketplace || options?.requireStorefront) {
+      parentQuery = applyStorefrontAvailability(parentQuery.eq("status", "active"));
+    }
+    const { data: parentRow, error: parentError } = await parentQuery.maybeSingle();
+    if (parentError) throw new Error("Unable to load product parent");
+    if (parentRow) parent = { ...parentRow,
+      item_specs: ((parentRow as any).raw_specs || []).sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0))
+        .map((row: any) => row.item_spec).filter(Boolean) };
+  }
+  if (options?.requireMarketplace || options?.requireStorefront) {
+    if (item.parent_id && !parent) return null;
+    if (!item.is_marketplace_listed && !parent?.is_marketplace_listed) return null;
+  }
   
   const channel = options?.requireMarketplace ? "marketplace" : "shop";
 
@@ -117,6 +144,9 @@ async function loadPdpCatalogItem(itemId: string, options?: PdpLoadOptions) {
   if (!item.parent_id) {
     const pricedChildren = ((childrenData || []) as CatalogItem[]).map((child) => ({
       ...child,
+      _buyerPriceBase: { target_sale_price: child.target_sale_price ?? null, currency: child.currency ?? null },
+      currency: priceData.priceByItemId.has(child.id)
+        ? priceData.currencyBySiteId.get(item.site_id) || child.currency : child.currency,
       target_sale_price:
         priceData.priceByItemId.get(child.id) ?? child.target_sale_price,
     }));
@@ -130,29 +160,6 @@ async function loadPdpCatalogItem(itemId: string, options?: PdpLoadOptions) {
   
   if (item.is_purchasable === false && !hasVariants) {
     sellable = false;
-  }
-
-  // Inherit display fields from parent service / product when this is a child variant
-  let parent: (CatalogItem & { item_specs?: any[] }) | null = null;
-  if (item.parent_id) {
-    const { data: parentRow } = await supabase
-      .from("catalog_items")
-      .select(`
-        *,
-        raw_specs:catalog_item_specs(sort_order, item_spec:item_specs(*, category:item_spec_categories(*)))
-      `)
-      .eq("id", item.parent_id)
-      .maybeSingle();
-
-    if (parentRow) {
-      parent = {
-        ...(parentRow as CatalogItem),
-        item_specs: ((parentRow as any).raw_specs || [])
-          .sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0))
-          .map((cis: any) => cis.item_spec)
-          .filter(Boolean),
-      };
-    }
   }
 
   const siteRow = item.site as {
@@ -186,6 +193,9 @@ async function loadPdpCatalogItem(itemId: string, options?: PdpLoadOptions) {
 
   const withSpecs: PdpCatalogItem = {
     ...item,
+    _buyerPriceBase: { target_sale_price: item.target_sale_price ?? null, currency: item.currency ?? null },
+    currency: priceData.priceByItemId.has(item.id)
+      ? priceData.currencyBySiteId.get(item.site_id) || item.currency : item.currency,
     metadata: {
       ...(item.metadata || {}),
       variant_axes: variantAxes,

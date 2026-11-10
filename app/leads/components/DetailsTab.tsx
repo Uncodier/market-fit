@@ -12,6 +12,7 @@ import { resolveRelationId } from "@/app/commerce/resolve-relation"
 import { CallConsentFields } from "./CallConsentFields"
 import type { SavedCallConsent } from "../call-consent-schema"
 import { BirthdayField } from "./BirthdayField"
+import { LeadPriceListField } from "./LeadPriceListField"
 
 export const LEAD_LANGUAGES: Record<string, string> = {
   en: "English",
@@ -70,6 +71,7 @@ export function DetailsTab({
     hasPropertyValue(lead.segment_id),
     hasPropertyValue(lead.campaign_id),
     hasPropertyValue(lead.origin),
+    hasPropertyValue(lead.default_price_list_id),
   ]
   const hiddenCount = fields.filter((filled) => !filled).length
 
@@ -238,6 +240,13 @@ export function DetailsTab({
           <Input value={draft} onChange={(event) => setDraft(event.target.value)} className="h-8 text-sm" />
         )}
       />
+      {currentSite?.id && <LeadPriceListField
+        key={`price-list:${currentSite.id}:${lead.id}`}
+        siteId={currentSite.id}
+        value={lead.default_price_list_id || null}
+        showEmpty={showEmpty}
+        onCommit={(id) => save({ default_price_list_id: id })}
+      />}
       <ShowEmptyFieldsToggle showEmpty={showEmpty} onToggle={onToggleEmpty} hiddenCount={hiddenCount} />
       {currentSite?.id && <CallConsentFields
         key={`${currentSite.id}:${lead.id}`}

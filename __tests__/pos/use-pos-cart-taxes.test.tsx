@@ -73,4 +73,26 @@ describe("preloaded POS cart taxes", () => {
     expect(result.current.total).toBe(10);
     expect(getTaxesForCart).not.toHaveBeenCalled();
   });
+
+  it("uses site currency for new host and extra prices when catalog currencies are omitted", async () => {
+    const host = { ...item, currency: undefined };
+    const extra = { ...host, id: "extra" };
+    const { result } = renderHook(() => usePosCart({ ...args, siteCurrency: "EUR",
+      catalogItems: [host, extra], customers: [{ id: "buyer", default_price_list_id: "vip" }],
+      priceLists: [{ id: "vip", site_id: "site", name: "VIP", currency: "EUR", is_active: true, channels: ["pos"] }],
+      priceListItems: [{ id: "p1", price_list_id: "vip", catalog_item_id: "sku", unit_price: 7 },
+        { id: "p2", price_list_id: "vip", catalog_item_id: "extra", unit_price: 2 }],
+      preloadedTaxesByItem: {},
+    }));
+    await waitFor(() => expect(result.current.sessionReady).toBe(true));
+    act(() => result.current.setLeadValue("buyer"));
+    act(() => result.current.addItemToCart(host, {
+      modifiers: [{ groupId: "extras", catalogItemId: "extra", name: "Extra", cartPrice: 10, cartQty: 1 }],
+    }));
+    expect(result.current.cart[0].cartPrice).toBe(7);
+    expect(result.current.cart[0].modifiers?.[0]).toMatchObject({ cartPrice: 2, currency: "EUR" });
+    expect(result.current.cartCurrency).toBe("EUR");
+    expect(result.current.subtotal).toBe(9);
+    expect(getTaxesForCart).not.toHaveBeenCalled();
+  });
 });

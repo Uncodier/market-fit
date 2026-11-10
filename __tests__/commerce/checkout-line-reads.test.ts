@@ -4,6 +4,7 @@ import { processCheckoutLines } from "@/app/commerce/checkout-lines"
 import { resolveUnitPrice } from "@/app/price-lists/actions"
 import { assertCommerceReservationSlot } from "@/app/commerce/pass-round-robin-server"
 import { loadSelfServicePricing } from "@/app/commerce/self-service-pricing"
+import { getUsdFxRates } from "@/app/lib/fx-rates"
 import { revalidateCheckoutAvailability } from "@/app/commerce/checkout-availability"
 import type { CheckoutLine } from "@/app/commerce/checkout-types"
 
@@ -134,6 +135,7 @@ it("keeps per-occurrence zero/different overrides, modifier multiplication, and 
 it.each(["shop", "marketplace"])("keeps authoritative %s prices, currencies, taxes and fallback without resolver calls", async (channel) => {
   jest.mocked(loadSelfServicePricing).mockResolvedValue({
     priceByItemId: new Map([["a", 5]]), currencyBySiteId: new Map([["site", "EUR"]]),
+    currencyByItemId: new Map([["a", "EUR"]]),
     listIdBySiteId: new Map(), taxesByItem: {},
   })
   const db = client([item("a"), item("b", { currency: "EUR", target_sale_price: 3 })])
@@ -148,9 +150,26 @@ it.each(["shop", "marketplace"])("keeps authoritative %s prices, currencies, tax
   expect(db.reads).toHaveLength(1)
 })
 
+it.each(["shop", "marketplace"])("charges the displayed converted unit times host/modifier quantities in %s", async channel => {
+  jest.mocked(getUsdFxRates).mockResolvedValueOnce({ base: "USD", date: "2026-01-01", rates: { EUR: 0.9 } })
+  jest.mocked(loadSelfServicePricing).mockResolvedValue({
+    priceByItemId: new Map([["a", 1], ["extra", 1]]), currencyBySiteId: new Map(),
+    currencyByItemId: new Map([["a", "EUR"], ["extra", "EUR"]]), listIdBySiteId: new Map(), taxesByItem: {},
+  })
+  const result = await processCheckoutLines({ ...params([
+    { catalogItemId: "a", quantity: 5, modifiers: [{ catalogItemId: "extra", quantity: 2 }] },
+    { catalogItemId: "b", quantity: 1 },
+  ], client([item("a"), item("extra"), item("b", { target_sale_price: 2 })])),
+    publicCheckout: true, priceListChannel: channel })
+  expect(result.orderCurrency).toBe("USD")
+  expect(result.processedLines.map(line => [line.unit_price, line.quantity, line.subtotal]))
+    .toEqual([[1.11, 5, 5.55], [1.11, 10, 11.1], [2, 1, 2]])
+  expect(result.orderSubtotal).toBe(18.65)
+})
+
 it.each([-1, Infinity, "invalid"])("rejects invalid public fallback %s", async (price) => {
   jest.mocked(loadSelfServicePricing).mockResolvedValue({
-    priceByItemId: new Map(), currencyBySiteId: new Map(), listIdBySiteId: new Map(), taxesByItem: {},
+    priceByItemId: new Map(), currencyBySiteId: new Map(), currencyByItemId: new Map(), listIdBySiteId: new Map(), taxesByItem: {},
   })
   await expect(processCheckoutLines({ ...params([{ catalogItemId: "a", quantity: 1 }],
     client([item("a", { target_sale_price: price })])), selfServiceLocationId: "location" }))

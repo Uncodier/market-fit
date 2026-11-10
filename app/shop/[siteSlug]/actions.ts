@@ -13,6 +13,7 @@ import {
 } from "./shop-catalog-shared";
 import { getShopCategoryOffsets } from "./shop-category-offsets";
 import { loadChannelPriceMap } from "@/app/price-lists/apply-channel-prices";
+import { applyBuyerPricesToItems } from "@/app/price-lists/buyer-prices";
 import { loadVariantListingPreviews } from "@/app/catalog/variant-resolve";
 import { applyStorefrontAvailability } from "@/app/catalog/storefront-availability";
 import { loadStorefrontDisplay } from "@/app/commerce/storefront-display";
@@ -117,6 +118,7 @@ async function enrichShopItems(siteId: string, items: any[], supabase: Awaited<R
 
     return {
       ...item,
+      _buyerPriceBase: { target_sale_price: item.target_sale_price ?? null, currency: item.currency ?? null },
       currency:
         (mappedPrice != null ? listCurrency : item.currency) ||
         item.currency ||
@@ -174,14 +176,15 @@ export async function getShopCatalog(
   if (search.trim()) {
     try {
       const result = await loadShopSearch({ siteId, search, category, offset, pageSize }, enrichShopItems);
-      return options.selfServiceLocationId ? { ...result, data: await enrichSelfServiceInventory(siteId, options.selfServiceLocationId, result.data) } : result;
+      const data = options.selfServiceLocationId ? await enrichSelfServiceInventory(siteId, options.selfServiceLocationId, result.data) : result.data;
+      return { ...result, data: options.selfServiceLocationId ? data : await applyBuyerPricesToItems(data, "shop") };
     } catch {
       return { data: [], count: 0, totalPages: 0, page, pageSize, offset,
         error: "Unable to search this shop. Please try again." };
     }
   }
 
-  return unstable_cache(
+  const catalog = await unstable_cache(
     async () => {
       const supabase = await createServiceClient(true, { access: 'public' });
 
@@ -242,12 +245,14 @@ export async function getShopCatalog(
       };
     },
     // Include required modifier selection flags in cached listing data.
-    ["shop-catalog-v10", siteId, String(offset), String(pageSize), search, category, options.selfServiceLocationId || ""],
+    ["shop-catalog-v11", siteId, String(offset), String(pageSize), search, category, options.selfServiceLocationId || ""],
     {
       revalidate: SHOP_CACHE_REVALIDATE_SECONDS,
       tags: [shopCacheTag(siteId)],
     }
   )();
+  // Keep session-derived prices outside the shared public catalog cache.
+  return { ...catalog, data: options.selfServiceLocationId ? catalog.data : await applyBuyerPricesToItems(catalog.data, "shop") };
 }
 
 export async function getShopCatalogSize(siteId: string) {
@@ -296,14 +301,15 @@ export async function getShopItemsByIds(siteId: string, ids: string[]) {
       const enriched = await enrichShopItems(siteId, items, supabase);
       return { data: enriched, error: undefined as string | undefined };
     },
-    ["shop-items-by-ids-v8", siteId, sortedIds.join(",")],
+    ["shop-items-by-ids-v9", siteId, sortedIds.join(",")],
     {
       revalidate: SHOP_CACHE_REVALIDATE_SECONDS,
       tags: [shopCacheTag(siteId)],
     }
   )();
 
-  const byId = new Map(cached.data.map((item: any) => [item.id, item]));
+  const priced = await applyBuyerPricesToItems(cached.data, "shop");
+  const byId = new Map(priced.map((item: any) => [item.id, item]));
   return {
     data: ids.map((id) => byId.get(id)).filter(Boolean),
     error: cached.error,

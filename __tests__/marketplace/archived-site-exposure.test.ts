@@ -12,6 +12,9 @@ import { createServiceClient } from "@/lib/supabase/server"
 
 jest.mock("next/cache", () => ({ unstable_cache: (load: () => unknown) => load }))
 jest.mock("server-only", () => ({}))
+jest.mock("@/app/price-lists/buyer-prices", () => ({
+  applyBuyerPricesToItems: async (items: unknown[]) => items, getBuyerPriceContext: async () => null,
+}))
 jest.mock("@/lib/supabase/server", () => ({ createServiceClient: jest.fn() }))
 jest.mock("@/app/marketplace/attach-site-settings", () => ({
   attachSiteSettings: async (_client: unknown, items: unknown[]) => items,
@@ -109,7 +112,7 @@ function setup() {
     return query
   })
   jest.mocked(createServiceClient).mockResolvedValue({ from } as any)
-  return { from, queries }
+  return { from, queries, tables }
 }
 
 function expectArchiveFilter(query: any) {
@@ -119,6 +122,22 @@ function expectArchiveFilter(query: any) {
 
 describe("archived-site marketplace exposure", () => {
   beforeEach(() => jest.clearAllMocks())
+
+  it.each(["shop", "marketplace"])("requires a public host or active same-site parent for %s PDP", async channel => {
+    const { tables } = setup()
+    const options = channel === "shop" ? { requireStorefront: true } : { requireMarketplace: true }
+    tables.catalog_items.push(
+      { ...item, id: "valid-child", parent_id: item.id, is_marketplace_listed: false },
+      { ...item, id: "orphan-child", parent_id: "missing-parent" },
+      { ...item, id: "inactive-parent-child", parent_id: "inactive-item" },
+      { ...item, id: "foreign-child", parent_id: item.id, site_id: "foreign-site" },
+    )
+    expect(await getPdpCatalogItem("private-item", options)).toBeNull()
+    expect(await getPdpCatalogItem("orphan-child", options)).toBeNull()
+    expect(await getPdpCatalogItem("inactive-parent-child", options)).toBeNull()
+    expect(await getPdpCatalogItem("foreign-child", options)).toBeNull()
+    expect(await getPdpCatalogItem("valid-child", options)).toMatchObject({ id: "valid-child" })
+  })
 
   it("excludes archived sites from home items, counts, and merchandising", async () => {
     const { queries } = setup()

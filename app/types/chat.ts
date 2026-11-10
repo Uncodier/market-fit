@@ -41,7 +41,7 @@ export interface ChatMessage {
   metadata?: {
     command_status?: "failed" | "pending" | "success"
     error_message?: string
-    status?: "pending" | "sent" | "delivered" | "failed" | "accepted"
+    status?: "pending" | "sent" | "delivered" | "failed" | "accepted" | "queued" | "sending" | "placement_unknown" | "template_pending" | "needs_reconciliation"
     [key: string]: any
   }
   /** Read-only exact parent preview; never serialized into message custom_data. */

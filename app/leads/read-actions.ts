@@ -177,6 +177,7 @@ export async function getLeadById(id: string, site_id: string): Promise<SingleLe
         do_not_call,
         voice_call_consent_status,
         voice_call_consent_at,
+        default_price_list_id,
         company,
         company_id,
         position,

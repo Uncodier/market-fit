@@ -1,4 +1,6 @@
-import { render, screen } from '@testing-library/react'
+import type { ReactNode } from 'react'
+import { LocalizationProvider } from '@/app/context/LocalizationContext'
+import { render as rtlRender, screen } from '@testing-library/react'
 import { MessageStatus } from '@/app/components/chat/chat-message-status'
 import type { ChatMessage } from '@/app/types/chat'
 
@@ -13,3 +15,6 @@ it('distinguishes a proposed public reply from an intervention already being sen
   rerender(<MessageStatus message={{ ...message, metadata: { status: 'pending', source: 'outstand_dm' } }} />)
   expect(screen.getByText('Sending...')).toBeInTheDocument()
 })
+function render(ui: ReactNode) {
+  return rtlRender(ui, { wrapper: ({ children }) => <LocalizationProvider preferredLocale="en">{children}</LocalizationProvider> })
+}

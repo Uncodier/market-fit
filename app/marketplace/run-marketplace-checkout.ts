@@ -12,10 +12,13 @@ import {
   type GuestShippingAddress,
 } from "@/app/commerce/device-order-storage"
 import type { CatalogItem } from "@/app/types"
+import { toCheckoutModifiers, type CartModifier } from "@/app/commerce/cart-modifiers"
 
 type CartItem = CatalogItem & {
   cartQty: number
   cartPrice: number
+  lineKey?: string
+  modifiers?: CartModifier[]
   reservationStart?: string
   reservationEnd?: string
   site_id: string
@@ -211,6 +214,8 @@ export async function runMarketplaceCheckout(params: {
       quantity: c.cartQty,
       reservationStart: c.reservationStart,
       reservationEnd: c.reservationEnd,
+      clientLineKey: c.lineKey || c.id,
+      modifiers: toCheckoutModifiers(c.modifiers),
     }))
 
     const res = await checkoutCartRequest({

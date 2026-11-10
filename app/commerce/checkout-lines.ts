@@ -14,6 +14,7 @@ import {
 import { calculateOrderTaxTotal } from "./taxes"
 import { resolveExistingCheckoutCurrency } from "./checkout-existing-currency"
 import { loadSelfServicePricing } from "./self-service-pricing"
+import type { BuyerPriceContext } from "@/app/price-lists/buyer-prices"
 import type { CatalogItem } from "@/app/types"
 import {
   CheckoutCartParams,
@@ -43,6 +44,7 @@ type ProcessCheckoutLinesParams = {
   fulfillment: CheckoutCartParams["fulfillment"]
   selfServiceLocationId?: string
   publicCheckout?: boolean
+  buyerPriceContext?: BuyerPriceContext | null
 }
 
 export async function processCheckoutLines(params: ProcessCheckoutLinesParams) {
@@ -65,7 +67,7 @@ export async function processCheckoutLines(params: ProcessCheckoutLinesParams) {
   const existingCurrency = await resolveExistingCheckoutCurrency(params)
   const checkoutStock = await revalidateCheckoutAvailability(params)
   const selfServicePricing = params.selfServiceLocationId || (params.publicCheckout && ["shop", "marketplace"].includes(priceListChannel ?? "")) ? await loadSelfServicePricing(queryClient, siteId,
-    lines.flatMap((line) => [line.catalogItemId, ...(line.modifiers || []).map((modifier) => modifier.catalogItemId)]), priceListChannel === "marketplace" ? "marketplace" : "shop") : null
+    lines.flatMap((line) => [line.catalogItemId, ...(line.modifiers || []).map((modifier) => modifier.catalogItemId)]), priceListChannel === "marketplace" ? "marketplace" : "shop", params.buyerPriceContext) : null
   const catalogItems = await loadCheckoutCatalogItems(queryClient, siteId, lines)
   const [parentModes, resolvedPrices] = await Promise.all([
     loadCheckoutParentModes(queryClient, siteId, catalogItems, lines),
@@ -165,7 +167,7 @@ export async function processCheckoutLines(params: ProcessCheckoutLinesParams) {
       description: catalogItem?.description,
       currency: line.saleOrderItemId && line.unitPriceOverride !== undefined
         ? existingCurrency!.currency : resolveProductCurrency(
-        selfServicePricing?.priceByItemId.has(line.catalogItemId) ? selfServicePricing.currencyBySiteId.get(siteId) : catalogItem?.currency,
+        selfServicePricing?.currencyByItemId?.get(line.catalogItemId) || catalogItem?.currency,
         siteSettings?.currency
       ),
       quantity: line.quantity,
@@ -203,7 +205,7 @@ export async function processCheckoutLines(params: ProcessCheckoutLinesParams) {
         description: modifierItem?.description,
         currency: modifier.saleOrderItemId && modifier.unitPriceOverride !== undefined
           ? existingCurrency!.currency : resolveProductCurrency(
-           selfServicePricing?.priceByItemId.has(modifier.catalogItemId) ? selfServicePricing.currencyBySiteId.get(siteId) : modifierItem?.currency || catalogItem?.currency,
+           selfServicePricing?.currencyByItemId?.get(modifier.catalogItemId) || modifierItem?.currency || catalogItem?.currency,
           siteSettings?.currency
         ),
         quantity: modifierQuantity,
@@ -230,7 +232,8 @@ export async function processCheckoutLines(params: ProcessCheckoutLinesParams) {
     const normalized = normalizeCheckoutLinesToCurrency(
       processedLines,
       orderCurrency,
-      rates
+      rates,
+      { roundUnitBeforeQuantity: Boolean(selfServicePricing) }
     )
     processedLines.length = 0
     processedLines.push(...normalized.lines)
@@ -262,6 +265,7 @@ export async function processCheckoutLines(params: ProcessCheckoutLinesParams) {
   }
 
   return {
+    ...(selfServicePricing ? { resolvedPriceListId: selfServicePricing.listIdBySiteId.get(siteId) } : {}),
     processedLines: allocateCheckoutBackorders(processedLines, checkoutStock),
     orderSubtotal,
     orderTaxTotal,

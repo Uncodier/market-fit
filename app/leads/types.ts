@@ -13,6 +13,7 @@ export interface AttributionData {
 export interface Lead extends Partial<CallConsentFields> {
   id: string
   buyer_user_id?: string | null
+  default_price_list_id?: string | null
   name: string
   email: string
   personal_email: string | null

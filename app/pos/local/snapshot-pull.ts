@@ -188,6 +188,7 @@ export async function applyPosCatalogSnapshot(
             id: pl.id,
             site_id: siteId,
             name: pl.name,
+            currency: pl.currency,
             is_active: !!pl.is_active,
             is_default: !!pl.is_default,
           })),

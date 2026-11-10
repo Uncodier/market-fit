@@ -24,6 +24,7 @@ export type PosCatalogCategory = {
 export type PosLead = {
   id: string;
   site_id: string;
+  default_price_list_id?: string | null;
   name?: string | null;
   email?: string | null;
   phone?: string | null;

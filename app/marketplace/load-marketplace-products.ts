@@ -5,6 +5,7 @@ import type { BuyerGeo } from "@/app/commerce/buyer-geo"
 import { applyStorefrontAvailability } from "@/app/catalog/storefront-availability"
 import { attachSiteSettings } from "./attach-site-settings"
 import { applyChannelPricesToItems } from "@/app/price-lists/apply-channel-prices"
+import { applyBuyerPricesToItems, getBuyerPriceContext } from "@/app/price-lists/buyer-prices"
 import { loadVariantListingPreviews } from "@/app/catalog/variant-resolve"
 import { loadStorefrontDisplay } from "@/app/commerce/storefront-display"
 import { getUsdFxRates } from "@/app/lib/fx-rates"
@@ -40,10 +41,11 @@ export type MarketplaceProductFilters = MarketplaceListingFilters & {
 const LISTING_COLUMNS = "id, site_id, kind, name, description, sku, target_sale_price, currency, track_inventory, availability_mode, availability_status, status, metadata, created_at, updated_at, category_id, is_recurring, is_reservation, image_url, digital_subtype, is_marketplace_listed, parent_id, is_purchasable, pass_uses, pass_validity_days, is_dynamic_price, redeem_assignment_mode, sort_order, site:sites!inner(id, name, logo_url)"
 const SPEC_COLUMNS = ", raw_specs:catalog_item_specs(sort_order, item_spec:item_specs(id, name, image_url, video_url, address, city, category:item_spec_categories(slug, name)))"
 
-export async function loadMarketplaceProducts(filters: MarketplaceProductFilters = {}) {
+export async function loadMarketplaceProducts(filters: MarketplaceProductFilters = {}, publicOnly = false) {
   // Intentionally public read: authorization is limited to active, listed parent items
   // from non-archived sites. The service client and sales rows remain server-only.
   const supabase = await createServiceClient(true, { access: 'public' })
+  const buyer = publicOnly ? null : await getBuyerPriceContext()
   const page = filters.page || 1
   const limit = filters.limit || MARKETPLACE_PAGE_SIZE
   const sort = filters.sort || "featured"
@@ -87,7 +89,9 @@ export async function loadMarketplaceProducts(filters: MarketplaceProductFilters
     needsPrices ? applyChannelPricesToItems(supabase, candidates, "marketplace") : Promise.resolve(candidates),
     needsPrices ? getUsdFxRates() : Promise.resolve({ rates: {} }),
   ])
-  candidates = filterMarketplacePrices(pricedCandidates, filters, fx.rates)
+  const buyerCandidates = needsPrices && !publicOnly
+    ? await applyBuyerPricesToItems(pricedCandidates, "marketplace", buyer) : pricedCandidates
+  candidates = filterMarketplacePrices(buyerCandidates, filters, fx.rates)
   if (filters.availableOnly) candidates = await filterMarketplaceAvailability(supabase, candidates)
   // Counts reflect category/search/price/availability, but not the chosen region.
   const regions = marketplaceRegions(candidates, areas)
@@ -106,7 +110,8 @@ export async function loadMarketplaceProducts(filters: MarketplaceProductFilters
   const byId = new Map(((data || []) as MarketplaceItem[]).map(item => [item.id, item]))
   const ordered = orderCatalogSearchRows(ranked.slice((page - 1) * limit, page * limit), (data || []) as MarketplaceItem[])
   const withSettings = await attachSiteSettings(supabase, ordered)
-  const priced = await applyChannelPricesToItems(supabase, withSettings, "marketplace")
+  const defaults = await applyChannelPricesToItems(supabase, withSettings, "marketplace")
+  const priced = publicOnly ? defaults : await applyBuyerPricesToItems(defaults, "marketplace", buyer)
   const [previews, displayMap, inventory] = await Promise.all([
     loadVariantListingPreviews(supabase, priced.map(item => ({ id: item.id, name: item.name }))),
     loadStorefrontDisplay(supabase, priced),

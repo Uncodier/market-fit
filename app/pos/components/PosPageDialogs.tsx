@@ -16,7 +16,7 @@ import { Button } from "@/app/components/ui/button"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { isAccessOnlyItem } from "@/app/catalog/product-details"
 import { DynamicQuoteFieldsModal } from "@/app/components/commerce/DynamicQuoteFieldsModal"
-import { resolveUnitPriceLocal } from "@/app/pos/local/resolve-unit-price-local"
+import type { CatalogItem } from "@/app/types"
 import { PosOptionsDialog } from "./PosOptionsDialog"
 import { PosRequireLeadDialog } from "./PosRequireLeadDialog"
 import { PaymentDialogSkeleton } from "./payment-dialog-skeleton"
@@ -227,17 +227,9 @@ export function PosPageDialogs({
           const catalogItem = catalog.catalogItems.find(
             (item) => item.id === catalogItemId,
           )
-          return resolveUnitPriceLocal({
-            catalogItemId,
-            targetSalePrice:
-              catalogItem?.target_sale_price ?? fallbackPrice,
-            priceListId:
-              cartApi.priceListId === "none"
-                ? undefined
-                : cartApi.priceListId,
-            priceLists: catalog.priceLists,
-            priceListItems: catalog.priceListItems,
-          }).price
+          return cartApi.resolvePrice(catalogItem || {
+            id: catalogItemId, target_sale_price: fallbackPrice,
+          } as CatalogItem)
         }}
       />
 

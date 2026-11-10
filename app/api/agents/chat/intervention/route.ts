@@ -7,7 +7,7 @@ import { conversationChannel, VOICE_LEAD_REQUIRED } from '@/lib/chat/conversatio
 import { getVoiceCallBlock } from '@/lib/chat/voice-call-eligibility'
 import { isSocialCommentMetadata } from '@/lib/chat/social-comment-context'
 import { validateCommentReplyTarget } from './comment-reply-preflight'
-import { isAudioRetryBlocked, isChatResponseFormat, supportsAudioResponse } from '@/lib/chat/response-format'
+import { isDeliveryRetryBlocked, isChatResponseFormat, requestedResponseFormat, supportsAudioResponse } from '@/lib/chat/response-format'
 
 export const maxDuration = 120
 const PATH = '/api/agents/chat/intervention'
@@ -98,7 +98,7 @@ export async function POST(request: Request): Promise<Response> {
     if (error) return failure('Unable to verify the saved message', 503)
     if (!saved) return failure('Saved message not found', 404)
     const state = saved.custom_data as Record<string, unknown> | null
-    if (isAudioRetryBlocked(state) || state?.comment_delivery_status || state?.provider_call_id || state?.call_status === 'placement_unknown' || state?.status === 'placement_unknown' ||
+    if (isDeliveryRetryBlocked(state) || state?.comment_delivery_status || state?.provider_call_id || state?.call_status === 'placement_unknown' || state?.status === 'placement_unknown' ||
       ['sent', 'delivered', 'sending', 'queued', 'running', 'in_progress'].includes(String(state?.status)) ||
       ['placing', 'queued', 'ringing', 'in_progress', 'completed'].includes(String(state?.call_status)) ||
       state?.command_status === 'success' ||
@@ -107,7 +107,7 @@ export async function POST(request: Request): Promise<Response> {
     }
     message = saved.content
     // Retry the persisted format, never the composer's current selection.
-    const savedFormat = state?.response_format
+    const savedFormat = requestedResponseFormat(state)
     if (savedFormat !== undefined && !isChatResponseFormat(savedFormat)) {
       return failure('The saved response format is invalid.', 409, 'RESPONSE_FORMAT_INVALID')
     }

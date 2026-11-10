@@ -85,6 +85,7 @@ export type PosCartSession = {
   fulfillment: CheckoutFulfillmentMethod;
   originLocationId: string;
   priceListId: string;
+  priceListSource?: "automatic" | "manual" | "restored";
   promoCode: string;
   /** UI snapshot only; checkout verifies the original discount on the server. */
   recordedOrderPromo?: import("./resolve-promo-local").LocalPromoMatch | null;
@@ -116,6 +117,7 @@ export type LocalPriceList = {
   id: string;
   site_id: string;
   name: string;
+  currency?: string | null;
   is_active: boolean;
   is_default?: boolean;
   channels?: string[] | null;

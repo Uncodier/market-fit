@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { usePosCustomerSearch } from "../hooks/use-pos-customer-search"
 import type { PosCustomer } from "../customer-search"
+import { withCustomerPricing } from "../customer-pricing"
 import { toast } from "sonner"
 import { createLead } from "@/app/leads/actions"
 import { Button } from "@/app/components/ui/button"
@@ -81,11 +82,11 @@ export function PosCustomerPickerDialog({
   const filteredLeads = customerSearch.leads.slice(0, 30)
 
   const selectLead = (lead: Lead) => {
-    onSelect({
+    onSelect(withCustomerPricing({
       mode: "existing",
       id: lead.id,
       label: lead.name || lead.email || lead.phone || lead.id,
-    })
+    }, lead))
     onOpenChange(false)
   }
 

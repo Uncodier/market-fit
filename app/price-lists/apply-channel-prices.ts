@@ -126,7 +126,8 @@ export async function applyChannelPricesToItems<
     const mappedPrice = priceByItemId.get(item.id);
     return {
       ...item,
-      currency: item.currency || currencyBySiteId.get(item.site_id) || "USD",
+      _buyerPriceBase: { target_sale_price: item.target_sale_price ?? null, currency: item.currency ?? null },
+      currency: (mappedPrice != null ? currencyBySiteId.get(item.site_id) : item.currency) || item.currency || "USD",
       target_sale_price:
         mappedPrice != null ? mappedPrice : item.target_sale_price,
     };

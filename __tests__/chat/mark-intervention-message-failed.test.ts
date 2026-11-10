@@ -72,6 +72,9 @@ describe("markInterventionMessageFailed", () => {
   })
 
   it.each([
+    { template_delivery: { state: 'pending' }, command_status: 'failed' },
+    { template_delivery: { state: 'unknown' } },
+    { template_delivery: { state: 'rejected' }, status: 'failed' },
     { status: "sent" }, { status: "delivered" }, { command_status: "success" },
     { provider_call_id: "call-1" }, { status: "placement_unknown" }, { call_status: "placement_unknown" },
     { command_status: "failed", error_message: "Lead has not granted explicit Voice call consent" },

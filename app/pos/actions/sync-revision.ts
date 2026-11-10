@@ -45,7 +45,7 @@ export async function getPosCatalogRevision(siteId: string): Promise<{ data: str
       lockTtlMs: 10_000,
       compute: async () => {
         const { supabase } = access;
-        const [stamps, inventory, locations, settings] = await Promise.all([
+        const [stamps, inventory, locations, settings, prices] = await Promise.all([
           Promise.all([
             ["catalog_items", "updated_at"],
             ["catalog_categories", "updated_at"],
@@ -60,10 +60,13 @@ export async function getPosCatalogRevision(siteId: string): Promise<{ data: str
           contentRevision(supabase, siteId, "inventory_levels", "id, catalog_item_id, location_id, quantity, updated_at"),
           contentRevision(supabase, siteId, "locations", "id, name, is_active, is_default, updated_at"),
           supabase.from("settings").select("commerce").eq("site_id", siteId).maybeSingle(),
+          // Item writers advance their own timestamp, not necessarily the parent list.
+          // Match the bounded latest/count revision lane rather than downloading all prices.
+          tableRevision(supabase, siteId, "price_list_items", "updated_at"),
         ]);
         if (settings.error) throw new Error(REVISION_ERROR);
         const commerce = createHash("sha256").update(JSON.stringify(settings.data?.commerce ?? null)).digest("hex");
-        return [...stamps, inventory, locations, commerce].join("|");
+        return [...stamps, inventory, locations, commerce, prices].join("|");
       },
     });
 

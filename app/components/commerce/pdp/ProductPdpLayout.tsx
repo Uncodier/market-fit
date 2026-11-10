@@ -29,11 +29,9 @@ import {
   ModifierPickerPanel,
   isModifierSelectionValid,
 } from "@/app/components/commerce/ModifierPickerPanel"
-import { getModifierGroupsForCatalogItem } from "@/app/catalog/modifier-actions"
-import type { ModifierGroupWithItems } from "@/app/catalog/modifier-types"
+import { usePricedModifiers } from "./use-priced-modifiers"
 import {
   modifiersUnitTotal,
-  type CartModifier,
 } from "@/app/commerce/cart-modifiers"
 import { getModifierValidationError } from "@/app/catalog/modifier-validate"
 import { SubscriptionManagePanel } from "./SubscriptionManagePanel"
@@ -59,9 +57,6 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience, catal
   const children = item._shop?.children || []
   
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({})
-  const [modifierGroups, setModifierGroups] = useState<ModifierGroupWithItems[]>([])
-  const [selectedModifiers, setSelectedModifiers] = useState<CartModifier[]>([])
-  const [modifiersReady, setModifiersReady] = useState(false)
   
   const { trackPageview, trackEvent } = useSiteTracking(item.site_id)
 
@@ -89,25 +84,10 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience, catal
   const { addToCartStorage, startBuyNow } = usePdpCart(item.site_id)
 
   const activeItem = resolvedChild || item
-
-  // Load modifier groups for the host (parent) — children inherit via server action
-  useEffect(() => {
-    let cancelled = false
-    setModifiersReady(false)
-    const hostId = item.id
-    getModifierGroupsForCatalogItem(hostId)
-      .then((res) => {
-        if (cancelled) return
-        setModifierGroups(res.data || [])
-        setSelectedModifiers([])
-      })
-      .finally(() => {
-        if (!cancelled) setModifiersReady(true)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [item.id])
+  const currency = activeItem.currency || item.currency || "USD"
+  const { modifierGroups, selectedModifiers, setSelectedModifiers, modifiersReady } = usePricedModifiers(
+    activeItem.id, pathname?.startsWith("/marketplace") ? "marketplace" : "shop", currency,
+  )
   
   // Display price: if no variant selected, maybe show min price or parent price
   // But for now, activeItem has the target_sale_price.
@@ -116,7 +96,7 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience, catal
   const dynamicConfig = isDynamic ? getDynamicPricingConfig(item) : null
   const basePrice = isDynamic
     ? (dynamicConfig?.min_price ?? item.lowest_sale_price ?? 0)
-    : (activeItem.target_sale_price || item.target_sale_price || 0)
+    : (activeItem.target_sale_price ?? item.target_sale_price ?? 0)
   const displayPrice = basePrice + modifiersUnitTotal(selectedModifiers)
   const isSelectionComplete = !hasVariants || !!resolvedChild
   const isDropIn = activeItem.is_reservation && !isAccessOnlyItem(activeItem) && (!activeItem.pass_uses || activeItem.pass_uses === 1)
@@ -391,7 +371,7 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience, catal
             </h1>
 
             <div>
-              <PdpPriceBlock price={displayPrice} currency={item.currency || "USD"} />
+              <PdpPriceBlock price={displayPrice} currency={currency} />
             </div>
 
             <PdpItemDescription
@@ -408,7 +388,7 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience, catal
               onOptionSelect={handleOptionSelect}
               childrenItems={children}
               presentation="pdp"
-              currency={item.currency || "USD"}
+              currency={currency}
               fallbackImageUrl={item.image_url || galleryEntries[0]?.url || null}
               imageContext={imageContext}
             />
@@ -426,7 +406,7 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience, catal
                 value={selectedModifiers}
                 onChange={setSelectedModifiers}
                 imageContext={imageContext}
-                currency={item.currency || "USD"}
+                currency={currency}
               />
             </div>
           ) : null}

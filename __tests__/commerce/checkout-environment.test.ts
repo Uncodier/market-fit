@@ -52,6 +52,25 @@ function setup(site: Record<string, unknown> | null = activeSite, error: unknown
 }
 
 describe("prepareCheckoutEnvironment archived sites", () => {
+  it.each(["shop", "marketplace"] as const)("does not link a supplied contact email to the authenticated %s buyer", async source => {
+    const { params } = setup()
+    const leadQuery = { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(),
+      is: jest.fn().mockReturnThis(), update: jest.fn().mockReturnThis(),
+      single: jest.fn().mockResolvedValue({ data: { id: "lead", buyer_user_id: null }, error: null }) }
+    const original = params.supabaseAdmin.from.getMockImplementation()!
+    params.supabaseAdmin.from.mockImplementation(table => table === "leads" ? leadQuery as never : original(table))
+    await prepareCheckoutEnvironment({ ...params, source, inputSource: source,
+      buyerUserId: "buyer", verifiedBuyerEmail: "verified@example.test",
+      customerEmail: "someone-else@example.test", customerName: "Supplied contact" })
+    expect(leadQuery.update).not.toHaveBeenCalled()
+    await prepareCheckoutEnvironment({ ...params, source, inputSource: source,
+      buyerUserId: "buyer", verifiedBuyerEmail: "verified@example.test",
+      customerEmail: "verified@example.test", customerName: "Buyer" })
+    expect(leadQuery.update).toHaveBeenCalledWith({ buyer_user_id: "buyer" })
+    expect(leadQuery.is).toHaveBeenCalledWith("buyer_user_id", null)
+    expect(leadQuery.eq).toHaveBeenCalledWith("site_id", params.siteId)
+  })
+
   it.each(sources)("rejects archived %s checkout before reading settings or creating a lead", async (source) => {
     const { params, siteQuery } = setup({ ...activeSite, archived_at: "2026-09-22T10:00:00Z" })
 

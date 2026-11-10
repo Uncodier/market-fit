@@ -6,6 +6,8 @@ export interface PosCartModifier {
   name: string
   cartQty: number
   cartPrice: number
+  /** Automatic customer changes never overwrite operator or restored prices. */
+  priceSource?: "automatic" | "manual" | "restored"
   currency?: string | null
   /** Reference to the persisted modifier whose price is in the order currency. */
   saleOrderItemId?: string
@@ -15,6 +17,8 @@ export interface PosCartModifier {
 export interface PosCartItem extends CatalogItem {
   cartQty: number
   cartPrice: number
+  /** Automatic customer changes never overwrite operator or restored prices. */
+  priceSource?: "automatic" | "manual" | "restored"
   /** Reference to the persisted host whose price is in the order currency. */
   saleOrderItemId?: string
   /** Unit price before a cashier line discount. */

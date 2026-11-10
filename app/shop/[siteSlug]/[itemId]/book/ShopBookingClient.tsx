@@ -1,7 +1,7 @@
 "use client"
 
 import { use } from "react"
-import { getCatalogItem } from "@/app/catalog/actions"
+import { useStorefrontBookingItem } from "@/app/components/commerce/use-storefront-booking-item"
 import { getShopSite } from "../../actions"
 import useSWR from "swr"
 import { BookingExperience } from "@/app/components/commerce/booking/BookingExperience"
@@ -24,12 +24,7 @@ export default function ShopBookingClient(props: { params: Promise<{ siteSlug: s
     () => getShopSite(params.siteSlug)
   )
 
-  const { data: itemData, isLoading: itemLoading } = useSWR(
-    site ? ["catalog-item", params.itemId] : null,
-    () => getCatalogItem(params.itemId)
-  )
-
-  const item = itemData?.data
+  const { item, isLoading: itemLoading } = useStorefrontBookingItem(params.itemId, "shop", site?.id, !!site)
   const { addToCartStorage } = usePdpCart(site?.id || "")
 
   useEffect(() => {

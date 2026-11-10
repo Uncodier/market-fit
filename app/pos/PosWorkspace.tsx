@@ -63,6 +63,7 @@ export default function PosWorkspace() {
     siteTimezone: currentSite?.settings?.business_hours?.[0]?.timezone || null,
     siteCurrency: currentSite?.settings?.currency,
     catalogItems: catalog.catalogItems,
+    customers: catalog.leads,
     catalogHydrated: catalog.hydrated,
     pendingOrders: catalog.pendingOrders,
     inventorySnapshot: catalog.inventorySnapshot,

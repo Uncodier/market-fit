@@ -1,4 +1,6 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render as renderUi, screen } from '@testing-library/react'
+import { LocalizationProvider } from '@/app/context/LocalizationContext'
+import type { ReactElement } from 'react'
 import { ChatAttachments } from '@/app/components/chat/ChatAttachments'
 import { chatAttachmentText, getChatAttachments, normalizeChatAttachments } from '@/lib/chat/attachments'
 import { ChatMessageContent } from '@/app/components/chat/chat-message-content'
@@ -12,8 +14,22 @@ jest.mock('@/app/components/chat/CommentReplyContext', () => ({
   useCommentDisplayContext: () => ({ showMessagePostContext: false }),
 }))
 jest.mock('@/app/components/chat/PostContextCard', () => ({ PostContextCard: () => null }))
+const render = (ui: ReactElement) => renderUi(ui, {
+  wrapper: ({ children }) => <LocalizationProvider preferredLocale="en">{children}</LocalizationProvider>,
+})
 
 describe('chat attachments', () => {
+  it.each(['accepted', 'sent', 'delivered', 'read', 'failed', 'unknown'])(
+    'does not invent an audio attachment for a requested Audio response with template state %s', state => {
+    const { container } = render(<ChatMessageContent message={{ role: 'team_member', timestamp: new Date(), text: 'Hello',
+      metadata: { requested_response_format: 'audio', response_format: 'audio', delivery_format: 'template',
+        template_delivery: { state }, status: 'sent' },
+    }} />)
+    expect(screen.getByText('Hello')).toBeInTheDocument()
+    expect(container.querySelector('audio')).toBeNull()
+    expect(screen.queryByText(/audio attachment/i)).not.toBeInTheDocument()
+  })
+
   it('limits valid results after validation and deduplication, not before', () => {
     const url = 'https://files.example.test/photo.jpg'
     expect(normalizeChatAttachments([...Array(10).fill({ url: 'invalid' }), { url }])).toHaveLength(1)
@@ -49,7 +65,7 @@ describe('chat attachments', () => {
     const url = 'https://files.example.test/photo.jpg'
     const metadata = { source: 'outstand_dm', media_urls: [url, 'javascript:alert(1)'] }
     render(<ChatMessageContent message={{ role: 'user', timestamp: new Date(), text: '', metadata }} />)
-    expect(screen.getByAltText('Image attachment')).toBeInTheDocument()
+    expect(screen.getByAltText('Image')).toBeInTheDocument()
     expect(getChatAttachments({ ...metadata, attachments: [{ url }] })).toHaveLength(1)
     expect(getChatAttachments({ source: 'comment', media_urls: [url] })).toEqual([])
   })
@@ -109,13 +125,23 @@ describe('chat attachments', () => {
     render(<ChatAttachments attachments={attachments} />)
     expect(screen.getAllByRole('img')).toHaveLength(2)
     for (const name of ['Voice note', 'Video']) {
-      expect(screen.getByLabelText(name)).toHaveAttribute('controls')
+      if (name === 'Video') expect(screen.getByLabelText(name)).toHaveAttribute('controls')
       expect(screen.getByLabelText(name)).toHaveAttribute('preload', 'none')
       expect(screen.getByLabelText(name)).not.toHaveAttribute('autoplay')
     }
-    expect(screen.getByRole('link', { name: 'Open file: Report' })).toHaveAttribute('rel', 'noopener noreferrer')
+    expect(screen.getByRole('link', { name: 'Report' })).toHaveAttribute('rel', 'noopener noreferrer')
     fireEvent.error(screen.getByAltText('Photo'))
     expect(screen.getByRole('status')).toHaveTextContent('Preview unavailable')
-    expect(screen.getByRole('link', { name: 'Open original: Photo' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Photo' })).toBeInTheDocument()
+  })
+  it('opens visual attachments directly without duplicate Open actions', () => {
+    render(<ChatAttachments attachments={normalizeChatAttachments([
+      { url: 'https://files.example.test/photo.jpg', name: 'Photo' },
+      { url: 'https://files.example.test/report.pdf', name: 'Report.pdf' },
+    ])} />)
+    expect(screen.getByRole('link', { name: 'Photo' })).toContainElement(screen.getByAltText('Photo'))
+    expect(screen.getByRole('link', { name: 'Report.pdf' })).toHaveAttribute('href', 'https://files.example.test/report.pdf')
+    expect(screen.queryByText(/Open file|Open original/)).not.toBeInTheDocument()
+    expect(screen.getAllByRole('link')).toHaveLength(2)
   })
 })

@@ -135,6 +135,39 @@ it('rejects a saved audio retry after switching to an unsupported channel', asyn
   expect(fetch).not.toHaveBeenCalled()
 })
 
+it.each(['creating', 'submitting', 'pending', 'ready', 'dispatching', 'accepted', 'sent', 'delivered', 'read', 'failed', 'rejected', 'unknown', undefined, 'future-state'])(
+  'blocks template receipt %s even with stale failed status', async state => {
+    from.mockReturnValueOnce(query({ id: conversationId, site_id: siteId, channel: 'whatsapp' }))
+      .mockReturnValueOnce(query({ content: 'Original', custom_data: {
+        command_status: 'failed', status: 'failed', requested_response_format: 'audio', response_format: 'audio',
+        delivery_format: 'template', template_delivery: { state },
+      } }))
+    expect((await POST(request({ message_id: messageId }))).status).toBe(409)
+    expect(fetch).not.toHaveBeenCalled()
+  },
+)
+
+it('restores explicitly requested Audio on a failed row without a template receipt', async () => {
+  from.mockReturnValueOnce(query({ id: conversationId, site_id: siteId, channel: 'whatsapp' }))
+    .mockReturnValueOnce(query({ content: 'Original', custom_data: {
+      status: 'failed', command_status: 'failed', requested_response_format: 'audio', response_format: 'audio',
+    } }))
+  expect((await POST(request({ message_id: messageId }))).status).toBe(200)
+  expect(JSON.parse(String(jest.mocked(fetch).mock.calls[0][1]?.body))).toMatchObject({
+    response_format: 'audio', message_id: messageId, message: 'Original',
+  })
+})
+
+it('keeps the response allowlist minimal; delivery metadata arrives through Realtime', async () => {
+  jest.mocked(fetch).mockResolvedValueOnce(Response.json({ success: true, data: {
+    message: { message_id: messageId, custom_data: { delivery_format: 'template', template_delivery: { state: 'pending' } } },
+    channel_send: { success: true, delivery_status: 'queued', provider_payload: { internal: true } },
+  } }))
+  const body = await (await POST(request())).json()
+  expect(body.data.message).toEqual({ message_id: messageId })
+  expect(body.data.channel_send).toEqual({ success: true, delivery_status: 'queued' })
+})
+
 it('does not start a voice call or invent a recipient when the inbound conversation has no linked lead', async () => {
   from.mockReturnValueOnce(query({ id: conversationId, site_id: siteId, agent_id: agentId,
     channel: 'voice', lead_id: null, visitor_id: null,

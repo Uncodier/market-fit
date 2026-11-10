@@ -1,6 +1,7 @@
 export type PosCustomer = {
   id: string;
   site_id?: string;
+  default_price_list_id?: string | null;
   name?: string | null;
   email?: string | null;
   personal_email?: string | null;

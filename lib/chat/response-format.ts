@@ -1,3 +1,5 @@
+import { isTemplateRetryBlocked } from './template-delivery'
+
 export type ChatResponseFormat = 'text' | 'audio'
 
 export function supportsAudioResponse(channel: string): boolean {
@@ -12,4 +14,12 @@ export function isAudioRetryBlocked(metadata: Record<string, unknown> | null | u
   const receipt = metadata?.audio_delivery
   if (!receipt || typeof receipt !== 'object' || Array.isArray(receipt)) return false
   return (receipt as Record<string, unknown>).state !== 'ready'
+}
+
+export function isDeliveryRetryBlocked(metadata: Record<string, unknown> | null | undefined): boolean {
+  return isAudioRetryBlocked(metadata) || isTemplateRetryBlocked(metadata)
+}
+
+export function requestedResponseFormat(metadata: Record<string, unknown> | null | undefined): unknown {
+  return metadata?.requested_response_format ?? metadata?.response_format
 }

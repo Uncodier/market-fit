@@ -7,6 +7,7 @@ import { MessageSquare } from "@/app/components/ui/icons"
 import { useTheme } from "@/app/context/ThemeContext"
 import { useSite } from "@/app/context/SiteContext"
 import { useAuthContext } from "@/app/components/auth/auth-provider"
+import { useLocalization } from '@/app/context/LocalizationContext'
 import { useLayout } from "@/app/context/LayoutContext"
 import { cn } from "@/lib/utils"
 import { EmptyConversation } from "./EmptyConversation"
@@ -43,6 +44,7 @@ export function ChatMessages({
   onMessagesUpdate,
   isChatListCollapsed = false,
 }: ChatMessagesProps) {
+  const { locale } = useLocalization()
   const hasLead = isLead || Boolean(leadData && (leadData.id || leadData.lead_id))
   const hasAssignee = Boolean(hasLead && leadData?.assignee)
   const { isDarkMode } = useTheme()
@@ -179,7 +181,7 @@ export function ChatMessages({
                           variant="outline"
                           className="px-3 py-1 text-xs bg-background/80 backdrop-blur"
                         >
-                          {formatDate(new Date(message.timestamp))}
+                          {formatDate(new Date(message.timestamp), locale)}
                         </Badge>
                       </div>
                     )}

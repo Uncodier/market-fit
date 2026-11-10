@@ -6,6 +6,7 @@ import { OptimizedTextarea } from "@/app/components/ui/optimized-textarea"
 import * as Icons from "@/app/components/ui/icons"
 import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
 import { cn } from "@/lib/utils"
+import { useLocalization } from '@/app/context/LocalizationContext'
 import { useLayout } from "@/app/context/LayoutContext"
 import { ChannelSelector } from "./ChannelSelector"
 import { ResponseFormatSelector } from './ResponseFormatSelector'
@@ -52,6 +53,7 @@ export const ChatInput = memo(function ChatInput({
   isConversationReady = true,
   commentReplySelection,
 }: ChatInputProps) {
+  const { t } = useLocalization()
   const { isLayoutCollapsed } = useLayout()
   const internalRef = useRef<HTMLTextAreaElement>(null)
   
@@ -175,15 +177,15 @@ export const ChatInput = memo(function ChatInput({
       <div className="w-full">
         <div className="w-full mx-auto relative pb-[20px] px-4 md:px-8 lg:px-12 xl:px-24">
           <p className="text-xs text-muted-foreground px-2 pb-2 pointer-events-auto" role="status">
-            {!isConversationReady ? 'Loading conversation delivery settings…'
-              : channelUnavailable ? 'This channel is inactive or unavailable. Activate it in Settings or select another channel.'
-              : commentReplySelection ? (commentReplySelection.target ? 'Public reply to the selected comment. This is not a direct message.'
-                : commentReplySelection.options.length ? 'Select the comment you want to reply to.'
-                  : 'No replyable comment is available. Open the original post to reply.')
-              : voiceBlock ? voiceBlock.message
-                : isVoice ? 'Start an outbound call. Your message is the opening greeting; consent and phone checks apply.'
-                  : isAgentOnlyConversation ? 'Internal agent chat. Messages here do not contact the customer.'
-                    : 'Send a team intervention through the selected channel.'}
+            {!isConversationReady ? t('chat.input.loadingSettings')
+              : channelUnavailable ? t('chat.input.channelUnavailable')
+              : commentReplySelection ? (commentReplySelection.target ? t('chat.input.publicReplyHint')
+                : commentReplySelection.options.length ? t('chat.input.selectCommentHint')
+                  : t('chat.input.noCommentHint'))
+              : voiceBlock ? t(voiceBlock.code === 'VOICE_DO_NOT_CALL' ? (leadData?.do_not_call ? 'chat.input.doNotCall' : 'chat.input.callOptOut') : voiceBlock.code === 'VOICE_PHONE_REQUIRED' ? 'chat.input.phoneRequired' : 'chat.input.leadRequired')
+                : isVoice ? t('chat.input.callHint')
+                  : isAgentOnlyConversation ? t('chat.input.internalHint')
+                    : t('chat.input.interventionHint')}
           </p>
           <form onSubmit={handleSubmit} className="relative w-full pointer-events-auto">
             <div className="relative w-full" id="tour-chat-input">
@@ -191,7 +193,7 @@ export const ChatInput = memo(function ChatInput({
                 ref={externalRef ?? internalRef}
                 onChange={handleChange}
                 onKeyDown={handleKeyDownInternal}
-                placeholder={isVoice ? "Opening greeting for the call..." : "Message..."}
+                placeholder={isVoice ? t('chat.input.callPlaceholder') : t('chat.input.placeholder')}
                 className="resize-none w-full py-4 pl-8 pr-[54px] rounded-2xl border border-input bg-background focus-visible:outline-none text-base box-border pt-4 peer"
                 disabled={isLoading}
                 style={{
@@ -223,16 +225,16 @@ export const ChatInput = memo(function ChatInput({
                   ) : (
                     <Icons.ArrowUp className="h-4.5 w-4.5" />
                   )}
-                  <span className="sr-only">{commentReplySelection ? 'Reply publicly' : isVoice ? 'Start call' : 'Send'}</span>
+                  <span className="sr-only">{commentReplySelection ? t('chat.input.replyPublicly') : isVoice ? t('chat.input.startCall') : t('chat.input.send')}</span>
                 </Button>
               </div>
               
               {/* Channel selector centered */}
               {channelLoadError && !commentReplySelection && (
                 <div role="alert" className="flex items-center gap-2 px-3 pb-14 text-xs text-destructive">
-                  <span>{channelLoadError}</span>
+                  <span>{t('chat.input.channelLoadError')}</span>
                   <Button type="button" variant="outline" size="sm" onClick={retryChannelLoad} disabled={isLoading}>
-                    Retry channel
+                    {t('chat.input.retryChannel')}
                   </Button>
                 </div>
               )}
@@ -257,24 +259,29 @@ export const ChatInput = memo(function ChatInput({
           size="icon"
           variant="ghost"
           className="rounded-xl h-[35.1px] w-[35.1px] text-muted-foreground hover:text-foreground transition-colors hover:bg-muted"
-          title="Attach file"
+          title={t('chat.input.attachFile')}
         >
           <Icons.Link className="h-4.5 w-4.5" />
-          <span className="sr-only">Attach file</span>
+          <span className="sr-only">{t('chat.input.attachFile')}</span>
         </Button>
         <Button 
           type="button" 
           size="icon"
           variant="ghost"
           className="rounded-xl h-[35.1px] w-[35.1px] text-muted-foreground hover:text-foreground transition-colors hover:bg-muted"
-          title="Web search"
+          title={t('chat.input.webSearch')}
         >
           <Icons.Search className="h-4.5 w-4.5" />
-          <span className="sr-only">Web search</span>
+          <span className="sr-only">{t('chat.input.webSearch')}</span>
         </Button>
       </div>
             </div>
           </form>
+          {audioSupported && selectedChannel === 'whatsapp' && responseFormat === 'audio' && (
+            <p className="px-3 pt-1 text-xs text-muted-foreground">
+              {t('chat.input.whatsappAudioHint')}
+            </p>
+          )}
         </div>
       </div>
     </div>

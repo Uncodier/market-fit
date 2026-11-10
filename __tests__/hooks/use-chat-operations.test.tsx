@@ -100,6 +100,29 @@ describe('useChatOperations send lifecycle', () => {
     expect(result.current.messages).toEqual([])
   })
 
+  it.each(['creating', 'submitting', 'pending', 'ready', 'dispatching', 'accepted', 'sent', 'delivered', 'read', 'failed', 'rejected', 'unknown', undefined])(
+    'does not retry template receipt %s from the hook', async state => {
+      const { result } = setup()
+      const failed: ChatMessage = { id: 'failed-1', role: 'team_member', text: 'Original', timestamp: new Date(),
+        metadata: { command_status: 'failed', status: 'failed', response_format: 'audio',
+          delivery_format: 'template', template_delivery: { state } } }
+      await act(async () => { await result.current.handleRetryMessage(failed) })
+      expect(sendTeamMemberIntervention).not.toHaveBeenCalled()
+      expect(markInterventionMessageFailed).not.toHaveBeenCalled()
+      expect(result.current.messages).toEqual([])
+    },
+  )
+
+  it('retries requested Audio using the same saved row when no template receipt exists', async () => {
+    jest.mocked(sendTeamMemberIntervention).mockResolvedValue(accepted)
+    const { result } = setup()
+    const failed: ChatMessage = { id: 'failed-1', role: 'team_member', text: 'Original', timestamp: new Date(),
+      metadata: { command_status: 'failed', status: 'failed', requested_response_format: 'audio' } }
+    await act(async () => { await result.current.handleRetryMessage(failed) })
+    expect(sendTeamMemberIntervention).toHaveBeenCalledWith('conversation-1', 'Original', 'user-1', 'agent-1',
+      expect.objectContaining({ response_format: 'audio', message_id: 'failed-1' }))
+  })
+
   it('keeps the selected comment on optimistic and accepted replies', async () => {
     const comment: ChatMessage = { id: 'comment-1', role: 'user', text: 'Question', timestamp: new Date(),
       metadata: { source: 'comment', platform_comment_id: 'provider-1', outstand_post_id: 'post-1' } }

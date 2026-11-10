@@ -30,6 +30,7 @@ Use the guides below before relying on older implementation notes.
 - [Accounts payable](ACCOUNTS_PAYABLE.md) — supplier bill balances, aging filters and existing bill payment entry.
 - [Shipment documents](SHIPMENT_DOCUMENTS.md) — private carrier PDFs, packing slips, printer setup and rollout prerequisites.
 - [Catalog item sales](CATALOG_SALES.md) — item revenue, variant history, filters, access boundaries and reporting limits.
+- [Customer price lists](CUSTOMER_PRICE_LISTS.md) — lead-specific POS, Shop and Marketplace prices, identity, cache isolation and synchronization behavior.
 - [Critical flow security rollout](SECURITY_FINDINGS_ROLLOUT.md) — purchase permissions,
   internal webhook visibility, task reordering, and deployment validation.
 - [Environment variables](ENVIRONMENT_VARIABLES.md) — configuration by subsystem.

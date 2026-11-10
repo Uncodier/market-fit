@@ -14,7 +14,7 @@ jest.mock("@/app/pos/local/remote-permission", () => ({ canStartPosRemoteRequest
 jest.mock("@/app/leads/actions", () => ({ createLead: jest.fn() }));
 jest.mock("@/app/pos/components/PosLeadDetailsDialog", () => ({ PosLeadDetailsDialog: () => null }));
 
-const alice = { id: "alice", site_id: "site", name: "Alice", email: "alice@example.com" };
+const alice = { id: "alice", site_id: "site", name: "Alice", email: "alice@example.com", default_price_list_id: "personal" };
 const tick = async () => { await act(async () => { jest.advanceTimersByTime(300); }); };
 
 beforeEach(() => {
@@ -32,7 +32,7 @@ it("finds and selects an uncached lead in the cart selector", async () => {
   expect(screen.getByRole("status")).toHaveTextContent("Searching customers");
   await tick();
   fireEvent.click(screen.getByText("Alice · alice@example.com"));
-  expect(select).toHaveBeenCalledWith({ mode: "existing", id: "alice", label: "Alice · alice@example.com" });
+  expect(select).toHaveBeenCalledWith({ mode: "existing", id: "alice", label: "Alice · alice@example.com", priceListId: "personal" });
   expect(searchPosCustomers).toHaveBeenCalledWith("site", "Alice");
 });
 
@@ -45,7 +45,7 @@ it("finds and selects an uncached lead in the customer dialog", async () => {
   fireEvent.change(screen.getByPlaceholderText("Search by name, email, or phone..."), { target: { value: "Alice" } });
   await tick();
   fireEvent.click(screen.getByRole("button", { name: /Alice alice@example.com/ }));
-  expect(select).toHaveBeenCalledWith({ mode: "existing", id: "alice", label: "Alice" });
+  expect(select).toHaveBeenCalledWith({ mode: "existing", id: "alice", label: "Alice", priceListId: "personal" });
   expect(close).toHaveBeenCalledWith(false);
 });
 

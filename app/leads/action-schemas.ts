@@ -6,6 +6,7 @@ export const LeadSchema = z.object({
   leads: z.array(z.object({
     id: z.string(),
     buyer_user_id: z.string().nullable().optional(),
+    default_price_list_id: z.string().uuid().nullable().optional(),
     name: z.string(),
     email: z.string(),
     personal_email: z.string().nullable(),
@@ -77,6 +78,7 @@ export const SingleLeadSchema = z.object({
   lead: z.object({
     ...CallConsentFieldsSchema.partial().shape,
     id: z.string(),
+    default_price_list_id: z.string().uuid().nullable().optional(),
     buyer_user_id: z.string().nullable().optional(),
     name: z.string(),
     email: z.string(),
@@ -208,6 +210,7 @@ export type CreateLeadInput = z.infer<typeof CreateLeadSchema>
 // Schema para validar los datos de entrada al actualizar un lead
 export const UpdateLeadSchema = z.object({
   id: z.string().min(1, "ID is required"),
+  default_price_list_id: z.string().uuid().nullable().optional(),
   name: z.string().min(1).optional(),
   email: z.union([z.string().email(), z.literal(""), z.null()]).optional(),
   personal_email: z.union([z.string().email(), z.literal(""), z.null()]).optional().nullable(),

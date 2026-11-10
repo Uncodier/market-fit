@@ -1,5 +1,20 @@
 # Chat intervention delivery
 
+## Localized attachment widgets
+
+Chat attachment labels, media controls, composer hints, channel selectors and
+delivery statuses follow the existing interface locale (English, Spanish, French,
+German or Japanese). Actual uploaded filenames and message content are preserved.
+Generated generic attachment names are localized for display only.
+
+Audio uses a compact inline player with play/pause, an accessible seek slider,
+elapsed time, actual duration and 1×/1.5×/2× playback rates. Recordings are not
+autoplayed or prefetched; duration stays unknown until media metadata is available.
+Failed recordings retain their filename link and a localized manual retry.
+Attachment replacement resets the player's state. Images open from their preview;
+documents open from their name/card. No redundant “Open file” action is rendered,
+and interacting with audio/video controls never opens another tab.
+
 ## Request and persistence boundary
 
 The chat composer sends team-member interventions through the same-origin
@@ -55,8 +70,9 @@ channel, not a browser channel override, and rejects unsupported audio (includin
 public comments). Internal agent requests explicitly send Text; their proxy still
 rejects external conversations and does not permit Audio.
 
-Saved-row retries restore `custom_data.response_format`, retain `message_id`, and
-reject changing the saved format. Legacy rows without a format keep omission.
+Saved-row retries restore `custom_data.requested_response_format`, falling back
+to `custom_data.response_format`, retain `message_id`, and reject changing the
+saved format. Legacy rows without a format keep omission.
 Audio receipts in `preparing`, `preparation_failed`, `dispatching`, `sent`, or
 `unknown` state block replay in both the UI and proxy, even if a stale command
 reports failure. Only a `ready` receipt can reuse its prepared audio on retry.
@@ -64,6 +80,63 @@ The API must persist this metadata and propagate the format to delivery workers;
 the frontend does not synthesize audio or fall back to text. Provider playback,
 audio generation and actual delivery require coordinated API/worker rollout and
 separate live verification.
+
+### WhatsApp template fallback for requested Audio
+
+Audio remains the requested selection, not proof of an audio attachment. The
+composer explains that a closed WhatsApp messaging window may use a compatible
+template instead. This does not claim that microphone audio is supported in a
+template. The frontend neither chooses templates nor calls providers.
+
+The API must persist these exact names in `messages.custom_data`, delivered by
+the existing message reads and Realtime updates:
+
+- `requested_response_format: "audio"` and `response_format: "audio"` (requested).
+- `delivery_format: "template"` (actual delivery).
+- `template_delivery.state`: `creating`, `submitting`, `pending`, `ready`,
+  `dispatching`, `accepted`, `sent`, `delivered`, `read`, `failed`, `rejected`, or `unknown`.
+- `template_delivery.delivery_status`: `queued`, `sending`, `sent`, `delivered`,
+  `read`, or `failed`. This distinguishes provider acceptance from delivery.
+- `template_delivery.template_id` and `template_delivery.language` identify the
+  template; they are not rendered as provider payloads or required for the label.
+- `status`: `queued` after acceptance, then `sending`, `sent`, `delivered`, or
+  `failed` as the API reconciles delivery. The synchronous HTTP success response
+  can still say `sent` for wire compatibility; that alone is not delivery proof.
+- Unavailable workflow reconciliation must surface `status: "needs_reconciliation"`
+  or `needs_reconciliation: true` in persisted metadata to replace stale pending
+  approval with **Template delivery unconfirmed**. The API owns persistence; a
+  workflow result not exposed through message reads/Realtime cannot update the UI.
+
+Display precedence (independent of stale `command_status`):
+
+1. Receipt `state` or `delivery_status` of `read`/`delivered` shows **Template read** /
+   **Template delivered**, even with stale failed or reconciliation flags. The API
+   owns event ordering; the browser does not compare webhook timestamps.
+2. Receipt `state: failed|rejected`, `delivery_status: failed`, or top-level
+   `status: failed` shows **Template delivery failed**, overriding stale accepted/sent.
+3. Unknown/placement-unknown or reconciliation-required shows **Template delivery
+   unconfirmed**, not success or pending approval.
+4. Receipt `delivery_status: sent` shows **Sent as template**; `sending` shows
+   **Sending template**.
+5. `state: accepted` or legacy `state: sent` without an actual sent/delivered/read
+   receipt shows **Template accepted** in amber, with no green timestamp check.
+6. Creating/submitting/pending shows **Pending template approval**; ready shows
+   **Template ready to send**; dispatching shows **Sending template**. Unsupported
+   or missing receipt details remain unconfirmed, never inferred as delivery.
+
+Timestamp checks use the same resolved label and only appear for sent/delivered/read.
+Attachments still require the existing persisted `attachments` contract; requesting
+Audio alone never creates an audio player.
+
+UI, retry hook, and authenticated proxy block every template receipt, including
+`ready` and `rejected`: the API workflow remains the sole owner of template
+dispatch. Neither approval nor rejection grants manual retry permission.
+Existing audio receipt guards still apply to non-template sends. Client error reconciliation preserves
+template metadata instead of overwriting it with a generic HTTP failure.
+
+The HTTP response allowlist is unchanged: it returns lifecycle identifiers, not
+template metadata. Realtime remains authoritative. No provider call or production
+delivery has been verified by the offline tests.
 
 Public social-comment threads require an explicit persisted `reply_to_message_id`.
 The composer labels the action **Reply publicly**; the proxy and API validate the

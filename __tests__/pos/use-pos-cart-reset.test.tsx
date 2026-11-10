@@ -27,6 +27,39 @@ beforeEach(() => {
   jest.mocked(saveCartSession).mockResolvedValue({} as never);
 });
 
+it("applies a selected customer's list to new lines and persists manual list provenance", async () => {
+  const { result } = renderHook(() => usePosCart({ ...args,
+    customers: [{ id: "customer", default_price_list_id: "personal" }],
+    priceLists: [{ id: "personal", site_id: "site", name: "Personal", is_active: true }],
+    priceListItems: [{ id: "price", price_list_id: "personal", catalog_item_id: "sku", unit_price: 7 }],
+  }));
+  await waitFor(() => expect(result.current.sessionReady).toBe(true));
+  act(() => result.current.setLeadValue("customer"));
+  expect(result.current.priceListId).toBe("personal");
+  act(() => result.current.addItemToCart(item));
+  expect(result.current.cart[0].cartPrice).toBe(7);
+  act(() => result.current.handlePriceListChange("none"));
+  await waitFor(() => expect(saveCartSession).toHaveBeenLastCalledWith(expect.objectContaining({
+    leadValue: "customer", priceListId: "none", priceListSource: "manual",
+  })));
+});
+
+it("does not reprice restored historical lines when choosing a different customer", async () => {
+  jest.mocked(loadCartSession).mockResolvedValue({ cart: [{ ...item, cartQty: 1, cartPrice: 4 }],
+    activeOrderId: "new", leadValue: "old", priceListId: "none" } as never);
+  const { result } = renderHook(() => usePosCart({ ...args,
+    customers: [{ id: "customer", default_price_list_id: "personal" }],
+    priceLists: [{ id: "personal", site_id: "site", name: "Personal", is_active: true }],
+    priceListItems: [{ id: "price", price_list_id: "personal", catalog_item_id: "sku", unit_price: 7 }],
+  }));
+  await waitFor(() => expect(result.current.sessionReady).toBe(true));
+  act(() => result.current.setLeadValue("customer"));
+  expect(result.current.priceListId).toBe("personal");
+  expect(result.current.cart[0].cartPrice).toBe(4);
+  act(() => result.current.addItemToCart(item));
+  expect(result.current.cart.map((line) => line.cartPrice)).toEqual([7, 4]);
+});
+
 it("keeps the visible cart and blocks collection until durable reset succeeds", async () => {
   let finish!: () => void;
   jest.mocked(clearCartSession).mockImplementationOnce(() => new Promise((resolve) => { finish = () => resolve({} as never); }));

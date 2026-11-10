@@ -104,6 +104,17 @@ describe("checkoutLinesNeedFxConversion", () => {
 })
 
 describe("normalizeCheckoutLinesToCurrency", () => {
+  it("uses the displayed rounded unit price for new storefront quantities only", () => {
+    const lines = [{ currency: "EUR", unit_price: 1, subtotal: 5, quantity: 5 }];
+    const displayed = normalizeCheckoutLinesToCurrency([{ ...lines[0], subtotal: 1 }], "USD", rates).lines[0].unit_price;
+    const current = normalizeCheckoutLinesToCurrency(lines, "USD", rates, { roundUnitBeforeQuantity: true });
+    expect(current.subtotal).toBe(5.55);
+    expect(current.subtotal).toBeCloseTo(displayed * 5, 8);
+    // Do not silently change legacy/historical conversion semantics.
+    expect(normalizeCheckoutLinesToCurrency(lines, "USD", rates).subtotal).toBe(5.56);
+    expect(lines[0].subtotal).toBe(5);
+  });
+
   it("leaves matching currency lines unchanged except normalizing the code", () => {
     const result = normalizeCheckoutLinesToCurrency(
       [{ currency: "usd", unit_price: 10.5, subtotal: 21 }],

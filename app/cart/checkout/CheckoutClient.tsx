@@ -3,8 +3,9 @@
 import React, { useState, useEffect, useLayoutEffect } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider"
-import { getCartItems, clearCart, CartMode } from "@/app/commerce/cart-storage"
-import { cartLineExtendedTotal } from "@/app/commerce/cart-modifiers"
+import { getCartItems, setCartItems, clearCart, CartMode } from "@/app/commerce/cart-storage"
+import { cartLineExtendedTotal, cartLineKey } from "@/app/commerce/cart-modifiers"
+import { CartPricingRecovery } from "@/app/components/commerce/CartPricingRecovery"
 import { getDeviceOrders } from "@/app/commerce/device-order-storage"
 import { useGuestCheckoutPrefill } from "@/app/commerce/use-guest-checkout-prefill"
 import { buildPublicDocPath } from "@/app/documents/public-token"
@@ -36,6 +37,7 @@ import { evaluateLocationRestrictions } from "@/app/commerce/location-restrictio
 import { formatDeliveryTime } from "@/app/commerce/delivery-time"
 import type { BuyerGeo } from "@/app/commerce/buyer-geo"
 import { useSiteTracking } from "@/app/hooks/useSiteTracking"
+import { useStorefrontCartPricing } from "@/app/components/commerce/use-storefront-cart-pricing"
 
 export default function CheckoutClient({
   buyerGeo
@@ -59,6 +61,8 @@ export default function CheckoutClient({
   const source = quotationId ? 'shop' : sourceParam
 
   const [items, setItems] = useState<any[]>([])
+  const { pricingPending, pricingError, ...pricingRecovery } = useStorefrontCartPricing(items, setItems,
+    source === "shop" ? "shop" : "marketplace", !quotationId)
   const [loading, setLoading] = useState(true)
   const [ownerSiteId, setOwnerSiteId] = useState<string | null>(initialOwnerSiteId)
   const [orderSuccess, setOrderSuccess] = useState(false)
@@ -302,7 +306,13 @@ export default function CheckoutClient({
     setSuccessOrderToken, setSuccessPaymentMethod, setOrderSuccess,
   })
 
-  if (loading) {
+  if (!loading && (pricingError || pricingPending)) return <CartPricingRecovery items={items}
+    pricingError={pricingError} {...pricingRecovery} onRemoveLines={ids => {
+      const remaining = items.filter(line => !ids.includes(cartLineKey(line)))
+      setCartItems(mode, source, siteId, remaining)
+      setItems(remaining)
+    }} />
+  if (loading || pricingPending) {
     return <CheckoutLoadingState />
   }
 
@@ -397,7 +407,7 @@ export default function CheckoutClient({
                 setShippingAddress={setShippingAddress}
                 ownerSiteId={ownerSiteId}
                 setOwnerSiteId={setOwnerSiteId}
-                handleCheckout={handleCheckout}
+                handleCheckout={event => pricingPending || pricingError ? event.preventDefault() : handleCheckout(event)}
                 lockedDestination={!!initialOwnerSiteId}
                 locations={locations}
                 pickupLocationId={pickupLocationId}

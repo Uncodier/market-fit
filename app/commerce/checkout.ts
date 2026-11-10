@@ -29,6 +29,8 @@ import type { CheckoutCartParams } from "./checkout-types"
 import { prepareSelfServiceCheckout } from "./self-service"
 import { authorizeCheckoutBoundary } from "./checkout-boundary"
 import { verifySiteMembership } from "@/app/buyer/verify-site-membership"
+import { getBuyerPriceContext } from "@/app/price-lists/buyer-prices"
+import { getBuyerAssignments } from "@/app/price-lists/buyer-price-context"
 import { markPublicCheckoutReady, publicCheckoutFingerprint, recoverPublicCheckout, type PublicCheckoutClaim } from "./public-checkout-recovery"
 import {
   claimCheckoutMutation,
@@ -263,6 +265,10 @@ export async function checkoutCart(params: CheckoutCartParams) {
     }
 
     timing.stage("checkout_environment")
+    const buyerPriceContext = boundary.publicCheckout && !selfService && ["shop", "marketplace"].includes(source)
+      ? await getBuyerPriceContext() : null
+    // Resolve before contact capture so supplied contact details cannot grant pricing.
+    if (buyerPriceContext) await getBuyerAssignments(buyerPriceContext, [params.siteId])
     const environment = await prepareCheckoutEnvironment({
       supabase,
       supabaseAdmin,
@@ -275,6 +281,7 @@ export async function checkoutCart(params: CheckoutCartParams) {
           ? authenticatedUserId || undefined
           : params.userId,
       buyerUserId,
+      verifiedBuyerEmail: buyerPriceContext?.verifiedEmail,
       leadId,
       priceListId,
       customerEmail: params.customerEmail,
@@ -322,6 +329,7 @@ export async function checkoutCart(params: CheckoutCartParams) {
       fulfillment: params.fulfillment,
       ...(selfService ? { selfServiceLocationId: params.selfServiceLocationId } : {}),
       ...(boundary.publicCheckout ? { publicCheckout: true } : {}),
+      buyerPriceContext,
     })
 
     publicMutationHasSideEffects = Boolean(publicMutationClaim)
@@ -335,7 +343,7 @@ export async function checkoutCart(params: CheckoutCartParams) {
       buyerUserId,
       ownerSiteId: params.ownerSiteId,
       finalLeadId: environment.finalLeadId,
-      finalPriceListId: environment.finalPriceListId,
+      finalPriceListId: lineResult.resolvedPriceListId || environment.finalPriceListId,
       finalOriginLocationId: environment.finalOriginLocationId,
       resolvedScheduledFor: environment.resolvedScheduledFor,
       resolvedUserId: environment.resolvedUserId,

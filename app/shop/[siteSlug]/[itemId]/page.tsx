@@ -53,7 +53,7 @@ export default async function ShopItemPage({ params }: { params: Promise<{ siteS
 async function ShopItemContent({ siteSlug, itemId }: { siteSlug: string; itemId: string }) {
   const context = await getShopRouteContext(siteSlug)
   if (context?.selfService) {
-    const item = await getPdpCatalogItem(itemId, { requireStorefront: true })
+    const item = await getPdpCatalogItem(itemId, { requireStorefront: true, publicOnly: true })
     const { location, fulfillmentOptions } = context.selfService
     if (!item || item.site_id !== context.site.id || !isSelfServiceItem(item, fulfillmentOptions, location.id)) notFound()
     const [branchItem] = await enrichSelfServiceInventory(context.site.id, location.id, [item])

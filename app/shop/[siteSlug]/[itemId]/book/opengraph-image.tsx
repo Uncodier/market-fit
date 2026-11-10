@@ -13,7 +13,7 @@ export default async function Image({
   params: Promise<{ siteSlug: string; itemId: string }>
 }) {
   const { itemId } = await params
-  const item = await getPdpCatalogItem(itemId, { requireStorefront: true })
+  const item = await getPdpCatalogItem(itemId, { requireStorefront: true, publicOnly: true })
 
   if (!item) {
     return renderCommerceOgImage({

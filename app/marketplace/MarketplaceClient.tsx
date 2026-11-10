@@ -1,4 +1,6 @@
 "use client"
+import { useStorefrontCartPricing } from "@/app/components/commerce/use-storefront-cart-pricing"
+import { CartPricingRecovery } from "@/app/components/commerce/CartPricingRecovery"
 import React, { useState, useEffect, useDeferredValue, useCallback, useRef } from "react"
 import { toast } from "sonner"
 import { clearCart, getCartItems, setCartItems } from "@/app/commerce/cart-storage"
@@ -77,6 +79,7 @@ export function MarketplaceClient({
   const session = user ? { user } : null
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [cart, setCart] = useState<CartItem[]>([])
+  const { pricingPending, pricingError, ...pricingRecovery } = useStorefrontCartPricing(cart, setCart, "marketplace")
   const [isCartLoaded, setIsCartLoaded] = useState(false)
   const [searchQuery, setSearchQuery] = useState(searchParams?.get("search") || "")
   const deferredSearchQuery = useDeferredValue(searchQuery)
@@ -335,7 +338,7 @@ export function MarketplaceClient({
   const cartCount = cart.reduce((s, c) => s + c.cartQty, 0)
 
   const handleCheckout = (e: React.FormEvent) =>
-    runMarketplaceCheckout({
+    pricingPending || pricingError ? e.preventDefault() : runMarketplaceCheckout({
       e,
       cart,
       session,
@@ -402,6 +405,9 @@ export function MarketplaceClient({
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
+      {(pricingPending || pricingError) && <CartPricingRecovery items={cart} pricingError={pricingError}
+        {...pricingRecovery} open={isCartOpen} onOpenChange={setIsCartOpen}
+        onRemoveLines={ids => setCart(previous => previous.filter(line => !ids.includes(cartLineKey(line))))} />}
       <MarketplaceHeader
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
@@ -412,7 +418,7 @@ export function MarketplaceClient({
         locale={locale}
         setLocale={setLocale}
         cartCount={cartCount}
-        subtotal={subtotal}
+        subtotal={pricingPending || pricingError ? 0 : subtotal}
         currency={cart[0]?.currency}
         onCartOpen={() => setIsCartOpen(true)}
         session={session}
@@ -431,10 +437,10 @@ export function MarketplaceClient({
 
       <BuyerLocationSheetHost location={buyerLocation} />
 
-      {isCartOpen && (
+      {isCartOpen && !pricingPending && !pricingError && (
         <MarketplaceCartPanel
-          cart={cart}
-          subtotal={subtotal}
+          cart={pricingPending || pricingError ? [] : cart}
+          subtotal={pricingPending || pricingError ? 0 : subtotal}
           updateQty={updateQty}
           session={session}
           isLockedDestination={isLockedDestination}
@@ -469,7 +475,7 @@ export function MarketplaceClient({
           setPromoDiscount={setPromoDiscount}
           siteSettings={siteSettings}
           handleCheckout={handleCheckout}
-          checkoutLoading={checkoutLoading}
+          checkoutLoading={checkoutLoading || pricingPending || !!pricingError}
           setIsCartOpen={setIsCartOpen}
           t={t}
           buyerGeo={buyerLocation.effectiveBuyerGeo}

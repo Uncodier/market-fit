@@ -7,6 +7,14 @@ provider-dependent. See the main guide for shared concepts and limitations.
 
 ## Workspace and personal tools
 
+### Lead price-list assignment — `/leads/[id]`
+- **Use:** In About → Info (contact information), reveal empty fields and edit **Price list**. Search for an active list in the current site, save, or clear the selection to remove the lead-specific preference. Existing inactive assignments remain labeled and can be replaced or cleared.
+- **Controls:** The server requires authentication, site update permission, an active same-site list, and a lead writable through user-scoped RLS. Failed saves retain the editor draft; failed option reads expose a retry rather than pretending the site has no lists.
+- **Pricing scope:** Uses the existing `leads.default_price_list_id` column. POS customer selection and authenticated Shop/Marketplace prices honor active same-site lists enabled for their channel. Public caches remain unpersonalized; checkout verifies prices independently. Historical orders and accepted quotes remain unchanged. See [customer price lists](CUSTOMER_PRICE_LISTS.md) for identity, fallback, manual override and synchronization rules. No schema migration is introduced.
+- **Validation:** `npm test -- --runInBand __tests__/leads/price-list-actions.test.ts __tests__/leads/price-list-field.test.tsx __tests__/leads/company-detail-page.test.tsx` covers reads, selection, clearing, permissions, site scoping, and failed saves. These are local regression tests, not live database/browser verification.
+- **Source:** [Field](../app/leads/components/LeadPriceListField.tsx); [option reads](../app/leads/price-list-actions.ts); [lead mutation](../app/leads/mutation-actions.ts).
+- **Demo mode:** Known demo sites use the existing cookie-selected in-memory client for option reads and assignment/clearing. Demo site/list/lead IDs do not need to be UUIDs; unknown demos, mismatched demo clients, inactive/foreign lists, and extra mutation fields are rejected. Real sites retain UUID validation, authentication and RLS. Demo changes are not durable database writes. Regression: `npm test -- --runInBand __tests__/leads/price-list-demo.test.ts`.
+
 ### Customer subscriptions — `/subscriptions`
 - **Amount changes:** Open a subscription and use the pencil button beside **Amount** in its About panel. Enter the recurring amount and confirm with Save. The new amount is used for the next ungenerated billing cycle and subsequent renewals; existing invoices and payments remain unchanged, including invoices already generated for the next period.
 - **Controls:** Editing requires subscription update permission and server-side site authorization. Amounts must be non-negative with at most two decimal places; period invoice generation requires an amount greater than zero. Concurrent subscription edits are rejected for reload and retry.

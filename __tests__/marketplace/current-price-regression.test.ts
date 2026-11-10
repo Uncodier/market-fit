@@ -4,6 +4,9 @@ import { createServiceClient } from "@/lib/supabase/server"
 import { marketplaceItem } from "./catalog-fixture"
 
 jest.mock("server-only", () => ({}))
+jest.mock("@/app/price-lists/buyer-prices", () => ({
+  applyBuyerPricesToItems: async (items: unknown[]) => items, getBuyerPriceContext: async () => null,
+}))
 jest.mock("@/lib/supabase/server", () => ({ createServiceClient: jest.fn() }))
 jest.mock("@/app/marketplace/attach-site-settings", () => ({ attachSiteSettings: async (_client: unknown, items: unknown[]) => items }))
 jest.mock("@/app/marketplace/load-marketplace-sales", () => ({ ...jest.requireActual("@/app/marketplace/load-marketplace-sales"), loadMarketplaceSales: async () => new Map() }))

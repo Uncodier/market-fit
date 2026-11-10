@@ -5,6 +5,9 @@ import { z } from "zod"
 import { findOrCreateCompany } from "@/app/companies/actions"
 import { CreateLeadSchema, UpdateLeadSchema, type CreateLeadInput, type UpdateLeadInput } from "./action-schemas"
 import { normalizeOrigin } from "./normalize-origin"
+import { userCanOnSite } from "@/lib/permissions/site-access"
+import { isKnownDemoSite } from "@/lib/demo-data"
+import { updateDemoLeadPriceList } from "./demo-price-list-actions"
 
 // Nueva función auxiliar para manejar la creación/búsqueda de company
 async function handleCompanyForLead(data: CreateLeadInput | Partial<UpdateLeadInput>) {
@@ -140,7 +143,14 @@ export async function updateLead(data: Partial<UpdateLeadInput>): Promise<{ erro
     )) {
       return { error: "Use the call consent editor to confirm changes to outbound-call permissions." }
     }
-    const supabase = await createClient()
+    const changingPriceList = data.default_price_list_id !== undefined
+    if (changingPriceList && isKnownDemoSite(data.site_id)) {
+      return updateDemoLeadPriceList(data)
+    }
+    const supabase = await createClient(changingPriceList)
+    if (changingPriceList && supabase._isDemo) {
+      return { error: "Demo data cannot authorize a real lead price-list assignment." }
+    }
     
     // Get authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -164,6 +174,20 @@ export async function updateLead(data: Partial<UpdateLeadInput>): Promise<{ erro
       UpdateLeadSchema.omit({ attribution: true }).parse(dataWithoutAttribution)
     }
     
+    if (changingPriceList) {
+      if (!await userCanOnSite(supabase, data.site_id!, "update")) {
+        return { error: "You do not have permission to update this lead's price list." }
+      }
+      if (data.default_price_list_id !== null) {
+        const { data: priceList, error } = await supabase.from("price_lists")
+          .select("id").eq("id", data.default_price_list_id!)
+          .eq("site_id", data.site_id!).eq("is_active", true).maybeSingle()
+        if (error || !priceList) {
+          return { error: "Select an active price list from this site." }
+        }
+      }
+    }
+
     // Handle company creation/lookup if needed (only if company field is present)
     let company_id = undefined
     let companyError = null
@@ -187,11 +211,18 @@ export async function updateLead(data: Partial<UpdateLeadInput>): Promise<{ erro
     }
     
     // Update the lead - filter by both id AND site_id for security (defense in depth)
-    const { error } = await supabase
+    const query = supabase
       .from("leads")
       .update(updateData)
       .eq("id", id)
       .eq("site_id", site_id)
+    if (changingPriceList) {
+      const { data: saved, error } = await query.select("id").maybeSingle()
+      if (error) return { error: "Could not save the price list. Reload the lead before trying again." }
+      if (!saved) return { error: "Lead not found or access denied." }
+      return { success: true }
+    }
+    const { error } = await query
     
     if (error) {
       console.error("Error updating lead:", error)

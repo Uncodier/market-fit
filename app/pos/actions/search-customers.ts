@@ -21,7 +21,7 @@ export async function searchPosCustomers(siteId: string, query: string): Promise
     const pattern = JSON.stringify(`%${input.data.query.replace(/[\\%_]/g, "\\$&")}%`);
     const fields = ["name", "email", "personal_email", "phone", "company->>name"];
     const { data, error } = await access.supabase.from("leads")
-      .select("id, site_id, name, email, personal_email, phone, company, companies(name)")
+      .select("id, site_id, name, email, personal_email, phone, company, default_price_list_id, companies(name)")
       .eq("site_id", input.data.siteId)
       .or(fields.map((field) => `${field}.ilike.${pattern}`).join(","))
       .order("created_at", { ascending: false })

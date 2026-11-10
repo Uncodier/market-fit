@@ -8,6 +8,11 @@ import { prepareSelfServiceCheckout } from "@/app/commerce/self-service"
 import { prepareCheckoutEnvironment } from "@/app/commerce/checkout-environment"
 import { resolveCheckoutAttribution } from "@/app/commerce/checkout-attribution"
 import { processCheckoutLines } from "@/app/commerce/checkout-lines"
+import { getBuyerPriceContext } from "@/app/price-lists/buyer-prices"
+import { getBuyerAssignments } from "@/app/price-lists/buyer-price-context"
+
+jest.mock("@/app/price-lists/buyer-prices", () => ({ getBuyerPriceContext: jest.fn() }))
+jest.mock("@/app/price-lists/buyer-price-context", () => ({ getBuyerAssignments: jest.fn() }))
 import { persistCheckoutRecords } from "@/app/commerce/checkout-records"
 import { finalizeCheckout } from "@/app/commerce/checkout-finalize"
 import { claimCheckoutMutation, completeCheckoutMutation, releaseCheckoutMutation } from "@/app/commerce/checkout-idempotency"
@@ -76,6 +81,7 @@ function expectNoCheckoutEffects() {
 
 beforeEach(() => {
   jest.resetAllMocks()
+  jest.mocked(getBuyerPriceContext).mockResolvedValue(null)
   adminClient.from.mockImplementation(() => { throw new Error("Unexpected direct database access") })
   userClient.auth.getUser.mockResolvedValue({ data: { user: { id: "session-buyer" } }, error: null })
   jest.mocked(createClient).mockResolvedValue(userClient as never)
@@ -104,6 +110,23 @@ beforeEach(() => {
 })
 
 describe("checkoutCart public Server Action boundary", () => {
+  it.each(["shop", "marketplace"] as const)("uses only verified buyer pricing in %s and persists the resolved list", async source => {
+    const buyer = { userId: "session-buyer", verifiedEmail: "verified@example.test" } as never
+    jest.mocked(getBuyerPriceContext).mockResolvedValue(buyer)
+    jest.mocked(getBuyerAssignments).mockResolvedValue(new Map([[request.siteId, "personal-list"]]))
+    jest.mocked(processCheckoutLines).mockResolvedValue({
+      processedLines: [], orderSubtotal: 125, orderTaxTotal: 0, orderShippingCost: 0,
+      orderCurrency: "EUR", resolvedPriceListId: "personal-list",
+    })
+    await checkoutCart({ ...request, source, customerEmail: "forged@example.test", priceListId: "forged-list" })
+    expect(getBuyerAssignments).toHaveBeenCalledWith(buyer, [request.siteId])
+    expect(processCheckoutLines).toHaveBeenCalledWith(expect.objectContaining({ buyerPriceContext: buyer }))
+    expect(prepareCheckoutEnvironment).toHaveBeenCalledWith(expect.objectContaining({
+      verifiedBuyerEmail: "verified@example.test", priceListId: undefined,
+    }))
+    expect(persistCheckoutRecords).toHaveBeenCalledWith(expect.objectContaining({ finalPriceListId: "personal-list" }))
+  })
+
   it.each(["shop", "marketplace", "quote"] as const)("rejects forged order/payment fields in %s without a kiosk flag", async (source) => {
     for (const attack of [{ existingOrderId: "victim-order" }, { payments: [{ method: "cash", amount: 125 }] }, { payments: [] }]) {
       const result = await checkoutCart({ ...request, source, ...(source === "quote" ? { quotationId: "quote" } : {}), ...attack })

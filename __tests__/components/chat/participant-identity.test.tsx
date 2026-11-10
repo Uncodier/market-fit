@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react'
+import { LocalizationProvider } from '@/app/context/LocalizationContext'
+import { render as rtlRender, screen } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { ChatHeader } from '@/app/components/chat/ChatHeader'
 import { ChatParticipantMessageRow } from '@/app/components/chat/ChatParticipantMessageRow'
@@ -102,3 +103,8 @@ it('labels each legacy comment with its own author rather than the mixed convers
   expect(screen.queryByText('Conversation lead')).not.toBeInTheDocument()
   expect(screen.getByRole('img', { name: 'Another reader' })).not.toHaveAttribute('data-src')
 })
+jest.mock('@/app/hooks/useNewCustomerSupportConversation', () => ({ useNewCustomerSupportConversation: () => ({ startNewConversation: jest.fn(), isLoading: false }) }))
+
+function render(ui: ReactNode) {
+  return rtlRender(ui, { wrapper: ({ children }) => <LocalizationProvider preferredLocale="en">{children}</LocalizationProvider> })
+}

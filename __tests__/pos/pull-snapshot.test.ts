@@ -145,6 +145,15 @@ describe("pullPosCatalogSnapshot", () => {
     expect(listCatalogItems).toHaveBeenNthCalledWith(2, expect.objectContaining({ page: 2, pageSize: 500, siteId: "site-1" }));
   });
 
+  it("loads customer lists beyond the first page", async () => {
+    const lists = Array.from({ length: 101 }, (_, i) => ({ id: `list-${i}`, is_active: true, channels: ["pos"] }));
+    jest.mocked(listPriceLists).mockResolvedValueOnce({ data: lists.slice(0, 100), count: 101 } as never)
+      .mockResolvedValueOnce({ data: lists.slice(100), count: 101 } as never);
+    const result = await pullPosCatalogSnapshot("site-1");
+    expect(result).toHaveProperty("data.priceLists", lists);
+    expect(listPriceLists).toHaveBeenNthCalledWith(2, { siteId: "site-1", pageSize: 100, page: 2 });
+  });
+
   it("fails instead of caching missing variants on a query error", async () => {
     queryError = true;
     expect(await pullPosCatalogSnapshot("site-1")).toEqual({ error: "Failed to pull POS catalog snapshot" });

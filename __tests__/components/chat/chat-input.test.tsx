@@ -1,4 +1,6 @@
-import { createEvent, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import type { ReactNode } from 'react'
+import { LocalizationProvider } from '@/app/context/LocalizationContext'
+import { createEvent, fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react'
 import { ChatInput } from '@/app/components/chat/ChatInput'
 import { useChannelSelector } from '@/app/hooks/useChannelSelector'
 import { useCommentReplySelection } from '@/app/hooks/useCommentReplySelection'
@@ -84,6 +86,11 @@ describe('ChatInput send guards', () => {
     fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Enter' })
     expect(callbacks.handleKeyDown).toHaveBeenLastCalledWith(expect.anything(), 'audio')
     expect(screen.getByRole('button', { name: 'Audio' })).toHaveAttribute('aria-pressed', 'true')
+    if (channel === 'whatsapp') {
+      expect(screen.getByText('Audio is requested. When the WhatsApp messaging window is closed, a compatible template may be delivered instead.')).toBeVisible()
+    } else {
+      expect(screen.queryByText(/compatible template/)).not.toBeInTheDocument()
+    }
   })
 
   it.each(['web', 'email', 'instagram', 'sms', 'voice', 'facebook'])('hides formats on %s', selectedChannel => {
@@ -373,3 +380,6 @@ describe('ChatInput send guards', () => {
     expect(callbacks.handleKeyDown).not.toHaveBeenCalled()
   })
 })
+function render(ui: ReactNode) {
+  return rtlRender(ui, { wrapper: ({ children }) => <LocalizationProvider preferredLocale="en">{children}</LocalizationProvider> })
+}

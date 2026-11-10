@@ -13,6 +13,15 @@ import type { SupportedLocale } from './locale-preferences';
 import { spanishWorkspaceMessages } from './locales/workspace/es';
 import { screenMessages } from './locales/screens';
 import { procurementMessages } from './locales/procurement';
+import enChat from './locales/chat/en.json';
+import esChat from './locales/chat/es.json';
+import frChat from './locales/chat/fr.json';
+import deChat from './locales/chat/de.json';
+import jaChat from './locales/chat/ja.json';
+
+export const chatMessages: Record<SupportedLocale, Record<string, string>> = {
+  en: enChat, es: esChat, fr: frChat, de: deChat, ja: jaChat,
+};
 
 /** Raw feature messages, without legacy or English fallback. */
 export const commerceMessages: Record<SupportedLocale, Record<string, string>> = {
@@ -30,6 +39,7 @@ function ownMessages(locale: SupportedLocale, legacy: MessageTree): Record<strin
     ...screenMessages[locale],
     ...commerceMessages[locale],
     ...procurementMessages[locale],
+    ...chatMessages[locale],
   };
 }
 

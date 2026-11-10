@@ -1,9 +1,14 @@
+import { getTemplateDeliveryStatus } from '@/lib/chat/template-delivery'
+
 export type ChatCommandStatus = "failed" | "pending" | "success"
 
 export function mapChatCommandStatus(
   customData: Record<string, unknown> | null | undefined
 ): ChatCommandStatus | undefined {
   if (!customData || typeof customData !== "object") return undefined
+
+  const templateStatus = getTemplateDeliveryStatus(customData)
+  if (templateStatus) return templateStatus.commandStatus
 
   if (customData.voice_mode === 'agent_call') {
     // Provider state is authoritative for voice, including rows written before

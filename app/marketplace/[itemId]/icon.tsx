@@ -12,7 +12,7 @@ export default async function Icon({
   params: Promise<{ itemId: string }>
 }) {
   const { itemId } = await params
-  const item = await getPdpCatalogItem(itemId, { requireMarketplace: true })
+  const item = await getPdpCatalogItem(itemId, { requireMarketplace: true, publicOnly: true })
   const source = item
     ? resolveCatalogItemShareImageSource(item as any)
     : { kind: "url" as const, url: "/images/logo.png" }

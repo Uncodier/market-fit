@@ -57,6 +57,16 @@ describe("local inventory snapshots", () => {
     expect(await readLocalCatalog("site-1")).toHaveProperty("inventorySnapshot", null);
   });
 
+  it("persists list currency and customer preference without discarding either", async () => {
+    const db = localDb();
+    await applyPosCatalogSnapshot("site-1", { ...snapshot,
+      leads: [{ id: "lead", default_price_list_id: "personal" }],
+      priceLists: [{ id: "personal", name: "Personal", is_active: true, currency: "EUR" }],
+    }, "revision");
+    expect(db.priceLists.bulkPut).toHaveBeenCalledWith([expect.objectContaining({ id: "personal", currency: "EUR" })]);
+    expect(db.leads.bulkPut).toHaveBeenCalledWith([expect.objectContaining({ id: "lead", default_price_list_id: "personal" })]);
+  });
+
   it("recognizes a downloaded empty catalog as local data", async () => {
     localDb();
     expect(await readLocalCatalog("site-1")).toHaveProperty("hasLocalData", false);

@@ -7,6 +7,7 @@ export type ResolveUnitPriceLocalInput = {
   priceListId?: string | null;
   priceLists: LocalPriceList[];
   priceListItems: LocalPriceListItem[];
+  itemIndex?: Map<string, LocalPriceListItem>;
 };
 
 /**
@@ -16,6 +17,7 @@ export type ResolveUnitPriceLocalInput = {
 export function resolveUnitPriceLocal(input: ResolveUnitPriceLocalInput): {
   price: number;
   priceListId?: string;
+  currency?: string;
 } {
   const {
     catalogItemId,
@@ -43,14 +45,15 @@ export function resolveUnitPriceLocal(input: ResolveUnitPriceLocalInput): {
       list?.is_active &&
       isPriceListAllowedForChannel(list.channels, "pos")
     ) {
-      const pli = priceListItems.find(
+      const pli = input.itemIndex ? input.itemIndex.get(`${resolvedListId}:${catalogItemId}`) : priceListItems.find(
         (row) =>
           row.price_list_id === resolvedListId &&
           row.catalog_item_id === catalogItemId,
       );
       // Treat zero as missing so stale PLI rows do not override catalog price.
       if (pli && pli.unit_price != null && Number(pli.unit_price) !== 0) {
-        return { price: Number(pli.unit_price), priceListId: resolvedListId };
+        return { price: Number(pli.unit_price), priceListId: resolvedListId,
+          ...(list.currency ? { currency: list.currency } : {}) };
       }
     }
   }

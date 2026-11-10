@@ -20,6 +20,7 @@ type PrepareCheckoutEnvironmentParams = {
   inputSource: CheckoutSource
   userId?: string
   buyerUserId?: string | null
+  verifiedBuyerEmail?: string | null
   leadId?: string
   priceListId?: string
   customerEmail?: string
@@ -195,6 +196,9 @@ export async function prepareCheckoutEnvironment(
   }
 
   let finalLeadId = params.leadId
+  const canLinkContact = !["shop", "marketplace"].includes(source) || Boolean(
+    params.verifiedBuyerEmail && customerEmail?.trim().toLowerCase() === params.verifiedBuyerEmail
+  )
   if (!finalLeadId && customerEmail && customerName) {
     const { data: existing } = await queryClient
       .from("leads")
@@ -204,11 +208,13 @@ export async function prepareCheckoutEnvironment(
       .single()
     if (existing) {
       finalLeadId = existing.id
-      if (buyerUserId && !existing.buyer_user_id) {
+      if (buyerUserId && !existing.buyer_user_id && canLinkContact) {
         await supabaseAdmin
           .from("leads")
           .update({ buyer_user_id: buyerUserId })
           .eq("id", existing.id)
+          .eq("site_id", siteId)
+          .is("buyer_user_id", null)
       }
     } else {
       const createFields = isCommerceLeadSource(source)
@@ -221,7 +227,7 @@ export async function prepareCheckoutEnvironment(
           name: customerName,
           email: customerEmail,
           user_id: resolvedUserId,
-          buyer_user_id: buyerUserId || null,
+          buyer_user_id: canLinkContact ? buyerUserId || null : null,
           ...createFields,
         })
         .select("id")
@@ -240,6 +246,7 @@ export async function prepareCheckoutEnvironment(
       .from("leads")
       .select("default_price_list_id, campaign_id, segment_id, company_id")
       .eq("id", finalLeadId)
+      .eq("site_id", siteId)
       .single()
     if (lead) {
       if (

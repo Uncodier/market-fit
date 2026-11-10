@@ -18,6 +18,7 @@ const DEFAULT_SESSION = (
   fulfillment: "dine_in",
   originLocationId: "",
   priceListId: "none",
+  priceListSource: "automatic",
   promoCode: "",
   activeOrderId: "new",
   buyerUserId: null,

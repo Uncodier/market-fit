@@ -47,7 +47,7 @@ export function cartWithPrice(
   id: string,
   price: number,
 ): PosCartItem[] {
-  return mapCartLine(cart, id, (c) => clearLineDiscountFields(c, price))
+  return mapCartLine(cart, id, (c) => ({ ...clearLineDiscountFields(c, price), priceSource: "manual" }))
 }
 
 export function cartWithDiscountPercent(
@@ -55,7 +55,7 @@ export function cartWithDiscountPercent(
   id: string,
   percent: number,
 ): PosCartItem[] {
-  return mapCartLine(cart, id, (c) => applyLineDiscountFields(c, percent))
+  return mapCartLine(cart, id, (c) => ({ ...applyLineDiscountFields(c, percent), priceSource: "manual" }))
 }
 
 /** Merge identical host+modifiers into one line, or append a new cart line. */
@@ -76,8 +76,13 @@ export function mergeItemIntoCart(
   const reservationKey = `${extras?.reservationStart || ""}|${extras?.reservationEnd || ""}`
   const mergeKey = `${signature}|${reservationKey}`
   let nextLineKey = extras?.lineKey || uuidv4()
+  const price = extras?.cartPrice ?? resolvePrice(item)
 
   const existing = prev.find((c) => {
+    // Adding a product must not grow a historical/manual line at an old customer's price.
+    if (c.saleOrderItemId || c.priceSource === "restored" || c.priceSource === "manual") return false
+    if (c.cartPrice !== price || (c.modifiers || []).some((modifier) =>
+      !modifiers.some((next) => next.catalogItemId === modifier.catalogItemId && next.cartPrice === modifier.cartPrice))) return false
     const cMods = c.modifiers || []
     const cSig = buildModifierSignature(
       c.id,
@@ -102,7 +107,6 @@ export function mergeItemIntoCart(
     }
   }
 
-  const price = extras?.cartPrice ?? resolvePrice(item)
   return {
     lineKey: nextLineKey,
     next: [
@@ -111,6 +115,7 @@ export function mergeItemIntoCart(
         ...extras,
         cartQty: extras?.cartQty ?? 1,
         cartPrice: price,
+        priceSource: extras?.priceSource || (extras?.cartPrice != null ? "manual" : "automatic"),
         lineKey: nextLineKey,
         modifiers,
       },

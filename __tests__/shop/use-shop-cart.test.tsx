@@ -7,6 +7,9 @@ import { cartLineKey } from "@/app/commerce/cart-modifiers"
 import { getDeviceOrders } from "@/app/commerce/device-order-storage"
 import { readPendingStorefrontPromo } from "@/app/components/commerce/storefront-pending-promo"
 import { useShopCart } from "@/app/shop/[siteSlug]/useShopCart"
+jest.mock("@/app/components/commerce/use-storefront-cart-pricing", () => ({
+  useStorefrontCartPricing: () => ({ pricingPending: false }),
+}))
 
 jest.mock("sonner", () => ({ toast: { success: jest.fn() } }))
 jest.mock("@/app/commerce/cart-storage", () => ({ clearCart: jest.fn(), getCartItems: jest.fn(), setCartItems: jest.fn() }))

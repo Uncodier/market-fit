@@ -1,4 +1,6 @@
-import { render, screen } from '@testing-library/react'
+import type { ReactNode } from 'react'
+import { LocalizationProvider } from '@/app/context/LocalizationContext'
+import { render as rtlRender, screen } from '@testing-library/react'
 import { MessageStatus } from '@/app/components/chat/chat-message-status'
 
 it.each(['preparing', 'preparation_failed', 'dispatching', 'sent', 'unknown'])('hides retry for audio receipt %s even if command failed', state => {
@@ -15,3 +17,6 @@ it('allows retrying a prepared receipt that has not dispatched', () => {
   }} onRetry={jest.fn()} />)
   expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument()
 })
+function render(ui: ReactNode) {
+  return rtlRender(ui, { wrapper: ({ children }) => <LocalizationProvider preferredLocale="en">{children}</LocalizationProvider> })
+}
