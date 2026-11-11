@@ -78,4 +78,26 @@ describe("mobile primary buttons", () => {
       if (declaration.prop === "box-shadow") expect(declaration.value).not.toContain("inset")
     })
   })
+
+  it("enlarges mobile touch targets and their fixed-height header wrappers", () => {
+    const css = postcss.parse(readFileSync(path.join(process.cwd(), "app/styles/mobile-primary-buttons.css"), "utf8"))
+    const declarations = (selector: string) => {
+      const values: Record<string, string> = {}
+      css.walkRules((rule) => {
+        if (!rule.selectors.includes(selector)) return
+        rule.walkDecls((declaration) => {
+          values[declaration.prop] = `${declaration.value}${declaration.important ? " !important" : ""}`
+        })
+      })
+      return values
+    }
+    expect(declarations(".btn-primary")["min-height"]).toBe("48px !important")
+    expect(declarations(".btn-primary-well")["min-height"]).toBe("48px !important")
+    expect(declarations(".btn-primary.btn-primary-circular")["min-width"]).toBe("48px !important")
+    expect(declarations("[data-toolbar-font] .btn-primary")).toMatchObject({
+      "min-height": "52px !important",
+      "min-width": "52px !important",
+    })
+    expect(declarations("[data-toolbar-font] .btn-primary-well")["min-height"]).toBe("52px !important")
+  })
 })

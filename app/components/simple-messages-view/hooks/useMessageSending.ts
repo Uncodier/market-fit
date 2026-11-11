@@ -118,6 +118,7 @@ export const useMessageSending = ({
 
   const handleAssistantMessage = useCallback(async (messageToSend: string, activity = selectedActivity, onAccepted?: () => void, requestId?: string) => {
     if (!currentSite?.id) return
+    let unconfirmed = false
     const success = await sendAssistantMessage({
       messageToSend,
       siteId: currentSite.id,
@@ -130,12 +131,19 @@ export const useMessageSending = ({
       audioParameters,
       toast,
       onAccepted,
+      onUnconfirmed: () => { unconfirmed = true },
       requestId,
     })
-    // SSE completion is authoritative even if realtime log delivery was missed.
-    clearThinkingState()
-    clearNewMakinaThinking()
-    return success
+    if (sendScopeRef.current !== sendScope) return success
+    if (unconfirmed) {
+      // A lost HTTP stream is not workflow completion. Durable logs own recovery.
+      if (thinkingTimeoutRef.current) clearTimeout(thinkingTimeoutRef.current)
+      thinkingTimeoutRef.current = null
+    } else {
+      clearThinkingState()
+      clearNewMakinaThinking()
+    }
+    return unconfirmed ? null : success
   }, [
     currentSite?.id,
     selectedActivity,
@@ -148,6 +156,7 @@ export const useMessageSending = ({
     toast,
     clearThinkingState,
     clearNewMakinaThinking,
+    sendScope,
   ])
 
   const handleRobotMessage = useCallback(async (messageToSend: string) => {
@@ -236,6 +245,11 @@ export const useMessageSending = ({
     const durableLogs = (logsRef?.current || []).filter(log => !log.details?.temp_message)
     const isBusy = shouldQueueCommand(Boolean(findRunningUserLog(durableLogs)) || sendingLockRef.current || isSendingMessage)
 
+    if (selectedActivity !== 'robot' && isWaitingForResponse && !isBusy) {
+      toast({ title: 'Assistant status unconfirmed', description: 'Wait for this conversation to confirm the previous result before sending another message.' })
+      return
+    }
+
     if (isBusy && activeRobotInstance?.id) {
       if (selectedActivity !== 'robot' && skillSelection.skill_mode === 'required') {
         toast({ title: 'Wait to send', description: 'Required skills cannot be attached to queued commands. Wait for the current task to finish.', variant: 'destructive' })
@@ -292,6 +306,7 @@ export const useMessageSending = ({
       onMessageSent?.(true)
     } else {
       setThinkingStateWithTimeout()
+      if (selectedActivity !== 'robot') setWaitingForMessageId(requestId)
     }
 
     if (selectedActivity === 'robot') onClearMessage?.()
@@ -307,12 +322,12 @@ export const useMessageSending = ({
           onAccepted?.()
         }
       }, requestId)
-      if (!success && !wasAccepted) removeOptimisticMessage?.()
+      if (success === false && !wasAccepted) removeOptimisticMessage?.()
       if (sendScopeRef.current !== sendScope) return
       if (selectedActivity !== 'robot' && success && !wasAccepted && messageRef.current === currentMessage) {
         onClearMessage?.()
       }
-      if (!success && !wasAccepted && !activeRobotInstance) {
+      if (success === false && !wasAccepted && !activeRobotInstance) {
         setHasMessageBeenSent(false)
         onMessageSent?.(false)
       }
@@ -333,6 +348,7 @@ export const useMessageSending = ({
   }, [
     currentSite?.id,
     isSendingMessage,
+    isWaitingForResponse,
     activeRobotInstance,
     selectedActivity,
     selectedContext,

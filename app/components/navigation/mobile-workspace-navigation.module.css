@@ -21,7 +21,7 @@
   display: grid;
   height: 56px;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: 25px 11px;
+  grid-template-rows: 25px 14px;
   align-content: center;
   justify-items: center;
   gap: 2px;
@@ -60,7 +60,9 @@
 
 .label {
   display: block;
-  width: 100%;
+  /* Inset the text from the curved sides, including on the end tabs. */
+  width: calc(100% - 16px);
+  max-width: calc(100% - 16px);
   min-width: 0;
   overflow: hidden;
   white-space: nowrap;
@@ -68,7 +70,9 @@
   text-align: center;
   font-size: 10px;
   font-weight: 500;
-  line-height: 11px;
+  line-height: 14px;
+  -webkit-text-size-adjust: none;
+  text-size-adjust: none;
 }
 
 .tab::before {

@@ -105,6 +105,18 @@ it('reports context rejection without issuing a POST or trying to write an error
   expect(markRobotInstanceErrorIfUnanswered).not.toHaveBeenCalled()
 })
 
+it.each(['ASSISTANT_STREAM_MISSING', 'ASSISTANT_STREAM_INCOMPLETE', 'ASSISTANT_STREAM_INTERRUPTED'])(
+  'reports %s as unconfirmed tracking, not a failed workflow', async code => {
+    ;(postWithRetry as jest.Mock).mockResolvedValue({ success: false, retryable: false, error: { code } })
+    const onUnconfirmed = jest.fn()
+    await expect(sendAssistantMessage({ ...params, onUnconfirmed })).resolves.toBe(false)
+    expect(onUnconfirmed).toHaveBeenCalledTimes(1)
+    expect(params.toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Assistant status unconfirmed' }))
+    expect(params.toast.mock.calls[0][0]).not.toHaveProperty('variant', 'destructive')
+    expect(markRobotInstanceErrorIfUnanswered).not.toHaveBeenCalled()
+  },
+)
+
 it('times out stalled context and never sends a late request', async () => {
   jest.useFakeTimers()
   try {

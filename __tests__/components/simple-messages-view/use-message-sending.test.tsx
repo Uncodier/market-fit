@@ -66,6 +66,31 @@ it('does not queue behind a stale optimistic row after a failed send', async () 
   hook.unmount()
 })
 
+it.each([false, true])('keeps thinking and the preview after an unconfirmed stream, accepted: %s', async accepted => {
+  const removePreview = jest.fn()
+  ;(sendAssistantMessage as jest.Mock).mockImplementation(async ({ onAccepted, onUnconfirmed }) => {
+    if (accepted) onAccepted()
+    onUnconfirmed()
+    return false
+  })
+  const options = props()
+  options.onAddOptimisticMessage.mockReturnValue(removePreview)
+  const hook = renderHook(() => useMessageSending(options))
+  await act(async () => { await hook.result.current.handleSendMessage() })
+  expect(hook.result.current.isSendingMessage).toBe(false)
+  expect(hook.result.current.isWaitingForResponse).toBe(true)
+  expect(hook.result.current.waitingForMessageId).toEqual(expect.any(String))
+  expect(removePreview).not.toHaveBeenCalled()
+  await act(async () => { await jest.advanceTimersByTimeAsync(6 * 60 * 1000) })
+  expect(hook.result.current.isWaitingForResponse).toBe(true)
+  await act(async () => { await hook.result.current.handleSendMessage() })
+  expect(sendAssistantMessage).toHaveBeenCalledTimes(1)
+  expect(enqueuePendingWork).not.toHaveBeenCalled()
+  act(() => { hook.result.current.clearThinkingState() })
+  expect(hook.result.current.isWaitingForResponse).toBe(false)
+  hook.unmount()
+})
+
 it.each([false, true])('shows the assistant message before admission and rolls back only a failed send: %s', async success => {
   let complete!: (result: boolean) => void
   ;(sendAssistantMessage as jest.Mock).mockImplementation(() => new Promise(resolve => { complete = resolve }))

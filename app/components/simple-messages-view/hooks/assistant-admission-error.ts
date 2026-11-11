@@ -2,6 +2,14 @@ import type { ApiResponse } from '@/app/services/api-client-response'
 
 type AdmissionFailure = 'busy' | 'capacity' | 'unavailable'
 
+export function isAssistantResultUnconfirmed(response: ApiResponse): boolean {
+  return !response.success && [
+    'ASSISTANT_STREAM_MISSING',
+    'ASSISTANT_STREAM_INCOMPLETE',
+    'ASSISTANT_STREAM_INTERRUPTED',
+  ].includes(response.error?.code || '')
+}
+
 export function getAssistantAdmissionFailure(response: ApiResponse): AdmissionFailure | null {
   if (response.success || response.execution_started === true) return null
 

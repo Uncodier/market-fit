@@ -4,7 +4,7 @@ import { getSystemPromptForActivity } from '../utils'
 import { ImageParameters, VideoParameters, AudioParameters } from '../types'
 import { type SkillSelection } from '../components/SkillSelector'
 import { withTimeout } from '@/app/services/request-timeout'
-import { assistantAdmissionNotification, getAssistantAdmissionFailure } from './assistant-admission-error'
+import { assistantAdmissionNotification, getAssistantAdmissionFailure, isAssistantResultUnconfirmed } from './assistant-admission-error'
 import {
   persistUserActionLog,
   markRobotInstanceErrorIfUnanswered,
@@ -33,6 +33,7 @@ export async function sendAssistantMessage(params: {
   audioParameters?: AudioParameters
   toast: ToastFn
   onAccepted?: () => void
+  onUnconfirmed?: () => void
   requestId?: string
 }): Promise<boolean> {
   const {
@@ -125,6 +126,15 @@ export async function sendAssistantMessage(params: {
     const admissionFailure = getAssistantAdmissionFailure(response)
     if (admissionFailure) {
       toast(assistantAdmissionNotification(admissionFailure))
+      return false
+    }
+
+    if (isAssistantResultUnconfirmed(response)) {
+      params.onUnconfirmed?.()
+      toast({
+        title: 'Assistant status unconfirmed',
+        description: 'The connection was interrupted, but the assistant may still be working. We will keep tracking this conversation. Do not resend the message.',
+      })
       return false
     }
 
