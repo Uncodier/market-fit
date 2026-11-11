@@ -5,7 +5,7 @@ import { TaskSidebar } from "./components/TaskSidebar"
 import { TaskKanban } from "./components/TaskKanban"
 import { TasksTable } from "./components/TasksTable"
 import { cn } from "@/lib/utils"
-import { ControlCenterHeader } from "./components/ControlCenterHeader"
+import { TaskPageHeader } from "./components/TaskPageHeader"
 import { ViewSelector } from "@/app/components/view-selector"
 import { TaskCalendar } from "@/app/control-center/components/TaskCalendar"
 import { TaskFilterModal } from "./components/TaskFilterModal"
@@ -75,14 +75,14 @@ export default function ControlCenterPage() {
         }}
       >
         {/* Header */}
-        <div className="relative">
-          <ControlCenterHeader
+          <TaskPageHeader
+            isMobile={isMobile}
             isSidebarCollapsed={isSidebarCollapsed}
             toggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
             sidebarLeft={sidebarLeft}
             leftContent={
               selectedTasks.size > 0 ? (
-                <div className="flex items-center gap-4 lg:gap-8 overflow-hidden">
+                <div className="flex flex-wrap md:flex-nowrap items-center gap-4 lg:gap-8 md:overflow-hidden">
                   <Badge variant="outline" className="rounded-full px-2 py-0">
                     {t("operations.controlCenter.selected", { count: selectedTasks.size })}
                   </Badge>
@@ -135,19 +135,20 @@ export default function ControlCenterPage() {
                   </div>
                 </div>
               ) : (
-              <div className="flex items-center gap-4 lg:gap-8 overflow-hidden">
+              <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4 lg:gap-8 md:overflow-hidden">
                 <TaskStatusFilter
                   selectedFilter={statusFilter}
                   onFilterChange={setStatusFilter}
                   className="px-0 py-0 border-0 min-h-0"
                 />
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 min-w-0">
                   <SearchInput
                     placeholder={t('controlCenter.search')}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
+                    alwaysExpanded={isMobile}
+                    containerClassName={isMobile ? "w-full" : undefined}
                     className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
-                    alwaysExpanded={false}
                   />
 
                   <Button variant="secondary" size="icon" className="h-9 w-9 shrink-0 rounded-full" onClick={() => setIsFilterModalOpen(true)} aria-label={t("controlCenter.filter.title")}>
@@ -163,7 +164,7 @@ export default function ControlCenterPage() {
               )
             }
             rightContent={
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap md:flex-nowrap items-center gap-2">
                 {getTotalActiveFilters() > 0 && (
                   <Button variant="ghost" size="sm" onClick={() => setFilters({ stage: [], status: [], leadId: [], assigneeId: [] })}>
                     <Badge variant="outline" className="rounded-full px-2 py-0">
@@ -177,7 +178,7 @@ export default function ControlCenterPage() {
                   <DropdownMenuTrigger asChild>
                     <button className="inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-secondary text-secondary-foreground hover:bg-secondary/80 h-9 gap-2 rounded-full px-4" title={t('controlCenter.sortBy')} aria-label={t('controlCenter.sortBy')}>
                       <ListOrdered className="h-4 w-4" />
-                      <span className="hidden sm:inline font-normal">
+                      <span className={cn("font-normal", !isMobile && "hidden sm:inline")}>
                         {sortBy === "priority"
                           ? t("priority")
                           : sortBy === "newest"
@@ -230,18 +231,19 @@ export default function ControlCenterPage() {
                   </DropdownMenuContent>
                 </DropdownMenu>
 
+              </div>
+            }
+            viewContent={
               <ViewSelector
                   currentView={viewType}
                   onViewChange={(view) => { if (view !== "graph") setViewType(view) }}
                   showCalendar={true}
                 />
-              </div>
             }
           />
-        </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-auto bg-muted/30 transition-colors duration-300 ease-in-out pt-[71px]">
+        <div className={cn("flex-1 min-h-0 overflow-auto bg-muted/30 transition-colors duration-300 ease-in-out", !isMobile && "pt-[71px]")}>
           <div 
             className="min-h-full flex flex-col transition-all duration-300 ease-in-out"
             style={{ 
