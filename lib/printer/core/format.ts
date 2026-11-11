@@ -29,16 +29,11 @@ export function printersForAutoPrint(
 export function printersForJob(
   settings: PrintersSettings | null | undefined,
   module: PrinterModule,
-  template: string,
+  _template: string,
   autoPrintFlag?: keyof PrinterDevice["autoPrint"],
 ): PrinterDevice[] {
   if (!autoPrintFlag) return printersForModule(settings, module)
-  const flagged = printersForAutoPrint(settings, module, autoPrintFlag)
-  if (flagged.length > 0) return flagged
-  if (template === "kitchen" || template === "kitchen-delta") {
-    return printersForModule(settings, "orders")
-  }
-  return []
+  return printersForAutoPrint(settings, module, autoPrintFlag)
 }
 
 export function formatMoney(

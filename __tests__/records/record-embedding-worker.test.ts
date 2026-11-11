@@ -9,7 +9,9 @@ const recordId = "00000000-0000-4000-8000-000000000100"
 describe("record embedding API client", () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    jest.mocked(requireUnrestrictedLocationAccess).mockResolvedValue({ supabase: {}, user: { id: 'user' } } as never)
+    const query = { select: jest.fn(), eq: jest.fn(), is: jest.fn(), maybeSingle: jest.fn().mockResolvedValue({ data: { id: recordId }, error: null }) }
+    query.select.mockReturnValue(query); query.eq.mockReturnValue(query); query.is.mockReturnValue(query)
+    jest.mocked(requireUnrestrictedLocationAccess).mockResolvedValue({ supabase: { from: jest.fn(() => query) }, user: { id: 'user' } } as never)
     process.env.API_SERVER_URL = "https://api.example.com"
     process.env.SERVICE_API_KEY = "service-key"
   })
@@ -69,6 +71,15 @@ describe("record embedding API client", () => {
     jest.mocked(requireUnrestrictedLocationAccess).mockResolvedValue({ error: {} } as never)
     global.fetch = jest.fn()
     await expect(processRecordEmbeddingsById({ recordId })).rejects.toThrow('Embedding requires unrestricted location access')
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('does not submit a trashed or unreadable record for external processing', async () => {
+    const query = { select: jest.fn(), eq: jest.fn(), is: jest.fn(), maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }) }
+    query.select.mockReturnValue(query); query.eq.mockReturnValue(query); query.is.mockReturnValue(query)
+    jest.mocked(requireUnrestrictedLocationAccess).mockResolvedValue({ supabase: { from: () => query }, user: { id: 'user' } } as never)
+    global.fetch = jest.fn()
+    await expect(processRecordEmbeddingsById({ recordId })).rejects.toThrow('unavailable for embedding')
     expect(fetch).not.toHaveBeenCalled()
   })
 })

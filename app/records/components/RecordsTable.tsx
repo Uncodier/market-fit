@@ -1,6 +1,9 @@
 "use client"
 
-import React, { useMemo, useState, useEffect } from "react"
+import { useScopedPreviewState } from "../hooks/useScopedPreviewState"
+import { fetchPreviewBatches } from "../lib/entity-preview-request"
+import { useSite } from "@/app/context/SiteContext"
+import React, { useMemo, useEffect } from "react"
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/app/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { Pagination } from "@/app/components/ui/pagination"
@@ -44,6 +47,7 @@ export function RecordsTable({
   onToggleRecordSelection,
   groupBy = "status"
 }: RecordsTableProps) {
+  const { currentSite } = useSite()
   const { t } = useLocalization()
   const totalPages = Math.ceil(totalRecords / itemsPerPage)
   const indexOfFirstItem = (currentPage - 1) * itemsPerPage
@@ -101,18 +105,21 @@ export function RecordsTable({
     return { groupedRecords: groups, groupKeys: keys }
   }, [records, groupBy])
 
-  const [resolvedNames, setResolvedNames] = useState<Record<string, string>>({})
+  const [resolvedNames, setResolvedNames] = useScopedPreviewState<Record<string, string>>(currentSite?.id, {})
 
   useEffect(() => {
-    if (groupBy === "team_member") {
+    let active = true
+    setResolvedNames({})
+    if (currentSite?.id && groupBy === "team_member") {
       const idsToResolve = groupKeys.filter(k => k !== "unassigned")
       if (idsToResolve.length > 0) {
-        resolveRelationsForSidebar([{ target: 'team_member', ids: idsToResolve }])
-          .then(names => setResolvedNames(names))
+        fetchPreviewBatches([{ target: 'team_member', ids: idsToResolve }], currentSite.id, resolveRelationsForSidebar)
+          .then(names => { if (active) setResolvedNames(names) })
           .catch(console.error)
       }
     }
-  }, [groupBy, groupKeys])
+    return () => { active = false }
+  }, [currentSite?.id, groupBy, groupKeys])
 
   if (records.length === 0) {
     return (

@@ -8,6 +8,9 @@ export interface ConversationListRow {
   custom_data: Record<string, unknown> | null
   channel: string | null
   status: string | null
+  automation_paused_until?: string | null
+  last_human_reply_at?: string | null
+  automation_snooze_hours?: number | null
   latest_message?: Array<{
     content: string
     created_at: string
@@ -77,6 +80,9 @@ export function buildConversationListSelect({
     custom_data,
     channel,
     status,
+    automation_paused_until,
+    last_human_reply_at,
+    automation_snooze_hours,
     latest_message:messages (
       content,
       created_at

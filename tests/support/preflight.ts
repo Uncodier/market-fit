@@ -2,10 +2,12 @@ import { readEnvironment, required, requiredUuid } from './environment';
 import { projectLifecyclePolicy } from './project-lifecycle-policy';
 import { accountLifecyclePolicy } from './account-lifecycle-policy';
 import { qaModulePolicy } from './qa-module-policy';
+import { recordsPolicy } from './records-policy';
 
 export default async function preflight(): Promise<void> {
   const env = readEnvironment();
   if (env.suite === 'account-lifecycle') { accountLifecyclePolicy(); return; }
+  if (env.suite === 'records') { recordsPolicy(); return; }
   if (env.suite === 'project-lifecycle') projectLifecyclePolicy();
   if (env.suite === 'procurement' || env.suite === 'subsystems') qaModulePolicy();
   const roles = env.suite === 'buyer' ? ['BUYER']

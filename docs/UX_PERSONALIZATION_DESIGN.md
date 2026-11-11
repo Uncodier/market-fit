@@ -6,6 +6,10 @@
 Records starter templates, `/navigation` collection shortcuts, and a shared
 presentation layer across the authenticated workspace.
 
+**Record schema subdocument:** [Business templates, fields, and relations](UX_PERSONALIZATION_RECORD_TEMPLATES.md)
+consolidates the 52 proposed templates, all 29 business mappings, explicit relation
+keys/cardinality, dependencies, privacy gates, and schema decisions for review.
+
 **Detailed extension:** [Record templates, navigation, and decision trees](UX_PERSONALIZATION_TEMPLATES_AND_DECISIONS.md).
 This companion is part of this plan and specifies school/clinic packs, schemas,
 installation, shortcuts, module selection, CTAs, copy, security gates, and tests.

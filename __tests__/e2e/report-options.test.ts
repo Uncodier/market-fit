@@ -6,6 +6,7 @@ describe('safe runner arguments', () => {
     expect(parseArgs([], {})).toMatchObject({ target: null, suite: 'smoke' });
     expect(parseArgs([], { TEST_TARGET: 'production', TEST_SUITE: 'smoke' })).toMatchObject({ target: 'production', suite: 'smoke' });
     expect(parseArgs(['--suite', 'regression', '--target', 'staging', '--list'], {})).toMatchObject({ target: 'staging', suite: 'regression', list: true });
+    expect(parseArgs(['--suite', 'records', '--list'], {})).toMatchObject({ suite: 'records', list: true, target: null });
   });
   it.each(['--config', '--project', '--shard', '--workers', '--no-deps', '--pass-with-no-tests', 'nested/test.spec.ts'])('rejects hidden scope or safety override %s', value => {
     expect(() => parseArgs([value], {})).toThrow();

@@ -1,3 +1,6 @@
+import { fieldPreviewKey } from "../lib/entity-preview-request"
+import { getRelationTargetConfig } from "../lib/relation-target"
+
 export type GraphNodeType = 'record' | 'entity';
 
 export interface GraphPreviewField {
@@ -29,6 +32,20 @@ export interface GraphEdge {
   color?: string;
 }
 
+type GraphRecord = {
+  id: string;
+  title?: string | null;
+  description?: unknown;
+  data?: unknown;
+  category_id?: string | null;
+  deleted_at?: string | null;
+  relations?: Record<string, unknown> | null;
+  category?: {
+    name?: string;
+    template_fields?: { name: string; type?: string; relationTarget?: string; targetCategoryId?: string }[];
+  } | null;
+}
+
 export function excerptText(value: unknown, max = 110): string {
   if (value == null) return ""
   const raw = typeof value === "string" ? value : JSON.stringify(value)
@@ -42,7 +59,7 @@ export function excerptText(value: unknown, max = 110): string {
   return text.length > max ? `${text.slice(0, max).trim()}…` : text
 }
 
-export function summarizeRecord(record: any): string {
+export function summarizeRecord(record: GraphRecord): string {
   const fromDescription = excerptText(record.description, 120)
   if (fromDescription) return fromDescription
 
@@ -68,6 +85,7 @@ export function formatEntityTypeLabel(entityType?: string): string {
     company: "Company",
     sales_order: "Sales order",
     deal: "Deal",
+    supplier: "Supplier",
     person: "Person",
     team_member: "Team member",
     campaign: "Campaign",
@@ -90,7 +108,7 @@ export interface GraphData {
 
 // Convert Tailwind CSS variable format (e.g., "210 40% 98%") to rgb(a) or hex
 // We'll use a simple hash function for category colors to keep it deterministic without hardcoding
-export function getCategoryColor(categoryName: string): string {
+export function getCategoryColor(categoryName?: string): string {
   if (!categoryName) return '#94a3b8'; // slate-400
   
   let hash = 0;
@@ -107,7 +125,7 @@ export function getEntityColor(): string {
 }
 
 export function buildGraphData(
-  records: any[],
+  records: GraphRecord[],
   similarityEdges: { source_id: string; target_id: string; similarity: number }[],
   resolvedRelations: Record<string, string>,
   options: {
@@ -130,6 +148,7 @@ export function buildGraphData(
 
   const nodes = new Map<string, GraphNode>();
   const links: GraphEdge[] = [];
+  const loadedRecords = new Map(records.map(record => [record.id, record]));
 
   // Add all records as nodes
   records.forEach(record => {
@@ -154,21 +173,27 @@ export function buildGraphData(
       const templateFields = record.category.template_fields;
       
       Object.entries(record.relations).forEach(([fieldName, targetId]) => {
-        if (!targetId || typeof targetId !== 'string') return;
+        if (typeof targetId !== 'string' || !targetId.trim()) return;
         
-        const fieldDef = templateFields.find((f: any) => f.name === fieldName);
-        if (!fieldDef) return;
+        const fieldDef = templateFields.find(f => f.name === fieldName);
+        if (fieldDef?.type !== 'relation' || !getRelationTargetConfig(fieldDef.relationTarget || 'lead')) return;
 
+        const previewKey = fieldPreviewKey(fieldDef, targetId)
         const isRecordToRecord = fieldDef.relationTarget === 'record';
 
         // Add edge
         if (isRecordToRecord) {
+          const loaded = loadedRecords.get(targetId)
+          if (loaded && (loaded.deleted_at || (fieldDef.targetCategoryId &&
+            loaded.category_id !== fieldDef.targetCategoryId))) return;
+          // An unresolved historical link must not borrow another scope's node/title.
+          if (!loaded && !entityPreviews[previewKey] && !resolvedRelations[previewKey]) return;
           if (!nodes.has(targetId)) {
-            const preview = entityPreviews[targetId]
+            const preview = entityPreviews[previewKey]
             nodes.set(targetId, {
               id: targetId,
               type: 'record',
-              label: preview?.label || resolvedRelations[targetId] || 'Record',
+              label: preview?.label || resolvedRelations[previewKey] || 'Record',
               summary: preview?.summary || preview?.fields?.map((field) => field.value).join(" · ") || "Linked record",
               previewFields: preview?.fields,
               color: getCategoryColor('Record'),
@@ -183,13 +208,14 @@ export function buildGraphData(
             color: '#94a3b8'
           });
         } else if (showEntities) {
+          if (!entityPreviews[previewKey] && !resolvedRelations[previewKey]) return;
           // Create an entity node if it doesn't exist
-          if (!nodes.has(targetId)) {
-            const preview = entityPreviews[targetId]
+          if (!nodes.has(previewKey)) {
+            const preview = entityPreviews[previewKey]
             const entityType = fieldDef.relationTarget || 'lead'
-            const label = preview?.label || resolvedRelations[targetId] || `${entityType} (${targetId.substring(0,6)})`;
-            nodes.set(targetId, {
-              id: targetId,
+            const label = preview?.label || resolvedRelations[previewKey] || `${entityType} (${targetId.substring(0,6)})`;
+            nodes.set(previewKey, {
+              id: previewKey,
               type: 'entity',
               label,
               summary: preview?.summary || formatEntityTypeLabel(entityType),
@@ -203,7 +229,7 @@ export function buildGraphData(
           
           links.push({
             source: record.id,
-            target: targetId,
+            target: previewKey,
             type: 'relation',
             label: formatRelationLabel(fieldName),
             color: '#94a3b8'
@@ -239,8 +265,8 @@ export function buildGraphData(
   if (!currentRecordId) {
     const degreeCount = new Map<string, number>();
     links.forEach(l => {
-      const sourceId = typeof l.source === 'string' ? l.source : (l.source as any).id;
-      const targetId = typeof l.target === 'string' ? l.target : (l.target as any).id;
+      const sourceId = l.source;
+      const targetId = l.target;
       
       degreeCount.set(sourceId, (degreeCount.get(sourceId) || 0) + 1);
       degreeCount.set(targetId, (degreeCount.get(targetId) || 0) + 1);

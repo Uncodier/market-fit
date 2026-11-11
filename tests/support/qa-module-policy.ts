@@ -4,7 +4,7 @@ import { assertDisposable, readEnvironment, required, validateOrigin } from './e
 export function qaModulePolicy(env: Record<string, string | undefined> = process.env, now = Date.now()) {
   const config = readEnvironment(env);
   assertDisposable(env, config.target);
-  if (!['procurement', 'subsystems'].includes(config.suite) || config.target !== 'local') {
+  if (!['procurement', 'subsystems', 'records'].includes(config.suite) || config.target !== 'local') {
     throw new Error('Module journeys require their isolated local QA suite');
   }
   if (env.QA_STATUS !== 'VERIFIED') throw new Error('Verified QA fixture battery required');

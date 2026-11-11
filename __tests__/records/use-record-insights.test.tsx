@@ -21,7 +21,7 @@ describe("record insight calculations", () => {
     jest.useFakeTimers().setSystemTime(new Date("2026-01-05T12:00:00Z"))
     jest.mocked(getRecords).mockResolvedValue({ records: [], error: null })
     jest.mocked(getHistoricalRelatedRecords).mockResolvedValue({ records: [], error: null })
-    jest.mocked(resolveRelationsForSidebar).mockResolvedValue({ "customer-1": "Example Customer" })
+    jest.mocked(resolveRelationsForSidebar).mockResolvedValue({ "lead:customer-1": "Example Customer" })
   })
 
   afterEach(() => jest.useRealTimers())
@@ -64,7 +64,7 @@ describe("record insight calculations", () => {
     await waitFor(() => expect(result.current.primaryRelationLabel).toBe("Example Customer"))
     expect(getHistoricalRelatedRecords).toHaveBeenCalledWith("category-1", "Customer", "customer-1")
     expect(getRecords).toHaveBeenCalledWith("site-1", "category-1")
-    expect(resolveRelationsForSidebar).toHaveBeenCalledWith([{ target: "lead", ids: ["customer-1"] }])
+    expect(resolveRelationsForSidebar).toHaveBeenCalledWith([{ target: "lead", ids: ["customer-1"] }], "site-1")
     expect(result.current.chartData.map(point => [point.id, point.Amount])).toEqual([
       ["older", 10], ["current-record", 30],
     ])

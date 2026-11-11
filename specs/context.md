@@ -134,3 +134,8 @@ App env vars are documented in `docs/ENVIRONMENT_VARIABLES.md` (Supabase, API se
   Procurement covers the implemented tender transaction surfaces; subsystems
   covers cross-screen identity such as POS customer selection and lead quotations.
   See `specs/tests/procurement.md` and `specs/tests/subsystems.md` for exact scope.
+- `records` is a separately selected native Playwright suite for Record field,
+  template, relation, preview and Data API admission repairs. It requires a
+  verified disposable local QA, separate foreign actor/site, exact supplier/order
+  sentinels, relation-guard readiness and contained background effects. Offline
+  listing/validation is not browser execution. See `specs/tests/records.md`.

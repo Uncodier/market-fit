@@ -5,6 +5,7 @@ export interface InsightField {
   name: string
   type: string
   relationTarget?: string
+  targetCategoryId?: string
   aiPreview?: {
     enabled?: boolean
     promptTemplate?: string

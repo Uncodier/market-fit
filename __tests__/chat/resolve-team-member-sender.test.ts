@@ -3,6 +3,13 @@ import { resolveTeamMemberSender } from "@/app/components/chat/resolveTeamMember
 const senderId = "541396e1-a904-4a81-8cbf-0ca4e3b8b2b4"
 
 describe("resolveTeamMemberSender", () => {
+  it("labels a null-user human reply without attributing it to the signed-in owner", () => {
+    const result = resolveTeamMemberSender({}, {
+      currentUserId: senderId, currentUserName: "Workspace Owner", currentUserAvatar: "https://example.test/owner.png",
+      userDataCache: {},
+    })
+    expect(result).toEqual({ name: "External human", avatar: undefined, initials: "EH" })
+  })
   it("uses profile cache when custom_data is empty", () => {
     const result = resolveTeamMemberSender(
       { sender_id: senderId },

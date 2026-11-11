@@ -1,3 +1,4 @@
+import { fieldPreviewKey } from "../../lib/entity-preview-request"
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend } from "recharts"
 import { Sparkles, FileText, BarChart as ChartIcon, PieChart as PieIcon, Image as ImageIcon, Activity, TrendingUp, Clock, Folder } from "@/app/components/ui/icons"
 import { InsightGeneratedPreviews } from "./InsightGeneratedPreviews"
@@ -218,7 +219,7 @@ export function InsightsTab({ fields, formData, description, record, relationsDa
                     <h4 className="text-xs font-medium text-muted-foreground mb-2 border-b border-border/30 pb-1">Top {stat.name}</h4>
                     <div>
                       <div className="text-lg font-medium">
-                        {stat.type === 'relation' ? macroRelationLabels[stat.modeId] || 'Loading...' : stat.modeId}
+                        {stat.type === 'relation' ? macroRelationLabels[fieldPreviewKey(fields.find(field => field.name === stat.name)!, stat.modeId)] || 'Loading...' : stat.modeId}
                       </div>
                       <div className="text-[11px] text-muted-foreground mt-0.5">Occurs {stat.count} times in category</div>
                     </div>
@@ -240,7 +241,7 @@ export function InsightsTab({ fields, formData, description, record, relationsDa
           
           <div className="space-y-6">
             {dynamicCrosses.map((cross, idx) => {
-              const catLabel = cross.isRelation && allRelationLabels[cross.catVal] ? allRelationLabels[cross.catVal] : cross.catVal
+              const catLabel = cross.isRelation && allRelationLabels[fieldPreviewKey(fields.find(field => field.name === cross.catName)!, cross.catVal)] ? allRelationLabels[fieldPreviewKey(fields.find(field => field.name === cross.catName)!, cross.catVal)] : cross.catVal
               
               if (cross.type === 'cat_vs_num') {
                 return (
@@ -264,7 +265,7 @@ export function InsightsTab({ fields, formData, description, record, relationsDa
               }
               
               if (cross.type === 'cat_vs_cat') {
-                const otherCatLabel = cross.isOtherRelation && allRelationLabels[cross.otherCatVal] ? allRelationLabels[cross.otherCatVal] : cross.otherCatVal
+                const otherCatLabel = cross.isOtherRelation && allRelationLabels[fieldPreviewKey(fields.find(field => field.name === cross.otherCatName)!, cross.otherCatVal)] ? allRelationLabels[fieldPreviewKey(fields.find(field => field.name === cross.otherCatName)!, cross.otherCatVal)] : cross.otherCatVal
                 return (
                   <div key={`cross-${idx}`}>
                     <h4 className="text-xs font-medium text-muted-foreground mb-3 border-b border-border/30 pb-1">

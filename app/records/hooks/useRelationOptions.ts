@@ -1,128 +1,131 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
-import { RelationSelectOption } from "@/app/components/ui/relation-select"
+import type { RelationSelectOption } from "@/app/components/ui/relation-select"
 import { siteMembersService } from "@/app/services/site-members-service"
 import { assignableSiteMembers } from "@/lib/auth/assignable-site-members"
+import { getSiteCompanyIds } from "../lib/relation-query"
 import {
-  getRelationTargetConfig,
-  keepSelectedRelationOptions,
-  relationOptionSearchText,
-  uniqueRelationTargets,
+  getRelationTargetConfig, parseRelationTargetKey, relationOptionSearchText,
+  uniqueRelationTargets, type RelationFieldTarget,
 } from "../lib/relation-target"
 
+type Options = Record<string, RelationSelectOption[]>
 const SEARCH_LIMIT = 20
-const SEARCH_DEBOUNCE_MS = 300
 
-function mapRowsToOptions(
-  rows: Array<Record<string, unknown>>,
-  nameField: string,
-  idField: string,
-): RelationSelectOption[] {
-  return rows.map((item) => ({
-    id: String(item[idField]),
-    label: String(item[nameField] || item[idField]),
-    searchText: relationOptionSearchText(item, nameField),
-  }))
-}
+export function useRelationOptions(fields: RelationFieldTarget[], siteId: string | undefined, selectedIds: string[]) {
+  const targetKey = uniqueRelationTargets(fields).sort().join(",")
+  const targets = useMemo(() => targetKey ? targetKey.split(",") : [], [targetKey])
+  const scope = `${siteId || ""}|${targetKey}`
+  const activeScope = useRef(scope)
+  activeScope.current = scope
+  const [state, setState] = useState<{ scope: string; options: Options }>({ scope, options: {} })
+  const [errors, setErrors] = useState<{ scope: string; values: Record<string, string> }>({ scope, values: {} })
+  const requestIds = useRef<Record<string, number>>({})
+  const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+  const searches = useRef<Record<string, string>>({})
+  const selectedKey = [...new Set(selectedIds.filter(id => id.trim()))].sort().join(",")
+  const selected = useMemo(() => selectedKey ? selectedKey.split(",") : [], [selectedKey])
+  const activeSelected = useRef(selected)
+  activeSelected.current = selected
 
-export function useRelationOptions(
-  fields: Array<{ type?: string; relationTarget?: string }>,
-  siteId: string | undefined,
-  selectedIds: string[],
-) {
-  const [relationOptions, setRelationOptions] = useState<Record<string, RelationSelectOption[]>>({})
-  const searchTimeouts = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
-  const activeSearchRef = useRef<Record<string, string>>({})
-  const requestIdRef = useRef<Record<string, number>>({})
-  const selectedKey = selectedIds.slice().sort().join(",")
-  const selectedIdSet = useMemo(() => new Set(selectedKey ? selectedKey.split(",") : []), [selectedKey])
-
-  const loadOptions = useCallback(async (target: string, query: string) => {
-    if (!siteId) return
-
-    const config = getRelationTargetConfig(target)
-    const requestId = (requestIdRef.current[target] || 0) + 1
-    requestIdRef.current[target] = requestId
-
-    if (target === "team_member") {
-      try {
+  const loadOptions = useCallback(async (key: string, search: string) => {
+    if (!siteId || !targets.includes(key)) return
+    const requestKey = `${scope}|${key}`
+    const requestId = (requestIds.current[requestKey] || 0) + 1
+    requestIds.current[requestKey] = requestId
+    const current = () => activeScope.current === scope && requestIds.current[requestKey] === requestId
+    const save = (options: RelationSelectOption[]) => {
+      if (!current()) return
+      setState(prev => ({ scope, options: { ...(prev.scope === scope ? prev.options : {}), [key]: options } }))
+    }
+    try {
+      const { target, categoryId } = parseRelationTargetKey(key)
+      const config = getRelationTargetConfig(target)
+      if (!config) throw new Error("This relation target is unavailable. Review the category template.")
+      const queryText = search.trim()
+      if (target === "team_member") {
         const members = assignableSiteMembers(await siteMembersService.getMembers(siteId))
-        if (requestIdRef.current[target] !== requestId) return
-        const search = query.trim().toLowerCase()
-        const options = members.map(member => ({
-          id: member.user_id,
-          label: member.name || member.email,
+        save(members.map(member => ({ id: member.user_id, label: member.name || member.email,
           searchText: `${member.name || ""} ${member.email}`,
-        })).filter(option => !search || option.searchText.toLowerCase().includes(search))
-        setRelationOptions(prev => ({ ...prev, [target]: options }))
-      } catch (error) {
-        if (requestIdRef.current[target] !== requestId) return
-        setRelationOptions(prev => ({ ...prev, [target]: [] }))
-        console.error("Error fetching team member options:", error)
-      }
-      return
-    }
-
-    const supabase = createClient()
-    let request = supabase
-      .from(config.table)
-      .select(config.selectFields)
-      .eq("site_id", siteId)
-      .limit(SEARCH_LIMIT)
-
-    const trimmed = query.trim()
-    if (trimmed.length >= 2) request = request.ilike(config.nameField, `%${trimmed}%`)
-
-    const { data, error } = await request
-    if (requestIdRef.current[target] !== requestId) return
-    if (error) {
-      console.error(`Error fetching options for ${target}:`, error)
-      return
-    }
-
-    let allData = (data || []) as Array<Record<string, unknown>>
-    if (selectedIdSet.size > 0 && trimmed === "") {
-      const dataIds = new Set(allData.map((item) => String(item[config.idField])))
-      const missingIds = Array.from(selectedIdSet).filter((id) => !dataIds.has(id))
-      if (missingIds.length > 0) {
-        const { data: missingData, error: missingError } = await supabase
-          .from(config.table)
-          .select(config.selectFields)
-          .eq("site_id", siteId)
-          .in(config.idField, missingIds)
-        if (!missingError && missingData) {
-          allData = [...allData, ...(missingData as Array<Record<string, unknown>>)]
+        })).filter(option => !queryText || option.searchText.toLowerCase().includes(queryText.toLowerCase())))
+      } else {
+        const supabase = createClient()
+        const companies = target === "company" ? await getSiteCompanyIds(supabase, siteId) : null
+        if (!current()) return
+        const buildQuery = () => {
+          let query = supabase.from(config.table).select(config.selectFields)
+          query = companies ? query.in("id", companies) : query.eq("site_id", siteId)
+          if (target === "record" || target === "record_category") query = query.is("deleted_at", null)
+          if (categoryId) query = query.eq("category_id", categoryId)
+          return query
+        }
+        if (companies?.length === 0) {
+          save([])
+        } else {
+          let query = buildQuery().order(config.idField).limit(SEARCH_LIMIT)
+          if (queryText) query = query.ilike(config.nameField, `%${queryText.replace(/[%_\\]/g, "\\$&")}%`)
+          const { data, error } = await query
+          if (error) throw new Error("Unable to load relation options")
+          let rows = (data || []) as unknown as Array<Record<string, unknown>>
+          // Re-read selected IDs under the same boundary; never revive cached options.
+          if (activeSelected.current.length && !queryText) {
+            const { data: retained, error: retainedError } = await buildQuery().in(config.idField, activeSelected.current.slice(0, 200))
+            if (retainedError) throw new Error("Unable to verify selected relations")
+            rows = [...rows, ...(retained || []) as unknown as Array<Record<string, unknown>>]
+          }
+          const options = new Map(rows.map(row => [String(row[config.idField]), {
+            id: String(row[config.idField]), label: String(row[config.nameField] || "Unnamed"),
+            searchText: relationOptionSearchText(row, config.nameField),
+          }]))
+          save([...options.values()])
         }
       }
+      if (current()) setErrors(prev => ({ scope, values: { ...(prev.scope === scope ? prev.values : {}), [key]: "" } }))
+    } catch (error) {
+      save([])
+      if (current()) setErrors(prev => ({ scope, values: { ...(prev.scope === scope ? prev.values : {}),
+        [key]: error instanceof Error ? error.message : "Unable to load relation options",
+      } }))
     }
-
-    const incoming = mapRowsToOptions(allData, config.nameField, config.idField)
-    setRelationOptions((prev) => ({
-      ...prev,
-      [target]: keepSelectedRelationOptions(incoming, prev[target] || [], selectedIdSet),
-    }))
-  }, [selectedIdSet, siteId])
-
-  const targets = useMemo(() => uniqueRelationTargets(fields), [fields])
+  }, [scope, siteId, targets])
 
   useEffect(() => {
-    if (!siteId || targets.length === 0) return
-    for (const target of targets) {
-      if (!activeSearchRef.current[target]) void loadOptions(target, "")
+    searches.current = {}
+    for (const key of targets) void loadOptions(key, "")
+    const pending = timers.current
+    const requests = requestIds.current
+    return () => {
+      for (const timer of Object.values(pending)) clearTimeout(timer)
+      for (const key of targets) {
+        const requestKey = `${scope}|${key}`
+        requests[requestKey] = (requests[requestKey] || 0) + 1
+      }
     }
-  }, [loadOptions, siteId, targets])
+  }, [loadOptions, scope, targets])
 
-  const handleSearchChange = useCallback((target: string, query: string) => {
-    if (!siteId) return
-    if (searchTimeouts.current[target]) clearTimeout(searchTimeouts.current[target])
+  const previousSelection = useRef({ scope, selectedKey })
+  useEffect(() => {
+    const previous = previousSelection.current
+    previousSelection.current = { scope, selectedKey }
+    if (previous.scope !== scope || previous.selectedKey === selectedKey) return
+    // Selection hydration must not replace another target's active or pending search.
+    for (const key of targets) {
+      if (!searches.current[key]?.trim()) void loadOptions(key, "")
+    }
+  }, [loadOptions, scope, selectedKey, targets])
 
-    const trimmed = query.trim()
-    activeSearchRef.current[target] = trimmed
-    if (trimmed.length === 1) return
-    searchTimeouts.current[target] = setTimeout(() => {
-      void loadOptions(target, trimmed)
-    }, SEARCH_DEBOUNCE_MS)
-  }, [loadOptions, siteId])
+  const handleSearchChange = useCallback((key: string, query: string) => {
+    if (!siteId || !targets.includes(key)) return
+    searches.current[key] = query
+    clearTimeout(timers.current[key])
+    const requestKey = `${scope}|${key}`
+    requestIds.current[requestKey] = (requestIds.current[requestKey] || 0) + 1
+    timers.current[key] = setTimeout(() => void loadOptions(key, query), 300)
+  }, [loadOptions, scope, siteId, targets])
 
-  return { relationOptions, setRelationOptions, handleSearchChange }
+  return {
+    relationOptions: state.scope === scope ? state.options : {},
+    relationErrors: errors.scope === scope ? errors.values : {},
+    handleSearchChange,
+  }
 }

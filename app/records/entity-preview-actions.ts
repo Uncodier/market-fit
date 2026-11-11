@@ -2,29 +2,19 @@
 
 import { createClient } from "@/lib/supabase/server"
 
-type RelationResolutionConfig = {
-  table: string
-  idField: string
-  nameField: string
-}
+import { z } from "zod"
+import { userCanOnSite } from "@/lib/permissions/site-access"
+import { canAccessUnscopedSite } from "@/lib/permissions/location-boundary"
+import { getRelationTargetConfig } from "./lib/relation-target"
+import { getSiteCompanyIds } from "./lib/relation-query"
+import { entityPreviewKey, type EntityPreviewRequest } from "./lib/entity-preview-request"
 
-const RELATION_RESOLUTION_CONFIG: Record<string, RelationResolutionConfig> = {
-  lead: { table: "leads", idField: "id", nameField: "name" },
-  company: { table: "companies", idField: "id", nameField: "name" },
-  sales_order: { table: "orders", idField: "id", nameField: "order_number" },
-  deal: { table: "deals", idField: "id", nameField: "name" },
-  person: { table: "users", idField: "id", nameField: "name" },
-  campaign: { table: "campaigns", idField: "id", nameField: "title" },
-  catalog_item: { table: "catalog_items", idField: "id", nameField: "name" },
-  content: { table: "content", idField: "id", nameField: "title" },
-  task: { table: "tasks", idField: "id", nameField: "title" },
-  sale: { table: "sales", idField: "id", nameField: "title" },
-  purchase: { table: "purchases", idField: "id", nameField: "title" },
-  quotation: { table: "quotations", idField: "id", nameField: "title" },
-  record: { table: "records", idField: "id", nameField: "title" },
-  record_category: { table: "record_categories", idField: "id", nameField: "name" },
-  team_member: { table: "site_members", idField: "user_id", nameField: "name" },
-}
+const requestSchema = z.array(z.object({
+  target: z.string().min(1).max(80),
+  ids: z.array(z.string().uuid()).max(200),
+  targetCategoryId: z.string().uuid().optional(),
+}).strict().refine(value => !value.targetCategoryId || value.target === "record"))
+  .max(50).refine(requests => requests.reduce((count, request) => count + request.ids.length, 0) <= 1000)
 
 export type EntityPreview = {
   label: string
@@ -33,139 +23,144 @@ export type EntityPreview = {
 }
 
 const ENTITY_PREVIEW_CONFIG: Record<string, {
-  table: string
-  idField: string
-  labelField: string
   select: string
   fields: { col: string; label: string }[]
 }> = {
-  lead: { table: "leads", idField: "id", labelField: "name", select: "id, name, email, company, status", fields: [
+  lead: { select: "id, name, email, company, status", fields: [
     { col: "company", label: "Company" },
     { col: "email", label: "Email" },
     { col: "status", label: "Status" },
   ]},
-  company: { table: "companies", idField: "id", labelField: "name", select: "id, name, industry", fields: [
+  supplier: { select: "id, name", fields: [] },
+  company: { select: "id, name, industry", fields: [
     { col: "industry", label: "Industry" },
   ]},
-  sales_order: { table: "orders", idField: "id", labelField: "order_number", select: "id, order_number, total, status", fields: [
+  sales_order: { select: "id, order_number, total, status", fields: [
     { col: "total", label: "Total" },
     { col: "status", label: "Status" },
   ]},
-  deal: { table: "deals", idField: "id", labelField: "name", select: "id, name, amount, stage", fields: [
+  deal: { select: "id, name, amount, stage", fields: [
     { col: "amount", label: "Amount" },
     { col: "stage", label: "Stage" },
   ]},
-  person: { table: "users", idField: "id", labelField: "name", select: "id, name, email", fields: [
-    { col: "email", label: "Email" },
-  ]},
-  team_member: { table: "site_members", idField: "user_id", labelField: "name", select: "user_id, name, email, role, status", fields: [
+  team_member: { select: "user_id, name, email, role, status", fields: [
     { col: "email", label: "Email" },
     { col: "role", label: "Role" },
     { col: "status", label: "Status" },
   ]},
-  campaign: { table: "campaigns", idField: "id", labelField: "title", select: "id, title, status", fields: [
+  campaign: { select: "id, title, status", fields: [
     { col: "status", label: "Status" },
   ]},
-  catalog_item: { table: "catalog_items", idField: "id", labelField: "name", select: "id, name, kind, status, target_sale_price", fields: [
+  catalog_item: { select: "id, name, kind, status, target_sale_price", fields: [
     { col: "kind", label: "Type" },
     { col: "status", label: "Status" },
     { col: "target_sale_price", label: "Price" },
   ]},
-  content: { table: "content", idField: "id", labelField: "title", select: "id, title, status", fields: [
+  content: { select: "id, title, status", fields: [
     { col: "status", label: "Status" },
   ]},
-  task: { table: "tasks", idField: "id", labelField: "title", select: "id, title, status", fields: [
+  task: { select: "id, title, status", fields: [
     { col: "status", label: "Status" },
   ]},
-  sale: { table: "sales", idField: "id", labelField: "title", select: "id, title, status", fields: [
+  sale: { select: "id, title, status", fields: [
     { col: "status", label: "Status" },
   ]},
-  purchase: { table: "purchases", idField: "id", labelField: "title", select: "id, title, status", fields: [
+  purchase: { select: "id, title, status", fields: [
     { col: "status", label: "Status" },
   ]},
-  quotation: { table: "quotations", idField: "id", labelField: "title", select: "id, title, status", fields: [
+  quotation: { select: "id, title, status", fields: [
     { col: "status", label: "Status" },
   ]},
-  record: { table: "records", idField: "id", labelField: "title", select: "id, title, description, status", fields: [
+  record: { select: "id, title, description, status", fields: [
     { col: "status", label: "Status" },
     { col: "description", label: "Summary" },
   ]},
-  record_category: { table: "record_categories", idField: "id", labelField: "name", select: "id, name, description", fields: [
+  record_category: { select: "id, name, description", fields: [
     { col: "description", label: "Description" },
   ]},
 }
 
-async function getAuthenticatedClient() {
-  const supabase = await createClient()
-  const { data: { user }, error } = await supabase.auth.getUser()
-  if (error || !user) throw new Error("Not authenticated")
-  return supabase
+async function resolvePreviews(
+  entitiesToResolve: EntityPreviewRequest[],
+  siteId: string,
+  labelsOnly: boolean,
+): Promise<Record<string, EntityPreview>> {
+  const site = z.string().uuid().safeParse(siteId)
+  const parsed = requestSchema.safeParse(entitiesToResolve)
+  if (!site.success || !parsed.success) return {}
+  try {
+    const supabase = await createClient()
+    const { data: { user }, error } = await supabase.auth.getUser()
+    if (error || !user || !await userCanOnSite(supabase, site.data, "select") ||
+        !await canAccessUnscopedSite(supabase, site.data)) return {}
+
+    const result: Record<string, EntityPreview> = {}
+    // Bare UUID compatibility is safe only when the request identifies one scope.
+    const scopes = new Map<string, Set<string>>()
+    for (const request of parsed.data) {
+      for (const id of request.ids) {
+        const keys = scopes.get(id) || new Set<string>()
+        keys.add(entityPreviewKey(request, id))
+        scopes.set(id, keys)
+      }
+    }
+    for (const request of parsed.data) {
+      const { target, targetCategoryId } = request
+      const config = getRelationTargetConfig(target)
+      if (!config || request.ids.length === 0) continue
+      const preview = ENTITY_PREVIEW_CONFIG[target]
+      let ids = [...new Set(request.ids)]
+      if (target === "company") ids = await getSiteCompanyIds(supabase, site.data, ids)
+      if (!ids.length) continue
+      if (targetCategoryId) {
+        const category = await supabase.from("record_categories").select("id")
+          .eq("site_id", site.data).eq("id", targetCategoryId).is("deleted_at", null).maybeSingle()
+        if (category.error || !category.data) continue
+      }
+      let query = supabase.from(config.table)
+        .select(labelsOnly || !preview ? `${config.idField}, ${config.nameField}` : preview.select)
+        .in(config.idField, ids)
+      if (target !== "company") query = query.eq("site_id", site.data)
+      if (target === "record" || target === "record_category") query = query.is("deleted_at", null)
+      if (targetCategoryId) query = query.eq("category_id", targetCategoryId)
+      if (target === "team_member") {
+        query = query.eq("status", "active")
+          .or("license_suspended.is.null,license_suspended.eq.false")
+          .or("manually_disabled.is.null,manually_disabled.eq.false")
+      }
+      const { data, error: queryError } = await query.limit(200)
+      if (queryError || !data) continue
+      for (const item of data as unknown as Record<string, unknown>[]) {
+        const id = item[config.idField]
+        if (typeof id !== "string" || !ids.includes(id)) continue
+        const label = formatPreviewValue(item[config.nameField]) || "Unnamed"
+        const fields = (labelsOnly ? [] : preview?.fields || [])
+          .map(field => ({ label: field.label, value: formatPreviewValue(item[field.col]) }))
+          .filter(field => field.value)
+        const value = { label, fields, summary: fields.map(field => `${field.label}: ${field.value}`).join(" · ") || label }
+        result[entityPreviewKey(request, id)] = value
+        if (scopes.get(id)?.size === 1) result[id] = value
+      }
+    }
+    return result
+  } catch {
+    return {}
+  }
 }
 
 export async function resolveRelationsForSidebar(
-  entitiesToResolve: { target: string; ids: string[] }[]
+  entitiesToResolve: EntityPreviewRequest[],
+  siteId: string,
 ): Promise<Record<string, string>> {
-  try {
-    const supabase = await getAuthenticatedClient()
-    const result: Record<string, string> = {}
-
-    for (const { target, ids } of entitiesToResolve) {
-      const config = RELATION_RESOLUTION_CONFIG[target]
-      if (!config || ids.length === 0) continue
-      const { data, error } = await supabase
-        .from(config.table)
-        .select(`${config.idField}, ${config.nameField}`)
-        .in(config.idField, ids.slice(0, 200))
-      if (error || !data) continue
-
-      for (const item of data) {
-        result[item[config.idField]] = item[config.nameField] || "Unnamed"
-      }
-    }
-    return result
-  } catch (error) {
-    console.error("Error resolving relations for sidebar:", error)
-    return {}
-  }
+  const previews = await resolvePreviews(entitiesToResolve, siteId, true)
+  return Object.fromEntries(Object.entries(previews).map(([key, preview]) => [key, preview.label]))
 }
 
 export async function resolveEntityPreviews(
-  entitiesToResolve: { target: string; ids: string[] }[]
+  entitiesToResolve: EntityPreviewRequest[],
+  siteId: string,
 ): Promise<Record<string, EntityPreview>> {
-  try {
-    const supabase = await getAuthenticatedClient()
-    const result: Record<string, EntityPreview> = {}
-
-    for (const { target, ids } of entitiesToResolve) {
-      const config = ENTITY_PREVIEW_CONFIG[target]
-      if (!config || ids.length === 0) continue
-      const { data, error } = await supabase
-        .from(config.table)
-        .select(config.select)
-        .in(config.idField, ids.slice(0, 200))
-      if (error || !data) continue
-
-      for (const item of data as any[]) {
-        const id = item[config.idField]
-        const label = formatPreviewValue(item[config.labelField]) || "Unnamed"
-        const fields = config.fields
-          .map((field) => ({
-            label: field.label,
-            value: formatPreviewValue(item[field.col]),
-          }))
-          .filter((field) => field.value)
-        result[id] = {
-          label,
-          summary: fields.map((field) => `${field.label}: ${field.value}`).join(" · ") || label,
-          fields,
-        }
-      }
-    }
-    return result
-  } catch (error) {
-    console.error("Error resolving entity previews:", error)
-    return {}
-  }
+  return resolvePreviews(entitiesToResolve, siteId, false)
 }
 
 function formatPreviewValue(value: unknown): string {

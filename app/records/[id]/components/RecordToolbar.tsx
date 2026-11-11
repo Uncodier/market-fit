@@ -239,7 +239,7 @@ export function RecordToolbar({
               <AlertDialogHeader>
                 <AlertDialogTitle>Delete Record</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Are you sure you want to delete this record? This action cannot be undone.
+                  This record will move to Trash. A workspace manager can restore it later.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>

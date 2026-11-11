@@ -27,6 +27,14 @@ before running them; do not reuse production secrets or customer fixtures.
 
 ## Commands
 
+### Records repair suite
+
+`npm run test:e2e -- --suite records --list` and `--validate` perform offline
+discovery only. The native suite is isolated from smoke/regression and requires a
+verified disposable local QA, exact foreign identity/fixtures, the local relation
+guard and contained background effects before live execution. See
+[Records E2E scenarios and remaining gaps](../specs/tests/records.md).
+
 ### Isolated module journeys
 
 `procurement` and `subsystems` are native, deterministic Playwright suites, not

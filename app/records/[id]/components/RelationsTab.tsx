@@ -1,3 +1,5 @@
+import { useScopedPreviewState } from "../../hooks/useScopedPreviewState"
+import { buildPreviewRequests, fieldPreviewKey, fetchPreviewBatches } from "../../lib/entity-preview-request"
 import React, { useEffect, useState, useMemo } from "react"
 import { LinkIcon, FileText, Waypoints, ExternalLink } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
@@ -16,78 +18,66 @@ interface RelationsTabProps {
 
 export function RelationsTab({ recordId, fields, relationsData }: RelationsTabProps) {
   const router = useRouter()
-  const [relatedRecords, setRelatedRecords] = useState<any[]>([])
-  const [currentRecord, setCurrentRecord] = useState<any>(null)
-  const [resolvedRelations, setResolvedRelations] = useState<Record<string, string>>({})
-  const [entityPreviews, setEntityPreviews] = useState<Record<string, EntityPreview>>({})
+  const [relatedRecords, setRelatedRecords] = useScopedPreviewState<any[]>(recordId, [])
+  const [currentRecord, setCurrentRecord] = useScopedPreviewState<any>(recordId, null)
+  const [resolvedRelations, setResolvedRelations] = useScopedPreviewState<Record<string, string>>(recordId, {})
+  const [entityPreviews, setEntityPreviews] = useScopedPreviewState<Record<string, EntityPreview>>(recordId, {})
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
-    if (recordId) {
-      loadData()
-    }
-  }, [recordId, relationsData]) // reload if relations data changes in the form
+    let active = true
+    const loadData = async () => {
+      setCurrentRecord(null)
+      setEntityPreviews({})
+      setResolvedRelations({})
+      setIsLoading(true)
 
-  const loadData = async () => {
-    setIsLoading(true)
-    
-    // 1. Fetch related vector records & current record details
-    const [vectorRes, recordRes] = await Promise.all([
-      getVectorRelatedRecords(recordId, 0.72, 10), // tighter threshold for graph
-      getRecordById(recordId)
-    ])
-    
-    if (!vectorRes.error && vectorRes.records) {
-      setRelatedRecords(vectorRes.records)
-    } else {
-      setRelatedRecords([])
-    }
-    
-    if (!recordRes.error && recordRes.record) {
-      setCurrentRecord({
-        ...recordRes.record,
-        relations: relationsData || recordRes.record.relations || {}
-      })
-    }
+      // 1. Fetch related vector records & current record details
+      const [vectorRes, recordRes] = await Promise.all([
+        getVectorRelatedRecords(recordId, 0.72, 10), // tighter threshold for graph
+        getRecordById(recordId)
+      ])
 
-    if (relationsData && fields) {
-      const toResolve = new Map<string, Set<string>>()
-      
-      Object.entries(relationsData).forEach(([fieldName, targetId]) => {
-        if (!targetId || typeof targetId !== 'string') return
-        const fieldDef = fields.find(f => f.name === fieldName)
-        if (!fieldDef) return
-        
-        const target = fieldDef.relationTarget || 'lead'
-        
-        if (!toResolve.has(target)) toResolve.set(target, new Set())
-        toResolve.get(target)!.add(targetId)
-      })
-      
-      const payload = Array.from(toResolve.entries()).map(([target, ids]) => ({
-        target,
-        ids: Array.from(ids)
-      }))
-      
-      if (payload.length > 0) {
-        const previews = await resolveEntityPreviews(payload)
-        setEntityPreviews(previews)
-        const labels: Record<string, string> = {}
-        Object.entries(previews).forEach(([id, preview]) => {
-          labels[id] = preview.label
+      if (!active) return
+      if (!vectorRes.error && vectorRes.records) {
+        setRelatedRecords(vectorRes.records)
+      } else {
+        setRelatedRecords([])
+      }
+
+      if (!recordRes.error && recordRes.record) {
+        setCurrentRecord({
+          ...recordRes.record,
+          relations: relationsData || recordRes.record.relations || {}
         })
-        setResolvedRelations(labels)
+      }
+
+      if (relationsData && fields && recordRes.record?.site_id) {
+        const payload = buildPreviewRequests(fields, relationsData)
+
+        if (payload.length > 0) {
+          const previews = await fetchPreviewBatches(payload, recordRes.record.site_id, resolveEntityPreviews)
+          if (!active) return
+          setEntityPreviews(previews)
+          const labels: Record<string, string> = {}
+          Object.entries(previews).forEach(([id, preview]) => {
+            labels[id] = preview.label
+          })
+          setResolvedRelations(labels)
+        } else {
+          setResolvedRelations({})
+          setEntityPreviews({})
+        }
       } else {
         setResolvedRelations({})
         setEntityPreviews({})
       }
-    } else {
-      setResolvedRelations({})
-      setEntityPreviews({})
+
+      setIsLoading(false)
     }
-    
-    setIsLoading(false)
-  }
+    if (recordId) void loadData()
+    return () => { active = false }
+  }, [recordId, relationsData, fields])
 
   // 3. Build graph data for local graph
   const graphData = useMemo(() => {
@@ -131,17 +121,17 @@ export function RelationsTab({ recordId, fields, relationsData }: RelationsTabPr
   // Explicit relations list for UI
   const explicitRelationsList = useMemo(() => {
     if (!relationsData || !fields) return []
-    
+
     const list: any[] = []
     Object.entries(relationsData).forEach(([fieldName, targetId]) => {
       if (!targetId || typeof targetId !== 'string') return
       const fieldDef = fields.find(f => f.name === fieldName)
       if (!fieldDef) return
-      
+
       const target = fieldDef.relationTarget || 'lead'
-      const label = resolvedRelations[targetId] || `${target} (${targetId.substring(0, 8)})`
-      const preview = entityPreviews[targetId]
-      
+      const label = resolvedRelations[fieldPreviewKey(fieldDef, targetId)] || `${target} (${targetId.substring(0, 8)})`
+      const preview = entityPreviews[fieldPreviewKey(fieldDef, targetId)]
+
       list.push({
         id: targetId,
         fieldName,
@@ -151,13 +141,13 @@ export function RelationsTab({ recordId, fields, relationsData }: RelationsTabPr
         preview
       })
     })
-    
+
     return list
   }, [relationsData, fields, resolvedRelations, entityPreviews])
 
   return (
     <div className="space-y-6">
-      
+
       {/* 1. Local Graph View */}
       <div className="rounded-lg border border-border bg-background overflow-hidden h-[300px] relative">
         {isLoading && !currentRecord ? (
@@ -171,8 +161,8 @@ export function RelationsTab({ recordId, fields, relationsData }: RelationsTabPr
             <p className="text-xs mt-1">Add relation fields or save to generate semantic matches.</p>
           </div>
         ) : (
-          <RecordsGraphCanvas 
-            graphData={graphData} 
+          <RecordsGraphCanvas
+            graphData={graphData}
             onNodeClick={(node) => {
               if (node.type === 'record' && node.id !== recordId) {
                 router.push(`/records/${node.id}`)
@@ -259,7 +249,7 @@ export function RelationsTab({ recordId, fields, relationsData }: RelationsTabPr
             <Waypoints className="h-4 w-4" />
             Semantic Similar
           </h4>
-          
+
           {isLoading ? (
             <div className="space-y-3">
               {Array.from({ length: 2 }).map((_, i) => (

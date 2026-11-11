@@ -31,6 +31,9 @@ export interface ConversationListItem {
   channel?: 'web' | 'email' | 'whatsapp' | 'instagram' | 'messenger' | 'sms' | 'telegram' | 'voice' | 'website_chat' | string
   status?: 'pending' | 'active' | 'closed' | 'archived'
   hasAcceptedMessage?: boolean
+  automationPausedUntil?: string | null
+  lastHumanReplyAt?: string | null
+  automationSnoozeHours?: number | null
 }
 
 export interface ChatMessage {

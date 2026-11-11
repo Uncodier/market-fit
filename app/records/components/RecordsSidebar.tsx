@@ -1,7 +1,9 @@
+import { useScopedPreviewState } from "../hooks/useScopedPreviewState"
+import { buildPreviewRequests, mergePreviewRequests, fieldPreviewKey, fetchPreviewBatches } from "../lib/entity-preview-request"
 import { useState, useEffect } from "react"
 import { RecordCategory, RecordItem, resolveRelationsForSidebar } from "../actions"
 import { Button } from "@/app/components/ui/button"
-import { Folder, Settings, Plus, ChevronRight, ChevronDown, FileText, Users, Building, Briefcase, Megaphone, CheckSquare, Banknote, ShoppingCart, Quotes } from "@/app/components/ui/icons"
+import { Folder, Settings, Plus, ChevronRight, ChevronDown, FileText, Users, Building, Briefcase, Megaphone, CheckSquare, Banknote, ShoppingCart, Quotes, Trash2 } from "@/app/components/ui/icons"
 import { ScrollArea } from "@/app/components/ui/scroll-area"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { useLocalization } from "@/app/context/LocalizationContext"
@@ -16,6 +18,7 @@ interface RecordsSidebarProps {
   isCollapsed: boolean
   onEditTemplate?: (category: RecordCategory) => void
   onCreateCategory?: () => void
+  onOpenTrash?: () => void
 }
 
 const getIcon = (target: string) => {
@@ -59,7 +62,7 @@ function CategoryItem({
     }
     return {}
   })
-  const [resolvedNames, setResolvedNames] = useState<Record<string, string>>({})
+  const [resolvedNames, setResolvedNames] = useScopedPreviewState<Record<string, string>>(category.site_id, {})
   const [isLoading, setIsLoading] = useState(false)
 
   // Find relation fields in this category
@@ -87,27 +90,21 @@ function CategoryItem({
   })
 
   useEffect(() => {
+    let active = true
+    setResolvedNames({})
+    setIsLoading(false)
     const fetchNames = async () => {
-      const entitiesToResolve: { target: string; ids: string[] }[] = []
-      Object.values(relationsTree).forEach(tree => {
-        entitiesToResolve.push({
-          target: tree.target,
-          ids: Array.from(tree.entityIds)
-        })
-      })
-
-      if (entitiesToResolve.length > 0) {
+      const entitiesToResolve = categoryRecords.flatMap(record =>
+        buildPreviewRequests(relationFields, record.relations || {}))
+      if (entitiesToResolve.length > 0 && category.site_id) {
         setIsLoading(true)
-        const names = await resolveRelationsForSidebar(entitiesToResolve)
-        setResolvedNames(names)
-        setIsLoading(false)
+        const names = await fetchPreviewBatches(mergePreviewRequests(entitiesToResolve), category.site_id, resolveRelationsForSidebar)
+        if (active) { setResolvedNames(names); setIsLoading(false) }
       }
     }
-
-    if (isExpanded) {
-      fetchNames()
-    }
-  }, [isExpanded, records])
+    if (isExpanded) void fetchNames()
+    return () => { active = false }
+  }, [isExpanded, records, category])
 
   const toggleRelation = (fieldName: string, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -122,7 +119,8 @@ function CategoryItem({
       <div className="group relative flex items-center mb-[2px]">
         <Button
           variant={isSelected ? "secondary" : "ghost"}
-          className="w-full justify-start relative pr-10 pl-2"
+          className="w-full min-w-0 max-w-full justify-start relative pr-10 pl-2"
+          title={category.name}
           style={{
             height: '31.5px',
             fontSize: '11.3px'
@@ -142,7 +140,7 @@ function CategoryItem({
             }
             return <Folder className="mr-[6.5px] h-3.5 w-3.5 text-muted-foreground shrink-0" />
           })()}
-          <span className="truncate flex-1 text-left">{category.name}</span>
+          <span className="min-w-0 truncate flex-1 text-left">{category.name}</span>
           
           {hasSubfolders && (
             <div 
@@ -160,6 +158,7 @@ function CategoryItem({
           variant="ghost"
           size="icon"
           className="absolute right-1 opacity-0 group-hover:opacity-100 h-6 w-6 z-10"
+          aria-label={`Edit template: ${category.name}`}
           onClick={(e) => {
             e.stopPropagation()
             onEditTemplate?.(category)
@@ -186,7 +185,8 @@ function CategoryItem({
                   <div className="group flex items-center mb-[2px]">
                     <Button
                       variant="ghost"
-                      className="w-full justify-start pl-2 pr-2 relative"
+                      className="w-full min-w-0 max-w-full justify-start pl-2 pr-2 relative"
+                      title={tree.fieldName}
                       style={{
                         height: '31.5px',
                         fontSize: '11.3px'
@@ -194,7 +194,7 @@ function CategoryItem({
                       onClick={(e) => toggleRelation(tree.fieldName, e)}
                     >
                       <Folder className="mr-[6.5px] h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                      <span className="truncate flex-1 text-left">{tree.fieldName}</span>
+                      <span className="min-w-0 truncate flex-1 text-left">{tree.fieldName}</span>
                       <div 
                         className="flex items-center justify-center cursor-pointer hover:bg-muted/50 rounded-md h-5 w-5 shrink-0 ml-1"
                         onClick={(e) => {
@@ -213,12 +213,14 @@ function CategoryItem({
                         const isEntitySelected = selectedCategory === category.id && 
                                                  selectedRelation?.fieldName === tree.fieldName && 
                                                  selectedRelation?.targetId === entityId
+                        const entityName = resolvedNames[fieldPreviewKey(relationFields.find(field => field.name === tree.fieldName)!, entityId)] || (t("records.sidebar.unnamed") || 'Unnamed')
                         
                         return (
                           <div key={entityId} className="flex items-center mb-[2px]">
                             <Button
                               variant={isEntitySelected ? "secondary" : "ghost"}
-                              className="w-full justify-start pl-2"
+                              className="w-full min-w-0 max-w-full justify-start pl-2"
+                              title={entityName}
                               style={{
                                 height: '31.5px',
                                 fontSize: '11.3px'
@@ -228,7 +230,7 @@ function CategoryItem({
                               <span className="mr-[6.5px] text-muted-foreground shrink-0 flex items-center justify-center">
                                 {getIcon(tree.target)}
                               </span>
-                              <span className="truncate flex-1 text-left">{resolvedNames[entityId] || (t("records.sidebar.unnamed") || 'Unnamed')}</span>
+                              <span className="min-w-0 truncate flex-1 text-left">{entityName}</span>
                             </Button>
                           </div>
                         )
@@ -253,14 +255,15 @@ export function RecordsSidebar({
   onSelectCategory,
   isCollapsed,
   onEditTemplate,
-  onCreateCategory
+  onCreateCategory,
+  onOpenTrash
 }: RecordsSidebarProps) {
   const { t } = useLocalization()
 
   if (isCollapsed) return null
 
   return (
-    <div className="h-full flex flex-col bg-background border-r border-border">
+    <div className="h-full w-full min-w-0 flex flex-col bg-background border-r border-border">
       <div className="h-[71px] px-4 border-b border-border flex justify-end items-center gap-2 shrink-0">
         <Button 
           variant="secondary" 
@@ -273,11 +276,11 @@ export function RecordsSidebar({
         </Button>
       </div>
 
-      <ScrollArea className="flex-1 p-4">
+      <ScrollArea className="flex-1 min-w-0 p-4 [&_[data-radix-scroll-area-viewport]>div]:!block">
         <div>
           <Button
             variant={selectedCategory === "all" ? "secondary" : "ghost"}
-            className="w-full justify-start font-medium pl-2"
+            className="w-full min-w-0 max-w-full justify-start font-medium pl-2"
             style={{
               height: '31.5px',
               fontSize: '11.3px',
@@ -286,7 +289,7 @@ export function RecordsSidebar({
             onClick={() => onSelectCategory("all", null)}
           >
             <Folder className="mr-[6.5px] h-3.5 w-3.5 text-muted-foreground shrink-0" />
-            <span className="truncate flex-1 text-left">{t("records.sidebar.allRecords") || "All Records"}</span>
+            <span className="min-w-0 truncate flex-1 text-left">{t("records.sidebar.allRecords") || "All Records"}</span>
           </Button>
 
           <div className="space-y-0">
@@ -322,6 +325,11 @@ export function RecordsSidebar({
           </div>
         </div>
       </ScrollArea>
+      {onOpenTrash && <div className="p-4 border-t">
+        <Button variant="ghost" className="w-full justify-start" onClick={onOpenTrash}>
+          <Trash2 className="mr-2 h-4 w-4" />Trash
+        </Button>
+      </div>}
     </div>
   )
 }

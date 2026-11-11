@@ -1,7 +1,6 @@
 import React, { useMemo } from "react"
 import { Input } from "@/app/components/ui/input"
 import { Textarea } from "@/app/components/ui/textarea"
-import { Switch } from "@/app/components/ui/switch"
 import { DatePicker } from "@/app/components/ui/date-picker"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { RelationSelect } from "@/app/components/ui/relation-select"
@@ -23,9 +22,9 @@ import { AIFieldPreview } from "./AIFieldPreview"
 import { TableWidget } from "./TableWidget"
 import { useSite } from "@/app/context/SiteContext"
 import { RecordItem } from "../../actions"
-import { resolveRelationId } from "@/app/commerce/resolve-relation"
-import { toast } from "sonner"
 import { useRelationOptions } from "./use-relation-options"
+import { relationFieldTargetKey } from "../../lib/relation-target"
+import { recordFieldDate, recordFieldLabel, serializeRecordFieldDate } from "../../lib/field-values"
 
 interface RecordDynamicFormProps {
   fields: any[]
@@ -43,9 +42,9 @@ export function RecordDynamicForm({ fields, formData, relationsData, status, rec
     () => Object.values(relationsData).filter((value): value is string => typeof value === "string"),
     [relationsData],
   )
-  const { relationOptions, setRelationOptions, handleSearchChange } = useRelationOptions(
+  const { relationOptions, relationErrors, handleSearchChange } = useRelationOptions(
     fields,
-    currentSite?.id,
+    record.site_id === currentSite?.id ? record.site_id : undefined,
     selectedRelationIds,
   )
   
@@ -57,6 +56,7 @@ export function RecordDynamicForm({ fields, formData, relationsData, status, rec
         return (
           <div className="w-full">
             <Input 
+              aria-label={recordFieldLabel(field)}
               value={formData[field.name] || ""} 
               onChange={(e) => onChange(field.name, e.target.value, "field")}
               placeholder="Empty"
@@ -78,6 +78,7 @@ export function RecordDynamicForm({ fields, formData, relationsData, status, rec
         return (
           <div className="w-full py-1">
             <Textarea 
+              aria-label={recordFieldLabel(field)}
               value={formData[field.name] || ""} 
               onChange={(e) => onChange(field.name, e.target.value, "field")}
               placeholder="Empty"
@@ -99,7 +100,12 @@ export function RecordDynamicForm({ fields, formData, relationsData, status, rec
         return (
           <Input 
             type="number"
-            value={formData[field.name] || ""} 
+            aria-label={recordFieldLabel(field)}
+            value={formData[field.name] ?? ""}
+            required={field.required}
+            min={field.min}
+            max={field.max}
+            step="any"
             onChange={(e) => onChange(field.name, e.target.value ? Number(e.target.value) : null, "field")}
             placeholder="0"
             className={commonInputClass}
@@ -109,6 +115,7 @@ export function RecordDynamicForm({ fields, formData, relationsData, status, rec
       case "location":
         return (
           <Input 
+            aria-label={recordFieldLabel(field)}
             value={formData[field.name] || ""} 
             onChange={(e) => onChange(field.name, e.target.value, "field")}
             placeholder="Empty"
@@ -120,8 +127,8 @@ export function RecordDynamicForm({ fields, formData, relationsData, status, rec
         return (
           <div className="w-full flex items-center">
             <DatePicker 
-              date={formData[field.name] ? new Date(formData[field.name]) : undefined} 
-              setDate={(date) => onChange(field.name, date?.toISOString(), "field")}
+              date={recordFieldDate(formData[field.name])}
+              setDate={(date) => onChange(field.name, serializeRecordFieldDate(date), "field")}
               className="bg-transparent border-0 hover:bg-muted/30 focus-visible:ring-1 focus-visible:ring-primary/30 shadow-none px-2 h-8 rounded-md w-full sm:w-auto min-w-[200px]"
               placeholder="Empty"
             />
@@ -132,18 +139,17 @@ export function RecordDynamicForm({ fields, formData, relationsData, status, rec
         return (
           <div className="w-full flex items-center">
             <RelationSelect
+              label={recordFieldLabel(field)}
               options={(field.options || []).map((opt: string) => ({ id: opt, label: opt }))}
               value={formData[field.name] ? { mode: "existing", id: formData[field.name], label: formData[field.name] } : null}
               onValueChange={(val) => {
                 if (!val) {
-                  onChange(field.name, "", "field")
-                } else if (val.mode === "existing") {
+                  onChange(field.name, null, "field")
+                } else if (val.mode === "existing" && field.options?.includes(val.id)) {
                   onChange(field.name, val.id, "field")
-                } else if (val.mode === "create") {
-                  onChange(field.name, val.label, "field")
                 }
               }}
-              allowCreate={true}
+              allowCreate={false}
               placeholder="Empty"
               className="bg-transparent border-0 hover:bg-muted/30 focus-visible:ring-1 focus-visible:ring-primary/30 shadow-none px-2 h-8 rounded-md w-full"
             />
@@ -152,28 +158,35 @@ export function RecordDynamicForm({ fields, formData, relationsData, status, rec
 
       case "boolean":
         return (
-          <div className="flex items-center px-2 h-8">
-            <Switch 
-              checked={!!formData[field.name]}
-              onCheckedChange={(checked) => onChange(field.name, checked, "field")}
-              className="scale-75 origin-left"
-            />
-          </div>
+          <Select
+            value={formData[field.name] === true ? "true" : formData[field.name] === false ? "false" : "unset"}
+            onValueChange={(value) => onChange(field.name, value === "unset" ? null : value === "true", "field")}
+          >
+            <SelectTrigger aria-label={recordFieldLabel(field)} className={commonInputClass}>
+              <SelectValue placeholder="Not set" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="unset" disabled={field.required}>Not set</SelectItem>
+              <SelectItem value="true">Yes</SelectItem>
+              <SelectItem value="false">No</SelectItem>
+            </SelectContent>
+          </Select>
         )
 
       case "relation":
-        const target = field.relationTarget || "lead"
+        const target = relationFieldTargetKey(field)
         const options = relationOptions[target] || []
         const selectedId = relationsData[field.name]
         const selectedOption = options.find(o => o.id === selectedId)
         
         return (
-          <div className="w-full flex items-center">
+          <div className="w-full flex flex-col">
             <RelationSelect
+              label={recordFieldLabel(field)}
               options={options}
               value={selectedId ? { mode: "existing", id: selectedId, label: selectedOption?.label || selectedId } : null}
               onSearchChange={(q) => handleSearchChange(target, q)}
-              onValueChange={async (val) => {
+              onValueChange={(val) => {
                 if (!val) {
                   onChange(field.name, null, "relation")
                   return
@@ -183,39 +196,12 @@ export function RecordDynamicForm({ fields, formData, relationsData, status, rec
                   onChange(field.name, val.id, "relation")
                   return
                 }
-                
-                if (val.mode === "create") {
-                  if (!currentSite?.id) {
-                    toast.error("Please select a site first")
-                    return
-                  }
-                  
-                  const toastId = toast.loading(`Creating ${target}...`)
-                  try {
-                    const { id, error } = await resolveRelationId(target as any, val, currentSite.id)
-                    
-                    if (error) throw new Error(error)
-                    
-                    if (id) {
-                      onChange(field.name, id, "relation")
-                      toast.success(`Created successfully`, { id: toastId })
-                      
-                      setRelationOptions(prev => {
-                        const targetOptions = [...(prev[target] || [])]
-                        targetOptions.push({ id, label: val.label, searchText: val.label })
-                        return { ...prev, [target]: targetOptions }
-                      })
-                    }
-                  } catch (error) {
-                    console.error("Error resolving relation:", error)
-                    toast.error(error instanceof Error ? error.message : "Failed to create", { id: toastId })
-                  }
-                }
               }}
-              allowCreate={true}
+              allowCreate={false}
               placeholder="Empty"
               className="bg-transparent border-0 hover:bg-muted/30 focus-visible:ring-1 focus-visible:ring-primary/30 shadow-none px-2 h-8 rounded-md w-full"
             />
+            {relationErrors[target] && <p role="alert" className="px-2 text-xs text-destructive">{relationErrors[target]}</p>}
           </div>
         )
       
@@ -289,7 +275,7 @@ export function RecordDynamicForm({ fields, formData, relationsData, status, rec
         </div>
         <div className="flex-1 min-w-0">
           <Select value={status} onValueChange={onStatusChange}>
-            <SelectTrigger className="bg-transparent border-0 hover:bg-muted/30 focus-visible:ring-1 focus-visible:ring-primary/30 shadow-none px-2 h-8 rounded-md w-full sm:w-auto min-w-[200px]">
+            <SelectTrigger aria-label="Record status" className="bg-transparent border-0 hover:bg-muted/30 focus-visible:ring-1 focus-visible:ring-primary/30 shadow-none px-2 h-8 rounded-md w-full sm:w-auto min-w-[200px]">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -306,11 +292,11 @@ export function RecordDynamicForm({ fields, formData, relationsData, status, rec
       {fields.map(field => {
         const isFullWidth = field.type === "description" || field.type === "table";
         return (
-          <div key={field.id} className="group flex flex-col sm:flex-row sm:items-start py-1 -mx-2 rounded-lg transition-colors">
+          <div key={field.id} role="group" aria-label={recordFieldLabel(field)} className="group flex flex-col sm:flex-row sm:items-start py-1 -mx-2 rounded-lg transition-colors">
             <div className="w-full sm:w-[200px] shrink-0 pt-1.5 px-2">
               <div className="text-sm text-muted-foreground flex items-center gap-2">
                 <span className="text-muted-foreground/60">{getFieldIcon(field.type)}</span>
-                {field.name}
+                {recordFieldLabel(field)}{field.required ? " *" : ""}
               </div>
             </div>
             <div className={`flex-1 min-w-0 ${isFullWidth ? "mt-1 sm:mt-0" : ""}`}>

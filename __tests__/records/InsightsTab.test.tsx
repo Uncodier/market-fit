@@ -17,7 +17,7 @@ describe("InsightsTab composition", () => {
     jest.mocked(publicPromptImageUrl).mockReturnValue("/api/images/prompt?preview=test")
     jest.mocked(getRecords).mockResolvedValue({ records: [], error: null })
     jest.mocked(getHistoricalRelatedRecords).mockResolvedValue({ records: [], error: null })
-    jest.mocked(resolveRelationsForSidebar).mockResolvedValue({ "customer-1": "Example Customer" })
+    jest.mocked(resolveRelationsForSidebar).mockResolvedValue({ "lead:customer-1": "Example Customer" })
   })
 
   it("preserves the empty state and record metadata", () => {

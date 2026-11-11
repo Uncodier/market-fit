@@ -65,7 +65,7 @@ jest.mock("@/app/records/[id]/components/RecordDetailSkeleton", () => ({
 jest.mock("@/app/records/[id]/components/RecordToolbar", () => ({
   RecordToolbar: ({ hasChanges, isSaving, onSave, saveStatus }: any) => (
     <div>
-      <button type="button" onClick={onSave} disabled={!hasChanges || isSaving}>Save changes</button>
+      <button type="button" onClick={onSave} disabled={!hasChanges || isSaving || saveStatus === "conflict"}>Save changes</button>
       <span role="status">{saveStatus}</span>
     </div>
   ),
@@ -144,7 +144,7 @@ describe("record detail view switch", () => {
       },
       error: null,
     })
-    ;(updateRecord as jest.Mock).mockResolvedValue({ record: {}, error: null })
+    ;(updateRecord as jest.Mock).mockResolvedValue({ record: { updated_at: "2026-01-01T00:00:01.123456Z" }, error: null })
     ;(saveRecordDiagram as jest.Mock).mockResolvedValue({
       success: true,
       revision: 1,
@@ -172,7 +172,8 @@ describe("record detail view switch", () => {
     await waitFor(() => {
       expect(updateRecord).toHaveBeenCalledWith(
         expect.any(String),
-        expect.objectContaining({ title: "Edited title" })
+        expect.objectContaining({ title: "Edited title" }),
+        "2026-01-01T00:00:00Z"
       )
       expect(saveRecordDiagram).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -199,7 +200,7 @@ describe("record detail view switch", () => {
     fireEvent.click(screen.getByRole("button", { name: "Edit document" }))
 
     await act(async () => {
-      resolveUpdate?.({ record: {}, error: null })
+      resolveUpdate?.({ record: { updated_at: "2026-01-01T00:00:01.123456Z" }, error: null })
       await Promise.resolve()
     })
     await waitFor(() => expect(screen.getByRole("button", { name: "Save changes" })).toBeEnabled())
@@ -217,7 +218,8 @@ describe("record detail view switch", () => {
 
     await waitFor(() => expect(updateRecord).toHaveBeenCalledWith(
       expect.any(String),
-      expect.objectContaining({ description: "Latest body" })
+      expect.objectContaining({ description: "Latest body" }),
+      "2026-01-01T00:00:00Z"
     ))
   })
 
@@ -250,5 +252,28 @@ describe("record detail view switch", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }))
 
     await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("conflict"))
+  })
+  it("uses the returned precise version for the next document save", async () => {
+    render(<RecordDetailPage />)
+    await screen.findByText("Document draft: Original title")
+    fireEvent.click(screen.getByRole("button", { name: "Edit document" }))
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }))
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("saved"))
+    fireEvent.click(screen.getByRole("button", { name: "Edit document" }))
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }))
+    await waitFor(() => expect(updateRecord).toHaveBeenLastCalledWith(expect.any(String),
+      expect.objectContaining({ title: "Newer title" }), "2026-01-01T00:00:01.123456Z"))
+  })
+  it("preserves a stale draft and disables repeated saving after a record conflict", async () => {
+    jest.mocked(updateRecord).mockResolvedValue({ error: "Reload before saving", conflict: true })
+    render(<RecordDetailPage />)
+    await screen.findByText("Document draft: Original title")
+    fireEvent.click(screen.getByRole("button", { name: "Edit document" }))
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }))
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("conflict"))
+    fireEvent.click(screen.getByRole("button", { name: "Edit document" }))
+    expect(screen.getByText("Document draft: Newer title")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled()
+    expect(updateRecord).toHaveBeenCalledTimes(1)
   })
 })

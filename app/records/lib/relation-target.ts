@@ -8,9 +8,9 @@ export type RelationTargetConfig = {
 const TARGET_CONFIG: Record<string, RelationTargetConfig> = {
   lead: { table: "leads", selectFields: "id, name, company", nameField: "name", idField: "id" },
   company: { table: "companies", selectFields: "id, name", nameField: "name", idField: "id" },
-  sales_order: { table: "orders", selectFields: "id, order_number", nameField: "order_number", idField: "id" },
+  sales_order: { table: "sale_orders", selectFields: "id, order_number", nameField: "order_number", idField: "id" },
   deal: { table: "deals", selectFields: "id, name", nameField: "name", idField: "id" },
-  person: { table: "users", selectFields: "id, name, email", nameField: "name", idField: "id" },
+  supplier: { table: "suppliers", selectFields: "id, name", nameField: "name", idField: "id" },
   team_member: {
     table: "site_members",
     selectFields: "user_id, name, email",
@@ -28,19 +28,30 @@ const TARGET_CONFIG: Record<string, RelationTargetConfig> = {
   record_category: { table: "record_categories", selectFields: "id, name", nameField: "name", idField: "id" },
 }
 
-export function getRelationTargetConfig(target: string): RelationTargetConfig {
-  return TARGET_CONFIG[target] || {
-    table: target,
-    selectFields: "id, name",
-    nameField: "name",
-    idField: "id",
-  }
+export function getRelationTargetConfig(target: string): RelationTargetConfig | null {
+  return Object.prototype.hasOwnProperty.call(TARGET_CONFIG, target) ? TARGET_CONFIG[target] : null
 }
 
-export function uniqueRelationTargets(fields: Array<{ type?: string; relationTarget?: string }>): string[] {
+export type RelationFieldTarget = { type?: string; relationTarget?: string; targetCategoryId?: string }
+
+export function relationFieldTargetKey(field: RelationFieldTarget): string {
+  const target = field.relationTarget || "lead"
+  return target === "record" && field.targetCategoryId ? `record:${field.targetCategoryId}` : target
+}
+
+export function parseRelationTargetKey(key: string): { target: string; categoryId?: string } {
+  if (!key.startsWith("record:")) return { target: key }
+  const categoryId = key.slice(7)
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(categoryId)) {
+    throw new Error("Invalid record category")
+  }
+  return { target: "record", categoryId }
+}
+
+export function uniqueRelationTargets(fields: RelationFieldTarget[]): string[] {
   const targets = new Set<string>()
   for (const field of fields) {
-    if (field.type === "relation") targets.add(field.relationTarget || "lead")
+    if (field.type === "relation") targets.add(relationFieldTargetKey(field))
   }
   return Array.from(targets)
 }

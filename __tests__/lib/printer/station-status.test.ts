@@ -60,7 +60,7 @@ describe("printerStationStatus", () => {
 })
 
 describe("printersForJob", () => {
-  it("falls back to orders printers for kitchen tickets when auto-print is off", () => {
+  it("requires automatic flags for kitchen jobs but not manual jobs", () => {
     const kitchen = createPrinterDevice({
       id: "p1",
       transport: "system",
@@ -73,7 +73,10 @@ describe("printersForJob", () => {
       },
     })
     const settings = { devices: [kitchen] }
-    expect(printersForJob(settings, "orders", "kitchen", "kitchenTicket")).toEqual([kitchen])
+    expect(printersForJob(settings, "orders", "kitchen", "kitchenTicket")).toEqual([])
+    expect(printersForJob(settings, "orders", "kitchen-delta", "orderDelta")).toEqual([])
+    expect(printersForJob(settings, "orders", "kitchen")).toEqual([kitchen])
+    expect(printersForJob(settings, "orders", "kitchen-delta")).toEqual([kitchen])
     expect(printersForJob(settings, "pos", "receipt", "posReceipt")).toEqual([])
   })
 })

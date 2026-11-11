@@ -8,6 +8,10 @@ the parent apply. School/clinic details below are expanded by the exhaustive
 [business catalog](UX_PERSONALIZATION_BUSINESS_CATALOG.md) and
 [execution rules](UX_PERSONALIZATION_EXECUTION_RULES.md), both required implementation inputs.
 
+**Schema catalog:** [Business Record templates, fields, and relations](UX_PERSONALIZATION_RECORD_TEMPLATES.md)
+owns the consolidated 52-template inventory and explicit relation contract. This
+document retains installation, privacy, navigation, and UX decision-tree ownership.
+
 ## 1. Product model: packs, collections, and shortcuts
 
 Keep four different objects explicit:
@@ -49,7 +53,8 @@ and the target schema before migrations. Do not reuse protected system category 
 
 ## 3. School pack: proposed definitions
 
-Use `school.*` stable template IDs. Store each student's academic entry separately;
+Use the shared IDs in the schema catalog; `school.*` denotes pack grouping only,
+not a second template namespace. Store each student's academic entry separately;
 do not use a single class-wide table for confidential grades.
 Fields marked `*` are proposed required values, not current validation guarantees.
 

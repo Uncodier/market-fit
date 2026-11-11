@@ -12,7 +12,6 @@ import {
   mapSaleOrderItemsToDeltaLines,
   printerJobQueue,
   printJobForSettings,
-  printersForModule,
   shouldAutoPrint,
   wasPrinted,
   type KitchenPayload,
@@ -77,11 +76,14 @@ export function usePrinterRealtime(
   brand?: TicketBrand,
 ) {
   const settingsRef = useRef(settings)
-  settingsRef.current = settings
   const brandRef = useRef(brand)
-  brandRef.current = brand
   const siteIdRef = useRef(siteId)
-  siteIdRef.current = siteId
+
+  useEffect(() => {
+    settingsRef.current = settings
+    brandRef.current = brand
+    siteIdRef.current = siteId
+  }, [settings, brand, siteId])
 
   useEffect(() => {
     printerJobQueue.setHandler(async (job) => {
@@ -127,19 +129,23 @@ export function usePrinterRealtime(
   useEffect(() => {
     if (!siteId) return
 
+    let active = true
     const timers = new Map<string, ReturnType<typeof setTimeout>>()
 
     const processOrder = async (orderId: string) => {
       const current = settingsRef.current
-      const autoKitchen =
-        shouldAutoPrint(current, "orders", "kitchenTicket") ||
-        printersForModule(current, "orders").length > 0
+      const autoKitchen = shouldAutoPrint(current, "orders", "kitchenTicket")
       const autoDelta = shouldAutoPrint(current, "orders", "orderDelta")
       if (!autoKitchen && !autoDelta) return
 
       try {
         const order = await loadOrderForPrint(orderId)
-        if (!order) return
+        if (!active || siteIdRef.current !== siteId || !order) return
+        // Settings may have changed while the order was loading.
+        const latest = settingsRef.current
+        const kitchenEnabled = shouldAutoPrint(latest, "orders", "kitchenTicket")
+        const deltaEnabled = shouldAutoPrint(latest, "orders", "orderDelta")
+        if (!kitchenEnabled && !deltaEnabled) return
 
         // Receiving a marketplace order is not acceptance by the restaurant.
         const cancellation = providerCancellationConfirmed(order.metadata)
@@ -163,8 +169,8 @@ export function usePrinterRealtime(
 
         const usable =
           delta.kind === "full"
-            ? autoKitchen && delta.adds.length > 0
-            : autoDelta && kitchenDeltaHasWork(delta) && delta.kind === "delta"
+            ? kitchenEnabled && delta.adds.length > 0
+            : deltaEnabled && kitchenDeltaHasWork(delta) && delta.kind === "delta"
 
         if (!usable) {
           saveSnapshot(orderId, rawItems)
@@ -195,6 +201,7 @@ export function usePrinterRealtime(
         printerJobQueue.enqueue(job)
         saveSnapshot(orderId, order.sale_order_items || [])
       } catch (err) {
+        if (!active || siteIdRef.current !== siteId) return
         console.warn("[printer] realtime print failed", err)
         toast.error(
           bluetoothErrorMessage(err) ||
@@ -221,6 +228,7 @@ export function usePrinterRealtime(
 
     window.addEventListener("printer:order-event", handler as EventListener)
     return () => {
+      active = false
       window.removeEventListener("printer:order-event", handler as EventListener)
       for (const timer of timers.values()) clearTimeout(timer)
       timers.clear()

@@ -57,7 +57,7 @@ export function useProcessedMessages({
         correctedRole === "user" ||
         correctedRole === "visitor" ||
         isTeamMemberRight
-      const isCurrentUserMessage = message.sender_id === currentUserId
+      const isCurrentUserMessage = Boolean(message.sender_id && message.sender_id === currentUserId)
 
       if (message.role === "user" || message.role === "team_member") {
         console.log(`🔍 [User Identification] Message ${message.id}:`, {

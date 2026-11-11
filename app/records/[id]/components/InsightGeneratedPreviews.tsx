@@ -1,3 +1,4 @@
+import { fieldPreviewKey } from "../../lib/entity-preview-request"
 import type { SyntheticEvent } from "react"
 import { Sparkles } from "@/app/components/ui/icons"
 import { publicPromptImageUrl } from "@/app/lib/image-utils"
@@ -48,7 +49,7 @@ export function InsightGeneratedPreviews({
                   const relId = relationsData?.[rel.name]
                   if (!relId) return null
 
-                  const relLabel = allRelationLabels[relId] || relId
+                  const relLabel = allRelationLabels[fieldPreviewKey(rel, relId)] || relId
                   
                   // Find all records that share this relation
                   const relatedRecords = categoryHistory.filter(h => h.relations?.[rel.name] === relId)

@@ -11,19 +11,20 @@ import { ControlCenterHeader } from "@/app/control-center/components/ControlCent
 import { ViewSelector } from "@/app/components/view-selector"
 import { SearchInput } from "@/app/components/ui/search-input"
 import { Button } from "@/app/components/ui/button"
-import { PlusCircle, ClipboardList } from "@/app/components/ui/icons"
+import { ClipboardList } from "@/app/components/ui/icons"
 import { EmptyState } from "@/app/components/ui/empty-state"
-import { Badge } from "@/app/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/app/components/ui/dialog"
 import { SortDropdown } from "@/app/components/ui/sort-dropdown"
-import { CalendarDateRangePicker } from "@/app/components/ui/date-range-picker"
-import { ListOrdered, Check, ChevronDown, Loader, Tag, Trash2, Folder } from "@/app/components/ui/icons"
-import { subDays, isWithinInterval, parseISO, startOfDay, endOfDay } from "date-fns"
+import { RecordDateFilter } from "./components/RecordDateFilter"
+import { Loader } from "@/app/components/ui/icons"
+import { matchesRecordListFilter, recordListPage, type RecordDateRange } from "./lib/list-filter"
+import { useRecordsBulkActions } from "./hooks/useRecordsBulkActions"
 import { useRecordsData } from "./hooks/useRecordsData"
 import { RecordsSidebar } from "./components/RecordsSidebar"
+import { RecordsBulkToolbar } from "./components/RecordsBulkToolbar"
+import { RecordsTrashDialog } from "./components/RecordsTrashDialog"
 
 // Import the new specific Record views
 import { RecordsTable, RecordsTableSkeleton } from "./components/RecordsTable"
@@ -32,7 +33,7 @@ import { RecordsCalendar, RecordsCalendarSkeleton } from "./components/RecordsCa
 import { RecordsGraph } from "./components/RecordsGraph"
 
 import { CategoryTemplateEditor } from "./components/CategoryTemplateEditor"
-import { createRecordCategory, updateRecordCategory, RecordCategory, createRecord, deleteRecord, updateRecord } from "./actions"
+import { createRecordCategory, updateRecordCategory, RecordCategory, createRecord } from "./actions"
 import { toast } from "sonner"
 import { useLocalization } from "@/app/context/LocalizationContext"
 
@@ -48,91 +49,29 @@ export default function RecordsPage() {
   const isMobile = useIsMobile()
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useAutoCollapseSidebar()
 
-  const { categories, records, isLoading, refreshData } = useRecordsData(currentSite?.id)
+  const { categories, records, isLoading, error: loadError, refreshData } = useRecordsData(currentSite?.id)
   
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
   const [selectedRelation, setSelectedRelation] = useState<{ fieldName: string, targetId: string } | null>(null)
   const [recordSearchQuery, setRecordSearchQuery] = useState("")
   const [viewType, setViewType] = useState<"table" | "kanban" | "calendar" | "graph">("table")
   const [groupBy, setGroupBy] = useState<"status" | "category" | "date" | "team_member">("status")
-  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "title_asc" | "title_desc" | "updated_at">(defaultSort as any)
-  const [dateRange, setDateRange] = useState({
-    startDate: startOfDay(subDays(new Date(), 30)),
-    endDate: endOfDay(new Date())
-  })
+  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "title_asc" | "title_desc" | "updated_at">(defaultSort)
+  const [dateRange, setDateRange] = useState<RecordDateRange>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
-  const [selectedRecords, setSelectedRecords] = useState<Set<string>>(new Set())
-  const [isBulkActionLoading, setIsBulkActionLoading] = useState(false)
+  const { selectedRecords, setSelectedRecords, isBulkActionLoading, handleBulkDelete,
+    handleBulkStatusChange, handleBulkCategoryChange, updateLoadedRecord } = useRecordsBulkActions(records, refreshData)
   const [isCategorySelectOpen, setIsCategorySelectOpen] = useState(false)
   const [categoryToCreateIn, setCategoryToCreateIn] = useState<string>("")
   const [isCreatingRecord, setIsCreatingRecord] = useState(false)
-
-  const handleBulkDelete = async () => {
-    if (!confirm(t("records.bulk.confirmDelete", { count: selectedRecords.size }) || `Are you sure you want to delete ${selectedRecords.size} records?`)) return
-    
-    setIsBulkActionLoading(true)
-    try {
-      const promises = Array.from(selectedRecords).map(id => deleteRecord(id))
-      await Promise.all(promises)
-      
-      setSelectedRecords(new Set())
-      toast.success(t("records.bulk.deleted", { count: selectedRecords.size }) || `${selectedRecords.size} records deleted successfully`)
-      refreshData()
-    } catch (error) {
-      console.error("Error in bulk delete:", error)
-      toast.error(t("records.bulk.deleteError") || "Failed to delete some records")
-    } finally {
-      setIsBulkActionLoading(false)
-    }
-  }
-
-  const handleBulkStatusChange = async (newStatus: string) => {
-    setIsBulkActionLoading(true)
-    try {
-      const promises = Array.from(selectedRecords).map(id => updateRecord(id, { status: newStatus }))
-      const results = await Promise.all(promises)
-      const failed = results.find((result) => result.error)
-      if (failed?.error) throw new Error(failed.error)
-      
-      setSelectedRecords(new Set())
-      toast.success(t("records.bulk.statusUpdated", { count: selectedRecords.size }) || `Status updated for ${selectedRecords.size} records`)
-      refreshData()
-    } catch (error) {
-      console.error("Error in bulk status change:", error)
-      toast.error(t("records.bulk.statusError") || "Failed to update status for some records")
-    } finally {
-      setIsBulkActionLoading(false)
-    }
-  }
-
-  const handleBulkCategoryChange = async (newCategoryId: string) => {
-    setIsBulkActionLoading(true)
-    try {
-      const promises = Array.from(selectedRecords).map(id => updateRecord(id, { category_id: newCategoryId }))
-      const results = await Promise.all(promises)
-      const failed = results.find((result) => result.error)
-      if (failed?.error) throw new Error(failed.error)
-      
-      setSelectedRecords(new Set())
-      toast.success(t("records.bulk.categoryUpdated", { count: selectedRecords.size }) || `Category updated for ${selectedRecords.size} records`)
-      refreshData()
-    } catch (error) {
-      console.error("Error in bulk category change:", error)
-      toast.error(t("records.bulk.categoryError") || "Failed to update category for some records")
-    } finally {
-      setIsBulkActionLoading(false)
-    }
-  }
+  const [trashSiteId, setTrashSiteId] = useState<string | null>(null)
 
   const [isEditorOpen, setIsEditorOpen] = useState(false)
   const [editingCategory, setEditingCategory] = useState<RecordCategory | null>(null)
 
   // Layout calculations
-  const [sidebarLeft, setSidebarLeft] = useState('256px')
-  useEffect(() => {
-    setSidebarLeft(isMobile ? '0px' : (isLayoutCollapsed ? '64px' : '256px'))
-  }, [isLayoutCollapsed, isMobile])
+  const sidebarLeft = isMobile ? '0px' : (isLayoutCollapsed ? '64px' : '256px')
 
   // Breadcrumb
   useEffect(() => {
@@ -149,26 +88,9 @@ export default function RecordsPage() {
   }, [])
 
   // Filter records
-  const filteredRecords = records.filter(r => {
-    if (selectedCategory !== "all" && r.category_id !== selectedCategory) return false
-    if (selectedRelation) {
-      if (r.relations?.[selectedRelation.fieldName] !== selectedRelation.targetId) return false
-    }
-    if (recordSearchQuery && !r.title.toLowerCase().includes(recordSearchQuery.toLowerCase())) return false
-    
-    // Date range filter
-    if (r.created_at) {
-      try {
-        const recordDate = parseISO(r.created_at)
-        if (!isWithinInterval(recordDate, { start: dateRange.startDate, end: dateRange.endDate })) {
-          return false
-        }
-      } catch (e) {
-        console.error("Error parsing date", e)
-      }
-    }
-    return true
-  }).sort((a, b) => {
+  const filteredRecords = records.filter(r => matchesRecordListFilter(r, {
+    categoryId: selectedCategory, relation: selectedRelation, search: recordSearchQuery, dateRange,
+  })).sort((a, b) => {
     const dateA = new Date(a.created_at || 0).getTime();
     const dateB = new Date(b.created_at || 0).getTime();
     const updateA = new Date(a.updated_at || a.created_at || 0).getTime();
@@ -181,6 +103,11 @@ export default function RecordsPage() {
     if (sortBy === "title_desc") return b.title.localeCompare(a.title)
     return 0
   })
+  const visiblePage = recordListPage(currentPage, filteredRecords.length, itemsPerPage)
+  const hasFilters = selectedCategory !== "all" || !!selectedRelation || !!recordSearchQuery || !!dateRange
+  const clearFilters = () => {
+    setSelectedCategory("all"); setSelectedRelation(null); setRecordSearchQuery(""); setDateRange(null); setCurrentPage(1)
+  }
 
   // Handlers
   const handleEditTemplate = (category?: RecordCategory) => {
@@ -188,7 +115,7 @@ export default function RecordsPage() {
     setIsEditorOpen(true)
   }
 
-  const handleSaveCategory = async (data: any) => {
+  const handleSaveCategory = async (data: Omit<Parameters<typeof createRecordCategory>[0], "site_id">) => {
     if (!currentSite?.id) return
     try {
       if (editingCategory) {
@@ -270,10 +197,12 @@ export default function RecordsPage() {
           onSelectCategory={(id, relation) => {
             setSelectedCategory(id)
             setSelectedRelation(relation)
+            setCurrentPage(1)
           }}
           isCollapsed={isSidebarCollapsed}
           onEditTemplate={handleEditTemplate}
           onCreateCategory={() => handleEditTemplate()}
+          onOpenTrash={() => setTrashSiteId(currentSite?.id || null)}
         />
       </div>
 
@@ -295,61 +224,11 @@ export default function RecordsPage() {
             sidebarLeft={sidebarLeft}
             leftContent={
               selectedRecords.size > 0 ? (
-                <div className="flex items-center gap-4">
-                  <Badge variant="outline" className="rounded-full px-2 py-0">
-                    {selectedRecords.size} {t("records.bulk.selected") || "selected"}
-                  </Badge>
-                  <span className="text-sm text-muted-foreground hidden sm:inline">
-                    {t("records.bulk.chooseAction") || "Choose bulk action"}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="sm" onClick={() => setSelectedRecords(new Set())} disabled={isBulkActionLoading}>
-                      {t("records.bulk.cancel") || "Cancel"}
-                    </Button>
-                    
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="secondary" size="sm" className="h-9 gap-2 rounded-full px-4" disabled={isBulkActionLoading}>
-                          <Tag className="h-4 w-4" />
-                          <span className="hidden sm:inline">{t("records.bulk.changeStatus") || "Change Status"}</span>
-                          <ChevronDown className="h-3 w-3 opacity-50" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start">
-                        {["draft", "published", "archived"].map(status => (
-                          <DropdownMenuItem key={status} onClick={() => handleBulkStatusChange(status)} className="capitalize">
-                            {t(`status.${status}`) || status}
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="secondary" size="sm" className="h-9 gap-2 rounded-full px-4" disabled={isBulkActionLoading}>
-                          <Folder className="h-4 w-4" />
-                          <span className="hidden sm:inline">{t("records.bulk.changeCategory") || "Change Category"}</span>
-                          <ChevronDown className="h-3 w-3 opacity-50" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start">
-                        {categories.map(category => (
-                          <DropdownMenuItem key={category.id} onClick={() => handleBulkCategoryChange(category.id)}>
-                            {category.name}
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-
-                    <Button variant="secondary" size="sm" className="h-9 gap-2 rounded-full px-4 text-destructive hover:text-destructive" onClick={handleBulkDelete} disabled={isBulkActionLoading}>
-                      {isBulkActionLoading ? <Loader className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                      <span className="hidden sm:inline">{t("records.bulk.delete") || "Delete"}</span>
-                    </Button>
-                  </div>
-                </div>
+                <RecordsBulkToolbar {...{ selectedRecords, setSelectedRecords, isBulkActionLoading,
+                  categories, handleBulkStatusChange, handleBulkCategoryChange, handleBulkDelete }} />
               ) : (
                 <div className="flex items-center gap-4">
-                  <Tabs value={groupBy} onValueChange={(val: any) => setGroupBy(val)} className="hidden md:block">
+                  <Tabs value={groupBy} onValueChange={val => setGroupBy(val as typeof groupBy)} className="hidden md:block">
                     <TabsList className="h-9 p-1 bg-muted/30 rounded-full">
                       <TabsTrigger value="status" className="text-xs font-medium rounded-full px-3">{t("records.groupBy.status") || "Status"}</TabsTrigger>
                       <TabsTrigger value="category" className="text-xs font-medium rounded-full px-3">{t("records.groupBy.category") || "Category"}</TabsTrigger>
@@ -360,7 +239,7 @@ export default function RecordsPage() {
                   <SearchInput
                     placeholder={t("records.search") || "Search records..."}
                     value={recordSearchQuery}
-                    onChange={(e) => setRecordSearchQuery(e.target.value)}
+                    onChange={(e) => { setRecordSearchQuery(e.target.value); setCurrentPage(1) }}
                     className="bg-background border-border"
                   />
                 </div>
@@ -370,7 +249,7 @@ export default function RecordsPage() {
               selectedRecords.size > 0 ? null : (
                 <div className="flex items-center gap-2">
                   <div className="md:hidden">
-                    <Select value={groupBy} onValueChange={(val: any) => setGroupBy(val)}>
+                    <Select value={groupBy} onValueChange={val => setGroupBy(val as typeof groupBy)}>
                       <SelectTrigger className="h-9 w-[130px] bg-background border-border" title={t("records.groupBy") || "Group by..."}>
                         <SelectValue placeholder={t("records.groupBy") || "Group by..."} />
                       </SelectTrigger>
@@ -383,11 +262,7 @@ export default function RecordsPage() {
                     </Select>
                   </div>
 
-                  <CalendarDateRangePicker 
-                    onRangeChange={(start, end) => setDateRange({ startDate: start, endDate: end })} 
-                    initialStartDate={dateRange.startDate}
-                    initialEndDate={dateRange.endDate}
-                  />
+                  <RecordDateFilter value={dateRange} onChange={range => { setDateRange(range); setCurrentPage(1) }} />
 
                   <SortDropdown sortBy={sortBy} setSortBy={setSortBy} options={[
                     { value: "newest", label: t("records.sort.newest") || "Newest" },
@@ -399,7 +274,7 @@ export default function RecordsPage() {
 
                   <ViewSelector
                     currentView={viewType}
-                    onViewChange={(view) => setViewType(view as any)}
+                    onViewChange={(view) => setViewType(view as typeof viewType)}
                     showCalendar={true}
                     showGraph={true}
                   />
@@ -428,6 +303,11 @@ export default function RecordsPage() {
                   <RecordsKanbanSkeleton />
                 )}
               </div>
+            ) : loadError ? (
+              <div role="alert" className="p-8">
+                <p>{loadError}</p>
+                <Button variant="outline" onClick={() => void refreshData()}>{t("common.retry") || "Retry"}</Button>
+              </div>
             ) : filteredRecords.length === 0 ? (
               <div className="flex-1 flex items-center justify-center">
                 <EmptyState 
@@ -435,8 +315,8 @@ export default function RecordsPage() {
                   title={t("records.empty.title") || "No records found"}
                   description={t("records.empty.desc") || "Create a new record or adjust your filters."}
                   action={
-                    <Button onClick={() => handleCreateRecord()}>
-                      {t("records.new") || "New Record"}
+                    <Button onClick={hasFilters ? clearFilters : () => handleCreateRecord()}>
+                      {hasFilters ? t("records.sidebar.allRecords") : (t("records.new") || "New Record")}
                     </Button>
                   }
                   variant="fancy"
@@ -446,8 +326,8 @@ export default function RecordsPage() {
               <div className={cn("min-h-full min-w-0 flex flex-col", viewType === "graph" ? "" : viewType === "kanban" ? "py-4 md:py-8 px-4" : "p-4 md:p-8")}>
                 {viewType === "table" ? (
                   <RecordsTable
-                    records={filteredRecords.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)}
-                    currentPage={currentPage}
+                    records={filteredRecords.slice((visiblePage - 1) * itemsPerPage, visiblePage * itemsPerPage)}
+                    currentPage={visiblePage}
                     itemsPerPage={itemsPerPage}
                     totalRecords={filteredRecords.length}
                     onPageChange={setCurrentPage}
@@ -484,13 +364,11 @@ export default function RecordsPage() {
                     onUpdateRecordStatus={async (recordId, newStatus) => {
                       // Only update status if grouping by status
                       if (groupBy === "status") {
-                        const { updateRecord } = await import("./actions");
-                        const result = await updateRecord(recordId, { status: newStatus });
+                        const result = await updateLoadedRecord(recordId, { status: newStatus });
                         if (result.error) throw new Error(result.error);
                         refreshData();
                       } else if (groupBy === "category") {
-                        const { updateRecord } = await import("./actions");
-                        const result = await updateRecord(recordId, { category_id: newStatus });
+                        const result = await updateLoadedRecord(recordId, { category_id: newStatus });
                         if (result.error) throw new Error(result.error);
                         refreshData();
                       }
@@ -524,7 +402,22 @@ export default function RecordsPage() {
           category={editingCategory}
           categories={categories}
           onSave={handleSaveCategory}
+          onDeleted={() => {
+            setIsEditorOpen(false)
+            setEditingCategory(null)
+            setSelectedCategory("all")
+            setSelectedRelation(null)
+            setSelectedRecords(new Set())
+            setCurrentPage(1)
+            refreshData()
+            toast.success("Collection moved to Trash")
+          }}
         />
+      )}
+
+      {trashSiteId && trashSiteId === currentSite?.id && (
+        <RecordsTrashDialog key={trashSiteId} siteId={trashSiteId}
+          onClose={() => setTrashSiteId(null)} onRestored={refreshData} />
       )}
 
       {isCategorySelectOpen && (

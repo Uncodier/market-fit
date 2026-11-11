@@ -12,7 +12,7 @@ const env = {
   TEST_SUPABASE_ANON_KEY: 'sb_publishable_test_public_only',
 };
 
-it.each(['procurement', 'subsystems'])('allows only explicitly scoped verified %s QA', suite => {
+it.each(['procurement', 'subsystems', 'records'])('allows only explicitly scoped verified %s QA', suite => {
   expect(qaModulePolicy({ ...env, TEST_SUITE: suite, SHIPLIGHT_RUN_ID: `qa-unit-${suite}-case1` }, now))
     .toMatchObject({ suite, qaId: 'qa-unit', backend: 'http://127.0.0.1:54321' });
 });

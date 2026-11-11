@@ -27,6 +27,7 @@ Use the guides below before relying on older implementation notes.
 - [Security](SECURITY.md) — mandatory controls for auth, data access, payments,
   public links, webhooks, and outbound requests.
 - [Database migrations](DATABASE_MIGRATIONS.md) — safe Supabase migration workflow.
+- [Conversation automation snooze](CONVERSATION_AUTOMATION_SNOOZE.md) — human-reply pause controls, shared database contract, authorization, realtime behavior and offline checks.
 - [Accounts payable](ACCOUNTS_PAYABLE.md) — supplier bill balances, aging filters and existing bill payment entry.
 - [Shipment documents](SHIPMENT_DOCUMENTS.md) — private carrier PDFs, packing slips, printer setup and rollout prerequisites.
 - [Catalog item sales](CATALOG_SALES.md) — item revenue, variant history, filters, access boundaries and reporting limits.
@@ -52,6 +53,11 @@ Use the guides below before relying on older implementation notes.
 ## Integration guides
 
 - [Business and role-based UX personalization](UX_PERSONALIZATION_DESIGN.md) — proposed identity onboarding, site defaults, personal overrides, Complete experience, team experience roles, and staged module-level UX coverage; design only.
+- [Business Record schema catalog](UX_PERSONALIZATION_RECORD_TEMPLATES.md) — dedicated review of all 52 proposed templates across 29 business leaves, fields, explicit relation keys/cardinality, dependencies and privacy gates; not implemented.
+- [Record schema technical review](UX_PERSONALIZATION_RECORD_SCHEMA_REVIEW.md) — read-only DB target verification, broken mappings, internal relation and field gaps, access-policy blockers and proposed v1 corrections; no runtime changes.
+- [Record schema repair](RECORD_SCHEMA_REPAIR.md) — implemented application guards and form fixes, local relation-admission migration, validation and remaining database/privacy release gates.
+- [Recoverable Records Trash](RECORDS_TRASH.md) — atomic collection/subtree deletion, selective batch restore, authorization, version conflicts and unapplied rollout requirements.
+- [Records E2E scenarios](../specs/tests/records.md) — isolated native browser and Data API cases, exact QA prerequisites, offline validation and explicitly unverified runtime coverage.
 - [Record templates and UX decision trees](UX_PERSONALIZATION_TEMPLATES_AND_DECISIONS.md) — school/clinic starter packs, installation and privacy gates, `/navigation` collection shortcuts, and decision trees for templates, modules, CTAs, names, icons, and copy; design only.
 - [Complete business UX catalog](UX_PERSONALIZATION_BUSINESS_CATALOG.md) — all 12 current industries and 29 explicit business leaves with questions, templates, modules, roles, shortcuts, CTAs and helper copy; proposed specification.
 - [UX execution decision rules](UX_PERSONALIZATION_EXECUTION_RULES.md) — complete template field registry and deterministic rules for needs, sizes, operating models, roles, module coverage, states, copy and validation fixtures; proposed specification.
@@ -148,6 +154,7 @@ environment variables before changing production configuration.
 
 ## Architecture reviews
 
+- [OpenRouter integration design](OPENROUTER_INTEGRATION_DESIGN.md) — proposal for discovery, AI/manual model selection, refresh, and customer-funded inference; Azure-only images restored, future OpenRouter images require successful live verification before enablement.
 - [External API authentication audit and remaining authorization debt — 2026-09-30](API_AUTH_AUDIT_2026-09-30.md)
 - [Local QA repair and live-test blockers — 2026-09-29](QA_REPAIR_2026-09-29.md)
 - [Static analysis repair — 2026-09-29](STATIC_ANALYSIS_REPAIR_2026-09-29.md)

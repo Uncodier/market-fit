@@ -6,6 +6,20 @@ import {
 } from "@/app/records/[id]/components/relation-target"
 
 describe("relation target helpers", () => {
+  it("maps sales orders and suppliers to existing tables and rejects unsafe targets", () => {
+    expect(getRelationTargetConfig("sales_order")?.table).toBe("sale_orders")
+    expect(getRelationTargetConfig("supplier")?.table).toBe("suppliers")
+    for (const target of ["person", "users", "arbitrary_table", "__proto__", "constructor"]) {
+      expect(getRelationTargetConfig(target)).toBeNull()
+    }
+  })
+
+  it("separates internal relation options by expected category", () => {
+    expect(uniqueRelationTargets([
+      { type: "relation", relationTarget: "record", targetCategoryId: "category-a" },
+      { type: "relation", relationTarget: "record", targetCategoryId: "category-b" },
+    ])).toEqual(["record:category-a", "record:category-b"])
+  })
   it("maps lead fields to the leads table", () => {
     expect(getRelationTargetConfig("lead")).toEqual({
       table: "leads",

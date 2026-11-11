@@ -16,6 +16,8 @@ import {
 } from "@/app/components/ui/section-card"
 import { EmojiPicker } from "@/app/components/ui/emoji-picker"
 import { isEmojiIcon } from "./category-icon"
+import { recordFieldLabel } from "../lib/field-values"
+import { DeleteRecordCategory } from "./DeleteRecordCategory"
 
 interface CategoryTemplateEditorProps {
   isOpen: boolean
@@ -23,9 +25,10 @@ interface CategoryTemplateEditorProps {
   category?: RecordCategory | null
   categories?: RecordCategory[]
   onSave: (data: any) => Promise<void>
+  onDeleted?: () => void
 }
 
-export function CategoryTemplateEditor({ isOpen, onClose, category, categories = [], onSave }: CategoryTemplateEditorProps) {
+export function CategoryTemplateEditor({ isOpen, onClose, category, categories = [], onSave, onDeleted }: CategoryTemplateEditorProps) {
   const [name, setName] = useState(category?.name || "")
   const [description, setDescription] = useState(category?.description || "")
   const [icon, setIcon] = useState(category?.icon || "")
@@ -56,7 +59,26 @@ export function CategoryTemplateEditor({ isOpen, onClose, category, categories =
 
   const updateField = (index: number, updates: any) => {
     const newFields = [...fields]
-    newFields[index] = { ...newFields[index], ...updates }
+    const existing = category?.template_fields?.find(field => field.id === newFields[index].id)
+    const next = { ...newFields[index], ...updates, ...(existing ? { name: existing.name } : {}) }
+    if (updates.type && updates.type !== newFields[index].type) {
+      if (next.type !== "number") {
+        delete next.min
+        delete next.max
+      }
+      if (!["text", "description", "location", "file"].includes(next.type)) {
+        delete next.minLength
+        delete next.maxLength
+      }
+      if (next.type !== "select") delete next.options
+      if (next.type !== "relation") {
+        delete next.relationTarget
+        delete next.targetCategoryId
+      }
+      if (!["text", "description"].includes(next.type)) delete next.aiPreview
+    }
+    if (next.relationTarget !== "record") delete next.targetCategoryId
+    newFields[index] = next
     setFields(newFields)
   }
   
@@ -186,7 +208,7 @@ export function CategoryTemplateEditor({ isOpen, onClose, category, categories =
                           <div className="flex items-center gap-3 flex-1 min-w-0">
                             <div className="flex-1 min-w-0">
                               <SectionCardTitle className="truncate">
-                                {field.name || "Unnamed Field"}
+                                {recordFieldLabel(field) || "Unnamed Field"}
                               </SectionCardTitle>
                               <p className="text-sm text-muted-foreground mt-1 truncate">
                                 {field.type}
@@ -238,11 +260,23 @@ export function CategoryTemplateEditor({ isOpen, onClose, category, categories =
                         <SectionCardContent className="border-t border-border/70 pt-4">
                           <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                              <Label>Field Name</Label>
+                              <Label htmlFor={`field-name-${field.id}`}>Field Name (Storage Key)</Label>
                               <Input 
+                                id={`field-name-${field.id}`}
                                 value={field.name} 
+                                disabled={category?.template_fields?.some(existing => existing.id === field.id)}
                                 onChange={(e) => updateField(index, { name: e.target.value })} 
                                 placeholder="e.g., Feature Status"
+                              />
+                              <p className="text-xs text-muted-foreground">Saved field names are immutable so existing records keep their values.</p>
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor={`field-label-${field.id}`}>Display Label (Optional)</Label>
+                              <Input
+                                id={`field-label-${field.id}`}
+                                value={field.label ?? ""}
+                                onChange={(e) => updateField(index, { label: e.target.value || undefined })}
+                                placeholder={field.name || "Display label"}
                               />
                             </div>
                             <div className="space-y-2">
@@ -251,7 +285,7 @@ export function CategoryTemplateEditor({ isOpen, onClose, category, categories =
                                 value={field.type} 
                                 onValueChange={(val) => updateField(index, { type: val })}
                               >
-                                <SelectTrigger>
+                                <SelectTrigger aria-label={`Field type for ${field.name || "new field"}`}>
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -260,7 +294,7 @@ export function CategoryTemplateEditor({ isOpen, onClose, category, categories =
                                   <SelectItem value="number">Number</SelectItem>
                                   <SelectItem value="date">Date</SelectItem>
                                   <SelectItem value="select">Select (Dropdown)</SelectItem>
-                                  <SelectItem value="boolean">Boolean (Toggle)</SelectItem>
+                                  <SelectItem value="boolean">Boolean (Yes / No)</SelectItem>
                                   <SelectItem value="location">Location</SelectItem>
                                   <SelectItem value="relation">Relation (Link entity)</SelectItem>
                                   <SelectItem value="file">File / Image</SelectItem>
@@ -270,6 +304,33 @@ export function CategoryTemplateEditor({ isOpen, onClose, category, categories =
                             </div>
                           </div>
 
+                          <div className="flex items-center justify-between pt-4">
+                            <Label htmlFor={`field-required-${field.id}`}>Required</Label>
+                            <Switch
+                              id={`field-required-${field.id}`}
+                              checked={field.required ?? false}
+                              onCheckedChange={(required) => updateField(index, { required })}
+                            />
+                          </div>
+                          {["number", "text", "description", "location", "file"].includes(field.type) && (
+                            <div className="grid grid-cols-2 gap-4 pt-4">
+                              {(field.type === "number" ? ["min", "max"] : ["minLength", "maxLength"]).map(bound => (
+                                <div key={bound} className="space-y-2">
+                                  <Label htmlFor={`field-${bound}-${field.id}`}>
+                                    {bound === "min" ? "Minimum" : bound === "max" ? "Maximum" : bound === "minLength" ? "Minimum Length" : "Maximum Length"}
+                                  </Label>
+                                  <Input
+                                    id={`field-${bound}-${field.id}`}
+                                    type="number" step={field.type === "number" ? "any" : 1}
+                                    min={field.type === "number" ? undefined : 0}
+                                    value={field[bound] ?? ""}
+                                    onChange={(e) => updateField(index, { [bound]: e.target.value === "" ? undefined : Number(e.target.value) })}
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
                           {/* Relation specific options */}
                           {field.type === 'relation' && (
                             <div className="space-y-2 pt-4 border-t mt-4">
@@ -278,15 +339,18 @@ export function CategoryTemplateEditor({ isOpen, onClose, category, categories =
                                 value={field.relationTarget || "lead"} 
                                 onValueChange={(val) => updateField(index, { relationTarget: val })}
                               >
-                                <SelectTrigger>
+                                <SelectTrigger aria-label={`Relation target for ${field.name || "new field"}`}>
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="lead">Lead</SelectItem>
                                   <SelectItem value="company">Company</SelectItem>
+                                  <SelectItem value="supplier">Supplier</SelectItem>
                                   <SelectItem value="sales_order">Sales Order</SelectItem>
                                   <SelectItem value="deal">Deal</SelectItem>
-                                  <SelectItem value="person">Contact / Person</SelectItem>
+                                  {field.relationTarget === "person" && (
+                                    <SelectItem value="person" disabled>Contact / Person (Legacy)</SelectItem>
+                                  )}
                                   <SelectItem value="team_member">Team Member</SelectItem>
                                   <SelectItem value="campaign">Campaign</SelectItem>
                                   <SelectItem value="catalog_item">Catalog Item</SelectItem>
@@ -299,6 +363,28 @@ export function CategoryTemplateEditor({ isOpen, onClose, category, categories =
                                   <SelectItem value="record_category">Record Category</SelectItem>
                                 </SelectContent>
                               </Select>
+                              {field.relationTarget === "record" && (
+                                <div className="space-y-2 pt-2">
+                                  <Label>Target Record Category</Label>
+                                  <Select
+                                    value={field.targetCategoryId || "any"}
+                                    onValueChange={(value) => updateField(index, { targetCategoryId: value === "any" ? undefined : value })}
+                                  >
+                                    <SelectTrigger aria-label={`Target record category for ${field.name || "new field"}`}>
+                                      <SelectValue placeholder="Any category" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="any">Any category (Generic record)</SelectItem>
+                                      {categories.map(targetCategory => (
+                                        <SelectItem key={targetCategory.id} value={targetCategory.id}>{targetCategory.name}</SelectItem>
+                                      ))}
+                                      {field.targetCategoryId && !categories.some(targetCategory => targetCategory.id === field.targetCategoryId) && (
+                                        <SelectItem value={field.targetCategoryId} disabled>Unavailable category</SelectItem>
+                                      )}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              )}
                             </div>
                           )}
 
@@ -335,7 +421,7 @@ export function CategoryTemplateEditor({ isOpen, onClose, category, categories =
                                     className="text-xs font-mono h-20"
                                   />
                                   <p className="text-[10px] text-muted-foreground">
-                                    Use <code>{'{value}'}</code> to inject the field's content into the prompt.
+                                    Use <code>{'{value}'}</code> to inject the field&apos;s content into the prompt.
                                   </p>
                                 </div>
                               )}
@@ -352,6 +438,7 @@ export function CategoryTemplateEditor({ isOpen, onClose, category, categories =
         </div>
 
         <DialogFooter>
+          {category && onDeleted && <DeleteRecordCategory category={category} disabled={isSaving} onDeleted={onDeleted} />}
           <Button variant="outline" onClick={onClose} disabled={isSaving}>Cancel</Button>
           <Button onClick={handleSave} disabled={isSaving || !name}>
             {isSaving ? "Saving..." : "Save Template"}

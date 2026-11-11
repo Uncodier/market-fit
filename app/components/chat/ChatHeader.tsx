@@ -19,6 +19,7 @@ import { Button } from "@/app/components/ui/button"
 import type { ParticipantIdentity } from "@/lib/chat/participant-identity"
 import { getChannelLabel } from "@/lib/site-channels"
 import { useNewCustomerSupportConversation } from "@/app/hooks/useNewCustomerSupportConversation"
+import { AutomationSnoozeControls } from "./AutomationSnoozeControls"
 
 interface ChatHeaderProps {
   agentId: string
@@ -195,6 +196,11 @@ export function ChatHeader({
           leadId={isLead ? leadData?.id || "" : ""}
         />
       </div>
+
+      {!isAgentOnlyConversation && hasSelectedConversation && currentSite?.id && (
+        <AutomationSnoozeControls key={`${currentSite.id}:${conversationId}`}
+          conversationId={conversationId!} siteId={currentSite.id} />
+      )}
 
       <div
         className={cn(

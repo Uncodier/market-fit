@@ -19,6 +19,7 @@ import {
 import { format } from "date-fns"
 import { STATUS_STYLES, LEAD_STATUSES } from "@/app/leads/types"
 import { coerceDate } from "@/app/utils/coerce-date"
+import { AutomationPausedBadge } from "./AutomationPausedBadge"
 
 interface ConversationItemProps {
   conversation: ConversationListItem
@@ -166,6 +167,7 @@ export function ConversationItem({
             {conversation.subtitle}
           </div>
         )}
+        <AutomationPausedBadge until={conversation.automationPausedUntil} />
         <div className={cn(
           "text-xs truncate",
           isSelected ? "text-muted-foreground" : "text-muted-foreground/80"

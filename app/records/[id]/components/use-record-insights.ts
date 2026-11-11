@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useState } from "react"
+import { useScopedPreviewState } from "../../hooks/useScopedPreviewState"
+import { buildPreviewRequests, fieldPreviewKey, fetchPreviewBatches } from "../../lib/entity-preview-request"
+import { useEffect, useMemo } from "react"
 import { getHistoricalRelatedRecords, getRecords, type RecordItem } from "../../actions"
 import type { InsightChartPoint, InsightCross, InsightsTabProps } from "./insights-types"
 
@@ -7,21 +9,21 @@ export function useRecordInsights({ fields, formData, description, record, relat
   const hasDescription = !!description || fields.some(f => f.type === 'description' && formData[f.name])
 
   // 2. Numeric Charts
-  const numberFields = fields.filter(f => f.type === 'number' && formData[f.name] !== undefined)
+  const numberFields = useMemo(() => fields.filter(f => f.type === 'number' && formData[f.name] !== undefined), [fields, formData])
   
   // 3. Select / Pie Charts
   const selectFields = fields.filter(f => f.type === 'select' && formData[f.name])
-  const categoricalFields = fields.filter(f => {
+  const categoricalFields = useMemo(() => fields.filter(f => {
     if (f.type === 'relation') return relationsData?.[f.name] !== undefined
     return (f.type === 'select' || f.type === 'text') && formData[f.name]
-  })
+  }), [fields, formData, relationsData])
   
   // 4. File / Images
   const fileFields = fields.filter(f => f.type === 'file' && formData[f.name])
 
   // History logic
-  const [history, setHistory] = useState<RecordItem[]>([])
-  const [categoryHistory, setCategoryHistory] = useState<RecordItem[]>([])
+  const [history, setHistory] = useScopedPreviewState<RecordItem[]>(record?.site_id, [])
+  const [categoryHistory, setCategoryHistory] = useScopedPreviewState<RecordItem[]>(record?.site_id, [])
 
   const primaryRelationName = useMemo(() => {
     const rels = fields.filter(f => f.type === 'relation' && relationsData?.[f.name])
@@ -30,40 +32,39 @@ export function useRecordInsights({ fields, formData, description, record, relat
   const primaryRelationId = primaryRelationName ? relationsData?.[primaryRelationName] : null
 
   // Resolve the actual name of the related entity for UI context
-  const [primaryRelationLabel, setPrimaryRelationLabel] = useState<string | null>(null)
-  const [allRelationLabels, setAllRelationLabels] = useState<Record<string, string>>({})
+  const [primaryRelationLabel, setPrimaryRelationLabel] = useScopedPreviewState<string | null>(record?.site_id, null)
+  const [allRelationLabels, setAllRelationLabels] = useScopedPreviewState<Record<string, string>>(record?.site_id, {})
   
   const activeRelations = useMemo(() => {
     return fields.filter(f => f.type === 'relation' && relationsData?.[f.name])
   }, [fields, relationsData])
   
   useEffect(() => {
-    if (activeRelations.length > 0) {
-      const entitiesToResolve = activeRelations.map(f => ({
-        target: f.relationTarget || "lead",
-        ids: [relationsData![f.name]]
-      }))
-      
+    let active = true
+    setAllRelationLabels({})
+    setPrimaryRelationLabel(null)
+    if (activeRelations.length > 0 && record?.site_id) {
+      const siteId = record.site_id
+      const entitiesToResolve = buildPreviewRequests(activeRelations, relationsData || {})
       import("../../actions").then(({ resolveRelationsForSidebar }) => {
-        resolveRelationsForSidebar(entitiesToResolve).then(res => {
+        if (!active) return
+        fetchPreviewBatches(entitiesToResolve, siteId, resolveRelationsForSidebar).then(res => {
+          if (!active) return
           setAllRelationLabels(res)
-          // also set primary if it matches
-          if (primaryRelationId && res[primaryRelationId]) {
-            setPrimaryRelationLabel(res[primaryRelationId])
-          }
+          const primaryField = activeRelations.find(field => field.name === primaryRelationName)
+          setPrimaryRelationLabel(primaryField && primaryRelationId ? res[fieldPreviewKey(primaryField, primaryRelationId)] || null : null)
         })
       })
-    } else {
-      setAllRelationLabels({})
-      setPrimaryRelationLabel(null)
     }
-  }, [activeRelations, relationsData, primaryRelationId])
+    return () => { active = false }
+  }, [activeRelations, relationsData, primaryRelationId, primaryRelationName, record?.site_id])
 
   useEffect(() => {
+    let active = true
     if (record?.category_id && primaryRelationName && primaryRelationId) {
       getHistoricalRelatedRecords(record.category_id, primaryRelationName, primaryRelationId)
         .then(({ records }) => {
-          if (records) setHistory(records)
+          if (active && records) setHistory(records)
         })
     } else {
       setHistory([])
@@ -72,11 +73,12 @@ export function useRecordInsights({ fields, formData, description, record, relat
     if (record?.category_id && record?.site_id) {
       getRecords(record.site_id, record.category_id)
         .then(({ records }) => {
-          if (records) setCategoryHistory(records)
+          if (active && records) setCategoryHistory(records)
         })
     } else {
       setCategoryHistory([])
     }
+    return () => { active = false }
   }, [record?.category_id, record?.site_id, primaryRelationName, primaryRelationId])
 
   // Merge history with current formData
@@ -199,33 +201,27 @@ export function useRecordInsights({ fields, formData, description, record, relat
       categoricalStats
     }
   }, [categoryHistory, numberFields, categoricalFields, formData, relationsData])
-  const [macroRelationLabels, setMacroRelationLabels] = useState<Record<string, string>>({})
+  const [macroRelationLabels, setMacroRelationLabels] = useScopedPreviewState<Record<string, string>>(record?.site_id, {})
 
   useEffect(() => {
-    if (macroAnalysis?.categoricalStats) {
-      const entitiesToResolve: { target: string; ids: string[] }[] = []
-      
-      macroAnalysis.categoricalStats.forEach(stat => {
-        if (stat.type === 'relation' && stat.modeId) {
-          const relField = fields.find(f => f.name === stat.name)
-          if (relField) {
-            entitiesToResolve.push({
-              target: relField.relationTarget || "lead",
-              ids: [stat.modeId]
-            })
-          }
-        }
-      })
-
+    let active = true
+    setMacroRelationLabels({})
+    if (macroAnalysis?.categoricalStats && record?.site_id) {
+      const siteId = record.site_id
+      const values = Object.fromEntries(macroAnalysis.categoricalStats
+        .filter(stat => stat.type === "relation").map(stat => [stat.name, stat.modeId]))
+      const entitiesToResolve = buildPreviewRequests(fields, values)
       if (entitiesToResolve.length > 0) {
         import("../../actions").then(({ resolveRelationsForSidebar }) => {
-          resolveRelationsForSidebar(entitiesToResolve).then(res => {
-            setMacroRelationLabels(res)
+          if (!active) return
+          fetchPreviewBatches(entitiesToResolve, siteId, resolveRelationsForSidebar).then(res => {
+            if (active) setMacroRelationLabels(res)
           })
         })
       }
     }
-  }, [macroAnalysis?.categoricalStats, fields])
+    return () => { active = false }
+  }, [macroAnalysis?.categoricalStats, fields, record?.site_id])
 
   const dynamicCrosses = useMemo(() => {
     if (categoryHistory.length === 0) return []

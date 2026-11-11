@@ -121,6 +121,7 @@ export async function getResponseRecordCategories(
       .from("record_categories")
       .select("id, name, template_fields")
       .eq("site_id", parsedSiteId)
+      .is("deleted_at", null)
       .order("name", { ascending: true })
     if (error) throw error
     return { categories: (data || []) as ResponseRecordCategory[] }
@@ -210,6 +211,7 @@ export async function createResponseRecord(rawInput: CreateResponseRecordInput):
       .select("id")
       .eq("id", input.categoryId)
       .eq("site_id", input.siteId)
+      .is("deleted_at", null)
       .maybeSingle()
     if (categoryError || !category) throw new Error("Category not found for this site")
 

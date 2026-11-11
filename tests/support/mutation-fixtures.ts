@@ -134,6 +134,14 @@ async function removeOwned(client: SupabaseClient, siteId: string, entry: Owned)
   }
   if (found.data.length !== 1) throw new Error(`Ambiguous run-owned ${entry.kind}; refusing cleanup`)
   const id = requireUuid((found.data[0] as any).id, `${entry.kind} cleanup ID`)
+  if (entry.kind === 'record') {
+    entry.id = id // Keep the exact identity: Trash remains pending disposable QA teardown.
+    const removed = await client.rpc('trash_record', { p_record_id: id })
+    if (removed.error) throw new Error('Cleanup failed for run-owned record')
+    const check = await client.from(table).select('id').eq('site_id', siteId).eq('id', id)
+    if (check.error || check.data?.length !== 0) throw new Error('Cleanup did not persist for run-owned record')
+    return
+  }
   // Catalog removal is archival, not physical deletion.
   const mutation = entry.kind === 'catalog'
     ? client.from(table).update({ status: 'archived' })

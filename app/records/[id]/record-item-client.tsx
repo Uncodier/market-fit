@@ -225,8 +225,14 @@ export default function RecordDetailPage() {
           status,
           data: formData,
           relations: relationsData,
-        })
-        if (result.error) throw new Error(result.error)
+        }, record.updated_at)
+        if (result.error) {
+          if (result.conflict) failure = "conflict"
+          throw new Error(result.error)
+        }
+        if (result.record && activeRecordIdRef.current === recordIdAtSave) {
+          setRecord(current => current ? { ...current, updated_at: result.record.updated_at } : current)
+        }
         if (
           activeRecordIdRef.current === recordIdAtSave
           && documentVersionRef.current === documentVersionAtSave

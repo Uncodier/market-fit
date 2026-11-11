@@ -27,6 +27,9 @@ describe("conversation list query", () => {
     limitEmbeddedConversationMessages(query, false)
 
     expect(select).toContain("latest_message:messages")
+    expect(select).toContain("automation_paused_until")
+    expect(select).toContain("last_human_reply_at")
+    expect(select).toContain("automation_snooze_hours")
     expect(select).not.toContain("first_message:messages")
     expect(select).not.toContain("user_id")
     expect(select).not.toContain("messages (\n        content")

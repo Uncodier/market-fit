@@ -1,5 +1,7 @@
 "use client"
 
+import { useScopedPreviewState } from "../hooks/useScopedPreviewState"
+import { buildPreviewRequests, mergePreviewRequests, fetchPreviewBatches } from "../lib/entity-preview-request"
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { RecordsGraphCanvas } from "./records-graph-canvas"
@@ -30,9 +32,9 @@ export function RecordsGraph({
   const [showRelations, setShowRelations] = useState(true)
   const [showSimilarity, setShowSimilarity] = useState(true)
   const [showEntities, setShowEntities] = useState(true)
-  const [similarityEdges, setSimilarityEdges] = useState<any[]>([])
-  const [resolvedRelations, setResolvedRelations] = useState<Record<string, string>>({})
-  const [entityPreviews, setEntityPreviews] = useState<Record<string, EntityPreview>>({})
+  const [similarityEdges, setSimilarityEdges] = useScopedPreviewState<any[]>(currentSite?.id, [])
+  const [resolvedRelations, setResolvedRelations] = useScopedPreviewState<Record<string, string>>(currentSite?.id, {})
+  const [entityPreviews, setEntityPreviews] = useScopedPreviewState<Record<string, EntityPreview>>(currentSite?.id, {})
   const [isLoading, setIsLoading] = useState(false)
 
   const handleReady = useCallback((api: RecordsGraphApi) => {
@@ -59,32 +61,17 @@ export function RecordsGraph({
   }, [currentSite?.id, similarityThreshold, showSimilarity])
 
   useEffect(() => {
-    if (!showRelations || records.length === 0) return
+    setEntityPreviews({})
+    setResolvedRelations({})
+    if (!currentSite?.id || !showRelations || records.length === 0) return
 
     let isMounted = true
     const resolveNames = async () => {
-      const toResolve = new Map<string, Set<string>>()
-
-      records.forEach((record) => {
-        if (!record.relations || !record.category?.template_fields) return
-        const templateFields = record.category.template_fields
-        Object.entries(record.relations).forEach(([fieldName, targetId]) => {
-          if (!targetId || typeof targetId !== "string") return
-          const fieldDef = templateFields.find((f: any) => f.name === fieldName)
-          if (!fieldDef) return
-          const target = fieldDef.relationTarget || "lead"
-          if (!toResolve.has(target)) toResolve.set(target, new Set())
-          toResolve.get(target)!.add(targetId)
-        })
-      })
-
-      const payload = Array.from(toResolve.entries()).map(([target, ids]) => ({
-        target,
-        ids: Array.from(ids),
-      }))
+      const payload = records.filter(record => record.site_id === currentSite.id)
+        .flatMap(record => buildPreviewRequests(record.category?.template_fields || [], record.relations || {}))
 
       if (payload.length > 0) {
-        const previews = await resolveEntityPreviews(payload)
+        const previews = await fetchPreviewBatches(mergePreviewRequests(payload), currentSite.id, resolveEntityPreviews)
         if (!isMounted) return
         setEntityPreviews(previews)
         const labels: Record<string, string> = {}
@@ -99,7 +86,7 @@ export function RecordsGraph({
     return () => {
       isMounted = false
     }
-  }, [records, showRelations])
+  }, [records, showRelations, currentSite?.id])
 
   const graphData = useMemo(() => {
     return buildGraphData(records, similarityEdges, resolvedRelations, {

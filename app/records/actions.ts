@@ -6,6 +6,10 @@ import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import { after } from "next/server"
 import { processRecordEmbeddingsById } from "./lib/record-embedding-worker"
+import { validateTemplateFieldUpdate } from "./lib/template-validation"
+import { validateRecordWrite } from "./lib/validate-record-write"
+import { validateTemplateTargets } from "./lib/validate-template-targets"
+import { moveRecordToTrash, moveCategoryToTrash } from "./trash-actions"
 import {
   resolveEntityPreviews as resolveEntityPreviewsAction,
   resolveRelationsForSidebar as resolveRelationsForSidebarAction,
@@ -17,7 +21,7 @@ const categoryIdSchema = z.string().uuid()
 const updateRecordSchema = z.object({
   category_id: categoryIdSchema.optional(),
   title: z.string().trim().min(1).max(2000).optional(),
-  description: z.string().nullable().optional(),
+  description: z.string().max(100_000).nullable().optional(),
   data: z.record(z.unknown()).optional(),
   relations: z.record(z.unknown()).optional(),
   status: z.string().trim().min(1).max(100).optional(),
@@ -129,6 +133,9 @@ export async function createRecordCategory({
       template_fields,
     })
     const supabase = await getAuthenticatedClient()
+    const template = validateTemplateFieldUpdate([], input.template_fields, false)
+    if (!template.valid) throw new Error(template.error)
+    await validateTemplateTargets(supabase, input.site_id, template.fields)
     const { data, error } = await supabase
       .from('record_categories')
       .insert(input)
@@ -152,6 +159,15 @@ export async function updateRecordCategory(
     const categoryId = categoryIdSchema.parse(id)
     const safeUpdates = categoryMutationSchema.partial().parse(updates)
     const supabase = await getAuthenticatedClient()
+    if (safeUpdates.template_fields !== undefined) {
+      const previous = await supabase.from('record_categories').select('site_id, template_fields').eq('id', categoryId).maybeSingle()
+      if (previous.error || !previous.data) throw new Error("Category not found or access denied")
+      const records = await supabase.from('records').select('id', { count: 'exact', head: true }).eq('category_id', categoryId)
+      if (records.error) throw new Error("Unable to verify category contents")
+      const template = validateTemplateFieldUpdate(previous.data.template_fields, safeUpdates.template_fields, (records.count || 0) > 0)
+      if (!template.valid) throw new Error(template.error)
+      await validateTemplateTargets(supabase, previous.data.site_id, template.fields)
+    }
     const { data, error } = await supabase
       .from('record_categories')
       .update(safeUpdates)
@@ -169,30 +185,28 @@ export async function updateRecordCategory(
 }
 
 export async function deleteRecordCategory(id: string) {
-  try {
-    const categoryId = categoryIdSchema.parse(id)
-    const supabase = await getAuthenticatedClient()
-    const { data, error } = await supabase
-      .from('record_categories')
-      .delete()
-      .eq('id', categoryId)
-      .select("id")
-      .maybeSingle()
-    
-    if (error) throw error
-    if (!data) throw new Error("Category not found or access denied")
-    revalidatePath("/records")
-    return { success: true }
-  } catch (error: unknown) {
-    console.error("Error deleting category:", error)
-    return { error: getRecordActionError(error, "Failed to delete category") }
-  }
+  return moveCategoryToTrash(id)
 }
 
+export async function getRecordTrash(siteId: string) {
+  return (await import("./trash-actions")).getRecordTrash(siteId)
+}
+
+export async function restoreRecordCategory(id: string) {
+  return (await import("./trash-actions")).restoreRecordCategory(id)
+}
+
+export async function restoreRecord(id: string) {
+  return (await import("./trash-actions")).restoreRecord(id)
+}
+
+export type { TrashItem } from "./trash-actions"
+
 export async function resolveRelationsForSidebar(
-  entitiesToResolve: { target: string; ids: string[] }[]
+  entitiesToResolve: { target: string; ids: string[]; targetCategoryId?: string }[],
+  siteId: string,
 ) {
-  return resolveRelationsForSidebarAction(entitiesToResolve)
+  return resolveRelationsForSidebarAction(entitiesToResolve, siteId)
 }
 
 
@@ -268,6 +282,8 @@ export async function createRecord({
       status,
     })
     const supabase = await getAuthenticatedClient()
+    const validation = await validateRecordWrite(supabase, input)
+    if (!validation.valid) throw new Error(validation.error)
     const { data: record, error } = await supabase
       .from('records')
       .insert(input)
@@ -286,20 +302,33 @@ export async function createRecord({
 
 export async function updateRecord(
   id: string,
-  updates: Partial<RecordItem>
+  updates: Partial<RecordItem>,
+  expectedUpdatedAt: string,
 ) {
   try {
     const recordId = recordIdSchema.parse(id)
     const safeUpdates = updateRecordSchema.parse(updates)
+    const expectedVersion = z.string().datetime({ offset: true }).parse(expectedUpdatedAt)
     const supabase = await getAuthenticatedClient()
+    const previous = await supabase.from('records')
+      .select('site_id, category_id, data, relations, status, updated_at').eq('id', recordId).maybeSingle()
+    if (previous.error || !previous.data) throw new Error("Record not found or access denied")
+    if (previous.data.updated_at !== expectedVersion) {
+      return { error: "This record changed elsewhere. Reload before saving again.", conflict: true }
+    }
+    const persisted = { ...previous.data, data: previous.data.data ?? {}, relations: previous.data.relations ?? {} }
+    const validation = await validateRecordWrite(supabase, { ...persisted, ...safeUpdates }, persisted)
+    if (!validation.valid) throw new Error(validation.error)
     const { data: record, error } = await supabase
       .from('records')
       .update(safeUpdates)
       .eq('id', recordId)
+      .eq('updated_at', expectedVersion)
       .select()
-      .single()
+      .maybeSingle()
     
     if (error) throw error
+    if (!record) return { error: "This record changed elsewhere. Reload before saving again.", conflict: true }
     revalidatePath("/records")
     scheduleRecordEmbedding(record.id)
     return { record }
@@ -310,24 +339,7 @@ export async function updateRecord(
 }
 
 export async function deleteRecord(id: string) {
-  try {
-    const recordId = recordIdSchema.parse(id)
-    const supabase = await getAuthenticatedClient()
-    const { data, error } = await supabase
-      .from('records')
-      .delete()
-      .eq('id', recordId)
-      .select('id')
-      .maybeSingle()
-    
-    if (error) throw error
-    if (!data) throw new Error("Record not found or access denied")
-    revalidatePath("/records")
-    return { success: true }
-  } catch (error: unknown) {
-    console.error("Error deleting record:", error)
-    return { error: getRecordActionError(error, "Failed to delete record") }
-  }
+  return moveRecordToTrash(id)
 }
 
 export async function getVectorRelatedRecords(
@@ -359,12 +371,21 @@ export async function getHistoricalRelatedRecords(
   relationTargetId: string
 ): Promise<{ records: RecordItem[] | null; error: string | null }> {
   try {
+    const parsedCategoryId = categoryIdSchema.parse(categoryId)
+    const parsedTargetId = recordIdSchema.parse(relationTargetId)
     const supabase = await getAuthenticatedClient()
+    const category = await supabase.from("record_categories").select("site_id, template_fields")
+      .eq("id", parsedCategoryId).maybeSingle()
+    if (category.error || !category.data) throw new Error("Category not found or access denied")
+    if (!Array.isArray(category.data.template_fields) || !category.data.template_fields.some(
+      (field: { name?: string; type?: string }) => field.name === relationField && field.type === "relation",
+    )) throw new Error("Unknown relation field")
     const { data, error } = await supabase
       .from("records")
       .select("*")
-      .eq("category_id", categoryId)
-      .eq(`relations->>${relationField}`, relationTargetId)
+      .eq("site_id", category.data.site_id)
+      .eq("category_id", parsedCategoryId)
+      .contains("relations", { [relationField]: parsedTargetId })
       .order("created_at", { ascending: true })
 
     if (error) throw error
@@ -378,9 +399,10 @@ export async function getHistoricalRelatedRecords(
 export type { EntityPreview } from "./entity-preview-actions"
 
 export async function resolveEntityPreviews(
-  entitiesToResolve: { target: string; ids: string[] }[]
+  entitiesToResolve: { target: string; ids: string[]; targetCategoryId?: string }[],
+  siteId: string,
 ) {
-  return resolveEntityPreviewsAction(entitiesToResolve)
+  return resolveEntityPreviewsAction(entitiesToResolve, siteId)
 }
 
 export async function getRecordsSimilarityEdges(

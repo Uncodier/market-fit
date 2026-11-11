@@ -218,6 +218,9 @@ export async function buildConversationListItems(
       channel,
       status: normalizeConversationStatus(conversation.status, flags.pending),
       hasAcceptedMessage: flags.accepted,
+      automationPausedUntil: conversation.automation_paused_until,
+      lastHumanReplyAt: conversation.last_human_reply_at,
+      automationSnoozeHours: conversation.automation_snooze_hours,
     }
   })
 }

@@ -2,6 +2,14 @@
 
 ## Transport selection
 
+Orders automatic printing requires the corresponding per-printer toggle:
+**Auto-print kitchen tickets** for new tickets and **Auto-print order updates**
+for changes. Assigning a printer to Orders alone does not enable either event.
+Manual kitchen ticket and update printing remains available with both toggles off.
+Realtime order loads recheck these toggles before queuing tickets. Responses
+arriving after leaving Orders or switching sites are discarded. Disabling a
+toggle cannot retract bytes already sent to a printer.
+
 The manual receipt button uses an enabled POS USB/Bluetooth printer bound to
 the current workstation. It sends ESC/POS bytes directly, without invoking the
 operating system's print dialog. Automatic-print toggles do not gate manual prints.

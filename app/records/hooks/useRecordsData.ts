@@ -9,11 +9,12 @@ export function useRecordsData(siteId?: string) {
   const [categories, setCategories] = useState<RecordCategory[]>([])
   const [records, setRecords] = useState<RecordItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [loadedSiteId, setLoadedSiteId] = useState<string | undefined>(undefined)
+  const [error, setError] = useState<string | null>(null)
 
   const fetchData = useCallback(async () => {
     if (!siteId || isSiteLoading) return
     const requestId = ++requestIdRef.current
-    setIsLoading(true)
     try {
       const [catsRes, recsRes] = await Promise.all([
         getRecordCategories(siteId),
@@ -21,14 +22,20 @@ export function useRecordsData(siteId?: string) {
       ])
 
       if (requestId !== requestIdRef.current) return
+      setLoadedSiteId(siteId)
+      setError(catsRes.error || recsRes.error || null)
 
-      if (catsRes.error) toast.error(catsRes.error)
+      if (catsRes.error) { setCategories([]); toast.error(catsRes.error) }
       else setCategories(catsRes.categories || [])
 
-      if (recsRes.error) toast.error(recsRes.error)
+      if (recsRes.error) { setRecords([]); toast.error(recsRes.error) }
       else setRecords(recsRes.records || [])
     } catch (error) {
       if (requestId !== requestIdRef.current) return
+      setLoadedSiteId(siteId)
+      setCategories([])
+      setRecords([])
+      setError("Unable to load records. Please retry.")
       console.error(error)
       toast.error("Failed to load records")
     } finally {
@@ -38,20 +45,15 @@ export function useRecordsData(siteId?: string) {
 
   useEffect(() => {
     requestIdRef.current += 1
-    if (isSiteLoading) setIsLoading(true)
-    else if (siteId) void fetchData()
-    else {
-      setCategories([])
-      setRecords([])
-      setIsLoading(false)
-    }
+    if (!isSiteLoading && siteId) void fetchData()
     return () => { requestIdRef.current += 1 }
   }, [siteId, isSiteLoading, fetchData])
 
   return {
-    categories,
-    records,
-    isLoading: isSiteLoading || isLoading,
+    categories: siteId && loadedSiteId === siteId && !isSiteLoading ? categories : [],
+    records: siteId && loadedSiteId === siteId && !isSiteLoading ? records : [],
+    isLoading: isSiteLoading || (!!siteId && (loadedSiteId !== siteId || isLoading)),
+    error: loadedSiteId === siteId ? error : null,
     refreshData: fetchData
   }
 }

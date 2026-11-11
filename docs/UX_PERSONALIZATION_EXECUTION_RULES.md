@@ -134,13 +134,22 @@ clinician/teacher persona can suggest tools, never access private clinical/stude
 
 ## 5. Complete shared template schema registry
 
+The dedicated [Record schema catalog](UX_PERSONALIZATION_RECORD_TEMPLATES.md) owns
+the consolidated field inventory and explicit relation keys/cardinality. This
+summary remains a historical decision-resolver reference. The
+[technical schema review](UX_PERSONALIZATION_RECORD_SCHEMA_REVIEW.md) and corrected
+catalog supersede the `person`, company/supplier, and property-description assumptions
+below; do not generate executable schemas directly from this older shorthand table.
+
 All catalog template IDs resolve here. Each also has record title*, optional generic
 description, site/category identity, timestamps, and canonical record state.
 Field IDs equal stable keys listed below; display labels are separate locale tokens.
 Enums below are **field values**, not new backend lifecycle/approval states.
 
-`person` means an approved same-site contact relation, not an auth account. `staff`
-means an authorized `team_member`; `item` means `catalog_item`. Other relations
+`person` below is historical contact intent, **not a supported database mapping**:
+the current target queries absent `public.users`. The catalog uses `lead` for CRM
+context and blocks unapproved academic/member identities. `staff` means an authorized
+`team_member` stored by site-scoped user ID; `item` means `catalog_item`. Other relations
 target the named installed Record category and a readable same-site record.
 Attachments are omitted by default; references do not become public download links.
 

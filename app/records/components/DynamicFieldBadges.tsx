@@ -1,3 +1,5 @@
+import { useScopedPreviewState } from "../hooks/useScopedPreviewState"
+import { buildPreviewRequests, fieldPreviewKey, fetchPreviewBatches } from "../lib/entity-preview-request"
 import React, { useEffect, useState, useMemo } from "react"
 import { RecordItem, resolveRelationsForSidebar } from "../actions"
 import { MapPin, ImageIcon, LinkIcon } from "@/app/components/ui/icons"
@@ -12,7 +14,7 @@ interface DynamicFieldBadgesProps {
 }
 
 export function DynamicFieldBadges({ record, className, limit = 5, ignoreFields = [] }: DynamicFieldBadgesProps) {
-  const [resolvedRelations, setResolvedRelations] = useState<Record<string, string>>({})
+  const [resolvedRelations, setResolvedRelations] = useScopedPreviewState<Record<string, string>>(record.site_id, {})
   const [isResolving, setIsResolving] = useState(false)
 
   const templateFields = record.category?.template_fields || []
@@ -28,37 +30,18 @@ export function DynamicFieldBadges({ record, className, limit = 5, ignoreFields 
   }, [templateFields, record, limit])
 
   useEffect(() => {
-    const relationFields = displayableFields.filter(f => f.type === 'relation')
-    if (relationFields.length === 0) return
-
-    const resolveRelations = async () => {
+    let active = true
+    setResolvedRelations({})
+    setIsResolving(false)
+    const requests = buildPreviewRequests(displayableFields, record.relations || {})
+    if (record.site_id && requests.length) {
       setIsResolving(true)
-      const entitiesToResolve: { target: string; ids: string[] }[] = []
-      
-      const targetMap = new Map<string, string[]>()
-      
-      relationFields.forEach(f => {
-        const target = f.relationTarget || "lead"
-        const id = record.relations?.[f.name]
-        if (id) {
-          if (!targetMap.has(target)) targetMap.set(target, [])
-          targetMap.get(target)?.push(id)
-        }
+      fetchPreviewBatches(requests, record.site_id, resolveRelationsForSidebar).then(resolved => {
+        if (active) { setResolvedRelations(resolved); setIsResolving(false) }
       })
-
-      targetMap.forEach((ids, target) => {
-        entitiesToResolve.push({ target, ids: Array.from(new Set(ids)) })
-      })
-
-      if (entitiesToResolve.length > 0) {
-        const resolved = await resolveRelationsForSidebar(entitiesToResolve)
-        setResolvedRelations(resolved)
-      }
-      setIsResolving(false)
     }
-
-    resolveRelations()
-  }, [displayableFields, record.relations])
+    return () => { active = false }
+  }, [displayableFields, record.relations, record.site_id])
 
   if (displayableFields.length === 0) return null
 
@@ -90,7 +73,7 @@ export function DynamicFieldBadges({ record, className, limit = 5, ignoreFields 
 
         } else if (type === 'relation' && relationId) {
           icon = <LinkIcon className="w-3 h-3 text-muted-foreground/80 shrink-0" />
-          text = resolvedRelations[relationId] || (isResolving ? "..." : relationId.substring(0, 8))
+          text = resolvedRelations[fieldPreviewKey(field, relationId)] || (isResolving ? "..." : relationId.substring(0, 8))
         } else {
             return null
         }

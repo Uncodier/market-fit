@@ -21,6 +21,9 @@ export type ConversationsTable = {
           created_at: string
           updated_at: string
           last_message_at: string | null
+          automation_paused_until: string | null
+          last_human_reply_at: string | null
+          automation_snooze_hours: number | null
           is_archived: boolean
           command_id: string | null
           flag: number | null
@@ -40,6 +43,9 @@ export type ConversationsTable = {
           created_at?: string
           updated_at?: string
           last_message_at?: string | null
+          automation_paused_until?: string | null
+          last_human_reply_at?: string | null
+          automation_snooze_hours?: number | null
           is_archived?: boolean
           command_id?: string | null
           flag?: number | null
@@ -59,6 +65,9 @@ export type ConversationsTable = {
           created_at?: string
           updated_at?: string
           last_message_at?: string | null
+          automation_paused_until?: string | null
+          last_human_reply_at?: string | null
+          automation_snooze_hours?: number | null
           is_archived?: boolean
           command_id?: string | null
           flag?: number | null

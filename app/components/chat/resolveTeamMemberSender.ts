@@ -37,7 +37,7 @@ export function resolveTeamMemberSender(
     msg.sender_name ||
     cached?.name ||
     (isCurrent ? currentUserName || "You" : undefined) ||
-    (msg.sender_id ? `Team Member (${msg.sender_id.substring(0, 6)}...)` : "Team Member")
+    (msg.sender_id ? `Team Member (${msg.sender_id.substring(0, 6)}...)` : "External human")
 
   const avatar =
     msg.sender_avatar ||

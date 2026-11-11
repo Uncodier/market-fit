@@ -208,9 +208,5 @@ export function shouldAutoPrint(
   module: PrinterModule,
   flag: keyof PrinterDevice["autoPrint"],
 ): boolean {
-  if (printersForAutoPrint(settings, module, flag).length > 0) return true
-  if (flag === "kitchenTicket" || flag === "orderDelta") {
-    return printersForJob(settings, "orders", "kitchen", flag).length > 0
-  }
-  return false
+  return printersForAutoPrint(settings, module, flag).length > 0
 }

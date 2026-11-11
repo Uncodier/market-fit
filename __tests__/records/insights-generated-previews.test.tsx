@@ -16,7 +16,7 @@ function renderPreview(withRelation = false) {
       record={insightRecord()}
       activeRelations={withRelation ? [relationField] : []}
       relationsData={{ Customer: "customer-1" }}
-      allRelationLabels={{ "customer-1": "Example Customer" }}
+      allRelationLabels={{ "lead:customer-1": "Example Customer" }}
       categoryHistory={[]}
     />,
   )
@@ -100,7 +100,7 @@ describe("generated record previews", () => {
         record={insightRecord()}
         activeRelations={[relationField]}
         relationsData={{ Customer: "customer-1" }}
-        allRelationLabels={{ "customer-1": "Example Customer" }}
+        allRelationLabels={{ "lead:customer-1": "Example Customer" }}
         categoryHistory={[
           historical("newer", "second", "02"),
           historical("current-record", "saved draft", "03"),

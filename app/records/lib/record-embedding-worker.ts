@@ -23,6 +23,9 @@ export async function processRecordEmbeddingsById(input: {
   if (!apiServerUrl || !serviceApiKey) {
     throw new Error("Embedding service is not configured")
   }
+  const record = await access.supabase.from("records").select("id")
+    .eq("id", input.recordId).is("deleted_at", null).maybeSingle()
+  if (record.error || !record.data) throw new Error("Record not found or unavailable for embedding")
 
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
