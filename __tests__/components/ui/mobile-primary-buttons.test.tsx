@@ -79,7 +79,7 @@ describe("mobile primary buttons", () => {
     })
   })
 
-  it("enlarges mobile touch targets and their fixed-height header wrappers", () => {
+  it("keeps mobile CTAs and their header wrappers at the Safari-sized 48px minimum", () => {
     const css = postcss.parse(readFileSync(path.join(process.cwd(), "app/styles/mobile-primary-buttons.css"), "utf8"))
     const declarations = (selector: string) => {
       const values: Record<string, string> = {}
@@ -95,9 +95,28 @@ describe("mobile primary buttons", () => {
     expect(declarations(".btn-primary-well")["min-height"]).toBe("48px !important")
     expect(declarations(".btn-primary.btn-primary-circular")["min-width"]).toBe("48px !important")
     expect(declarations("[data-toolbar-font] .btn-primary")).toMatchObject({
-      "min-height": "52px !important",
-      "min-width": "52px !important",
+      "min-height": "48px !important",
+      "min-width": "48px !important",
     })
-    expect(declarations("[data-toolbar-font] .btn-primary-well")["min-height"]).toBe("52px !important")
+    expect(declarations("[data-toolbar-font] .btn-primary-well")["min-height"]).toBe("48px !important")
+  })
+
+  it("replaces opaque desktop paint with tinted glass and removes Safari's hard-edged blobs", () => {
+    const css = postcss.parse(readFileSync(path.join(process.cwd(), "app/styles/mobile-primary-buttons.css"), "utf8"))
+    const glass = css.nodes.flatMap((node) => node.type === "atrule" ? node.nodes ?? [] : [])
+      .find((node) => node.type === "rule" && node.selector === 'html .btn-primary:not(:disabled):not([aria-disabled="true"])')
+    expect(glass?.type).toBe("rule")
+    const values: Record<string, string> = {}
+    if (glass?.type === "rule") glass.walkDecls((decl) => { values[decl.prop] = decl.value })
+    expect(values["background-color"]).toBe("rgb(var(--btn-fill) / 0.72)")
+    expect(values["-webkit-backdrop-filter"]).toBe("blur(14px) saturate(150%)")
+    expect(values["background-image"]).toContain("radial-gradient")
+    const hidden: string[] = []
+    css.walkRules((rule) => {
+      rule.walkDecls("display", (decl) => {
+        if (decl.value === "none" && decl.important) hidden.push(...rule.selectors)
+      })
+    })
+    expect(hidden).toEqual(expect.arrayContaining([".btn-primary::before", ".btn-primary::after"]))
   })
 })

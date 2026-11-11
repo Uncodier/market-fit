@@ -11,8 +11,8 @@
     overflow: hidden;
     isolation: isolate;
     /* Override the legacy inset shadows in every tint and interaction state. */
-    box-shadow: 0 3px 10px rgb(0 0 0 / 0.12) !important;
-    border-color: rgb(var(--btn-tint, 255 255 255) / 0.28) !important;
+    box-shadow: 0 2px 6px rgb(0 0 0 / 0.08) !important;
+    border-color: rgb(255 255 255 / 0.26) !important;
     -webkit-tap-highlight-color: transparent;
     transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 220ms ease;
   }
@@ -26,14 +26,30 @@
     min-width: 48px !important;
   }
 
-  /* Header CTAs must not look smaller than the mobile back control. */
+  /* Match the approximate 48px Safari back control in the mobile reference. */
   [data-toolbar-font] .btn-primary-well,
   [data-toolbar-font] .btn-primary {
-    min-height: 52px !important;
+    min-height: 48px !important;
   }
 
   [data-toolbar-font] .btn-primary {
-    min-width: 52px !important;
+    min-width: 48px !important;
+  }
+
+  /* Replace the opaque desktop sphere, including Safari and tinted variants. */
+  html .btn-primary:not(:disabled):not([aria-disabled="true"]) {
+    background-color: rgb(var(--btn-fill) / 0.72) !important;
+    background-image:
+      radial-gradient(ellipse 90% 65% at 28% -12%, rgb(255 255 255 / 0.24), transparent 74%),
+      radial-gradient(ellipse 80% 50% at 78% 118%, rgb(var(--btn-tint, 255 255 255) / 0.24), transparent 76%) !important;
+    -webkit-backdrop-filter: blur(14px) saturate(150%) !important;
+    backdrop-filter: blur(14px) saturate(150%) !important;
+  }
+
+  /* The desktop moving blobs become hard-edged patches in Safari without blur. */
+  .btn-primary::before,
+  .btn-primary::after {
+    display: none !important;
   }
 
   .btn-primary:not(:disabled):not([aria-disabled="true"]):hover {
@@ -55,14 +71,14 @@
     position: absolute !important;
     z-index: 0 !important;
     background:
-      radial-gradient(ellipse 65% 48% at 32% 0%, rgb(255 255 255 / 0.3), transparent 75%),
-      radial-gradient(ellipse 60% 38% at 75% 108%, rgb(var(--btn-tint, 255 255 255) / 0.3), transparent 80%);
+      radial-gradient(ellipse 46% 24% at 30% 8%, rgb(255 255 255 / 0.32), transparent 100%),
+      radial-gradient(ellipse 65% 22% at 65% 100%, rgb(255 255 255 / 0.18), transparent 100%);
   }
 
   /* A thin refracted edge and broad glint suggest a droplet, not a bevel. */
   .btn-primary .btn-top-highlight {
     background:
-      linear-gradient(145deg, rgb(255 255 255 / 0.7), transparent 34%, transparent 65%, rgb(255 255 255 / 0.28));
+      linear-gradient(145deg, rgb(255 255 255 / 0.8), transparent 38%, transparent 62%, rgb(255 255 255 / 0.45));
   }
 
   .btn-primary .btn-glass-rim {
@@ -71,12 +87,13 @@
       radial-gradient(ellipse 45% 65% at 90% 100%, rgb(var(--btn-tint, 255 255 255) / 0.5), transparent 80%) !important;
   }
 
-  /* Safari keeps its lightweight rendering path, but still gets the glass edge. */
+  /* Restore the thin refracted edge hidden by the desktop Safari fallback. */
   html.safari .btn-primary:not(:disabled):not([aria-disabled="true"]) .btn-glass-rim {
     display: block;
   }
 
   .btn-primary .btn-glass-cursor {
+    background: radial-gradient(ellipse, rgb(255 255 255 / 0.24), transparent 70%) !important;
     transition: opacity 220ms ease;
   }
 
@@ -103,6 +120,14 @@
 
     .btn-primary:not(:disabled):not([aria-disabled="true"]):active {
       transform: none;
+    }
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    html .btn-primary:not(:disabled):not([aria-disabled="true"]) {
+      background-color: rgb(var(--btn-fill)) !important;
+      -webkit-backdrop-filter: none !important;
+      backdrop-filter: none !important;
     }
   }
 }
