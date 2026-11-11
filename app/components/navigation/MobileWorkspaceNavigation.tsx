@@ -69,6 +69,7 @@ export function MobileWorkspaceNavigation() {
         }}
       >
         <Icon size={23} strokeWidth={1.7} aria-hidden={true} />
+        <span className={styles.label} aria-hidden="true">{title}</span>
       </NavigationLink>
     )
   }
@@ -94,6 +95,7 @@ export function MobileWorkspaceNavigation() {
           className={styles.tab}
         >
           <Home size={25} strokeWidth={1.7} aria-hidden={true} />
+          <span className={styles.label} aria-hidden="true">{agentTitle}</span>
         </NavigationLink>
         {renderDynamicTab(2)}
         <NavigationLink
@@ -104,6 +106,7 @@ export function MobileWorkspaceNavigation() {
           className={styles.tab}
         >
           <LayoutGrid size={23} strokeWidth={1.7} aria-hidden={true} />
+          <span className={styles.label} aria-hidden="true">{appsTitle}</span>
         </NavigationLink>
       </div>
     </nav>

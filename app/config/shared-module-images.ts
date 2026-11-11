@@ -1,5 +1,6 @@
 /** Only these server-owned module prompts may generate using Makinari credits. */
 export const SHARED_MODULE_IMAGE_AREAS = {
+  profile: "settings",
   suppliers: "buying",
   accountsPayable: "buying",
   purchaseRequests: "buying",

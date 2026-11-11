@@ -83,6 +83,16 @@ When investigating a production issue:
 5. Prefer a forward fix with a regression test.
 6. Rotate exposed secrets; removing them from source history is not sufficient.
 
+Authentication freezes can occur before a request reaches Supabase. Keep
+`onAuthStateChange` callbacks synchronous: use the supplied session, and defer
+profile database writes until after the SDK notification returns. Do not await
+optional support-chat work in that callback. The sign-in landing checks identity
+in the background without hiding the form or clearing sessions on lookup errors.
+This does not bypass server authentication or repair a lock held by an older tab.
+After deploying an auth-lock fix, close older app tabs and reopen the application.
+Regression checks: `__tests__/auth/chat-identity-hook.test.tsx` and
+`__tests__/auth/auth-landing-recovery.test.tsx`.
+
 ## Handoff checklist
 
 - Summarize behavior changed and security assumptions preserved.

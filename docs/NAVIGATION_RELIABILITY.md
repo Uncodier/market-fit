@@ -4,7 +4,9 @@
 
 ### Mobile workspace navigation
 
-Below 768px, an icon-only floating bottom navigation replaces the workspace sidebar.
+Below 768px, a floating bottom navigation replaces the workspace sidebar. Each
+icon includes its app's translated label, using the same localization keys as the
+launcher. Labels wrap to at most two lines without increasing the bar's height.
 The capsule-shaped glass bar uses a neutral translucent gradient, 32px backdrop
 blur, inset highlights and a soft shadow. It is centered with a 440px maximum
 width, 16px minimum side margins and a 12px gap above the bottom safe area.
@@ -25,7 +27,7 @@ visits made during loading or publish into a different actor/site scope.
 Apps remains reachable while its launcher page is open. Profile is the first tile
 in the launcher's Settings section, not a mobile top-bar shortcut. This account
 destination remains available regardless of site screen restrictions and does not
-become a dynamic mobile tab. Labels remain available to assistive technology.
+become a dynamic mobile tab. Full labels remain available to assistive technology.
 
 The bar overlays the content without reserving padding or reducing viewport height;
 the fixed conversation pane extends to the bottom edge. Embedded artifact views do not
@@ -47,6 +49,12 @@ On mobile, **Back to instances** pushes `/robots?view=instances` (preserving the
 workspace mode), showing a searchable full-screen list and restoring bottom
 navigation. Selecting a row pushes its instance URL, hiding the list/navigation;
 browser back/forward follows the same screen state. No modal is used for this path.
+The Robots parent breadcrumb also targets this explicit list on mobile instead
+of using instance tabs. On desktop, Robots shows only its workspace title in the
+top bar, without a breadcrumb trail or extra breadcrumb row; the instance tabs
+provide navigation there. On mobile the parent breadcrumb targets the list instead
+of `/robots`, which would immediately auto-select an instance again. It preserves
+the current workspace mode; desktop, embedded views and detail links are unchanged.
 The mobile sticky header contains Back and the floating Agent/Files/etc. selector,
 not instance tabs. Desktop keeps its instance tabs and existing browser modal.
 Automatic selection and creation remain enabled; URL canonicalization makes the

@@ -278,6 +278,20 @@ export default function CatalogPage() {
                       <SearchInput  placeholder={t('catalog.search') || "Search in catalog..."} value={searchQuery} onChange={handleSearchChange}    className="w-full"  containerClassName="w-64" />
                     </form>
                   </FilterSection>
+                  <FilterSection mobileOnly>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="flex h-11 w-full items-center justify-start gap-2 rounded-md"
+                      onClick={() => setIsImportOpen(true)}
+                      disabled={!currentSite?.id}
+                      title="Import"
+                      aria-label="Import"
+                    >
+                      <Upload className="h-4 w-4" />
+                      <span>Import</span>
+                    </Button>
+                  </FilterSection>
                 </FilterContainer>
               </MobileFiltersDrawer>
               
@@ -285,7 +299,7 @@ export default function CatalogPage() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="flex items-center gap-1"
+                  className="hidden items-center gap-1 md:flex"
                   onClick={() => setIsImportOpen(true)}
                   disabled={!currentSite?.id}
                   title="Import"
@@ -294,7 +308,7 @@ export default function CatalogPage() {
                   <Upload className="h-4 w-4" />
                   <span className="hidden sm:inline">Import</span>
                 </Button>
-                <div className="w-px h-6 bg-border mx-1 hidden sm:block" />
+                <div className="w-px h-6 bg-border mx-1 hidden md:block" />
                 <SortDropdown sortBy={sortBy} setSortBy={setSortBy} options={[
                   { value: 'display_order', label: 'Display order' },
                   { value: 'newest', label: 'Newest' },

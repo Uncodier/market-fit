@@ -1,5 +1,5 @@
 import { act, renderHook } from '@testing-library/react'
-import { usePathname, useSearchParams } from 'next/navigation'
+import { usePathname, useSearchParams, useRouter } from 'next/navigation'
 import { useNavigationHistory } from '@/app/hooks/use-breadcrumb-history'
 import { NAVIGATION_AREAS } from '@/app/config/navigation-areas'
 import { workspaceScreenTitle } from '@/lib/navigation/workspace-screen'
@@ -53,4 +53,29 @@ test('title updates and detail navigation retain a real request parent', () => {
     '/purchases/requests', '/purchases/requests/id',
   ])
   expect(hook.result.current.items[1].label).toBe('Office supplies')
+})
+
+test.each([
+  [true, '/robots?instance=one', '/robots', '/robots?view=instances'],
+  [true, '/robots?instance=one&mode=workflow', '/robots', '/robots?mode=workflow&view=instances'],
+  [true, '/robots?instance=one&mode=imprenta', '/robots', '/robots?mode=imprenta&view=instances'],
+  [false, '/robots?instance=one', '/robots', '/robots'],
+  [true, '/robots?instance=one&artifact=true', '/robots', '/robots'],
+  [true, '/robots?instance=one', '/robots?instance=two', '/robots?instance=two'],
+  [true, '/leads/one', '/leads', '/leads'],
+])('breadcrumb navigation mobile=%s from %s to %s', (mobile, current, target, expected) => {
+  const originalMatchMedia = window.matchMedia
+  window.matchMedia = jest.fn().mockReturnValue({ matches: mobile })
+  const push = jest.fn()
+  jest.mocked(useRouter).mockReturnValue({ push } as unknown as ReturnType<typeof useRouter>)
+  const [path, query] = current.split('?')
+  jest.mocked(usePathname).mockReturnValue(path)
+  jest.mocked(useSearchParams).mockReturnValue(new URLSearchParams(query) as ReturnType<typeof useSearchParams>)
+  try {
+    const hook = renderHook(() => useNavigationHistory())
+    act(() => hook.result.current.navigateTo({ path: target, label: 'Parent', timestamp: 1 }))
+    expect(push).toHaveBeenCalledWith(expected)
+  } finally {
+    window.matchMedia = originalMatchMedia
+  }
 })

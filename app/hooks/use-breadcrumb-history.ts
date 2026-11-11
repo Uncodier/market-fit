@@ -7,6 +7,7 @@ import { usePathname, useSearchParams, useRouter } from 'next/navigation'
 import { reduceBreadcrumb, enforceInvariants, getScreenKey, hasId } from '@/lib/navigation/breadcrumb-engine'
 import type { HistoryItem } from '@/lib/navigation/breadcrumb-engine'
 import { markUINavigation } from '@/lib/navigation/navigation-helpers'
+import { mobileInstanceBreadcrumbHref } from '@/app/robots/mobile-instance-navigation'
 
 const NAVIGATION_HISTORY_RESET_EVENT = 'navigation-history:reset'
 
@@ -380,14 +381,13 @@ export function useNavigationHistory() {
     // Mark as UI navigation using the proper function
     markUINavigation()
     
-    // Extract pathname and query from path
-    const [path, query] = item.path.split('?')
-    if (query) {
-      router.push(`${path}?${query}`)
-    } else {
-      router.push(path)
-    }
-  }, [router])
+    const destination = mobileInstanceBreadcrumbHref(
+      item.path,
+      fullPath,
+      typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches,
+    )
+    router.push(destination)
+  }, [router, fullPath])
   
   /**
    * Reset history (for programmatic resets)

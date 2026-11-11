@@ -19,7 +19,9 @@
 .tab {
   position: relative;
   display: flex;
-  height: 48px;
+  height: 56px;
+  flex-direction: column;
+  gap: 2px;
   min-width: 0;
   align-items: center;
   justify-content: center;
@@ -29,10 +31,24 @@
   touch-action: manipulation;
 }
 
+.label {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  max-width: 100%;
+  padding-inline: 2px;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 11px;
+  overflow-wrap: anywhere;
+}
+
 .tab::before {
   content: "";
   position: absolute;
-  inset: 2px max(2px, calc((100% - 58px) / 2));
+  inset: 0;
   z-index: -1;
   border-radius: inherit;
   opacity: 0;

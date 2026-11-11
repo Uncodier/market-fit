@@ -7,7 +7,7 @@ import { SUPPORT_SITE_ID } from "@/lib/chat/identity-types"
 jest.mock("@/app/hooks/use-supabase-client", () => ({ useSupabaseClient: jest.fn() }))
 
 describe("authenticated chat initialization", () => {
-  let onAuthChange: (event: string, session: unknown) => Promise<void>
+  let onAuthChange: (event: string, session: unknown) => void | Promise<void>
   const user = { id: "user-a", email: "untrusted-profile@example.test", user_metadata: { name: "Editable name" } }
   const session = { user }
   const sdk = {
@@ -55,5 +55,62 @@ describe("authenticated chat initialization", () => {
     expect(hook.result.current.user).toBeNull()
     expect(sdk.chat.identify).not.toHaveBeenCalled()
     hook.unmount()
+  })
+
+  it("releases the auth callback before syncing an updated profile", async () => {
+    const hook = renderHook(() => useAuthState())
+    await waitFor(() => expect(hook.result.current.isLoading).toBe(false))
+    client.auth.getSession.mockClear()
+    const eq = jest.fn().mockResolvedValue({ error: null })
+    const update = jest.fn().mockReturnValue({ eq })
+    client.from.mockReturnValue({ update })
+    const updatedUser = { ...user, email: "updated@example.test" }
+
+    act(() => {
+      // Supabase awaits this callback while holding its session lock.
+      expect(onAuthChange("USER_UPDATED", { user: updatedUser })).toBeUndefined()
+      expect(client.auth.getSession).not.toHaveBeenCalled()
+      expect(client.from).not.toHaveBeenCalled()
+    })
+
+    await waitFor(() => expect(eq).toHaveBeenCalledWith("id", user.id))
+    expect(update).toHaveBeenCalledWith({ email: updatedUser.email })
+    expect(hook.result.current.user?.email).toBe(updatedUser.email)
+    hook.unmount()
+  })
+
+  it("does not hold the auth callback while optional chat logout is pending", async () => {
+    const hook = renderHook(() => useAuthState())
+    await waitFor(() => expect(sdk.identify).toHaveBeenCalledTimes(1))
+    sdk.logoutIdentity.mockReturnValue(new Promise(() => {}))
+    act(() => {
+      expect(onAuthChange("SIGNED_OUT", null)).toBeUndefined()
+    })
+    expect(hook.result.current.user).toBeNull()
+    hook.unmount()
+  })
+
+  it("discards a queued profile sync after sign-out", async () => {
+    const hook = renderHook(() => useAuthState())
+    await waitFor(() => expect(hook.result.current.isLoading).toBe(false))
+    client.from.mockClear()
+    act(() => {
+      onAuthChange("USER_UPDATED", session)
+      onAuthChange("SIGNED_OUT", null)
+    })
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 10)) })
+    expect(client.from).not.toHaveBeenCalled()
+    expect(hook.result.current.user).toBeNull()
+    hook.unmount()
+  })
+
+  it("cancels a queued profile sync on unmount", async () => {
+    const hook = renderHook(() => useAuthState())
+    await waitFor(() => expect(hook.result.current.isLoading).toBe(false))
+    client.from.mockClear()
+    act(() => { onAuthChange("USER_UPDATED", session) })
+    hook.unmount()
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 10)) })
+    expect(client.from).not.toHaveBeenCalled()
   })
 })

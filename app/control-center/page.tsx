@@ -135,7 +135,7 @@ export default function ControlCenterPage() {
                   </div>
                 </div>
               ) : (
-              <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4 lg:gap-8 md:overflow-hidden">
+              <div className="flex min-w-0 flex-col md:flex-row items-stretch md:items-center gap-4 lg:gap-8 md:overflow-hidden">
                 <TaskStatusFilter
                   selectedFilter={statusFilter}
                   onFilterChange={setStatusFilter}
@@ -148,10 +148,10 @@ export default function ControlCenterPage() {
                     onChange={(e) => setSearchQuery(e.target.value)}
                     alwaysExpanded={isMobile}
                     containerClassName={isMobile ? "w-full" : undefined}
-                    className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
+                    className={cn("bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20", isMobile && "text-base")}
                   />
 
-                  <Button variant="secondary" size="icon" className="h-9 w-9 shrink-0 rounded-full" onClick={() => setIsFilterModalOpen(true)} aria-label={t("controlCenter.filter.title")}>
+                  <Button variant="secondary" size="icon" className="relative h-9 w-9 shrink-0 rounded-full" onClick={() => setIsFilterModalOpen(true)} aria-label={t("controlCenter.filter.title")}>
                     <Filter className="h-4 w-4" />
                     {getTotalActiveFilters() > 0 && (
                       <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-[10px] font-medium text-primary-foreground flex items-center justify-center">

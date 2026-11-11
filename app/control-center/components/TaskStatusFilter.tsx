@@ -3,7 +3,8 @@
 import React, { memo } from "react"
 import { cn } from "@/lib/utils"
 import { Filter, LayoutGrid, Activity, CheckCircle2 } from "@/app/components/ui/icons"
-import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
+import { Tabs } from "@/app/components/ui/tabs"
+import { ResponsiveTabsList } from "@/app/components/ui/responsive-tabs-list"
 import { Button } from "@/app/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
 
@@ -46,46 +47,24 @@ export const TaskStatusFilter = memo(function TaskStatusFilter({
   const filterConfig = getFilterConfig()
   
   return (
-    <div className={cn("flex items-center justify-center", className)}>
-      <div className="flex items-center justify-center w-full gap-3">
+    <div className={cn("flex w-full min-w-0 items-center md:w-auto", className)}>
+      <div className="flex min-w-0 w-full items-center gap-3">
         <Tabs 
           value={selectedFilter} 
           onValueChange={(value) => onFilterChange(value as StatusFilterType)}
-          className="flex items-center justify-center"
+          className="w-full min-w-0 md:w-auto"
         >
-          <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
-            <TooltipProvider delayDuration={300}>
-              {(Object.keys(filterConfig) as StatusFilterType[]).map((filter) => {
-                const config = filterConfig[filter]
-
-                return (
-                  <Tooltip key={filter}>
-                    <TooltipTrigger asChild>
-                      <TabsTrigger
-                        value={filter}
-                        className={cn(
-                          "h-7 px-3 flex items-center justify-center gap-1.5 rounded-full transition-all duration-200 text-xs font-medium border border-transparent",
-                          "data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-border",
-                          filter === selectedFilter
-                            ? "bg-background text-foreground shadow-md ring-1 ring-border"
-                            : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                        )}
-                        title={config.label}
-                      >
-                        {config.icon}
-                        <span className="tab-label">
-                          {config.label}
-                        </span>
-                      </TabsTrigger>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" sideOffset={6}>
-                      {config.label}
-                    </TooltipContent>
-                  </Tooltip>
-                )
-              })}
-            </TooltipProvider>
-          </TabsList>
+          <ResponsiveTabsList
+            tabs={(Object.keys(filterConfig) as StatusFilterType[]).map((filter) => ({
+              value: filter,
+              label: filterConfig[filter].label,
+              icon: filterConfig[filter].icon,
+            }))}
+            activeTab={selectedFilter}
+            onTabChange={(value) => onFilterChange(value as StatusFilterType)}
+            className="h-8 p-0.5 bg-muted/30 rounded-full"
+            triggerClassName="h-7 px-3 text-xs font-medium"
+          />
         </Tabs>
       
         {onFilterClick && (
@@ -95,8 +74,9 @@ export const TaskStatusFilter = memo(function TaskStatusFilter({
                 <Button
                   variant="secondary"
                   size="icon"
-                  className="h-9 w-9 shrink-0 rounded-full"
+                  className="relative h-9 w-9 shrink-0 rounded-full"
                   onClick={onFilterClick}
+                  aria-label={t('controlCenter.statusFilter.filters') || "Filters"}
                 >
                   <Filter className="h-4 w-4" />
                   {activeFilters > 0 && (

@@ -15,7 +15,6 @@ jest.mock("@/app/context/ScreenAccessContext", () => ({
   useOptionalScreenAccess: () => ({ canAccessNavKey: () => !mockRestricted }),
 }))
 jest.mock("@/lib/navigation/stale-router", () => ({ navigateOrAssign: jest.fn() }))
-jest.mock("@/app/components/navigation/ModuleImage", () => ({ ModuleImage: () => null }))
 
 beforeEach(() => {
   mockRestricted = false
@@ -28,6 +27,8 @@ test("places Profile first in Settings and navigates to the account", () => {
   const section = screen.getByRole("heading", { name: "Settings" }).parentElement!.parentElement!
   const tiles = within(section).getAllByRole("button")
   expect(tiles[0]).toHaveTextContent("Profile")
+  expect(within(tiles[0]).getByRole("img", { name: "Profile app icon" }))
+    .toHaveAttribute("src", "/api/images/modules/profile")
   fireEvent.click(tiles[0])
   expect(navigateOrAssign).toHaveBeenCalledWith(expect.anything(), "/profile")
 })
@@ -35,7 +36,7 @@ test("places Profile first in Settings and navigates to the account", () => {
 test("keeps Profile reachable for users restricted from workspace screens", () => {
   mockRestricted = true
   render(<NavigationPage />)
-  const profile = screen.getByRole("button", { name: "Profile" })
+  const profile = screen.getByRole("button", { name: "Profile app icon Profile" })
   fireEvent.keyDown(profile, { key: "Enter" })
   expect(navigateOrAssign).toHaveBeenCalledWith(expect.anything(), "/profile")
 })

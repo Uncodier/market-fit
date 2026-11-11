@@ -29,3 +29,15 @@ export function shouldCanonicalizeMobileInstance(search: string, selectedId: str
   return !isInstanceListView(params) && params.get("artifact") !== "true" &&
     !resolveInstanceIdParam(params) && selectedId !== "new"
 }
+
+/** A mobile breadcrumb root means the list, not automatic instance selection. */
+export function mobileInstanceBreadcrumbHref(target: string, current: string, isMobile: boolean) {
+  const [currentPath, currentSearch] = current.split("?")
+  const [targetPath, targetSearch] = target.split("?")
+  const currentParams = new URLSearchParams(currentSearch)
+  const targetParams = new URLSearchParams(targetSearch)
+  if (!isMobile || !(currentPath === "/robots" || currentPath.startsWith("/robots/")) ||
+    targetPath !== "/robots" || resolveInstanceIdParam(targetParams) ||
+    currentParams.get("artifact") === "true" || targetParams.get("artifact") === "true") return target
+  return mobileInstanceListHref(targetParams.has("mode") ? targetParams.toString() : currentParams.toString())
+}

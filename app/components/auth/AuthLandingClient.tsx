@@ -19,7 +19,6 @@ export function AuthLandingClient() {
   const { t } = useLocalization()
   const [authType, setAuthType] = useState<string>("signin")
   const [mounted, setMounted] = useState(false)
-  const [checkingSession, setCheckingSession] = useState(true)
 
   // Safari detection script que ejecuta inmediatamente
   useEffect(() => {
@@ -46,7 +45,7 @@ export function AuthLandingClient() {
     }
   }, [])
 
-  // If already signed in, leave /auth immediately (hard navigation).
+  // Check in the background: an unavailable session must not hide the form.
   useEffect(() => {
     let cancelled = false
 
@@ -57,9 +56,7 @@ export function AuthLandingClient() {
         if (cancelled) return
 
         if (error || !user) {
-          if (error) {
-            await supabase.auth.signOut({ scope: "local" }).catch(() => {})
-          }
+          // Network/lock errors do not prove that the persisted session is invalid.
           return
         }
 
@@ -68,15 +65,8 @@ export function AuthLandingClient() {
           url.searchParams.get("returnTo")
         )
         window.location.replace(destination)
-      } catch (error) {
-        console.warn("[AuthLanding] session check failed:", error)
-        try {
-          await createClient().auth.signOut({ scope: "local" })
-        } catch {
-          // ignore
-        }
-      } finally {
-        if (!cancelled) setCheckingSession(false)
+      } catch {
+        if (!cancelled) console.warn("[AuthLanding] session check unavailable")
       }
     }
 
@@ -185,7 +175,7 @@ export function AuthLandingClient() {
   //   }
   // }, [])
 
-  if (checkingSession || !mounted) {
+  if (!mounted) {
     return (
       <div className="min-h-screen dark:bg-black-paper bg-white-paper bg-white" />
     )

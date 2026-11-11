@@ -57,7 +57,7 @@ it('serves the public Makinari cache without authenticating or generating', asyn
   expect(fetch).not.toHaveBeenCalled()
 })
 
-it.each(['suppliers', 'accountsPayable'])('generates only the fixed %s prompt under Makinari with server credentials', async itemKey => {
+it.each(['suppliers', 'accountsPayable', 'profile'])('generates only the fixed %s prompt under Makinari with server credentials', async itemKey => {
   const response = await run(request({ authorization: 'Bearer forged', 'x-api-key': 'forged',
     referer: 'https://app.example.test/navigation' }), itemKey)
   expect(response.status).toBe(200)

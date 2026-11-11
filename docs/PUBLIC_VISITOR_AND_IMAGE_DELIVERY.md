@@ -95,6 +95,11 @@ distributed lock remains authoritative. Failed or uncertain generations are not
 automatically retried. Cached responses are public; newly generated responses
 and failures are private and not stored by shared HTTP caches.
 
+Profile uses this shared delivery with the existing glossy 3D prompt style and a
+single-user silhouette. The Settings navigation tile and sidebar account entry
+share the same artwork; a personal avatar still takes precedence in the sidebar.
+The fixed prompt never includes the account name or email.
+
 For all remaining modules, `getModuleImageUrl` preserves the shared icon-set URLs
 from commit `8ce0124f`: the unchanged prompt and 256-by-256 dimensions go directly to the configured API's
 `/api/public/image/prompt/...` endpoint, without `site_id` or credentials. Requests

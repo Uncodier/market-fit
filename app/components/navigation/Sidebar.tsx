@@ -328,6 +328,7 @@ export function Sidebar({
                 <MenuItem
                   href={profileMainItem.href}
                   icon={profileMainItem.icon}
+                  moduleImage={{ area: "settings", itemKey: "profile" }}
                   title={
                     user?.user_metadata?.full_name ||
                     user?.user_metadata?.name ||

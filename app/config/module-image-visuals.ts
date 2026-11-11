@@ -162,6 +162,8 @@ const COMPACT_FULL_SIZE_COMPOSITION =
   "Use the Apple iOS Calendar, Notes, Contacts, and Reminders icons as references for visual polish, spacing discipline, and clarity rather than copying their symbols or outer app tiles: one recognizable object, full-size at 88 to 92 percent of the canvas, optically centered, evenly balanced, with a narrow consistent safe margin and softly rounded geometry; no app tile, iOS-style squircle, rounded-square container, badge, frame, floor, scenery, or secondary icon"
 
 const MODULE_IMAGE_CLARIFIERS: Partial<Record<string, string>> = {
+  profile:
+    "Show one simple personal profile silhouette with a large rounded head and broad shoulders, representing a single user account; no facial features, full body, avatar group, ID card, text, letters, numbers, or extra objects",
   modifierGroups:
     "Show one compact group of three overlapping option cards, each with one large circular selection control, representing grouped product extras; no product shelf, crates, sliders, text, numbers, logos, or extra objects",
   suppliers:

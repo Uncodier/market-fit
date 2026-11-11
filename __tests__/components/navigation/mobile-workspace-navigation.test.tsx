@@ -13,13 +13,14 @@ jest.mock("@/app/components/navigation/shortcut-storage", () => ({
 }))
 
 let mockSiteId = "site-a"
+let mockLocale: keyof typeof localeMessages = "en"
 let mockUserId = "user-a"
 let mockLoading = false
 let mockBlocked: string[] = []
 const mockSetMode = jest.fn()
 
 jest.mock("@/app/context/LocalizationContext", () => ({
-  useLocalization: () => ({ t: (key: string) => localeMessages.en[key] ?? key }),
+  useLocalization: () => ({ t: (key: string) => localeMessages[mockLocale][key] ?? key }),
 }))
 jest.mock("@/app/context/LayoutContext", () => ({
   useLayout: () => ({ setRobotsViewMode: mockSetMode }),
@@ -47,6 +48,7 @@ function setRoute(path: string) {
 
 beforeEach(() => {
   mockSiteId = "site-a"
+  mockLocale = "en"
   mockUserId = "user-a"
   mockLoading = false
   mockBlocked = []
@@ -56,7 +58,7 @@ beforeEach(() => {
   setRoute("/robots")
 })
 
-test("starts with icon-only AI Workspace centered and Apps in the last fixed slot", () => {
+test("starts with labeled AI Workspace centered and Apps in the last fixed slot", () => {
   render(<MobileWorkspaceNavigation />)
   const nav = screen.getByRole("navigation", { name: "Workspace navigation" })
   const slots = nav.firstElementChild!.children
@@ -64,16 +66,29 @@ test("starts with icon-only AI Workspace centered and Apps in the last fixed slo
   expect(slots[2]).toBe(screen.getByRole("link", { name: "AI Workspace" }))
   expect(slots[4]).toBe(screen.getByRole("link", { name: "Apps" }))
   expect(slots[2]).toHaveAttribute("aria-current", "page")
-  expect(nav.textContent).toBe("")
+  expect(nav).toHaveTextContent("AI Workspace")
   expect(screen.getAllByRole("link")).toHaveLength(5)
   expect(slots[0]).toHaveAttribute("href", "/chat")
   expect(slots[1]).toHaveAttribute("href", "/leads")
   expect(slots[3]).toHaveAttribute("href", "/control-center")
   expect(nav).toHaveClass("glass", "md:hidden")
   for (const link of screen.getAllByRole("link")) {
+    expect(link.textContent).toBe(link.getAttribute("aria-label"))
     expect(link).toHaveClass("tab")
     expect(link.querySelector("svg")).toHaveAttribute("stroke-width", "1.7")
   }
+})
+
+test.each(["en", "es", "fr", "de", "ja"] as const)("uses translated app labels in %s", (locale) => {
+  mockLocale = locale
+  const view = render(<MobileWorkspaceNavigation />)
+  for (const key of ["chat", "leads", "controlCenter", "agents", "apps"]) {
+    const title = localeMessages[locale][`layout.sidebar.${key}`]
+    expect(screen.getByRole("link", { name: title })).toHaveTextContent(title)
+  }
+  mockLocale = "en"
+  view.rerender(<MobileWorkspaceNavigation />)
+  expect(screen.getByRole("link", { name: "AI Workspace" })).toHaveTextContent("AI Workspace")
 })
 
 test("restores navigation on the pushed instance list and hides it on selection", () => {

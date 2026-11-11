@@ -26,7 +26,7 @@ export function TaskPageHeader({
     return (
       <StickyHeader>
         <div className="flex min-w-0 w-full items-center justify-between gap-2">
-          <MobileFiltersDrawer>
+          <MobileFiltersDrawer layout="compact">
             <FilterContainer>
               <FilterSection title={t("common.search") || "Search"}>
                 {leftContent}

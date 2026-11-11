@@ -101,9 +101,12 @@ export function useAuthState() {
 
     checkAuth()
 
-    // Suscribirse a cambios en la autenticación
+    const profileSyncTimers = new Set<ReturnType<typeof setTimeout>>()
+    let authGeneration = 0
+    // Never await Supabase calls inside its session-lock notification callback.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event: AuthChangeEvent, session: Session | null) => {
+      (event: AuthChangeEvent, session: Session | null) => {
+        const generation = ++authGeneration
         // Clear the previous account's chat immediately, not after a React render.
         void chatIdentity.sync(session?.user?.id ?? null)
         
@@ -145,7 +148,7 @@ export function useAuthState() {
             console.log('[useAuth] SIGNED_IN event detected but ignoring redirect - user is in password reset flow:', currentPath)
           }
         } else if (event === 'SIGNED_OUT') {
-          await chatIdentity.clearForSignOut()
+          void chatIdentity.clearForSignOut()
           // Limpiar modo demo al cerrar sesión
           clearDemoMode()
           
@@ -170,30 +173,33 @@ export function useAuthState() {
           // Actualizar la sesión sin redirección
           
         } else if (event === 'USER_UPDATED') {
-          // El perfil del usuario fue actualizado, actualizar la sesión
-          const { data } = await supabase.auth.getSession()
-          const updatedUser = data.session?.user
-          
+          const updatedUser = session?.user
           if (updatedUser?.email) {
-            // Sync email to profiles table when email is updated
-            try {
-              await supabase
-                .from('profiles')
-                .update({ email: updatedUser.email })
-                .eq('id', updatedUser.id)
-            } catch (error) {
-              console.error('[Auth] Error syncing email to profiles:', error)
-              // Don't fail the update if profile sync fails
-            }
+            // Defer database work until the SDK has released its auth lock.
+            const timer = setTimeout(() => {
+              profileSyncTimers.delete(timer)
+              if (generation !== authGeneration) return
+              void (async () => {
+                try {
+                  const { error } = await supabase
+                    .from('profiles')
+                    .update({ email: updatedUser.email })
+                    .eq('id', updatedUser.id)
+                  if (error) console.warn('[Auth] Profile email sync failed')
+                } catch {
+                  console.warn('[Auth] Profile email sync failed')
+                }
+              })()
+            }, 0)
+            profileSyncTimers.add(timer)
           }
-          
-          setUser(updatedUser ?? null)
         }
       }
     )
 
     return () => {
-      
+      authGeneration += 1
+      profileSyncTimers.forEach(clearTimeout)
       subscription.unsubscribe()
     }
   }, [router, supabase, chatIdentity])

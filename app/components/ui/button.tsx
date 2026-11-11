@@ -171,7 +171,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             style={style}
           >
             <Slottable>{children}</Slottable>
-            <span className="absolute inset-0 overflow-hidden pointer-events-none" style={{ borderRadius: "inherit" }}>
+            <span className="btn-glass-surface absolute inset-0 overflow-hidden pointer-events-none" style={{ borderRadius: "inherit" }}>
               <span className="btn-top-highlight" aria-hidden="true" />
               <span className="btn-glass-cursor" aria-hidden="true" />
               <span className="btn-glass-rim" aria-hidden="true" />
@@ -208,7 +208,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           style={style}
         >
           {children}
-          <span className="absolute inset-0 overflow-hidden pointer-events-none" style={{ borderRadius: "inherit" }}>
+          <span className="btn-glass-surface absolute inset-0 overflow-hidden pointer-events-none" style={{ borderRadius: "inherit" }}>
             <span className="btn-top-highlight" aria-hidden="true" />
             <span className="btn-glass-cursor" aria-hidden="true" />
             <span className="btn-glass-rim" aria-hidden="true" />

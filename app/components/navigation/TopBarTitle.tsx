@@ -140,6 +140,7 @@ export function TopBarTitle({
   // Convert history items to breadcrumb format
   const fullPath = `${pathname}?${searchParams.toString()}`
   const isScreenRoot = !hasId(fullPath)
+  const isRobotsRoute = pathname === "/robots" || pathname.startsWith("/robots/")
   const normalizedHistory = enforceInvariants(historyItems)
   const breadcrumbItems = hasHistory && !isScreenRoot ? normalizedHistory.map((item, index, array) => {
     const [pathnameOnly, queryString] = item.path.split("?")
@@ -201,7 +202,13 @@ export function TopBarTitle({
           </ol>
         </nav>
       ) : breadcrumbItems ? (
-        <nav className="flex items-center min-w-0" aria-label="Breadcrumb">
+        <>
+        {isRobotsRoute && (
+          <h1 className="hidden md:block text-2xl font-semibold text-foreground font-inter truncate">
+            {getDefaultTitle()}
+          </h1>
+        )}
+        <nav className={cn("flex items-center min-w-0", isRobotsRoute && "md:hidden")} aria-label="Breadcrumb">
           <ol className="flex items-center min-w-0">
               {breadcrumbItems.map((item, index) => {
                 // Calculate dynamic font size
@@ -251,6 +258,7 @@ export function TopBarTitle({
               })}
           </ol>
         </nav>
+        </>
       ) : (
         <h1 className="text-2xl font-semibold text-foreground font-inter truncate">{isScreenRoot ? getDefaultTitle() : (customTitle?.path === pathname ? customTitle.title : null) || getDefaultTitle() || title}</h1>
       )}

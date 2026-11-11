@@ -261,14 +261,16 @@ export function TopBar({
   }, [currentSite, pathname]);
 
   const isProfilePage = pathname === '/profile' || pathname.startsWith('/profile/');
+  const showBreadcrumbRow = Boolean(breadcrumb) && !pathname.startsWith("/chat") &&
+    !(pathname === "/robots" || pathname.startsWith("/robots/"))
 
   return (
     <div
       data-toolbar-font
       className={cn(
         "flex flex-col border-b dark:border-white/5 border-black/5 bg-background/95 backdrop-blur-sm sticky top-0 z-[200]",
-        // Hide breadcrumb in chat pages, and only add extra height on desktop
-        (breadcrumb && !pathname.startsWith("/chat")) ? "h-[64px] md:h-[calc(64px+41px)]" : "h-[64px]",
+        // Robots uses instance tabs on desktop instead of an extra breadcrumb row.
+        showBreadcrumbRow ? "h-[64px] md:h-[calc(64px+41px)]" : "h-[64px]",
         className
       )}
       {...props}
@@ -329,8 +331,8 @@ export function TopBar({
         </div>
       </div>
       
-      {/* Breadcrumb section - hidden on chat pages */}
-      {breadcrumb && !pathname.startsWith("/chat") && (
+      {/* Optional desktop breadcrumb row for other workspace screens. */}
+      {showBreadcrumbRow && (
         <div className="hidden md:block pl-4 lg:pl-8 py-2 border-t dark:border-white/5 border-black/5 dark:bg-black/50 bg-white/50">
           {breadcrumb}
         </div>

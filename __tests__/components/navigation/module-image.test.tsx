@@ -2,6 +2,14 @@ import { fireEvent, render, screen } from "@testing-library/react"
 import { ModuleImage } from "@/app/components/navigation/ModuleImage"
 
 describe("ModuleImage", () => {
+  it("renders the shared Profile artwork and keeps a user icon on delivery failure", () => {
+    render(<ModuleImage area="settings" itemKey="profile" title="Profile" />)
+    const image = screen.getByRole("img", { name: "Profile app icon" })
+    expect(image).toHaveAttribute("src", "/api/images/modules/profile")
+    fireEvent.error(image)
+    expect(screen.getByRole("img", { name: "Profile app icon" }).querySelector("svg")).not.toBeNull()
+  })
+
   it("renders Suppliers with contact artwork without inset padding", () => {
     const { container } = render(
       <ModuleImage area="buying" itemKey="suppliers" title="Suppliers" />,

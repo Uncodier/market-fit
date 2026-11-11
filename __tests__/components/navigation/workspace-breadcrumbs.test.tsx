@@ -80,3 +80,32 @@ test('details keep their entity title and navigate to the real translated parent
   fireEvent.click(screen.getByRole('button', { name: workspaceScreenTitle('/purchases/requests', translate)! }))
   expect(mockNavigate).toHaveBeenCalledWith(mockItems[1])
 })
+
+test.each(['/robots?instance=one', '/robots/one', '/robots?instance=one&mode=workflow'])(
+  'shows the Robots breadcrumb only on mobile for %s', (path) => {
+    mockItems = [
+      { path: '/robots', label: 'AI Workspace', timestamp: 1 },
+      { path, label: 'Research agent', timestamp: 2 },
+    ]
+    setRoute(path)
+    render(<TopBarTitle title="AI Workspace" isCollapsed onCollapse={() => {}} />)
+    const breadcrumb = screen.getByRole('navigation', { name: 'Breadcrumb' })
+    expect(breadcrumb).toHaveClass('md:hidden')
+    const desktopTitle = screen.getAllByRole('heading').find(heading => heading.classList.contains('md:block'))
+    expect(desktopTitle).toHaveClass('hidden', 'md:block')
+    expect(desktopTitle).not.toHaveTextContent('Research agent')
+    const parent = breadcrumb.querySelector('button')!
+    fireEvent.click(parent)
+    expect(mockNavigate).toHaveBeenCalledWith(mockItems[0])
+  },
+)
+
+test('keeps breadcrumbs on desktop for non-Robots details', () => {
+  mockItems = [
+    { path: '/leads', label: 'Customers', timestamp: 1 },
+    { path: '/leads/one', label: 'Customer one', timestamp: 2 },
+  ]
+  setRoute('/leads/one')
+  render(<TopBarTitle title="Customers" isCollapsed onCollapse={() => {}} />)
+  expect(screen.getByRole('navigation', { name: 'Breadcrumb' })).not.toHaveClass('md:hidden')
+})
