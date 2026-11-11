@@ -8,7 +8,7 @@ describe("resolveTeamMemberSender", () => {
       currentUserId: senderId, currentUserName: "Workspace Owner", currentUserAvatar: "https://example.test/owner.png",
       userDataCache: {},
     })
-    expect(result).toEqual({ name: "External human", avatar: undefined, initials: "EH" })
+    expect(result).toEqual({ name: "Message Sent", avatar: undefined, initials: "MS" })
   })
   it("uses profile cache when custom_data is empty", () => {
     const result = resolveTeamMemberSender(

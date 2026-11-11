@@ -57,7 +57,7 @@ export function TelegramChannelSetup({
           <p className="text-xs text-muted-foreground">
             Create a bot via <a href="https://t.me/BotFather" target="_blank" rel="noreferrer" className="underline text-blue-500">@BotFather</a> on Telegram, then paste the token below.
           </p>
-          <p className="text-xs text-muted-foreground">Connecting this bot activates the channel and may incur Zavu channel fees.</p>
+          <p className="text-xs text-muted-foreground">Connecting this bot activates the channel and may incur channel fees.</p>
         </div>
 
         <div className="space-y-2">

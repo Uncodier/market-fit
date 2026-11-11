@@ -1,5 +1,5 @@
-import { LocalizationProvider } from '@/app/context/LocalizationContext'
-import { render as rtlRender, screen } from '@testing-library/react'
+import { LocalizationProvider, useLocalization } from '@/app/context/LocalizationContext'
+import { fireEvent, render as rtlRender, screen } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { ChatHeader } from '@/app/components/chat/ChatHeader'
 import { ChatParticipantMessageRow } from '@/app/components/chat/ChatParticipantMessageRow'
@@ -15,6 +15,7 @@ jest.mock('@/app/components/navigation/NavigationLink', () => ({
   NavigationLink: ({ href, children }: { href: string; children: ReactNode }) => <a href={href}>{children}</a>,
 }))
 jest.mock('@/app/components/chat/chat-toggle', () => ({ ChatToggle: () => null }))
+jest.mock('@/app/components/chat/AutomationSnoozeStatus', () => ({ AutomationSnoozeStatus: () => null }))
 jest.mock('@/app/components/chat/ChatMessageActionsBar', () => ({ ChatMessageActionsBar: () => null }))
 jest.mock('@/app/components/chat/chat-message-content', () => ({ ChatMessageContent: () => null }))
 jest.mock('@/app/components/ui/avatar', () => ({
@@ -36,6 +37,47 @@ const actions = {
   onEdit: jest.fn(), onDelete: jest.fn(), onAccept: jest.fn(), onUndoAccept: jest.fn(),
   deletingMessageId: null, acceptingMessageId: null, acceptedActionsMessageIds: new Set<string>(),
 }
+
+function LocaleSwitch() {
+  const { setLocale } = useLocalization()
+  return <button onClick={() => setLocale('es')}>Switch locale</button>
+}
+
+it('uses a translated neutral label for unattributed messages without using the owner or lead identity', () => {
+  render(<><LocaleSwitch /><ChatParticipantMessageRow
+    message={{ id: 'unknown-sender', role: 'team_member', text: 'Original content', timestamp: new Date(), isCurrentUserMessage: false, isRightAligned: false }}
+    variant="team-left" leadData={{ name: 'CRM contact' }} isDarkMode={false} actions={actions}
+    identity={{ currentUserId: 'owner', currentUserName: 'Workspace Owner', currentUserAvatar: 'https://example.com/owner.jpg', userDataCache: {}, agentDataCache: {} }}
+  /></>)
+  expect(screen.getByText('Message Sent')).toBeInTheDocument()
+  expect(screen.getByText('MS')).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Switch locale' }))
+  expect(screen.getByText('Mensaje Enviado')).toBeInTheDocument()
+  expect(screen.getByText('ME')).toBeInTheDocument()
+  expect(screen.getByRole('img', { name: 'Mensaje Enviado' })).not.toHaveAttribute('data-src')
+  expect(screen.queryByText('External human')).not.toBeInTheDocument()
+  expect(screen.queryByText('Workspace Owner')).not.toBeInTheDocument()
+  expect(screen.queryByText('CRM contact')).not.toBeInTheDocument()
+})
+
+it('translates the lead status without changing stored names or conversation titles', () => {
+  rtlRender(<LocalizationProvider preferredLocale="es">
+    <ConversationItem conversation={{ id: 'localized-thread', title: 'Original title', leadName: 'Original contact',
+      leadStatus: 'qualified', agentId: 'agent-1', agentName: 'Customer Support', timestamp: new Date() }}
+      isSelected={false} onSelect={jest.fn()} onRename={jest.fn()} onArchive={jest.fn()} onDelete={jest.fn()} />
+  </LocalizationProvider>)
+  expect(screen.getByText('Calificado')).toBeInTheDocument()
+  expect(screen.getByText('Original title')).toBeInTheDocument()
+  expect(screen.getByText('Customer Support')).toBeInTheDocument()
+})
+
+it('translates the contacted status in the conversation header', () => {
+  rtlRender(<LocalizationProvider preferredLocale="es">
+    <ChatHeader {...header} isLead leadData={{ id: 'lead-1', name: 'Original contact', status: 'contacted' }} />
+  </LocalizationProvider>)
+  expect(screen.getByText('Contactado')).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'Original contact' })).toBeInTheDocument()
+})
 
 it.each([
   [{ participant_display_name: 'Taylor', participant_profile_picture: 'https://example.com/taylor.jpg' }, 'Taylor'],

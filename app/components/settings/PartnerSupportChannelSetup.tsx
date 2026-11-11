@@ -30,7 +30,7 @@ export function PartnerSupportChannelSetup({ type, status, invitationUrl, failur
       </div>
     </SectionCardContent>
     <SectionCardFooter className="flex flex-wrap gap-2">
-      <p className="w-full text-xs text-muted-foreground">Connecting this account activates the channel and may incur Zavu channel fees.</p>
+      <p className="w-full text-xs text-muted-foreground">Connecting this account activates the channel and may incur channel fees.</p>
       <Button type="button" onClick={onConnect} disabled={connecting || checking}>
         {connecting ? "Connecting..." : invitationUrl ? "Continue Setup" : "Connect Account"}
       </Button>

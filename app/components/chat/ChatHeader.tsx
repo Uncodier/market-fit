@@ -20,6 +20,7 @@ import type { ParticipantIdentity } from "@/lib/chat/participant-identity"
 import { getChannelLabel } from "@/lib/site-channels"
 import { useNewCustomerSupportConversation } from "@/app/hooks/useNewCustomerSupportConversation"
 import { AutomationSnoozeStatus } from "./AutomationSnoozeStatus"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 interface ChatHeaderProps {
   agentId: string
@@ -61,6 +62,7 @@ export function ChatHeader({
   onBack
 }: ChatHeaderProps) {
   const { currentSite } = useSite()
+  const { t } = useLocalization()
   const customerSupportConversation = useNewCustomerSupportConversation()
   const { isLayoutCollapsed } = useLayout()
   const [windowWidth, setWindowWidth] = useState(
@@ -130,7 +132,7 @@ export function ChatHeader({
   // Get status display name
   const getStatusDisplayName = (status: string) => {
     const statusObj = LEAD_STATUSES.find(s => s.id === status)
-    return statusObj ? statusObj.name : status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+    return statusObj ? t(`chat.leadStatus.${statusObj.id}`) : status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
   }
 
   // Get current lead status
@@ -241,7 +243,7 @@ export function ChatHeader({
                           <SelectContent>
                             {LEAD_STATUSES.map((status) => (
                               <SelectItem key={status.id} value={status.id}>
-                                {status.name}
+                                {t(`chat.leadStatus.${status.id}`)}
                               </SelectItem>
                             ))}
                           </SelectContent>

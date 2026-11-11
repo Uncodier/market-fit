@@ -16,7 +16,7 @@ it("keeps Telegram unconnected after activation fails and retries the same chann
     .mockResolvedValueOnce({ success: true, data: { senderId: "sender-existing", telegram: { botUsername: "sample_bot" } } })
   const onConnected = jest.fn()
   render(<TelegramChannelSetup siteId="site-1" channel={{ id: "telegram-1", name: "Telegram" }} onConnected={onConnected} />)
-  expect(screen.getByText("Connecting this bot activates the channel and may incur Zavu channel fees.")).toBeInTheDocument()
+  expect(screen.getByText("Connecting this bot activates the channel and may incur channel fees.")).toBeInTheDocument()
   fireEvent.change(screen.getByPlaceholderText("123456789:ABCdefGHIjklMNOpqrsTUVwxyz"), { target: { value: "test-token" } })
   fireEvent.click(screen.getByRole("button", { name: "Connect Telegram" }))
   await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Activation failed"))
@@ -42,7 +42,7 @@ it("shows activation pending rather than waiting for authorization", () => {
     invitationUrl="https://example.test/invite" connecting={false} checking={false}
     onConnect={jest.fn()} onCheck={jest.fn()} />)
   expect(screen.getByText("Authorization received. Channel activation is still pending.")).toBeInTheDocument()
-  expect(screen.getByText("Connecting this account activates the channel and may incur Zavu channel fees.")).toBeInTheDocument()
+  expect(screen.getByText("Connecting this account activates the channel and may incur channel fees.")).toBeInTheDocument()
 })
 
 const channel = { id: "ch-1", type: "instagram", status: "pending", zavu_sender_id: "sender/1" }
@@ -89,13 +89,31 @@ it.each([
   expect(canRecoverZavuActivation({ ...channel, status: "pending", ...flags })).toBe(false)
 })
 
+it("hides the entire recovery block when activation is already confirmed", () => {
+  const { container, rerender } = render(<ZavuChannelActivationRecovery siteId="site-1"
+    channel={{ ...channel, status: "connected" }} onActivated={jest.fn()} />)
+  expect(screen.getByRole("button", { name: "Verify activation" })).toBeInTheDocument()
+  rerender(<ZavuChannelActivationRecovery siteId="site-1"
+    channel={{ ...channel, status: "connected", metadata: { provider_channel_active: true, activation_pending: false } }}
+    onActivated={jest.fn()} />)
+  expect(container).toBeEmptyDOMElement()
+  expect(post).not.toHaveBeenCalled()
+})
+
+it("places the activation action in the card footer without naming the provider", () => {
+  render(<ZavuChannelActivationRecovery siteId="site-1" channel={channel} onActivated={jest.fn()} />)
+  const button = screen.getByRole("button", { name: "Activate channel" })
+  expect(button.closest(".border-t")).toHaveClass("bg-muted/30")
+  expect(screen.queryByText(/Zavu/i)).not.toBeInTheDocument()
+})
+
 it("requires explicit fee confirmation before verifying a legacy connected channel", async () => {
   post.mockResolvedValue({ success: true, data: { status: "connected", activationPending: false } })
   render(<ZavuChannelActivationRecovery siteId="site-1" channel={{ ...channel, status: "connected" }} onActivated={jest.fn()} />)
   expect(post).not.toHaveBeenCalled()
   fireEvent.click(screen.getByRole("button", { name: "Verify activation" }))
   expect(post).not.toHaveBeenCalled()
-  expect(screen.getByText("Activation may incur Zavu channel fees. Continue only if you want to activate this linked channel.")).toBeInTheDocument()
+  expect(screen.getByText("Activation may incur channel fees. Continue only if you want to activate this linked channel.")).toBeInTheDocument()
   fireEvent.click(screen.getByRole("button", { name: "Confirm activation" }))
   await waitFor(() => expect(post).toHaveBeenCalledTimes(1))
 })

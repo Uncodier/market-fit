@@ -21,10 +21,10 @@ export interface InstanceAssetPreview {
 }
 
 export interface InstanceStats {
-  nodes: number
-  workflows: number
-  assets: number
-  requirements: number
+  nodes?: number
+  workflows?: number
+  assets?: number
+  requirements?: number
   recentAssets: InstanceAssetPreview[]
   avatarUrl: string | null
 }
@@ -129,10 +129,10 @@ export function countInstanceNodeRows(
 export function instanceMatchesTab(stats: InstanceStats | undefined, tab: InstanceFilterTab) {
   if (tab === "all" || tab === "archived") return true
   if (!stats) return true
-  if (tab === "nodes") return stats.nodes > 1
-  if (tab === "workflows") return stats.workflows > 1
-  if (tab === "files") return stats.assets > 0
-  return stats.requirements > 0
+  if (tab === "nodes") return stats.nodes === undefined || stats.nodes > 1
+  if (tab === "workflows") return stats.workflows === undefined || stats.workflows > 1
+  if (tab === "files") return stats.assets === undefined || stats.assets > 0
+  return stats.requirements === undefined || stats.requirements > 0
 }
 
 function instanceTimestamp(instance: RobotInstance) {
@@ -193,10 +193,10 @@ export function countInstancesByTab(
   activeInstances.forEach((instance) => {
     const stats = statsById[instance.id]
     if (!stats) return
-    if (stats.nodes > 1) counts.nodes += 1
-    if (stats.workflows > 1) counts.workflows += 1
-    if (stats.assets > 0) counts.files += 1
-    if (stats.requirements > 0) counts.requirements += 1
+    if ((stats.nodes ?? 0) > 1) counts.nodes += 1
+    if ((stats.workflows ?? 0) > 1) counts.workflows += 1
+    if ((stats.assets ?? 0) > 0) counts.files += 1
+    if ((stats.requirements ?? 0) > 0) counts.requirements += 1
   })
 
   return counts

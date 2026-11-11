@@ -11,6 +11,7 @@ import {
 import { ChatMessageActionsBar } from "./ChatMessageActionsBar"
 import { useCommentDisplayContext } from './CommentReplyContext'
 import { parseSocialCommentContext } from '@/lib/chat/social-comment-context'
+import { useLocalization } from '@/app/context/LocalizationContext'
 
 type ParticipantVariant =
   | "team-left"
@@ -41,6 +42,7 @@ export function ChatParticipantMessageRow({
   actions: MessageRowActions
 }) {
   const { showMessagePostContext } = useCommentDisplayContext()
+  const { t } = useLocalization()
   const isTeam = variant.startsWith("team")
   const isLeft = variant === "team-left"
   const isOtherTeamMember = variant === "team-other"
@@ -50,6 +52,7 @@ export function ChatParticipantMessageRow({
         currentUserName: identity.currentUserName,
         currentUserAvatar: identity.currentUserAvatar,
         userDataCache: identity.userDataCache,
+        labels: { messageSent: t('chat.sender.messageSent'), you: t('chat.sender.you'), teamMember: t('chat.sender.teamMember') },
       })
     : null
   const participant = !isTeam ? identity.participantIdentity : undefined

@@ -20,6 +20,7 @@ import { format } from "date-fns"
 import { STATUS_STYLES, LEAD_STATUSES } from "@/app/leads/types"
 import { coerceDate } from "@/app/utils/coerce-date"
 import { AutomationPausedBadge } from "./AutomationPausedBadge"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 interface ConversationItemProps {
   conversation: ConversationListItem
@@ -108,6 +109,7 @@ export function ConversationItem({
   onDelete 
 }: ConversationItemProps) {
   const { isDarkMode } = useTheme()
+  const { t } = useLocalization()
 
   return (
     <div
@@ -157,7 +159,7 @@ export function ConversationItem({
                   STATUS_STYLES[conversation.leadStatus] || "bg-indigo-500/10 text-indigo-600 border-indigo-500/20"
                 )}
               >
-                {LEAD_STATUSES.find(s => s.id === conversation.leadStatus)?.name || conversation.leadStatus}
+                {LEAD_STATUSES.some(s => s.id === conversation.leadStatus) ? t(`chat.leadStatus.${conversation.leadStatus}`) : conversation.leadStatus}
               </Badge>
             )}
           </div>

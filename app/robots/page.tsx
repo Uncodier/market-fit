@@ -31,6 +31,9 @@ function RobotsPageContent() {
   const { isMobileWorkspace, showList, backToInstances, selectInstance } = useMobileInstanceNavigation(workspace)
   return (
     <div className={`flex flex-col h-full w-full ${workspace.isCanvasMode ? 'overflow-visible' : 'overflow-hidden'} relative`}>
+      {creation.avatarError && <div role="alert" className="text-sm text-destructive">
+        {creation.avatarError} <button type="button" onClick={creation.retryAvatars}>Retry</button>
+      </div>}
       {!isMobileWorkspace && <InstanceHeader {...workspace} />}
       {isMobileWorkspace && !showList && <MobileInstanceToolbar {...workspace} onBack={backToInstances} />}
       <InstanceModals {...workspace} />

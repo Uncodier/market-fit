@@ -1,5 +1,7 @@
 import '@testing-library/jest-dom'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react'
+import type { ReactNode } from 'react'
+import { LocalizationProvider } from '@/app/context/LocalizationContext'
 import { LeadAutomationSnoozeDialog } from '@/app/leads/components/LeadAutomationSnoozeDialog'
 import { AutomationSnoozeStatus } from '@/app/components/chat/AutomationSnoozeStatus'
 import { AutomationPausedBadge } from '@/app/components/chat/AutomationPausedBadge'
@@ -11,6 +13,9 @@ const mutateCache = jest.fn()
 const update = jest.fn()
 const resume = jest.fn()
 const hook = jest.fn()
+function render(ui: ReactNode) {
+  return rtlRender(ui, { wrapper: ({ children }) => <LocalizationProvider preferredLocale="en">{children}</LocalizationProvider> })
+}
 jest.mock('@/app/leads/components/use-lead-automation-snooze', () => ({ useLeadAutomationSnooze: (...args: unknown[]) => hook(...args) }))
 jest.mock('@/app/hooks/useAutomationSnooze', () => ({ useAutomationSnooze: () => ({ data: thread }) }))
 jest.mock('@/app/leads/automation-snooze-actions', () => ({ updateLeadAutomationSnooze: (...args: unknown[]) => update(...args) }))
@@ -22,6 +27,7 @@ jest.mock('swr', () => ({ useSWRConfig: () => ({ mutate: mutateCache }) }))
 
 beforeEach(() => {
   jest.clearAllMocks()
+  global.ResizeObserver = jest.fn().mockImplementation(() => ({ observe: jest.fn(), unobserve: jest.fn(), disconnect: jest.fn() }))
   window.matchMedia = jest.fn().mockReturnValue({ matches: true, addEventListener: jest.fn(), removeEventListener: jest.fn() })
   jest.useFakeTimers().setSystemTime(new Date('2026-11-11T14:00:00Z'))
   hook.mockReturnValue({ data, mutate })

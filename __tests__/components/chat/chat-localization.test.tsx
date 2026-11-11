@@ -9,6 +9,7 @@ import { useChannelSelector } from '@/app/hooks/useChannelSelector'
 import { getTemplateDeliveryStatus } from '@/lib/chat/template-delivery'
 import { isDeliveryRetryBlocked } from '@/lib/chat/response-format'
 import type { ChatMessage } from '@/app/types/chat'
+import { AutomationPausedBadge } from '@/app/components/chat/AutomationPausedBadge'
 
 jest.mock('@/app/context/LayoutContext', () => ({ useLayout: () => ({ isLayoutCollapsed: false }) }))
 jest.mock('@/app/hooks/useChannelSelector', () => ({ useChannelSelector: jest.fn() }))
@@ -122,6 +123,20 @@ function LocaleSwitch() {
   const { setLocale } = useLocalization()
   return <button onClick={() => setLocale('es')}>Switch locale</button>
 }
+
+it('translates the pause badge and its expiry on locale switching', () => {
+  const until = new Date(Date.now() + 60_000).toISOString()
+  const { container } = render(provider('en', <><LocaleSwitch /><AutomationPausedBadge until={until} /></>))
+  expect(screen.getByText('Paused until')).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Switch locale' }))
+  expect(screen.getByText('Pausado hasta')).toBeInTheDocument()
+  const label = new Date(until).toLocaleString('es', {
+    month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
+  })
+  expect(container.querySelector('time')).toHaveAttribute('dateTime', until)
+  expect(container.querySelector('time')).toHaveTextContent(label)
+  expect(screen.getByTitle(`Automatización pausada hasta ${label}`)).toBeInTheDocument()
+})
 
 it('updates a failed message immediately on locale switching without retrying delivery', () => {
   const retry = jest.fn()

@@ -27,6 +27,13 @@ interface TestQuery {
   single: () => Promise<unknown>
 }
 const mockSupabase = {
+  rpc: jest.fn((_name: string, args: { p_instance_ids: string[] }) => ({
+    abortSignal: async () => {
+      const result = await mockAvatar()
+      return result.error ? result : { data: args.p_instance_ids.map(id => ({ instance_id: id,
+        asset_count: 0, recent_assets: [], avatar_path: result.data?.[0]?.file_path || null })), error: null }
+    },
+  })),
   auth: { getUser: mockGetUser },
   storage: { from: () => ({ getPublicUrl: (url: string) => ({ data: { publicUrl: `https://example.com/${url}` } }) }) },
   from: jest.fn((table: string) => {
@@ -252,9 +259,9 @@ describe('Robots creation asynchronous lifecycle', () => {
   it('writes completed avatar absence once and ignores old-site avatar responses', async () => {
     const avatars = deferred<{ data: Array<{ file_path: string }>; error: null }>()
     mockAvatar.mockReturnValue(avatars.promise)
-    const base = input('site-a', { isSiteContextReady: false, allInstances: [{ id: 'a' }] })
+    const base = input('site-a', { isSiteContextReady: true, allInstances: [{ id: 'a' }], lastAutoCreationAttempt: Date.now() })
     const view = renderHook(useInstanceCreation, { initialProps: base })
-    expect(base.setInstanceAvatars).not.toHaveBeenCalled()
+    ;(base.setInstanceAvatars as jest.Mock).mockClear()
     view.rerender(input('site-b', { isSiteContextReady: false }))
     await act(async () => { avatars.resolve({ data: [{ file_path: 'old.png' }], error: null }) })
     expect(base.setInstanceAvatars).not.toHaveBeenCalled()

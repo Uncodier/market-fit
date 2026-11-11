@@ -27,17 +27,19 @@ export function resolveTeamMemberSender(
     currentUserName?: string
     currentUserAvatar?: string
     userDataCache: Record<string, SenderProfile>
+    labels?: { messageSent: string; you: string; teamMember: string }
   }
 ): { name: string; avatar?: string; initials: string } {
   const { currentUserId, currentUserName, currentUserAvatar, userDataCache } = options
   const isCurrent = Boolean(msg.sender_id && msg.sender_id === currentUserId)
   const cached = msg.sender_id ? userDataCache[msg.sender_id] : undefined
+  const labels = options.labels || { messageSent: "Message Sent", you: "You", teamMember: "Team Member" }
 
   const name =
     msg.sender_name ||
     cached?.name ||
-    (isCurrent ? currentUserName || "You" : undefined) ||
-    (msg.sender_id ? `Team Member (${msg.sender_id.substring(0, 6)}...)` : "External human")
+    (isCurrent ? currentUserName || labels.you : undefined) ||
+    (msg.sender_id ? `${labels.teamMember} (${msg.sender_id.substring(0, 6)}...)` : labels.messageSent)
 
   const avatar =
     msg.sender_avatar ||
@@ -48,6 +50,8 @@ export function resolveTeamMemberSender(
   return {
     name,
     avatar: avatar || undefined,
-    initials: getSenderInitials(name, msg.sender_id),
+    initials: !msg.sender_name && !cached?.name && !isCurrent && msg.sender_id
+      ? getSenderInitials(undefined, msg.sender_id)
+      : getSenderInitials(name, msg.sender_id),
   }
 }

@@ -1,6 +1,8 @@
 "use client"
 
 import React from "react"
+import Image from "next/image"
+import { useInstanceBrowserPagination } from "./use-instance-browser-pagination"
 import { format } from "date-fns"
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/app/components/ui/table"
 import { Button } from "@/app/components/ui/button"
@@ -67,9 +69,12 @@ function InstanceAvatar({ name, avatarUrl, loading, hasMultiple }: { name: strin
   return (
     <div className="relative shrink-0">
       {avatarUrl ? (
-        <img
+        <Image
           src={avatarUrl}
           alt=""
+          width={36}
+          height={36}
+          unoptimized
           className="h-9 w-9 shrink-0 rounded-full border border-border object-cover bg-muted"
         />
       ) : (
@@ -95,19 +100,12 @@ export function InstanceBrowserTable({
   emptyDescription,
   labels,
 }: InstanceBrowserTableProps) {
-  const [currentPage, setCurrentPage] = React.useState(1)
   const [itemsPerPage, setItemsPerPage] = React.useState(25)
-  const totalPages = Math.max(1, Math.ceil(instances.length / itemsPerPage))
+  const { currentPage, totalPages, setCurrentPage } = useInstanceBrowserPagination(
+    instances.map(instance => instance.id), itemsPerPage,
+  )
   const indexOfFirstItem = (currentPage - 1) * itemsPerPage
   const paginatedInstances = instances.slice(indexOfFirstItem, indexOfFirstItem + itemsPerPage)
-
-  React.useEffect(() => {
-    setCurrentPage(1)
-  }, [instances])
-
-  React.useEffect(() => {
-    setCurrentPage((page) => Math.min(page, totalPages))
-  }, [totalPages])
 
   if (instances.length === 0) {
     return (
@@ -183,16 +181,16 @@ export function InstanceBrowserTable({
                     <StatusDot status={statusKey} label={getInstanceStatusLabel(instance.status)} />
                   </TableCell>
                   <TableCell className="py-3.5">
-                    <CountCell value={stats?.nodes} loading={statsLoading} />
+                    <CountCell value={stats?.nodes} loading={isLoadingStats && stats?.nodes === undefined} />
                   </TableCell>
                   <TableCell className="py-3.5">
-                    <CountCell value={stats?.workflows} loading={statsLoading} />
+                    <CountCell value={stats?.workflows} loading={isLoadingStats && stats?.workflows === undefined} />
                   </TableCell>
                   <TableCell className="py-3.5">
-                    <CountCell value={stats?.assets} loading={statsLoading} />
+                    <CountCell value={stats?.assets} loading={isLoadingStats && stats?.assets === undefined} />
                   </TableCell>
                   <TableCell className="py-3.5">
-                    <CountCell value={stats?.requirements} loading={statsLoading} />
+                    <CountCell value={stats?.requirements} loading={isLoadingStats && stats?.requirements === undefined} />
                   </TableCell>
                   <TableCell className="py-3.5">
                     <span className="text-sm text-muted-foreground whitespace-nowrap">

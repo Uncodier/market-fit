@@ -5,6 +5,8 @@ Use the guides below before relying on older implementation notes.
 
 ## Start here
 
+- [Instance asset loading](INSTANCE_ASSET_LOADING.md) — grouped RLS reads, identity-bound cache invalidation, auxiliary freshness, unknown counts and rollout limits.
+
 - [14035 integration readiness](MERGE_14035_READINESS.md) — route inventory,
   commercial proxy checks, merge preparation and outstanding release gates.
 
@@ -141,6 +143,7 @@ environment variables before changing production configuration.
 
 ## Product designs
 
+- [Multiple channels and multiple agents](/Users/prado/Desktop/Proyectos/Uncodie/Code/market-fit/docs/MULTI_CHANNEL_MULTI_AGENT_REQUIREMENTS.md) — connection-level assignments, agent Channels tab, Customer Support fallback, proposed common contact workflow, acceptance criteria and pending product decisions; requirements only.
 - [Procurement implementation](PROCUREMENT_IMPLEMENTATION.md) — local operational routes, security, migration prerequisites, validation and remaining workflows.
 - [Inventory replenishment](PROCUREMENT_REPLENISHMENT.md) — SKU/location minimums, draft requisitions, duplicate guards and deployment-gated inventory worker.
 - [Procurement repair validation](PROCUREMENT_REPAIR_VALIDATION.md) — review regressions, local PostgreSQL/PostgREST checks and rollout prerequisites.

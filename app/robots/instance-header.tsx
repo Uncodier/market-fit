@@ -60,9 +60,9 @@ export function InstanceHeader(input: ReturnType<typeof useWorkspaceTabs>) {
                               ? inst.requirement_title
                               : (inst.name || `ag-${inst.id.slice(-4)}`)
                             const hasMultipleNodes = !isSelected && (viewMode === "imprenta" 
-                              ? instanceStats[inst.id]?.nodes > 1 
+                              ? (instanceStats[inst.id]?.nodes ?? 0) > 1
                               : viewMode === "workflow" 
-                                ? instanceStats[inst.id]?.workflows > 1 
+                                ? (instanceStats[inst.id]?.workflows ?? 0) > 1
                                 : false)
                             return (
                             <TabsTrigger

@@ -1,4 +1,5 @@
 import { getDemoData } from "./index";
+import { demoInstanceAssetSummaries } from "./instance-asset-summaries";
 import { applyNotFilter, applySelectEmbeds, getRowValue, matchesOrFilter } from "./mock-query";
 import { getDemoSiteRole } from "./site-role";
 import { demoHasLocationRestrictions, demoHasSiteLocationRestrictions } from "./location-restrictions";
@@ -8,10 +9,8 @@ import {
   syncDemoUnitDelivery,
   syncDemoUnitsFromOrderItems,
 } from "./mock-order-line-units"
-
 // Mock instance for the demo data cache
 const memoryCache: Record<string, Record<string, any[]>> = {};
-
 const getMemoryCache = (siteId: string, demoData: any) => {
   if (!memoryCache[siteId]) {
     // Deep clone the demo data into memory cache so mutations only affect the current session
@@ -63,7 +62,6 @@ const getMemoryCache = (siteId: string, demoData: any) => {
   }
   return memoryCache[siteId];
 };
-
 /**
  * Create an in-memory client for the selected demo.
  */
@@ -87,7 +85,6 @@ export async function createDemoMockClientImpl(demoSiteId: string) {
       created_at: new Date().toISOString(),
     }
   } : null;
-
   // Simple query builder simulator
   const buildQuery = (tableData: any[], tableName: string) => {
     let result = [...(tableData || [])];
@@ -97,7 +94,6 @@ export async function createDemoMockClientImpl(demoSiteId: string) {
       string,
       Array<{ column: string; ascending: boolean }>
     >()
-
     const compareRows = (
       leftRow: Record<string, any>,
       rightRow: Record<string, any>,
@@ -111,7 +107,6 @@ export async function createDemoMockClientImpl(demoSiteId: string) {
       }
       return 0
     }
-
     const queryBuilder: any = {
       select: () => queryBuilder,
       eq: (column: string, value: any) => {
@@ -134,7 +129,6 @@ export async function createDemoMockClientImpl(demoSiteId: string) {
       ) => {
         if (options?.referencedTable) {
           const relation = options.referencedTable
-
           result = result.map((item) => {
             const embeddedRows = Array.isArray(item[relation])
               ? item[relation]
@@ -208,7 +202,6 @@ export async function createDemoMockClientImpl(demoSiteId: string) {
           }))
           return queryBuilder
         }
-
         countBeforeWindow ??= result.length;
         result = result.slice(0, count);
         return queryBuilder;
@@ -451,7 +444,10 @@ export async function createDemoMockClientImpl(demoSiteId: string) {
       };
     },
     rpc: (fn: string, params: any) => {
-       console.log(`🤖 DEMO RPC INTERCEPT: ${fn}`, params);
+       if (fn === "get_instance_asset_summaries") {
+         const result = demoInstanceAssetSummaries(memoryData, demoSiteId, params || {});
+         return Object.assign(Promise.resolve(result), { abortSignal: () => Promise.resolve(result) });
+       }
        if (fn === "current_user_site_role") {
          const role = getDemoSiteRole(memoryData, demoSiteId, session?.user.id, params?.p_site_id);
          return Promise.resolve({ data: role, error: null });

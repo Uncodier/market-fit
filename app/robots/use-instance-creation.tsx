@@ -5,9 +5,10 @@ import { createClient } from "@/lib/supabase/client"
 
 import type { useRobotsController } from "./use-robots-controller"
 import { isInstanceListView, mobileInstanceDetailHref } from "./mobile-instance-navigation"
+import { resolveInstanceAssetUrl, useInstanceAssetSummaries } from "@/app/components/robots/use-instance-asset-summaries"
 
 export function useInstanceCreation(input: ReturnType<typeof useRobotsController>) {
-  const { allInstances, instanceAvatars, setInstanceAvatars, isSiteContextReady, refreshCount, lastAutoCreationAttempt, isLoadingRobots, currentSite, getAllInstances, shouldAutoConvertTab, pendingInstanceId, isAutoCreatingInstance, setIsAutoCreatingInstance, setLastAutoCreationAttempt, refreshRobots, setLocalSelectedInstanceId, setPendingInstanceId, setShouldAutoConvertTab, searchParams, router, activeRobotInstance, setIsResuming } = input
+  const { allInstances, setInstanceAvatars, isSiteContextReady, refreshCount, lastAutoCreationAttempt, isLoadingRobots, currentSite, getAllInstances, shouldAutoConvertTab, pendingInstanceId, isAutoCreatingInstance, setIsAutoCreatingInstance, setLastAutoCreationAttempt, refreshRobots, setLocalSelectedInstanceId, setPendingInstanceId, setShouldAutoConvertTab, searchParams, router, activeRobotInstance, setIsResuming } = input
   const siteId = currentSite?.id
   const lifecycleRef = useRef<AbortController | null>(null)
   const lifecycleSiteRef = useRef<string | undefined>(undefined)
@@ -68,61 +69,19 @@ export function useInstanceCreation(input: ReturnType<typeof useRobotsController
     }
   }, [siteId])
 
-  // Fetch latest image asset for each instance to use as avatar
-  // Cache avatars incrementally to avoid repeated requests.
+  const { summaries: assetSummaries, error: avatarError, retry: retryAvatars } = useInstanceAssetSummaries(
+    siteId, allInstances.map(instance => instance.id), isSiteContextReady,
+  )
   useEffect(() => {
-    if (!allInstances || allInstances.length === 0) return;
-
-    let cancelled = false
-    const fetchMissingAvatars = async () => {
-      const missingIds = allInstances
-        .map(i => i.id)
-        .filter(id => instanceAvatars[id] === undefined); // Only instances not yet fetched.
-        
-      if (missingIds.length === 0) return;
-
-      const supabase = createClient();
-      const avatarsMap: Record<string, string> = {};
-      
-      const chunkSize = 20;
-      for (let i = 0; i < missingIds.length; i += chunkSize) {
-        if (cancelled) return
-        const chunk = missingIds.slice(i, i + chunkSize);
-        
-        const promises = chunk.map(async (id) => {
-          const { data } = await supabase
-            .from('assets')
-            .select('file_path')
-            .eq('instance_id', id)
-            .like('file_type', 'image/%')
-            .order('created_at', { ascending: false })
-            .limit(1);
-            
-          if (data && data.length > 0 && data[0].file_path) {
-            let fileUrl = data[0].file_path;
-            if (!fileUrl.startsWith('http')) {
-              const { data: publicData } = supabase.storage.from('assets').getPublicUrl(fileUrl);
-              fileUrl = publicData?.publicUrl || "";
-            }
-            return { id, url: fileUrl };
-          }
-          return { id, url: null };
-        });
-        
-        const results = await Promise.all(promises);
-        results.forEach(res => {
-          avatarsMap[res.id] = res.url ?? '';
-        });
-      }
-
-      if (!cancelled && Object.keys(avatarsMap).length > 0) {
-        setInstanceAvatars(prev => ({ ...prev, ...avatarsMap }));
-      }
-    };
-
-    fetchMissingAvatars();
-    return () => { cancelled = true }
-  }, [allInstances, instanceAvatars, setInstanceAvatars, siteId]);
+    const next: Record<string, string> = {}
+    for (const [id, summary] of Object.entries(assetSummaries)) {
+      next[id] = resolveInstanceAssetUrl(summary.avatar_path) || ""
+    }
+    setInstanceAvatars(prev => {
+      if (Object.keys(prev).length === Object.keys(next).length && Object.keys(next).every(id => prev[id] === next[id])) return prev
+      return next
+    })
+  }, [assetSummaries, setInstanceAvatars]);
   // Function to check if instances exist in database (bypassing state)
   const checkInstancesExistInDB = useCallback(async (siteId: string): Promise<boolean> => {
     try {
@@ -298,5 +257,5 @@ export function useInstanceCreation(input: ReturnType<typeof useRobotsController
       }
     }
   }
-  return { ...input, checkInstancesExistInDB, isInstanceStarting, isInstanceRunning, isInstancePausedOrUninstantiated, createPlaceholderInstance, handleCreateNewInstance }
+  return { ...input, avatarError, retryAvatars, checkInstancesExistInDB, isInstanceStarting, isInstanceRunning, isInstancePausedOrUninstantiated, createPlaceholderInstance, handleCreateNewInstance }
 }

@@ -2,7 +2,7 @@ import React from "react"
 import { fireEvent, render, screen } from "@testing-library/react"
 import { readFileSync } from "fs"
 import path from "path"
-import postcss from "postcss"
+import postcss, { type AnyNode } from "postcss"
 import { Button } from "@/app/components/ui/button"
 
 jest.mock("@/app/components/ui/use-btn-glass-motion", () => ({
@@ -67,7 +67,7 @@ describe("mobile primary buttons", () => {
   it("scopes all overrides to mobile and never adds inset shadows or replaces tints", () => {
     const css = postcss.parse(readFileSync(path.join(process.cwd(), "app/styles/mobile-primary-buttons.css"), "utf8"))
     css.walkRules((rule) => {
-      let parent = rule.parent
+      let parent: AnyNode | undefined = rule.parent
       while (parent && !(parent.type === "atrule" && parent.name === "media" && parent.params === "(max-width: 767px)")) {
         parent = parent.parent
       }

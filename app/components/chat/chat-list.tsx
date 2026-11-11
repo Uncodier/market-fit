@@ -20,6 +20,7 @@ import { useConversationsList } from "@/app/hooks/useConversationsList"
 import { useConversationRealtime } from "@/app/hooks/useConversationRealtime"
 import { useConversationListActions } from "@/app/hooks/useConversationListActions"
 import { useAutoSelectTopConversation } from "@/app/hooks/useAutoSelectTopConversation"
+import { useLocalization } from "@/app/context/LocalizationContext"
 
 // Componente para renderizar esqueletos de carga
 function ConversationSkeleton() {
@@ -67,6 +68,7 @@ export function ChatList({
   onDeleteConversation,
 }: ChatListProps) {
   const router = useRouter()
+  const { t } = useLocalization()
   const [searchQuery, setSearchQuery] = useState("")
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("")
   const [combinedFilter, setCombinedFilter] = useState<'all' | 'outbound' | 'inbound' | 'replied' | 'tasks' | 'assigned' | 'qualified'>('all')
@@ -270,7 +272,7 @@ export function ChatList({
       )} style={{ WebkitBackdropFilter: 'blur(10px)' }}>
         <div className="relative w-full px-4 flex items-center justify-center min-w-0 transition-all duration-300">
           <SearchInput
-            placeholder="Search conversations..."
+            placeholder={t('chat.list.search')}
             value={searchQuery}
             onSearch={setSearchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}

@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { toast } from "sonner"
 import { Button } from "@/app/components/ui/button"
-import { SectionCardContent } from "@/app/components/ui/section-card"
+import { SectionCardContent, SectionCardFooter } from "@/app/components/ui/section-card"
 import { ConfirmDialog } from "@/app/components/ui/confirm-dialog"
 import { apiClient } from "@/app/services/api-client-service"
 import { useBillingLimit } from "@/app/context/BillingLimitContext"
@@ -49,14 +49,20 @@ export function ZavuChannelActivationRecovery({ siteId, channel, onActivated }: 
     }
   }
 
-  return <SectionCardContent className="space-y-3 pt-0">
-    <p className="text-sm text-muted-foreground">This account is linked, but channel activation has not been confirmed.</p>
-    <p className="text-xs text-muted-foreground">Activation may incur Zavu channel fees.</p>
-    <Button type="button" disabled={busy || !siteId} onClick={() => setConfirming(true)}>
-      {busy ? "Activating..." : channel.status === "connected" ? "Verify activation" : "Activate channel"}
-    </Button>
+  if (!canRecoverZavuActivation(channel)) return null
+
+  return <>
+    <SectionCardContent className="space-y-3 pt-0">
+      <p className="text-sm text-muted-foreground">This account is linked, but channel activation has not been confirmed.</p>
+      <p className="text-xs text-muted-foreground">Activation may incur channel fees.</p>
+    </SectionCardContent>
+    <SectionCardFooter>
+      <Button type="button" disabled={busy || !siteId} onClick={() => setConfirming(true)}>
+        {busy ? "Activating..." : channel.status === "connected" ? "Verify activation" : "Activate channel"}
+      </Button>
+    </SectionCardFooter>
     <ConfirmDialog open={confirming} onOpenChange={setConfirming} title="Activate channel?"
-      description="Activation may incur Zavu channel fees. Continue only if you want to activate this linked channel."
+      description="Activation may incur channel fees. Continue only if you want to activate this linked channel."
       confirmLabel="Confirm activation" onConfirm={activate} />
-  </SectionCardContent>
+  </>
 }

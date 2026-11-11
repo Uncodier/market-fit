@@ -8,6 +8,7 @@ import { Button } from "@/app/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
 import { Archive, Check, ChevronDown, ClipboardList, FileText, LayoutGrid, ListOrdered, NetworkTree, Workflow } from "@/app/components/ui/icons"
 import { useLocalization } from "@/app/context/LocalizationContext"
+import { useSite } from "@/app/context/SiteContext"
 import { cn } from "@/lib/utils"
 import { InstanceBrowserTable } from "./instance-browser-table"
 import { useInstanceBrowserData } from "./use-instance-browser-data"
@@ -48,10 +49,11 @@ export function InstanceBrowserModal({
   deletingInstanceIds,
 }: InstanceBrowserModalProps) {
   const { t } = useLocalization()
+  const { currentSite } = useSite()
   const [searchQuery, setSearchQuery] = useState("")
   const [activeTab, setActiveTab] = useState<InstanceFilterTab>("all")
   const [sortBy, setSortBy] = useState<InstanceSortBy>("newest")
-  const { instanceMessages, instanceStats, isLoadingStats, isLoadingMessages } = useInstanceBrowserData(isOpen, instances)
+  const { instanceMessages, instanceStats, isLoadingStats, isLoadingMessages, assetsError, retryAssets, dataError, retryData } = useInstanceBrowserData(isOpen, instances, currentSite?.id)
 
   const tabCounts = useMemo(
     () => countInstancesByTab(instances, instanceStats),
@@ -59,8 +61,8 @@ export function InstanceBrowserModal({
   )
 
   const filteredInstances = useMemo(
-    () => filterAndSortInstances(instances, searchQuery, activeTab, sortBy, instanceStats),
-    [instances, searchQuery, activeTab, sortBy, instanceStats]
+    () => filterAndSortInstances(instances, searchQuery, assetsError && activeTab === "files" ? "all" : activeTab, sortBy, instanceStats),
+    [instances, searchQuery, activeTab, sortBy, instanceStats, assetsError]
   )
 
   const tabLabel = (tab: InstanceFilterTab) => {
@@ -109,6 +111,12 @@ export function InstanceBrowserModal({
             </TabsList>
           </Tabs>
 
+          {assetsError && <div role="alert" className="text-sm text-destructive">
+            {assetsError} <Button variant="ghost" size="sm" onClick={retryAssets}>Retry</Button>
+          </div>}
+          {dataError && <div role="alert" className="text-sm text-destructive">
+            {dataError} <Button variant="ghost" size="sm" onClick={retryData}>Retry</Button>
+          </div>}
           <div className="flex items-center gap-2">
               <SearchInput
                 value={searchQuery}
