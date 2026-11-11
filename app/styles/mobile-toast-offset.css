@@ -1,0 +1,6 @@
+/* The global toaster is outside the workspace shell, so observe the rendered bar. */
+@media (max-width: 767px) {
+  body:has([data-mobile-workspace-navigation]) [data-sonner-toaster][data-y-position='bottom'] {
+    bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+  }
+}

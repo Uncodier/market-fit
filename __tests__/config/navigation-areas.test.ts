@@ -42,9 +42,11 @@ describe('navigation-areas', () => {
     expect(NAVIGATION_MENU_AREA_ORDER).toContain('settings')
   })
 
-  it('shows Procurement immediately after General in Settings', () => {
-    expect(getNavigationMenuItems('settings').slice(0, 3).map(item => item.key))
-      .toEqual(['settingsGeneral', 'procurementSettings', 'company'])
+  it('shows Profile first, followed by General and Procurement in Settings', () => {
+    expect(getNavigationMenuItems('settings').slice(0, 4).map(item => item.key))
+      .toEqual(['profile', 'settingsGeneral', 'procurementSettings', 'company'])
+    expect(findNavigationMenuItem('profile')?.item.href).toBe('/profile')
+    expect(NAV_ITEM_ICON.profile).toBeDefined()
   })
 
   it('treats Configuration screens as settings nav keys', () => {

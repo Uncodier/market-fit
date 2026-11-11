@@ -34,7 +34,7 @@ export function RobotsWorkspace(input: ReturnType<typeof useWorkspaceTabs>) {
       <div className={`absolute inset-0 flex flex-col min-h-0 ${isCanvasMode ? 'overflow-visible' : 'overflow-hidden'}`}>
         {!isCanvasMode && workspaceTabs.length > 1 && (
           <div
-            className="absolute inset-x-0 z-30 flex items-center px-3 py-1.5 lg:hidden"
+            className="absolute inset-x-0 z-30 hidden items-center px-3 py-1.5 md:flex lg:hidden"
             style={{ top: 'calc(var(--topbar-height, 64px) + 71px)' }}
           >
             <Tabs
@@ -69,10 +69,10 @@ export function RobotsWorkspace(input: ReturnType<typeof useWorkspaceTabs>) {
                 <div className="grid grid-rows-[1fr] lg:grid-rows-[auto_1fr] m-0 bg-card absolute inset-x-0 bottom-0 top-[calc(var(--topbar-height,64px)+71px)] overflow-hidden">
                   <div
                     ref={desktopToolbarRef}
-                    className="hidden h-11 shrink-0 lg:grid grid-cols-[minmax(33%,1fr)_auto_auto_auto] items-center gap-2 px-3 py-1.5 border-b border-black/5 dark:border-white/5 bg-background"
+                    className="hidden h-11 shrink-0 lg:grid grid-cols-[minmax(33%,1fr)_auto_auto_auto] items-center gap-2 px-3 py-0 border-b border-black/5 dark:border-white/5 bg-background"
                   >
                     {hasRequirementPreview && activeBrowserTab.kind !== 'artifact' ? (
-                      <div className="flex min-w-0 items-center gap-2 bg-black/5 dark:bg-white/10 border border-transparent rounded-full px-2.5 py-1">
+                      <div className="flex h-7 min-w-0 items-center gap-2 bg-black/5 dark:bg-white/10 border border-transparent rounded-full px-2.5 py-0">
                         {isZipUrl ? (
                           <>
                             <div className="flex items-center gap-1.5 flex-1 min-w-0 text-xs text-muted-foreground">

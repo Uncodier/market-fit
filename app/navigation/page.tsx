@@ -109,7 +109,8 @@ export default function NavigationPage({ isOverlay, onClose }: NavigationPagePro
           {sectionsOrder.map((areaKey) => {
             const area = NAVIGATION_AREAS[areaKey]
             const items = getNavigationMenuItems(areaKey).filter(item => {
-              if (screenAccess && !screenAccess.canAccessNavKey(item.key)) return false
+              // Profile is account-level and remains available regardless of site permissions.
+              if (item.key !== "profile" && screenAccess && !screenAccess.canAccessNavKey(item.key)) return false
               const title = getTitle(item).toLowerCase()
               return title.includes(searchQuery.toLowerCase())
             })

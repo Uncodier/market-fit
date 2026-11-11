@@ -157,6 +157,7 @@ export const getActivitiesSections = (
         title:
           t("settings.nav.activity.dailyResume") || "Daily Resume and Stand Up",
       },
+      { id: "activity-conversation_automation_snooze", title: "Automation Snooze" },
       {
         id: "activity-local_lead_generation",
         title: t("settings.nav.activity.localLead") || "Local Lead Generation",

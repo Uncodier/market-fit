@@ -2,6 +2,7 @@
 
 import { Sidebar } from "./components/navigation/Sidebar"
 import { TopBar } from "./components/navigation/TopBar"
+import { MobileWorkspaceNavigation } from "./components/navigation/MobileWorkspaceNavigation"
 import { usePathname, useSearchParams } from "next/navigation"
 import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
@@ -173,28 +174,18 @@ function LayoutClientInner({
   const { isLayoutCollapsed, setIsLayoutCollapsed, robotsViewMode } = useLayout()
   const isMobile = useIsMobile()
   const [isCreateSaleOpen, setIsCreateSaleOpen] = useState(false)
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
 
   const handleCollapse = () => {
     setIsLayoutCollapsed(!isLayoutCollapsed)
   }
 
-  // Close mobile sidebar when switching to desktop
-  useEffect(() => {
-    if (!isMobile && isMobileSidebarOpen) {
-      setIsMobileSidebarOpen(false)
-    }
-  }, [isMobile])
-
-  // Fix: Clean up body pointer-events and close mobile sidebar on navigation
+  // Clean up body pointer-events on navigation.
   useEffect(() => {
     // Sometimes Radix UI components (Dialogs, Dropdowns) leave pointer-events: none 
     // on body when navigating before they fully close, causing clicks to be ignored
     document.body.style.pointerEvents = '';
     document.documentElement.style.pointerEvents = '';
     
-    // Also ensure mobile sidebar closes on navigation
-    setIsMobileSidebarOpen(false);
   }, [pathname])
 
   useWakeSessionRefresh()
@@ -284,9 +275,7 @@ function LayoutClientInner({
             <Sidebar 
               isCollapsed={isLayoutCollapsed} 
               onCollapse={handleCollapse}
-              isMobileOpen={isMobileSidebarOpen}
-              onMobileClose={() => setIsMobileSidebarOpen(false)}
-              className="flex-none fixed left-0 top-0 z-[210]"
+              className="!hidden md:!flex flex-none fixed left-0 top-0 z-[210]"
             />
             {/* TOUR EXPLICITAMENTE RENDERIZADO */}
             <GuidedTour />
@@ -302,7 +291,6 @@ function LayoutClientInner({
                 helpTask={currentPage.helpTask || undefined}
                 isCollapsed={isLayoutCollapsed}
                 onCollapse={handleCollapse}
-                onMobileToggle={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
                 segments={segments}
                 className="fixed top-0 right-0 left-0"
                 style={{ paddingLeft: isMobile ? 0 : isLayoutCollapsed ? 64 : 256 }}
@@ -329,6 +317,7 @@ function LayoutClientInner({
             </div>
           </div>
         )}
+        {!isLoginPage && <MobileWorkspaceNavigation />}
       </div>
   )
 }

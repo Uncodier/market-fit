@@ -8,13 +8,14 @@ export function RecordDateFilter({ value, onChange }: {
   onChange: (range: RecordDateRange) => void
 }) {
   const { t } = useLocalization()
-  return <div className="flex items-center gap-2">
+  return <div className="flex min-w-0 flex-col items-stretch gap-2 md:flex-row md:items-center">
     <Button variant={value ? "ghost" : "secondary"} size="sm" aria-pressed={!value} onClick={() => onChange(null)}>
       {t("datePicker.allTime")}
     </Button>
     <CalendarDateRangePicker
       initialStartDate={value?.startDate}
       initialEndDate={value?.endDate}
+      className="min-w-0 [&_button]:max-w-full [&_button]:whitespace-normal"
       onRangeChange={(startDate, endDate) => onChange({ startDate, endDate })}
     />
   </div>

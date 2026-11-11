@@ -6,7 +6,8 @@ Makinari Supabase project matched to this workspace's configured hostname.
 **Catalog:** [52 templates and 29 business mappings](UX_PERSONALIZATION_RECORD_TEMPLATES.md).
 **Follow-up:** [Implemented repair and remaining release gates](RECORD_SCHEMA_REPAIR.md).
 The findings below describe the pre-repair audit; use the follow-up for current
-local implementation status. The migration remains unapplied remotely.
+implementation status. Renumbered Records migrations were applied to linked Makinari
+on 2026-11-11; browser acceptance remains separate.
 
 Only schema metadata, constraints, policies, and function/trigger definitions were
 queried. No customer records were read or modified. Metadata inspection is not an

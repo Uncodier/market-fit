@@ -37,4 +37,13 @@ describe('Robots page responsibility boundaries', () => {
     expect(source('use-browser-presentation.tsx')).toContain('useTenantLookup({')
     expect(source('use-browser-presentation.tsx')).not.toContain('useSWR(')
   })
+
+  it('uses a pushed mobile list and moves workspace tabs into the mobile toolbar', () => {
+    expect(source('page.tsx')).toContain('<MobileInstanceList')
+    expect(source('page.tsx')).toContain('<MobileInstanceToolbar {...workspace} onBack={backToInstances} />')
+    expect(source('mobile-instance-toolbar.tsx')).toContain('<MobileInstanceBackButton onBack={onBack} />')
+    expect(source('mobile-instance-toolbar.tsx')).toContain('<ResponsiveTabsList')
+    expect(source('instance-header.tsx')).not.toContain('MobileInstanceBackButton')
+    expect(source('use-mobile-instance-navigation.ts')).not.toContain('setIsBrowserModalOpen')
+  })
 })

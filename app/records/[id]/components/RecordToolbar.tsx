@@ -81,6 +81,7 @@ export function RecordToolbar({
   const [isHeadingDropdownOpen, setIsHeadingDropdownOpen] = useState(false)
   const showFormatting = activeView === "document" && editor
   const formattingExpanded = isEditorFocused || isToolbarHovered || isHeadingDropdownOpen
+  const hasVisibleTools = Boolean(diagramControls || (showFormatting && formattingExpanded))
 
   return (
     <div className="flex h-[71px] items-center gap-1 overflow-x-auto border-b bg-background py-2 pl-5 pr-4">
@@ -111,7 +112,7 @@ export function RecordToolbar({
 
       {showFormatting && (
         <>
-          <div className="mx-1 h-6 w-px bg-border" />
+          {formattingExpanded && <div className="mx-1 h-6 w-px bg-border" />}
           <div
             className={`flex items-center overflow-hidden transition-all duration-300 ${
               formattingExpanded ? "max-w-[1000px] opacity-100" : "max-w-0 opacity-0"
@@ -221,7 +222,7 @@ export function RecordToolbar({
         </>
       )}
 
-      <div className="flex-1" />
+      {hasVisibleTools && <div className="flex-1" data-testid="record-toolbar-tools-spacer" />}
       {!isNodeTextEditing && (
         <>
           <AlertDialog>
@@ -257,7 +258,7 @@ export function RecordToolbar({
             variant="ghost"
             size="sm"
             onClick={onToggleRightPanel}
-            className="ml-2 text-muted-foreground hover:text-foreground"
+            className="ml-auto text-muted-foreground hover:text-foreground"
             aria-label={isRightPanelOpen ? "Hide right panel" : "Show right panel"}
           >
             {isRightPanelOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}

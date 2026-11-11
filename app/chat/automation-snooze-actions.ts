@@ -46,20 +46,18 @@ export async function updateConversationAutomationSnooze(
 ): Promise<Result> {
   const parsed = automationSnoozeMutationSchema.safeParse(mutation)
   if (!parsed.success) return { error: "Use default hours or a number from 0 to 168." }
+  if (parsed.data.action !== "resume") return { error: "Change snooze hours from the lead menu or AI Activities." }
   try {
     const access = await authorize(conversationId, siteId, "update")
     const input = parsed.data
-    // Settings affect future replies. Disabling also resumes an existing pause.
-    // Never write assignment, agent, or last_human_reply_at from the browser.
-    const patch = input.action === "resume"
-      ? { automation_paused_until: null }
-      : { automation_snooze_hours: input.hours, ...(input.hours === 0 ? { automation_paused_until: null } : {}) }
-    let query = access.supabase.from("conversations").update(patch)
+    // Resume is the only supported legacy mutation; lead/site settings own future replies.
+    let query = access.supabase.from("conversations").update({ automation_paused_until: null })
       .eq("id", access.conversationId).eq("site_id", access.siteId)
-    if (input.action === "resume") {
-      // Do not clear a newer human reply's pause with stale UI state.
-      query = query.eq("automation_paused_until", input.expectedPausedUntil)
-    }
+      .eq("automation_paused_until", input.expectedPausedUntil)
+    // Expiry can remain identical after another reply (e.g. a maximum/clamped pause).
+    query = input.expectedLastHumanReplyAt === null
+      ? query.is("last_human_reply_at", null)
+      : query.eq("last_human_reply_at", input.expectedLastHumanReplyAt)
     const { data, error } = await query.select(projection).maybeSingle()
     const state = automationSnoozeStateSchema.safeParse(data)
     if (error) return { error: "Unable to update automation snooze. Check your access and try again." }

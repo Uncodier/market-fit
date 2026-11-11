@@ -1,5 +1,6 @@
 "use client"
 
+import { siteAutomationSnoozeSchema } from "@/lib/chat/automation-snooze-policy"
 import type { Site, SiteSettings } from "./site-types"
 import type { Dispatch, SetStateAction } from "react"
 import { requestVoiceAgentResync } from "@/app/agents/voice-sync"
@@ -319,6 +320,7 @@ export async function persistSiteSettings({
         if (fetchError && fetchError.code !== 'PGRST116') throw fetchError;
         if (settings.activities !== undefined) {
           const activities = mergeActivitySettings(existingSettings?.activities, settings.activities);
+          activities.conversation_automation_snooze = siteAutomationSnoozeSchema.parse(activities.conversation_automation_snooze);
           activities.daily_resume_and_stand_up = dailyStandupSettingsSchema.parse(activities.daily_resume_and_stand_up);
           activityTimingSchema.parse(activities.leads_follow_up);
           activityTimingSchema.parse(activities.leads_initial_cold_outreach);

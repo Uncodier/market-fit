@@ -8,6 +8,8 @@ let mockCanUpdate = true
 jest.mock("@/app/context/SiteContext", () => ({ useSite: () => ({ currentSite: { id: "site-a" } }) }))
 jest.mock("@/app/context/PermissionContext", () => ({ useOptionalPermissions: () => ({ can: () => mockCanUpdate }) }))
 jest.mock("@/app/leads/payment-actions", () => ({ getLeadOpenInvoices: jest.fn(), registerLeadInvoicePayment: jest.fn() }))
+// Snooze wiring is covered with both real menus in automation-snooze-menus.test.tsx.
+jest.mock("@/app/leads/components/LeadAutomationSnoozeDialog", () => ({ LeadAutomationSnoozeDialog: () => null }))
 
 const lead = { id: "lead-a", name: "Alex Smith" } as Lead
 const actionLabel = "Settle balance / Add payment"

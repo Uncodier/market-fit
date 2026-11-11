@@ -38,6 +38,13 @@ describe("agent workspace layout", () => {
     expect(robotsPageSource).toContain("lg:grid-rows-[auto_1fr]")
   })
 
+  it("centers the address bar vertically without overflowing toolbar padding", () => {
+    expect(robotsPageSource).toContain("items-center gap-2 px-3 py-0 border-b")
+    expect(robotsPageSource).toContain(
+      'className="flex h-7 min-w-0 items-center gap-2 bg-black/5 dark:bg-white/10 border border-transparent rounded-full px-2.5 py-0"',
+    )
+  })
+
   it("keeps pin and close actions on artifact tabs", () => {
     expect(robotsPageSource).toContain("leadingAction: canManageArtifact")
     expect(robotsPageSource).toContain("trailingAction: canManageArtifact")

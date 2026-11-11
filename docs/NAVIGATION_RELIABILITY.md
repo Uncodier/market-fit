@@ -2,6 +2,58 @@
 
 ## Current behavior
 
+### Mobile workspace navigation
+
+Below 768px, an icon-only floating bottom navigation replaces the workspace sidebar.
+The capsule-shaped glass bar uses a neutral translucent gradient, 32px backdrop
+blur, inset highlights and a soft shadow. It is centered with a 440px maximum
+width, 16px minimum side margins and a 12px gap above the bottom safe area.
+The selected icon and compact highlight use the theme's accent foreground and
+accent surface (green in the current dark theme), consistently across all five
+positions. Glass surfaces, borders and inactive icons also use theme tokens,
+without a fixed blue or gray palette. Press feedback respects reduced motion; reduced transparency
+switches to an opaque surface. Light and dark surfaces have separate treatments.
+AI Workspace stays in the center and Apps stays in the rightmost slot. The other
+three slots fill as modules are opened, replacing the oldest opened module when
+full. Revisiting a module updates its destination (including detail/query state)
+without duplicating it. Tabs initialize from the site's saved sidebar shortcuts.
+Without usable history (excluding the automatically inserted pinned Overview),
+the defaults are Conversations, Leads (`/leads`), and Tasks (`/control-center`).
+Tabs are filtered by screen access and reloaded on actor/site changes; new visits
+stay session-local and do not change desktop pins. Late reads cannot overwrite
+visits made during loading or publish into a different actor/site scope.
+Apps remains reachable while its launcher page is open. Profile is the first tile
+in the launcher's Settings section, not a mobile top-bar shortcut. This account
+destination remains available regardless of site screen restrictions and does not
+become a dynamic mobile tab. Labels remain available to assistive technology.
+
+The bar overlays the content without reserving padding or reducing viewport height;
+the fixed conversation pane extends to the bottom edge. Embedded artifact views do not
+render the bar. Desktop navigation and default landing routes are unchanged.
+Detail routes use the breadcrumb engine's `hasId` classification to hide the
+mobile bar. This includes entity paths and
+selected conversations/robot instances in query parameters, but not nested module
+roots or ordinary filters/tabs. Navigation tracking stays mounted so returning to
+a module root restores the bar without losing open tabs.
+Bottom-positioned Sonner toasts sit above the rendered mobile bar with a 12px
+gap and the device safe-area inset. When the bar is absent, Sonner's normal
+offset returns automatically. Desktop and top-positioned toasts are unchanged.
+Regression coverage: `mobile-workspace-navigation.test.tsx` and
+`mobile-profile-link.test.tsx` in `__tests__/components/navigation/`.
+
+### Session recovery
+
+On mobile, **Back to instances** pushes `/robots?view=instances` (preserving the
+workspace mode), showing a searchable full-screen list and restoring bottom
+navigation. Selecting a row pushes its instance URL, hiding the list/navigation;
+browser back/forward follows the same screen state. No modal is used for this path.
+The mobile sticky header contains Back and the floating Agent/Files/etc. selector,
+not instance tabs. Desktop keeps its instance tabs and existing browser modal.
+Automatic selection and creation remain enabled; URL canonicalization makes the
+auto-selected instance a detail route. An automatic creation finishing while the
+list is open cannot dismiss it. The workspace stays mounted behind the list to
+retain its draft, and list scrolling leaves clearance for the floating bottom bar.
+
 Internal workspace navigation stays client-side after inactivity. Returning to a
 tab does not mark the App Router stale, reload the page, or call `router.refresh()`.
 The wake hook checks the session in the background and refreshes it only when

@@ -83,6 +83,30 @@ beforeEach(() => {
 })
 
 describe('Robots creation asynchronous lifecycle', () => {
+  it('keeps automatic creation enabled without dismissing a list opened during creation', async () => {
+    const pending = deferred<{ data: typeof newInstance; error: null }>()
+    mockInsertResult.mockReturnValue(pending.promise)
+    const base = input('site-a', { searchParams: new URLSearchParams() })
+    const view = renderHook(useInstanceCreation, { initialProps: base })
+    await waitFor(() => expect(mockInsert).toHaveBeenCalledTimes(1))
+    view.rerender({ ...base, searchParams: new URLSearchParams('view=instances') } as Input)
+    await act(async () => pending.resolve({ data: newInstance, error: null }))
+    expect(base.setLocalSelectedInstanceId).toHaveBeenCalledWith('created-a')
+    expect(base.router.replace).not.toHaveBeenCalled()
+  })
+
+  it('pushes a manually created instance from the list so browser Back returns to it', async () => {
+    const router = { replace: jest.fn(), push: jest.fn() }
+    const base = input('site-a', {
+      router, searchParams: new URLSearchParams('mode=workflow&view=instances'),
+      lastAutoCreationAttempt: Date.now(),
+    })
+    const view = renderHook(useInstanceCreation, { initialProps: base })
+    await act(async () => { await view.result.current.handleCreateNewInstance() })
+    expect(router.push).toHaveBeenCalledWith('/robots?mode=workflow&instance=created-a&name=Assistant+Session')
+    expect(router.replace).not.toHaveBeenCalled()
+  })
+
   it('creates once after database verification despite actual loading-state rerenders, then converts the pending tab', async () => {
     const base = input()
     const view = renderHook(useStatefulCreation, { initialProps: base })

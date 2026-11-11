@@ -78,6 +78,7 @@ export const MODULE_IMAGE_HINTS: Record<string, string> = {
 
   procurementSettings: "procurement gear",
   settingsGeneral: "gear",
+  profile: "user avatar",
   company: "building",
   marketplace: "storefront",
   settingsVisits: "location pin",

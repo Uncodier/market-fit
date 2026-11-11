@@ -18,7 +18,7 @@ import type { useWorkspaceTabs } from "./use-workspace-tabs"
 export function InstanceHeader(input: ReturnType<typeof useWorkspaceTabs>) {
   const { currentSite, siteChangeKey, tabsContainerRef, selectedInstanceId, handleTabChange, tabsListRef, tabInstances, isLoadingRobots, maxVisibleTabs, deletingInstanceIds, viewMode, instanceStats, instanceAvatars, setLocalSelectedInstanceId, refreshRobots, lastTabSelectionTimeRef, setEditingInstanceId, setEditingName, setIsEditModalOpen, handleArchiveInstance, setInstanceToDelete, setIsDeleteModalOpen, setIsBrowserModalOpen, handleCreateNewInstance } = input
   return (<>
-      <StickyHeader key={`${currentSite?.id}-${siteChangeKey}`} className="flex-none transition-all duration-300">
+      <StickyHeader key={`${currentSite?.id}-${siteChangeKey}`} className="hidden md:flex flex-none transition-all duration-300">
         <div className="pt-0 w-full overflow-hidden">
           <div className="flex items-center gap-4 w-full">
             <div className="flex items-center w-full min-w-0" ref={tabsContainerRef}>

@@ -4,6 +4,7 @@ import "./styles/private-typography.css"
 import "./safari-fix.css"
 import "./styles/dark-theme.css"
 import "./styles/chat-input-surface.css"
+import "./styles/mobile-toast-offset.css"
 // Keep shell CSS available during SSR while ClientWrapper lazily loads JS.
 import "./components/navigation/credits-widget.module.css"
 import { Toaster } from "sonner"

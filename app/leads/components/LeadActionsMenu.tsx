@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useOptionalPermissions } from "@/app/context/PermissionContext"
 import type { Lead } from "@/app/leads/types"
 import { LeadPaymentDialog } from "./LeadPaymentDialog"
+import { LeadAutomationSnoozeDialog } from "./LeadAutomationSnoozeDialog"
 import { Button } from "@/app/components/ui/button"
 import {
   DropdownMenu,
@@ -46,6 +47,7 @@ export function LeadActionsMenu({
   onDelete?: () => void
 }) {
   const [paymentOpen, setPaymentOpen] = useState(false)
+  const [snoozeOpen, setSnoozeOpen] = useState(false)
   const permissions = useOptionalPermissions()
   return (
     <>
@@ -77,6 +79,10 @@ export function LeadActionsMenu({
           <CreditCard className="mr-2 h-4 w-4" />
           Settle balance / Add payment
         </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setSnoozeOpen(true)}>
+          <MessageSquare className="mr-2 h-4 w-4" />
+          Automation Snooze
+        </DropdownMenuItem>
         <DropdownMenuItem onClick={onConversation} disabled={loading === "newConversation"}>
           {loading === "newConversation" ? (
             <Loader className="mr-2 h-4 w-4" />
@@ -97,6 +103,7 @@ export function LeadActionsMenu({
       </DropdownMenuContent>
     </DropdownMenu>
     <LeadPaymentDialog leadId={lead.id} leadName={lead.name} open={paymentOpen} onOpenChange={setPaymentOpen} />
+    <LeadAutomationSnoozeDialog leadId={lead.id} leadName={lead.name} open={snoozeOpen} onOpenChange={setSnoozeOpen} />
     </>
   )
 }

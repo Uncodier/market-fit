@@ -19,6 +19,7 @@ export const automationSnoozeMutationSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("resume"),
     expectedPausedUntil: z.string().datetime({ offset: true }),
+    expectedLastHumanReplyAt: z.string().datetime({ offset: true }).nullable(),
   }).strict(),
 ])
 

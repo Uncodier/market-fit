@@ -46,6 +46,47 @@ describe("ActivitiesSection outreach controls", () => {
     ] } } }
     jest.mocked(fetchOutreachSegments).mockResolvedValue([{ id: "segment-a", name: "Enterprise" }, { id: "segment-b", name: "Local" }])
   })
+  it("opens Automation Snooze setup with default hours and explicitly saves changed hours", async () => {
+    const onSave = jest.fn().mockResolvedValue(true)
+    render(<TestForm onSave={onSave} />)
+    const snooze = card("conversation_automation_snooze")
+    expect(snooze.getByRole("radio", { name: /^Active/ })).toBeChecked()
+    expect(snooze.queryByRole("spinbutton")).not.toBeInTheDocument()
+    showSetup("conversation_automation_snooze")
+    const hours = snooze.getByRole("spinbutton", { name: "Pause after a human reply (hours)" })
+    expect(hours).toHaveValue(4)
+    expect(snooze.getByText(/existing pauses keep their expiry/)).toBeInTheDocument()
+    fireEvent.change(hours, { target: { value: "2.5" } })
+    expect(onSave).not.toHaveBeenCalled()
+    fireEvent.click(snooze.getByRole("button", { name: "Save" }))
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1))
+    expect(onSave.mock.calls[0][0].activities.conversation_automation_snooze).toEqual({ hours: 2.5 })
+    expect(mergeActivitySettings(undefined, onSave.mock.calls[0][0].activities).conversation_automation_snooze).toEqual({ status: "default", hours: 2.5 })
+  })
+
+  it("saves the inactive snooze policy without dropping the configured hours", async () => {
+    const onSave = jest.fn().mockResolvedValue(true)
+    render(<TestForm onSave={onSave} initial={{ conversation_automation_snooze: { status: "default", hours: 8 } }} />)
+    const snooze = card("conversation_automation_snooze")
+    fireEvent.click(snooze.getByRole("radio", { name: /Inactive/ }))
+    expect(onSave).not.toHaveBeenCalled()
+    fireEvent.click(snooze.getByRole("button", { name: "Save" }))
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1))
+    expect(onSave.mock.calls[0][0].activities.conversation_automation_snooze).toEqual({ status: "inactive" })
+    expect(mergeActivitySettings({ conversation_automation_snooze: { status: "default", hours: 8 } }, onSave.mock.calls[0][0].activities).conversation_automation_snooze).toEqual({ status: "inactive", hours: 8 })
+  })
+
+  it.each(["0", "169", ""])("rejects invalid snooze hours %s before saving", async value => {
+    const onSave = jest.fn()
+    render(<TestForm onSave={onSave} />)
+    showSetup("conversation_automation_snooze")
+    const snooze = card("conversation_automation_snooze")
+    fireEvent.change(snooze.getByRole("spinbutton"), { target: { value } })
+    fireEvent.click(snooze.getByRole("button", { name: "Save" }))
+    expect(await snooze.findByRole("alert")).toBeInTheDocument()
+    expect(onSave).not.toHaveBeenCalled()
+  })
+
   it.each(["leads_initial_cold_outreach", "leads_follow_up"])("selects and saves fixed cooldown for %s", async key => {
     const onSave = jest.fn().mockResolvedValue(true)
     render(<TestForm onSave={onSave} />)

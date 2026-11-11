@@ -367,7 +367,7 @@ function ChatPageContent() {
       
       {/* Main chat content */}
       <div className={cn(
-        "flex flex-col h-full bg-background transition-all duration-300 ease-in-out min-w-0 min-h-0 fixed right-0 top-[var(--topbar-height,64px)] bottom-0",
+        "flex flex-col md:h-full bg-background transition-all duration-300 ease-in-out min-w-0 min-h-0 fixed right-0 top-[var(--topbar-height,64px)] bottom-0",
         !hasSelectedConversation ? "hidden md:flex" : "flex"
       )}
       style={{

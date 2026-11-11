@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { normalizeSiteAutomationSnooze, siteAutomationSnoozeSchema } from "@/lib/chat/automation-snooze-policy"
 import { isOutreachChannel, normalizeOutreachChannelAccounts, normalizeOutreachSettings, validateOutreachSettings, type OutreachActivityKey, type OutreachSettings } from "@/lib/outreach-settings"
 import { icpLeadGenerationSettingsSchema, normalizeIcpLeadGenerationSettings } from "./icp-lead-generation-settings"
 import { dailyStandupSettingsSchema, normalizeDailyStandupSettings } from "./daily-standup-settings"
@@ -19,6 +20,7 @@ export function normalizeActivitySettings(value: unknown = {}) {
   const data = record(value)
   return {
     ...data,
+    conversation_automation_snooze: normalizeSiteAutomationSnooze(data.conversation_automation_snooze),
     daily_resume_and_stand_up: normalizeDailyStandupSettings(data.daily_resume_and_stand_up),
     local_lead_generation: standard(data.local_lead_generation),
     icp_lead_generation: normalizeIcpLeadGenerationSettings(data.icp_lead_generation),
@@ -93,6 +95,7 @@ const standardSchema = z.object({ status: z.enum(["default", "inactive"]).defaul
 const optInSchema = z.object({ status: z.enum(["inactive", "active"]).default("inactive") }).passthrough().default({})
 export const invoicesDueSettingsSchema = outreachSchema("invoices_due", { ...activityTimingFields, repeat_interval_days: z.number().int().min(1).max(365).default(3) })
 export const activitiesSchema = z.object({
+  conversation_automation_snooze: siteAutomationSnoozeSchema,
   daily_resume_and_stand_up: dailyStandupSettingsSchema,
   local_lead_generation: standardSchema,
   icp_lead_generation: icpLeadGenerationSettingsSchema,

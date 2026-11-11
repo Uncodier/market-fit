@@ -9,8 +9,6 @@ import { createClient } from "@/lib/supabase/client"
 import { TopBarTitle } from "./TopBarTitle"
 import { PosTopBarActions } from "./PosTopBarActions"
 import { PosTopBarSync } from "./PosTopBarSync"
-import { Button } from "../ui/button"
-import { Menu } from "@/app/components/ui/icons"
 
 const TopBarActions = dynamic(
   () => import("./TopBarActions").then((mod) => mod.TopBarActions),
@@ -34,7 +32,6 @@ interface TopBarProps extends React.HTMLAttributes<HTMLDivElement> {
   hideBreadcrumb?: boolean
   onCreateSale?: () => void
   onCreateDeal?: () => void
-  onMobileToggle?: () => void
   viewMode?: string
   isArtifact?: boolean
 }
@@ -53,7 +50,6 @@ export function TopBar({
   hideBreadcrumb,
   onCreateSale,
   onCreateDeal,
-  onMobileToggle,
   viewMode,
   isArtifact,
   ...props 
@@ -279,11 +275,6 @@ export function TopBar({
     >
       <div className="flex h-[64px] items-center justify-between px-4 lg:px-8 w-full max-w-full">
         <div className="flex items-center min-w-0 flex-1">
-          {!hideSidebarToggle && (
-            <Button variant="ghost" size="icon" className="md:!hidden mr-2 font-inter shrink-0" onClick={onMobileToggle}>
-              <Menu className="h-5 w-5" />
-            </Button>
-          )}
           {!hideBreadcrumb && (
             <TopBarTitle 
               title={title}

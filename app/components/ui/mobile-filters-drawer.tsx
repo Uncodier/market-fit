@@ -76,14 +76,15 @@ interface MobileFiltersDrawerProps {
   children: React.ReactNode
   triggerText?: string
   results?: React.ReactNode
+  alwaysModal?: boolean
 }
 
-export function MobileFiltersDrawer({ children, triggerText, results }: MobileFiltersDrawerProps) {
+export function MobileFiltersDrawer({ children, triggerText, results, alwaysModal = false }: MobileFiltersDrawerProps) {
   const { t } = useLocalization()
   const [open, setOpen] = useState(false)
   const isMobile = useIsMobile()
 
-  if (!isMobile) {
+  if (!isMobile && !alwaysModal) {
     return (
       <div className="flex items-center gap-2 flex-1 min-w-0">
         {children}

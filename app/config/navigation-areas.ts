@@ -181,9 +181,11 @@ export const NAVIGATION_AREAS: Record<
 /**
  * Items shown in the apps launcher. AI Workspace has its own sidebar access,
  * so add it only to the Automation section of `/navigation`.
+ * Profile is an account destination, placed first in the launcher's Settings.
  */
 export function getNavigationMenuItems(area: WorkspaceArea): AreaNavItem[] {
   const visibleItems = NAVIGATION_AREAS[area].items.filter((item) => !item.hidden)
+  if (area === "settings") return [{ key: "profile", href: "/profile" }, ...visibleItems]
   if (area !== "automation") return visibleItems
 
   return [{ key: "aiWorkspace", href: "/robots" }, ...visibleItems]

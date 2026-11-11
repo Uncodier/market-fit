@@ -29,6 +29,8 @@ import { icpLeadGenerationSettingsSchema } from "./icp-lead-generation-settings"
 import { normalizeActivitySettings } from "./activity-settings"
 import { DailyStandupFields } from "./DailyStandupFields"
 import { dailyStandupSettingsSchema } from "./daily-standup-settings"
+import { AutomationSnoozeFields } from "./AutomationSnoozeFields"
+import { siteAutomationSnoozeSchema } from "@/lib/chat/automation-snooze-policy"
 import { acknowledgeActivitySave, getActivityFormUpdates } from "./activity-form-state"
 import { validatedActivityUpdates } from "./activity-settings"
 import { TIMED_ACTIVITY_KEYS, displayedActivityTimeMode, type TimedActivityKey, type ActivityStartTimeMode } from "@/lib/activity-start-time"
@@ -42,6 +44,11 @@ interface ActivitiesSectionProps {
 type ActivityKey = keyof ReturnType<typeof normalizeActivitySettings>
 
 const ACTIVITIES: { key: ActivityKey; title: string; description: string }[] = [
+  {
+    key: "conversation_automation_snooze",
+    title: "Automation Snooze",
+    description: "Pause automated replies after a human replies. Active by default for all leads that inherit this site's setting. Disabling affects future human replies only, not existing pauses."
+  },
   {
     key: "daily_resume_and_stand_up",
     title: "Daily Resume and Stand Up",
@@ -143,6 +150,8 @@ export function ActivitiesSection({ active, onSave, siteId }: ActivitiesSectionP
     const validation = Object.fromEntries(OUTREACH_ACTIVITY_KEYS.map(key => [key, validate(key)]))
     const icp = icpLeadGenerationSettingsSchema.safeParse(form.getValues("activities.icp_lead_generation"))
     const standup = dailyStandupSettingsSchema.safeParse(form.getValues("activities.daily_resume_and_stand_up"))
+    const snooze = siteAutomationSnoozeSchema.safeParse(form.getValues("activities.conversation_automation_snooze"))
+    validation.conversation_automation_snooze = snooze.success ? [] : snooze.error.issues.map(issue => issue.message)
     validation.daily_resume_and_stand_up = standup.success ? [] : standup.error.issues.map(issue => issue.message)
     validation.icp_lead_generation = icp.success ? [] : icp.error.issues.map(issue => issue.message)
     setErrors(validation)
@@ -155,7 +164,7 @@ export function ActivitiesSection({ active, onSave, siteId }: ActivitiesSectionP
     try {
       const formData = form.getValues()
       const updates = validatedActivityUpdates(
-        { ...formData.activities, icp_lead_generation: icp.data, daily_resume_and_stand_up: standup.data },
+        { ...formData.activities, icp_lead_generation: icp.data, daily_resume_and_stand_up: standup.data, conversation_automation_snooze: snooze.data },
         getActivityFormUpdates(form),
       )
       formData.activities = updates as SiteFormValues["activities"]
@@ -201,7 +210,7 @@ export function ActivitiesSection({ active, onSave, siteId }: ActivitiesSectionP
         const isDependencyInactive = isAssignLeads && coldOutreachStatus !== 'active'
         const isOptInInactive = isOutreach || isDailyResumeAndStandUp ? status !== 'active' : status === undefined
         const isInactive = !isIcp && (status === 'inactive' || (isOptIn && isOptInInactive) || isDependencyInactive)
-        const hasSetup = isIcp || isOutreach || isDailyResumeAndStandUp
+        const hasSetup = isIcp || isOutreach || isDailyResumeAndStandUp || key === "conversation_automation_snooze"
         const canToggleSetup = hasSetup && !isInactive
         const setupOpen = expandedSetups[key] === true
         const setupId = `activity-${key}-setup`
@@ -345,6 +354,7 @@ export function ActivitiesSection({ active, onSave, siteId }: ActivitiesSectionP
                   {isIcp && <IcpLeadGenerationFields siteId={activeSiteId} />}
                   {isOutreach && <OutreachActivityFields activityKey={key} accounts={accounts} {...segments} timezone={timezone} />}
                   {isDailyResumeAndStandUp && <DailyStandupFields timezone={timezone} />}
+                  {key === "conversation_automation_snooze" && <AutomationSnoozeFields />}
                 </CollapsibleContent>
               </Collapsible>}
               {!!errors[key]?.length && <ul role="alert" className="mt-4 space-y-1 text-sm text-destructive">{errors[key].map(message => <li key={message}>{message}</li>)}</ul>}

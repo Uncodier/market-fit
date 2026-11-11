@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from "uuid"
 import { createClient } from "@/lib/supabase/client"
 
 import type { useRobotsController } from "./use-robots-controller"
+import { isInstanceListView, mobileInstanceDetailHref } from "./mobile-instance-navigation"
 
 export function useInstanceCreation(input: ReturnType<typeof useRobotsController>) {
   const { allInstances, instanceAvatars, setInstanceAvatars, isSiteContextReady, refreshCount, lastAutoCreationAttempt, isLoadingRobots, currentSite, getAllInstances, shouldAutoConvertTab, pendingInstanceId, isAutoCreatingInstance, setIsAutoCreatingInstance, setLastAutoCreationAttempt, refreshRobots, setLocalSelectedInstanceId, setPendingInstanceId, setShouldAutoConvertTab, searchParams, router, activeRobotInstance, setIsResuming } = input
@@ -12,6 +13,8 @@ export function useInstanceCreation(input: ReturnType<typeof useRobotsController
   const lifecycleSiteRef = useRef<string | undefined>(undefined)
   const autoCreationRef = useRef<AbortController | null>(null)
   const autoEligibilityRef = useRef<(requestedSiteId: string) => boolean>(() => false)
+  const listViewRef = useRef(false)
+  useEffect(() => { listViewRef.current = isInstanceListView(searchParams) }, [searchParams])
 
   // Site lifetime is separate from eligibility: the flow's own loading updates
   // must not cancel its authentication/insert, but leaving the site must.
@@ -200,7 +203,8 @@ export function useInstanceCreation(input: ReturnType<typeof useRobotsController
           params.delete('artifact')
           params.delete('screen')
           params.delete('tab')
-          router.replace(`/robots?${params.toString()}`)
+          // Creation still runs, but must not dismiss a list the user explicitly opened.
+          if (!listViewRef.current) router.replace(`/robots?${params.toString()}`)
         } catch (error) {
           if (isCurrent()) console.error('Error auto-creating instance:', error)
         } finally {
@@ -287,7 +291,11 @@ export function useInstanceCreation(input: ReturnType<typeof useRobotsController
       currentParams.set('instance', newInstance.id)
       const displayName = newInstance.requirement_title ? newInstance.requirement_title : (newInstance.name || `ag-${newInstance.id.slice(-4)}`)
       currentParams.set('name', displayName)
-      router.replace(`/robots?${currentParams.toString()}`)
+      if (isInstanceListView(searchParams)) {
+        router.push(mobileInstanceDetailHref(searchParams.toString(), newInstance.id, displayName))
+      } else {
+        router.replace(`/robots?${currentParams.toString()}`)
+      }
     }
   }
   return { ...input, checkInstancesExistInDB, isInstanceStarting, isInstanceRunning, isInstancePausedOrUninstantiated, createPlaceholderInstance, handleCreateNewInstance }

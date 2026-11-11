@@ -10,7 +10,7 @@
 identifies blocking mismatches and proposed v1 deltas. Its verified target findings
 supersede the earlier `person`/same-site-company assumptions in companion summaries.
 **Implementation follow-up:** [Records repair](RECORD_SCHEMA_REPAIR.md) documents
-the implemented form/target/action guards and the unapplied admission migration.
+the implemented form/target/action guards and Records migrations applied to linked Makinari.
 The schema inventory and business-specific extensions below remain proposals.
 
 ## 1. Purpose and review findings

@@ -352,6 +352,7 @@ export interface SiteSettings {
   } | null
   activities?: {
     daily_resume_and_stand_up?: Partial<import("@/app/components/settings/daily-standup-settings").DailyStandupSettings> | ActivityStatus
+    conversation_automation_snooze?: Partial<import("@/lib/chat/automation-snooze-policy").SiteAutomationSnooze>
     local_lead_generation?: ActivityStatus
     icp_lead_generation?: Partial<import("@/app/components/settings/icp-lead-generation-settings").IcpLeadGenerationSettings> | ActivityStatus
     leads_initial_cold_outreach?: Partial<import("@/lib/outreach-settings").OutreachSettings> | ActivityStatus

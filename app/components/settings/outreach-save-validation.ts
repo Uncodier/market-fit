@@ -4,9 +4,11 @@ import { getUsableOutreachAccounts } from "./outreach-accounts"
 import { fetchOutreachSegments } from "./outreach-segments"
 import { icpLeadGenerationSettingsSchema } from "./icp-lead-generation-settings"
 import { dailyStandupSettingsSchema } from "./daily-standup-settings"
+import { siteAutomationSnoozeSchema } from "@/lib/chat/automation-snooze-policy"
 
 export async function validateActivitiesForSave(activities: unknown, channels: unknown, siteId: string, businessHours?: unknown) {
   const normalized = normalizeActivitySettings(activities)
+  normalized.conversation_automation_snooze = siteAutomationSnoozeSchema.parse(normalized.conversation_automation_snooze)
   normalized.daily_resume_and_stand_up = dailyStandupSettingsSchema.parse(normalized.daily_resume_and_stand_up)
   normalized.icp_lead_generation = icpLeadGenerationSettingsSchema.parse(normalized.icp_lead_generation)
   const accounts = getUsableOutreachAccounts(channels)

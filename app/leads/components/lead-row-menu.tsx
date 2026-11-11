@@ -25,6 +25,7 @@ import {
 import { Lead } from "@/app/leads/types"
 import { LeadActionKind } from "./use-lead-table-actions"
 import { LeadPaymentDialog } from "./LeadPaymentDialog"
+import { LeadAutomationSnoozeDialog } from "./LeadAutomationSnoozeDialog"
 
 export function LeadRowMenu({
   lead,
@@ -51,6 +52,7 @@ export function LeadRowMenu({
 }) {
   const bulk = leadCount > 1
   const [paymentOpen, setPaymentOpen] = useState(false)
+  const [snoozeOpen, setSnoozeOpen] = useState(false)
   const permissions = useOptionalPermissions()
 
   return (
@@ -85,6 +87,12 @@ export function LeadRowMenu({
           Edit Lead
         </DropdownMenuItem>
         {!bulk && <DropdownMenuItem
+          onClick={event => { event.stopPropagation(); setSnoozeOpen(true) }}
+        >
+          <MessageSquare className="mr-2 h-4 w-4" />
+          Automation Snooze
+        </DropdownMenuItem>}
+        {!bulk && <DropdownMenuItem
           onClick={(event) => { event.stopPropagation(); if (permissions?.can("update") ?? true) setPaymentOpen(true) }}
           disabled={!(permissions?.can("update") ?? true)}
         >
@@ -110,6 +118,7 @@ export function LeadRowMenu({
       </DropdownMenuContent>
     </DropdownMenu>
     {!bulk && <LeadPaymentDialog leadId={lead.id} leadName={lead.name} open={paymentOpen} onOpenChange={setPaymentOpen} />}
+    {!bulk && <LeadAutomationSnoozeDialog leadId={lead.id} leadName={lead.name} open={snoozeOpen} onOpenChange={setSnoozeOpen} />}
     </>
   )
 }

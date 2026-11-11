@@ -7,21 +7,17 @@ import { useLayout } from "@/app/context/LayoutContext"
 import { useIsMobile } from "@/app/hooks/use-mobile-view"
 import { useAutoCollapseSidebar } from "@/app/hooks/use-auto-collapse-sidebar"
 import { cn } from "@/lib/utils"
-import { ControlCenterHeader } from "@/app/control-center/components/ControlCenterHeader"
-import { ViewSelector } from "@/app/components/view-selector"
-import { SearchInput } from "@/app/components/ui/search-input"
 import { Button } from "@/app/components/ui/button"
 import { ClipboardList } from "@/app/components/ui/icons"
 import { EmptyState } from "@/app/components/ui/empty-state"
-import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/app/components/ui/dialog"
-import { SortDropdown } from "@/app/components/ui/sort-dropdown"
-import { RecordDateFilter } from "./components/RecordDateFilter"
 import { Loader } from "@/app/components/ui/icons"
 import { matchesRecordListFilter, recordListPage, type RecordDateRange } from "./lib/list-filter"
 import { useRecordsBulkActions } from "./hooks/useRecordsBulkActions"
 import { useRecordsData } from "./hooks/useRecordsData"
+import { RecordsToolbar } from "./components/RecordsToolbar"
+import { RecordsPageHeader } from "./components/RecordsPageHeader"
 import { RecordsSidebar } from "./components/RecordsSidebar"
 import { RecordsBulkToolbar } from "./components/RecordsBulkToolbar"
 import { RecordsTrashDialog } from "./components/RecordsTrashDialog"
@@ -58,6 +54,7 @@ export default function RecordsPage() {
   const [groupBy, setGroupBy] = useState<"status" | "category" | "date" | "team_member">("status")
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "title_asc" | "title_desc" | "updated_at">(defaultSort)
   const [dateRange, setDateRange] = useState<RecordDateRange>(null)
+  const [isToolbarVisible, setIsToolbarVisible] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
   const { selectedRecords, setSelectedRecords, isBulkActionLoading, handleBulkDelete,
@@ -217,74 +214,33 @@ export default function RecordsPage() {
           width: `calc(100% + ${sidebarLeft})`
         }}
       >
-        <div className="relative">
-          <ControlCenterHeader
+          <RecordsPageHeader
+            isMobile={isMobile}
+            isToolbarVisible={isToolbarVisible}
+            onToolbarVisibilityChange={setIsToolbarVisible}
             isSidebarCollapsed={isSidebarCollapsed}
             toggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
             sidebarLeft={sidebarLeft}
-            leftContent={
+          >
+            {
               selectedRecords.size > 0 ? (
                 <RecordsBulkToolbar {...{ selectedRecords, setSelectedRecords, isBulkActionLoading,
                   categories, handleBulkStatusChange, handleBulkCategoryChange, handleBulkDelete }} />
               ) : (
-                <div className="flex items-center gap-4">
-                  <Tabs value={groupBy} onValueChange={val => setGroupBy(val as typeof groupBy)} className="hidden md:block">
-                    <TabsList className="h-9 p-1 bg-muted/30 rounded-full">
-                      <TabsTrigger value="status" className="text-xs font-medium rounded-full px-3">{t("records.groupBy.status") || "Status"}</TabsTrigger>
-                      <TabsTrigger value="category" className="text-xs font-medium rounded-full px-3">{t("records.groupBy.category") || "Category"}</TabsTrigger>
-                      <TabsTrigger value="team_member" className="text-xs font-medium rounded-full px-3">{t("records.groupBy.teamMember") || "Team Member"}</TabsTrigger>
-                      <TabsTrigger value="date" className="text-xs font-medium rounded-full px-3">{t("records.groupBy.date") || "Date (Month)"}</TabsTrigger>
-                    </TabsList>
-                  </Tabs>
-                  <SearchInput
-                    placeholder={t("records.search") || "Search records..."}
-                    value={recordSearchQuery}
-                    onChange={(e) => { setRecordSearchQuery(e.target.value); setCurrentPage(1) }}
-                    className="bg-background border-border"
-                  />
-                </div>
+                <RecordsToolbar
+                  searchQuery={recordSearchQuery}
+                  onSearchChange={value => { setRecordSearchQuery(value); setCurrentPage(1) }}
+                  groupBy={groupBy} onGroupChange={setGroupBy}
+                  dateRange={dateRange}
+                  onDateChange={range => { setDateRange(range); setCurrentPage(1) }}
+                  sortBy={sortBy} onSortChange={setSortBy}
+                  viewType={viewType} onViewChange={setViewType}
+                />
               )
             }
-            rightContent={
-              selectedRecords.size > 0 ? null : (
-                <div className="flex items-center gap-2">
-                  <div className="md:hidden">
-                    <Select value={groupBy} onValueChange={val => setGroupBy(val as typeof groupBy)}>
-                      <SelectTrigger className="h-9 w-[130px] bg-background border-border" title={t("records.groupBy") || "Group by..."}>
-                        <SelectValue placeholder={t("records.groupBy") || "Group by..."} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="status">{t("records.groupBy.status") || "Status"}</SelectItem>
-                        <SelectItem value="category">{t("records.groupBy.category") || "Category"}</SelectItem>
-                        <SelectItem value="team_member">{t("records.groupBy.teamMember") || "Team Member"}</SelectItem>
-                        <SelectItem value="date">{t("records.groupBy.date") || "Date (Month)"}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+          </RecordsPageHeader>
 
-                  <RecordDateFilter value={dateRange} onChange={range => { setDateRange(range); setCurrentPage(1) }} />
-
-                  <SortDropdown sortBy={sortBy} setSortBy={setSortBy} options={[
-                    { value: "newest", label: t("records.sort.newest") || "Newest" },
-                    { value: "oldest", label: t("records.sort.oldest") || "Oldest" },
-                    { value: "updated_at", label: "Updated At" },
-                    { value: "title_asc", label: t("records.sort.titleAsc") || "Title (A-Z)" },
-                    { value: "title_desc", label: t("records.sort.titleDesc") || "Title (Z-A)" }
-                  ]} />
-
-                  <ViewSelector
-                    currentView={viewType}
-                    onViewChange={(view) => setViewType(view as typeof viewType)}
-                    showCalendar={true}
-                    showGraph={true}
-                  />
-                </div>
-              )
-            }
-          />
-        </div>
-
-        <div className={cn("flex-1 min-w-0 bg-muted/30 transition-colors duration-300 ease-in-out pt-[71px]", viewType === "graph" ? "overflow-hidden" : "overflow-y-auto")}>
+        <div className={cn("flex-1 min-h-0 min-w-0 bg-muted/30 transition-colors duration-300 ease-in-out", !isMobile && isToolbarVisible && "pt-[71px]", viewType === "graph" ? "overflow-hidden" : "overflow-y-auto")}>
           <div 
             className="min-h-full flex flex-col transition-all duration-300 ease-in-out"
             style={{ 

@@ -17,6 +17,19 @@ const baseProps = {
 }
 
 describe("RecordToolbar", () => {
+  it("keeps delete on the left when no contextual tools are visible", () => {
+    render(<RecordToolbar {...baseProps} />)
+    expect(screen.getByRole("button", { name: "Delete record" })).toBeVisible()
+    expect(screen.queryByTestId("record-toolbar-tools-spacer")).not.toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Hide right panel" })).toHaveClass("ml-auto")
+  })
+
+  it("keeps the action spacer while contextual tools are visible", () => {
+    render(<RecordToolbar {...baseProps} diagramControls={<button type="button">Layout</button>} />)
+    expect(screen.getByTestId("record-toolbar-tools-spacer")).toHaveClass("flex-1")
+    expect(screen.getByRole("button", { name: "Delete record" })).toBeVisible()
+  })
+
   it("keeps only save and contextual controls visible while editing node text", () => {
     render(
       <RecordToolbar
