@@ -154,7 +154,7 @@ environment variables before changing production configuration.
 
 ## Architecture reviews
 
-- [OpenRouter integration design](OPENROUTER_INTEGRATION_DESIGN.md) — proposal for discovery, AI/manual model selection, refresh, and customer-funded inference; Azure-only images restored, future OpenRouter images require successful live verification before enablement.
+- [OpenRouter integration design](OPENROUTER_INTEGRATION_DESIGN.md) — dual-path proposal preserving current global providers while enabling customer-funded OpenRouter model selection and execution; compatible direct-provider adapters, including media, are required scope, with successful live image verification before enablement.
 - [External API authentication audit and remaining authorization debt — 2026-09-30](API_AUTH_AUDIT_2026-09-30.md)
 - [Local QA repair and live-test blockers — 2026-09-29](QA_REPAIR_2026-09-29.md)
 - [Static analysis repair — 2026-09-29](STATIC_ANALYSIS_REPAIR_2026-09-29.md)

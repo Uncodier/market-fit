@@ -6,7 +6,12 @@
 
 Below 768px, a floating bottom navigation replaces the workspace sidebar. Each
 icon includes its app's translated label, using the same localization keys as the
-launcher. Labels wrap to at most two lines without increasing the bar's height.
+launcher. Labels use their full tab width on one line, truncating with an ellipsis
+only when needed, without increasing the bar's height.
+Each tab has explicit icon and label rows, including a scoped override for legacy
+Safari Settings-link flex styles so automation/settings shortcuts cannot turn horizontal.
+The same scoped override centers labels beneath their icons rather than inheriting
+the legacy Settings links' left-aligned text.
 The capsule-shaped glass bar uses a neutral translucent gradient, 32px backdrop
 blur, inset highlights and a soft shadow. It is centered with a 440px maximum
 width, 16px minimum side margins and a 12px gap above the bottom safe area.

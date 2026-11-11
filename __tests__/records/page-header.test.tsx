@@ -16,14 +16,14 @@ jest.mock("@/app/components/ui/date-range-picker", () => ({
 
 function headerProps(isMobile: boolean) {
   return {
-    isMobile, isToolbarVisible: false, onToolbarVisibilityChange: jest.fn(),
+    isMobile,
     isSidebarCollapsed: true, toggleSidebar: jest.fn(), sidebarLeft: "64px",
   }
 }
 
 describe("Records page header", () => {
-  it.each([false, true])("always renders the sticky mobile header and opens filters in one click (desktop visibility: %s)", visible => {
-    const props = { ...headerProps(true), isToolbarVisible: visible }
+  it("always renders the sticky mobile header and opens filters in one click", () => {
+    const props = headerProps(true)
     const { container } = render(
       <RecordsPageHeader {...props}>
         <RecordsToolbar searchQuery="" onSearchChange={jest.fn()}
@@ -41,19 +41,14 @@ describe("Records page header", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument()
     expect(screen.getByPlaceholderText("Search records...")).toBeInTheDocument()
     expect(screen.getByRole("combobox", { name: "Group by" })).toBeInTheDocument()
-    expect(props.onToolbarVisibilityChange).not.toHaveBeenCalled()
   })
 
-  it("preserves desktop show and hide controls", () => {
+  it("always shows the desktop toolbar without show and hide controls", () => {
     const props = headerProps(false)
-    const { rerender } = render(<RecordsPageHeader {...props}>Options</RecordsPageHeader>)
-    expect(screen.queryByText("Options")).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole("button", { name: "Show record toolbar" }))
-    expect(props.onToolbarVisibilityChange).toHaveBeenLastCalledWith(true)
-
-    rerender(<RecordsPageHeader {...props} isToolbarVisible>Options</RecordsPageHeader>)
+    const { container } = render(<RecordsPageHeader {...props}>Options</RecordsPageHeader>)
+    expect(container.firstElementChild).toHaveClass("fixed", "h-[71px]")
     expect(screen.getByText("Options")).toBeInTheDocument()
-    fireEvent.click(screen.getByRole("button", { name: "Hide record toolbar" }))
-    expect(props.onToolbarVisibilityChange).toHaveBeenLastCalledWith(false)
+    expect(screen.queryByRole("button", { name: "Show record toolbar" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Hide record toolbar" })).not.toBeInTheDocument()
   })
 })

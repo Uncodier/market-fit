@@ -12,12 +12,12 @@ import { reorderCatalogDisplay } from "./reorder-actions"
 import type { CatalogListParams, CatalogSort } from "./types"
 import { CatalogTable } from "./components/CatalogTable"
 import { CreateCatalogItemDialog } from "./components/CreateCatalogItemDialog"
+import { CatalogFilterTabs } from "./components/CatalogFilterTabs"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { MobileFiltersDrawer, FilterContainer, FilterSection } from "@/app/components/ui/mobile-filters-drawer"
 import { Button } from "@/app/components/ui/button"
 import { SearchInput } from "@/app/components/ui/search-input"
-import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
-import { Plus, Archive, DatabaseIcon, Boxes, UploadCloud as Upload } from "@/app/components/ui/icons"
+import { Plus, Archive, UploadCloud as Upload } from "@/app/components/ui/icons"
 import { Pagination } from "@/app/components/ui/pagination"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { Skeleton } from "@/app/components/ui/skeleton"
@@ -45,6 +45,7 @@ export default function CatalogPage() {
   const [searchQuery, setSearchQuery] = useState(searchParams?.get("q") || "")
   const [debouncedSearch, setDebouncedSearch] = useState(searchParams?.get("q")?.trim() || "")
   const [kindFilter, setKindFilter] = useState<'all' | 'product' | 'service' | 'variant'>(() => {
+    if (searchParams?.get("status") === "archived") return "all"
     const kind = searchParams?.get("kind")
     return kind === "product" || kind === "service" || kind === "variant" ? kind : "all"
   })
@@ -245,32 +246,15 @@ export default function CatalogPage() {
                   
                   
 
-                  <FilterSection title={t('catalog.kind.label') === 'catalog.kind.label' ? 'Item Type' : t('catalog.kind.label')}>
-                    <Tabs 
-                      value={kindFilter} 
-                      onValueChange={(val) => setKindFilter(val as typeof kindFilter)}
-                      className="w-full md:w-auto min-w-0"
-                    >
-                      <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-none md:rounded-full flex flex-wrap md:flex-nowrap md:flex-row w-full md:max-w-full overflow-y-visible md:overflow-x-auto justify-start items-center gap-2 md:gap-0">
-                        <TabsTrigger value="all" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5">{t('catalog.kind.all') || 'All items'}</TabsTrigger>
-                        <TabsTrigger value="product" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5"><Archive className="shrink-0 h-4 w-4 md:hidden"/> {t('catalog.kind.product') || 'Products'}</TabsTrigger>
-                        <TabsTrigger value="service" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5"><DatabaseIcon className="shrink-0 h-4 w-4 md:hidden"/> {t('catalog.kind.service') || 'Services'}</TabsTrigger>
-                        <TabsTrigger value="variant" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5"><Boxes className="shrink-0 h-4 w-4 md:hidden"/> {t('catalog.kind.variant') || 'Variants'}</TabsTrigger>
-                      </TabsList>
-                    </Tabs>
-                  </FilterSection>
-                    
-                    <FilterSection title={t('common.status') === 'common.status' ? 'Status' : t('common.status')}>
-                    <Tabs 
-                      value={statusFilter} 
-                      onValueChange={(val) => setStatusFilter(val as typeof statusFilter)}
-                      className="w-full md:w-auto min-w-0"
-                    >
-                      <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-none md:rounded-full flex flex-wrap md:flex-nowrap md:flex-row w-full md:max-w-full overflow-y-visible md:overflow-x-auto justify-start items-center gap-2 md:gap-0">
-                        <TabsTrigger value="active" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5">{t('status.active') || 'Active'}</TabsTrigger>
-                        <TabsTrigger value="archived" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5">{t('status.archived') || 'Archived'}</TabsTrigger>
-                      </TabsList>
-                    </Tabs>
+                  <FilterSection title={t('common.filters') || 'Filters'}>
+                    <CatalogFilterTabs
+                      kind={kindFilter}
+                      status={statusFilter}
+                      onChange={(kind, status) => {
+                        setKindFilter(kind)
+                        setStatusFilter(status)
+                      }}
+                    />
                   </FilterSection>
 
                   <FilterSection desktopOnly>
@@ -296,19 +280,21 @@ export default function CatalogPage() {
               </MobileFiltersDrawer>
               
               <div className="ml-auto flex items-center gap-3 shrink-0">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="hidden items-center gap-1 md:flex"
-                  onClick={() => setIsImportOpen(true)}
-                  disabled={!currentSite?.id}
-                  title="Import"
-                  aria-label="Import"
-                >
-                  <Upload className="h-4 w-4" />
-                  <span className="hidden sm:inline">Import</span>
-                </Button>
-                <div className="w-px h-6 bg-border mx-1 hidden md:block" />
+                <div className="hidden shrink-0 items-center md:flex">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="flex items-center gap-1"
+                    onClick={() => setIsImportOpen(true)}
+                    disabled={!currentSite?.id}
+                    title="Import"
+                    aria-label="Import"
+                  >
+                    <Upload className="h-4 w-4" />
+                    <span className="hidden sm:inline">Import</span>
+                  </Button>
+                  <div className="w-px h-6 bg-border mx-1" />
+                </div>
                 <SortDropdown sortBy={sortBy} setSortBy={setSortBy} options={[
                   { value: 'display_order', label: 'Display order' },
                   { value: 'newest', label: 'Newest' },

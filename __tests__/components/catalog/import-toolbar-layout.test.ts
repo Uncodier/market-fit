@@ -18,8 +18,10 @@ describe("Catalog import action placement", () => {
   })
 
   it("keeps the toolbar import action and its separator desktop-only", () => {
-    expect(toolbar).toContain('className="hidden items-center gap-1 md:flex"')
-    expect(toolbar).toContain('className="w-px h-6 bg-border mx-1 hidden md:block"')
+    const desktopActions = toolbar.match(/<div className="hidden shrink-0 items-center md:flex">([\s\S]*?)<\/div>/)?.[1]
+    expect(desktopActions).toBeDefined()
+    expect(desktopActions).toContain('title="Import"')
+    expect(desktopActions).toContain('className="w-px h-6 bg-border mx-1"')
     expect(toolbar).toContain("onClick={() => setIsImportOpen(true)}")
     expect(toolbar).toContain("disabled={!currentSite?.id}")
     expect(toolbar).toContain("<SortDropdown")

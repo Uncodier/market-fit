@@ -54,7 +54,6 @@ export default function RecordsPage() {
   const [groupBy, setGroupBy] = useState<"status" | "category" | "date" | "team_member">("status")
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "title_asc" | "title_desc" | "updated_at">(defaultSort)
   const [dateRange, setDateRange] = useState<RecordDateRange>(null)
-  const [isToolbarVisible, setIsToolbarVisible] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
   const { selectedRecords, setSelectedRecords, isBulkActionLoading, handleBulkDelete,
@@ -216,8 +215,6 @@ export default function RecordsPage() {
       >
           <RecordsPageHeader
             isMobile={isMobile}
-            isToolbarVisible={isToolbarVisible}
-            onToolbarVisibilityChange={setIsToolbarVisible}
             isSidebarCollapsed={isSidebarCollapsed}
             toggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
             sidebarLeft={sidebarLeft}
@@ -240,7 +237,7 @@ export default function RecordsPage() {
             }
           </RecordsPageHeader>
 
-        <div className={cn("flex-1 min-h-0 min-w-0 bg-muted/30 transition-colors duration-300 ease-in-out", !isMobile && isToolbarVisible && "pt-[71px]", viewType === "graph" ? "overflow-hidden" : "overflow-y-auto")}>
+        <div className={cn("flex-1 min-h-0 min-w-0 bg-muted/30 transition-colors duration-300 ease-in-out", !isMobile && "pt-[71px]", viewType === "graph" ? "overflow-hidden" : "overflow-y-auto")}>
           <div 
             className="min-h-full flex flex-col transition-all duration-300 ease-in-out"
             style={{ 

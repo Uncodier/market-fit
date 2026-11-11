@@ -1,12 +1,12 @@
 # OpenRouter integration: discovery, routing, and customer-funded usage
 
 Status: integration proposal, not implemented; experimental image adapter withdrawn.
-Review date: 2026-11-10.
+Review date: 2026-11-11.
 Scope: Makinari web application and its separate orchestration API repository.
 
 Rollback decision: restore Azure-only images; no live OpenRouter image probe
 succeeded. Customer connections, the card, routing policy, and credit exemptions
-remain unimplemented. Future OpenRouter images remain in scope, but require a
+remain unimplemented. OpenRouter images are a required integration deliverable, but require a
 successful real generation on the actual connection before task enablement.
 Catalog presence or an AI recommendation is insufficient. See the
 [experiment and acceptance gate](/Users/prado/Desktop/Proyectos/Uncodie/Code/API/docs/OPENROUTER_IMAGES.md).
@@ -29,6 +29,14 @@ or inference markup. This is not an exemption for unrelated paid tools or resour
 New models using supported protocols can be discovered without a release.
 New protocols, tool semantics, or capabilities still require engineering work.
 
+### Agreed dual-path scope
+
+Preserve current global execution, providers, credentials, and billing without a
+selected customer integration. This is not a global OpenRouter migration.
+With an active integration, support model selection and execution through it,
+including direct-provider images, speech, and transcription. Compatible adapters
+are required deliverables; document upstream blockers without silent global fallback.
+
 ## 2. Agreed requirements and proposed defaults
 
 ### Requested behavior
@@ -41,6 +49,9 @@ New protocols, tool semantics, or capabilities still require engineering work.
 - A refresh button reruns discovery and updates recommendations when necessary.
 - Users can manually select models instead of accepting automatic recommendations.
 - Customer-funded OpenRouter operations do not require Makinari credits.
+- Preserve existing global routes and billing for executions without the integration.
+- Deliver customer-connection adapters for all inventoried AI functions supported
+  by OpenRouter, including direct-provider media; expose compatible model selection.
 
 ### Recommended defaults, subject to review
 
@@ -119,6 +130,8 @@ Routing modes:
 2. **Manual:** select an exact catalog model and optional ordered fallbacks.
 3. **Disabled:** do not route this capability through this connection.
 
+Disabled blocks the customer route without enabling global fallback; model selection must affect dispatch.
+
 Manual model search filters by the account catalog and the capability contract.
 Show context, supported modalities/tools, and catalog pricing where available.
 Pricing is informational, not proof of net BYOK cost or subscription credits.
@@ -175,8 +188,8 @@ Maintain requirements by task type rather than lists of release-specific names:
 | Summaries/compaction | Text support and adequate context; inherits payer |
 | Embeddings | Existing embedding space, dimensions, and index contract preserved |
 | Video | Implemented job lifecycle, polling, and artifact handling |
-| Images | Future adapter plus successful real generation for the actual connection required; Azure-only runtime restored |
-| Speech/transcription | OpenRouter support exists upstream; dedicated application adapters remain to be implemented |
+| Images | Required customer-connection adapter plus successful real generation before enablement; preserve Azure for global execution |
+| Speech/transcription | Required customer-connection adapters, compatible model/voice/language contracts, and artifact handling; preserve global execution |
 
 Application task availability is the intersection of required capabilities,
 implemented adapters, authorized tools, connection policy, and resource rights.
@@ -244,6 +257,9 @@ Durable refresh execution should reuse the existing job infrastructure, not an
 unawaited promise in a request handler. Exact TTLs and budgets are review decisions.
 
 ## 8. Runtime routing contract
+
+Resolve the path server-side: no selected integration uses global behavior; an active selected integration uses its policy below.
+Unavailable, disabled, revoked, or failed customer routes never imply global fallback.
 
 Resolve once per execution, then pass a trusted routing reference to all children:
 site, connection ID/revision, payer, policy version, capability contract, selected
@@ -384,13 +400,15 @@ not a forged user ID. Return sanitized, machine-readable errors and allowlisted 
 ## 12. Implementation phases and rollout
 
 1. **Coverage inventory:** enumerate all client creation, credit gates/holds/charges,
-   auxiliary calls, and persistent jobs; mark payer and capability for each.
+   auxiliary calls, and persistent jobs, including images, speech, transcription,
+   and video; track global route, customer adapter, model selection, and blockers.
 2. **Foundation:** approved private schema, connection CRUD/OAuth, authorization,
    key validation, revision handling, and sanitized read APIs.
 3. **Discovery:** catalog normalization, capability contracts, deterministic filters,
    bounded AI selector, synthetic verification, and versioned refresh publication.
 4. **Routing:** one resolver used by all execution paths, manual overrides, pinned
-   run context, controlled fallback, disconnect/rotation, and zero global-key leakage.
+   run context, controlled fallback, disconnect/rotation, and zero global-key leakage;
+   complete compatible direct-provider adapters while preserving global behavior.
 5. **Accounting:** payer-aware admission, external receipts, requirement execution
    without monetary holds, and unchanged platform-resource billing.
 6. **UI:** card, quick navigation, refresh progress/diff, model selection, reasons,
@@ -413,7 +431,9 @@ already dispatched work under its original payer.
 | Scenario | Required result |
 | --- | --- |
 | Customer key + zero Makinari credits | Supported LLM-only task completes; no platform holds/charges/credit emails |
-| No customer connection | Existing platform behavior unchanged |
+| No customer connection | Existing global providers, model behavior, and billing unchanged, including media |
+| Active integration + manual media model | Images, speech/transcription, and supported video dispatch through the selected customer model/connection; valid artifacts and zero platform inference charge |
+| Active integration + unsupported or failed capability | Explicit blocker; no silent global provider, credential, or payer substitution |
 | Malicious payer/skip-billing request | Rejected or ignored; server resolves actual payer |
 | Cross-site connection or refresh ID | Denied before secret access |
 | Member attempts shared policy/key change | Denied; no credential disclosure |
@@ -436,7 +456,7 @@ already dispatched work under its original payer.
 | Missing cost or receipt write failure | Null/uncertain evidence and reconciliation; no replay or platform charge |
 | Paid VM/tool within BYOK workflow | Independent resource admission/charge remains enforced |
 | Embedding recommendation changes | Existing index space not silently changed |
-| Existing Azure media | Remains unchanged; no replacement by an unverified OpenRouter route |
+| Existing Azure media | Global path remains unchanged; verified customer image selection uses OpenRouter without replacing global Azure behavior |
 | Catalog lists image model but live probe fails | Image task remains disabled with reason; no automatic Azure/account fallback |
 
 Use Jest for web UI/API contracts and backend routing, AI, billing, and assistant

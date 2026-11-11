@@ -18,9 +18,12 @@
 
 .tab {
   position: relative;
-  display: flex;
+  display: grid;
   height: 56px;
-  flex-direction: column;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: 25px 11px;
+  align-content: center;
+  justify-items: center;
   gap: 2px;
   min-width: 0;
   align-items: center;
@@ -31,18 +34,41 @@
   touch-action: manipulation;
 }
 
+/* Legacy Safari settings-link rules force horizontal flex; keep this dock in rows. */
+:global(html.safari) .glass[data-mobile-workspace-navigation] a.tab {
+  display: grid !important;
+  height: 56px !important;
+  gap: 2px !important;
+  padding: 0 !important;
+  border-radius: 999px !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+:global(html.safari) .glass[data-mobile-workspace-navigation] a.tab svg {
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+}
+
+:global(html.safari) .glass[data-mobile-workspace-navigation] a.tab > .label {
+  display: block !important;
+  text-align: center !important;
+}
+
 .label {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  display: block;
+  width: 100%;
+  min-width: 0;
   overflow: hidden;
-  max-width: 100%;
-  padding-inline: 2px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   text-align: center;
   font-size: 10px;
   font-weight: 500;
   line-height: 11px;
-  overflow-wrap: anywhere;
 }
 
 .tab::before {
