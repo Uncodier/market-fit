@@ -36,14 +36,25 @@
     min-width: 48px !important;
   }
 
-  /* Replace the opaque desktop sphere, including Safari and tinted variants. */
+  /* Keep the original fill rich; glass highlights must not wash out active CTAs. */
   html .btn-primary:not(:disabled):not([aria-disabled="true"]) {
-    background-color: rgb(var(--btn-fill) / 0.72) !important;
+    background-color: rgb(var(--btn-fill) / 0.94) !important;
     background-image:
-      radial-gradient(ellipse 90% 65% at 28% -12%, rgb(255 255 255 / 0.24), transparent 74%),
+      radial-gradient(ellipse 90% 65% at 28% -12%, rgb(255 255 255 / 0.16), transparent 74%),
       radial-gradient(ellipse 80% 50% at 78% 118%, rgb(var(--btn-tint, 255 255 255) / 0.24), transparent 76%) !important;
     -webkit-backdrop-filter: blur(14px) saturate(150%) !important;
     backdrop-filter: blur(14px) saturate(150%) !important;
+  }
+
+  /* Size both the shared icon wrapper and SVG, overriding legacy Safari sizing. */
+  html .btn-primary > .safari-icon-fix,
+  html .btn-primary > .safari-icon-fix > svg,
+  html .btn-primary > svg {
+    width: 24px !important;
+    height: 24px !important;
+    min-width: 24px !important;
+    min-height: 24px !important;
+    flex-shrink: 0;
   }
 
   /* The desktop moving blobs become hard-edged patches in Safari without blur. */
@@ -71,8 +82,8 @@
     position: absolute !important;
     z-index: 0 !important;
     background:
-      radial-gradient(ellipse 46% 24% at 30% 8%, rgb(255 255 255 / 0.32), transparent 100%),
-      radial-gradient(ellipse 65% 22% at 65% 100%, rgb(255 255 255 / 0.18), transparent 100%);
+      radial-gradient(ellipse 46% 24% at 30% 8%, rgb(255 255 255 / 0.24), transparent 100%),
+      radial-gradient(ellipse 65% 22% at 65% 100%, rgb(255 255 255 / 0.12), transparent 100%);
   }
 
   /* A thin refracted edge and broad glint suggest a droplet, not a bevel. */

@@ -108,7 +108,7 @@ describe("mobile primary buttons", () => {
     expect(glass?.type).toBe("rule")
     const values: Record<string, string> = {}
     if (glass?.type === "rule") glass.walkDecls((decl) => { values[decl.prop] = decl.value })
-    expect(values["background-color"]).toBe("rgb(var(--btn-fill) / 0.72)")
+    expect(values["background-color"]).toBe("rgb(var(--btn-fill) / 0.94)")
     expect(values["-webkit-backdrop-filter"]).toBe("blur(14px) saturate(150%)")
     expect(values["background-image"]).toContain("radial-gradient")
     const hidden: string[] = []
@@ -118,5 +118,30 @@ describe("mobile primary buttons", () => {
       })
     })
     expect(hidden).toEqual(expect.arrayContaining([".btn-primary::before", ".btn-primary::after"]))
+  })
+
+  it("sizes shared and standalone mobile primary icons to 24px without enlarging the button", () => {
+    const css = postcss.parse(readFileSync(path.join(process.cwd(), "app/styles/mobile-primary-buttons.css"), "utf8"))
+    const selectors = [
+      "html .btn-primary > .safari-icon-fix",
+      "html .btn-primary > .safari-icon-fix > svg",
+      "html .btn-primary > svg",
+    ]
+    for (const selector of selectors) {
+      const values: Record<string, string> = {}
+      css.walkRules((rule) => {
+        if (!rule.selectors.includes(selector)) return
+        rule.walkDecls((decl) => {
+          values[decl.prop] = `${decl.value}${decl.important ? " !important" : ""}`
+        })
+      })
+      expect(values).toMatchObject({
+        width: "24px !important",
+        height: "24px !important",
+        "min-width": "24px !important",
+        "min-height": "24px !important",
+        "flex-shrink": "0",
+      })
+    }
   })
 })
