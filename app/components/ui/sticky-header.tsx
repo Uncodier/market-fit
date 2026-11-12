@@ -48,8 +48,8 @@ export function StickyHeader({
   // Prefer the layout context when available, otherwise use the prop.
   const isCollapsed = layoutContext?.isLayoutCollapsed ?? propIsLayoutCollapsed;
   
-  // Use fixed positioning on robots/chat - parent has overflow-hidden which breaks sticky
-  const useFixedPosition = pathname?.startsWith('/robots') || pathname?.startsWith('/chat') || pathname?.startsWith('/people');
+  // Desktop needs fixed positioning on routes whose parents prevent sticky positioning.
+  const useFixedPosition = !isMobile && (pathname?.startsWith('/robots') || pathname?.startsWith('/chat') || pathname?.startsWith('/people'));
   const sidebarLeft = isMobile ? 0 : (isCollapsed ? 64 : 256);
   
   return (
@@ -59,8 +59,8 @@ export function StickyHeader({
         "flex shrink-0 items-center p-0",
         "bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80",
         "border-b dark:border-white/5 border-black/5 z-[150]",
-        useFixedPosition ? "fixed transition-all duration-300 ease-in-out" : "sticky",
-        "top-[var(--topbar-height,64px)] min-h-[71px]",
+        useFixedPosition ? "static md:fixed transition-all duration-300 ease-in-out" : "static md:sticky",
+        "md:top-[var(--topbar-height,64px)] min-h-[71px]",
         stickyHeaderSelectClassName,
         className
       )}

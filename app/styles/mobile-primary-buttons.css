@@ -50,11 +50,16 @@
   html .btn-primary > .safari-icon-fix,
   html .btn-primary > .safari-icon-fix > svg,
   html .btn-primary > svg {
-    width: 24px !important;
-    height: 24px !important;
-    min-width: 24px !important;
-    min-height: 24px !important;
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    min-height: 32px !important;
     flex-shrink: 0;
+  }
+
+  html .btn-primary > .safari-icon-fix > svg,
+  html .btn-primary > svg {
+    stroke-width: 1.5;
   }
 
   /* The desktop moving blobs become hard-edged patches in Safari without blur. */

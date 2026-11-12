@@ -17,6 +17,21 @@ and interacting with audio/video controls never opens another tab.
 
 ## Request and persistence boundary
 
+### Audio delivery evidence
+
+Provider acceptance (`sent`) is displayed as **Sent to provider; delivery
+unconfirmed**, not **Delivered**. Audio status follows the persisted
+`audio_delivery.delivery_status` / `state` receipt; confirmed delivered/read
+events take precedence over stale command failure flags. Failed or uncertain
+receipts retain the no-resend guard. A request still in `sending` remains visible
+even when no audio attachment or delivery receipt has been persisted.
+
+The API must reconcile signed Zavu delivery events into audio receipts. Deploy
+the web and API changes together. This does not reconcile historical sends,
+repair database timeouts, or automatically replay interrupted delivery.
+
+Regression: `__tests__/components/chat/audio-delivery-status.test.tsx`.
+
 The chat composer sends team-member interventions through the same-origin
 `POST /api/agents/chat/intervention` route. The web server:
 

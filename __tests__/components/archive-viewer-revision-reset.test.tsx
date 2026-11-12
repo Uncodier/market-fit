@@ -34,6 +34,8 @@ it('resets selection and edits for a new URL, but preserves them on same-URL rer
     const v1 = 'https://files.example.test/archive.zip?version=1'
     const v2 = 'https://files.example.test/archive.zip?version=2'
     const { rerender } = render(<ZipViewer url={v1} onFileSelect={onSelect} />)
+    await screen.findByRole('region', { name: 'Preview: readme.md' })
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Source' }), { button: 0, ctrlKey: false })
     await waitFor(() => expect(screen.getByRole('textbox')).toHaveValue('Revision 1 readme'))
     fireEvent.click(screen.getByText('selected.md'))
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Unsaved revision 1 edit' } })
@@ -50,6 +52,8 @@ it('resets selection and edits for a new URL, but preserves them on same-URL rer
     expect(screen.queryByRole('button', { name: /Enviar/ })).not.toBeInTheDocument()
     expect(onSelect).not.toHaveBeenCalled()
     await act(async () => { resolveSecond(second) })
+    await screen.findByRole('region', { name: 'Preview: readme.md' })
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Source' }), { button: 0, ctrlKey: false })
     await waitFor(() => expect(screen.getByRole('textbox')).toHaveValue('Revision 2 readme'))
     expect(screen.getByRole('textbox')).toHaveAttribute('data-path', 'readme.md')
     expect(onSelect).toHaveBeenCalledTimes(1)

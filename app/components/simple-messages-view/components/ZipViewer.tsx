@@ -8,6 +8,7 @@ import Editor, { loader } from '@monaco-editor/react'
 import { useTheme } from '@/app/context/ThemeContext'
 import { archiveRequestUrl } from '@/lib/cloud-file-url'
 import { ArchiveHtmlPreview, isPreviewableHtml } from './ArchiveHtmlPreview'
+import { ArchiveMarkdownPreview, isPreviewableMarkdown } from './ArchiveMarkdownPreview'
 import { ArchiveViewerToolbar } from './ArchiveViewerToolbar'
 import type { editor } from 'monaco-editor'
 
@@ -52,7 +53,8 @@ const ArchiveRevisionViewer: React.FC<ZipViewerProps & { className?: string }> =
   const [editorReady, setEditorReady] = useState(false)
   const [editedContents, setEditedContents] = useState<Record<string, string>>({})
   const [contentMode, setContentMode] = useState<'preview' | 'source'>('preview')
-  const canPreview = !!selectedFile && isPreviewableHtml(selectedFile.path)
+  const isMarkdown = !!selectedFile && isPreviewableMarkdown(selectedFile.path)
+  const canPreview = !!selectedFile && (isPreviewableHtml(selectedFile.path) || isMarkdown)
   const selectedContent = selectedFile
     ? (Object.prototype.hasOwnProperty.call(editedContents, selectedFile.path)
       ? editedContents[selectedFile.path] : selectedFile.content || '') : ''
@@ -266,6 +268,7 @@ const ArchiveRevisionViewer: React.FC<ZipViewerProps & { className?: string }> =
   return (
     <div className={`flex flex-col w-full h-full bg-background ${className || ''}`}>
       <ArchiveViewerToolbar canPreview={canPreview} mode={contentMode} onModeChange={setContentMode}
+        previewLabel={isMarkdown ? 'Markdown preview' : 'Isolated preview'}
         filesVisible={filesVisible} onToggleFiles={() => setFilesVisibilityOverride(!filesVisible)} />
       <div className="flex flex-1 overflow-hidden min-h-0">
         {/* Sidebar */}
@@ -279,7 +282,9 @@ const ArchiveRevisionViewer: React.FC<ZipViewerProps & { className?: string }> =
             <div className="flex flex-col h-full">
               <div className="flex-1 min-h-0 overflow-hidden relative">
                 {canPreview && contentMode === 'preview' ? (
-                  <ArchiveHtmlPreview content={selectedContent} name={selectedFile.name} />
+                  isMarkdown ? (
+                    <ArchiveMarkdownPreview content={selectedContent} name={selectedFile.name} isDarkMode={isDarkMode} />
+                  ) : <ArchiveHtmlPreview content={selectedContent} name={selectedFile.name} />
                 ) : !editorFailed && editorReady ? (
                   <div className="relative h-full">
                     <Editor

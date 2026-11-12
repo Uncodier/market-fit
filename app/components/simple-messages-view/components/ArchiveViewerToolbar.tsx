@@ -3,12 +3,13 @@
 import { Tabs, TabsList, TabsTrigger } from '@/app/components/ui/tabs'
 import { Folder } from '@/app/components/ui/icons'
 
-export function ArchiveViewerToolbar({ canPreview, mode, onModeChange, filesVisible, onToggleFiles }: {
+export function ArchiveViewerToolbar({ canPreview, mode, onModeChange, filesVisible, onToggleFiles, previewLabel = 'Isolated preview' }: {
   canPreview: boolean
   mode: 'preview' | 'source'
   onModeChange: (mode: 'preview' | 'source') => void
   filesVisible: boolean
   onToggleFiles: () => void
+  previewLabel?: string
 }) {
   return (
     <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 border-b border-border px-3 py-2 shrink-0">
@@ -28,7 +29,7 @@ export function ArchiveViewerToolbar({ canPreview, mode, onModeChange, filesVisi
         </Tabs>
       ) : <span />}
       <span className="justify-self-end text-xs text-muted-foreground hidden sm:block">
-        {canPreview ? 'Isolated preview' : ''}
+        {canPreview ? previewLabel : ''}
       </span>
     </div>
   )

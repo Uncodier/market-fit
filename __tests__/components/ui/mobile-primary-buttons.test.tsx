@@ -120,7 +120,7 @@ describe("mobile primary buttons", () => {
     expect(hidden).toEqual(expect.arrayContaining([".btn-primary::before", ".btn-primary::after"]))
   })
 
-  it("sizes shared and standalone mobile primary icons to 24px without enlarging the button", () => {
+  it("sizes shared and standalone mobile primary icons to 32px without enlarging the button", () => {
     const css = postcss.parse(readFileSync(path.join(process.cwd(), "app/styles/mobile-primary-buttons.css"), "utf8"))
     const selectors = [
       "html .btn-primary > .safari-icon-fix",
@@ -136,12 +136,13 @@ describe("mobile primary buttons", () => {
         })
       })
       expect(values).toMatchObject({
-        width: "24px !important",
-        height: "24px !important",
-        "min-width": "24px !important",
-        "min-height": "24px !important",
+        width: "32px !important",
+        height: "32px !important",
+        "min-width": "32px !important",
+        "min-height": "32px !important",
         "flex-shrink": "0",
       })
+      if (selector.endsWith("svg")) expect(values["stroke-width"]).toBe("1.5")
     }
   })
 })

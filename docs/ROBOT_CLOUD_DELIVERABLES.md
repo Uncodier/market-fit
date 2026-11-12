@@ -21,15 +21,20 @@ it is not evidence of an application repository or database. The private proxy u
 `API_SERVER_URL`, falling back to `NEXT_PUBLIC_API_SERVER_URL`, with the same origin
 and protocol validation applied to either value.
 
-HTML/HTM files now open with an internal Preview / Source switch in the existing
+HTML/HTM and Markdown (`.md`, `.markdown`, case-insensitive) files open with an internal Preview / Source switch in the existing
 archive viewer.
 The shared tabbar is centered across the viewer. The file explorer can be toggled
 and defaults to hidden for a single file, visible for multiple files; explicit
-visibility choices persist for the current revision. HTML defaults to Preview.
+visibility choices persist for the current revision. HTML and Markdown default to Preview.
+Markdown renders headings, lists, GFM tables, task lists and fenced code using the
+existing React Markdown renderer. Raw HTML is skipped, images display their alt text
+without fetching remote assets, and links open separately without an opener or referrer.
+Markdown respects the viewer theme and previews unsent source edits.
 Preview reuses downloaded content, including unsent source edits, without fetching
-again. It is a static sandboxed iframe with an opaque origin:
-scripts, forms, embeds and API requests are blocked. HTTPS images, styles and fonts
-may load without a referrer; relative archive assets are not bundled. Source editing
+again. HTML uses a sandboxed iframe with an opaque origin: inline scripts and styles
+are allowed for animations, but external scripts, forms, embeds and API requests
+are blocked. Only inline data/blob media and data fonts may load; remote and relative
+archive assets are not bundled. Source editing
 and agent submission remain available. This is not a deployed application preview.
 
 Activity discovery covers logs currently loaded by the chat (including loaded
@@ -38,3 +43,8 @@ Vercel deployment flow nor an executable application runtime.
 
 Validation: cloud deliverable extraction/cache tests, workspace lifecycle,
 cloud presentation, revision viewer/reset, and authenticated proxy regressions.
+To exercise the real ESM Markdown renderer in Jest on Node 24.9 or newer:
+
+```bash
+NODE_OPTIONS=--experimental-vm-modules npm test -- --runInBand __tests__/components/archive-markdown-preview.test.tsx __tests__/components/archive-html-preview.test.tsx __tests__/components/archive-viewer-revision-reset.test.tsx __tests__/components/archive-contents-regressions.test.tsx
+```

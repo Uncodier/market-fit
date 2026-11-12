@@ -5,6 +5,7 @@ import { ChatMessage } from "@/app/types/chat"
 import { isSocialCommentMetadata } from '@/lib/chat/social-comment-context'
 import { isDeliveryRetryBlocked } from '@/lib/chat/response-format'
 import { getTemplateDeliveryStatus } from '@/lib/chat/template-delivery'
+import { getAudioDeliveryStatus } from '@/lib/chat/audio-delivery'
 import * as Icons from "@/app/components/ui/icons"
 import {
   Tooltip,
@@ -56,13 +57,6 @@ function getEstimatedSendTime(message: ChatMessage, locale: string) {
   })
 }
 
-function isDelivered(message: ChatMessage) {
-  return (
-    message.metadata?.status === "delivered" ||
-    message.metadata?.status === "sent"
-  )
-}
-
 export function MessageTimestamp({
   message,
   className = "text-xs opacity-70",
@@ -77,7 +71,14 @@ export function MessageTimestamp({
   const now = new Date()
   const showDate = forceShowDate || !isSameDay(messageDate, now)
   const templateStatus = getTemplateDeliveryStatus(message.metadata)
-  const deliveryLabel = templateStatus ? t(templateLabelKeys[templateStatus.label] ?? 'chat.template.unconfirmed') : t('chat.status.delivered')
+  const audioStatus = getAudioDeliveryStatus(message.metadata)
+  const status = message.metadata?.status
+  const deliveryLabel = templateStatus ? t(templateLabelKeys[templateStatus.label] ?? 'chat.template.unconfirmed')
+    : audioStatus ? t(audioStatus.labelKey) : t(status === 'sent' ? 'chat.status.sent' : 'chat.status.delivered')
+  const showCheck = templateStatus ? templateStatus.commandStatus === 'success'
+    : audioStatus ? audioStatus.confirmed || audioStatus.labelKey === 'chat.status.sent'
+      : status === 'sent' || status === 'delivered'
+  const confirmedDelivery = audioStatus ? audioStatus.confirmed : status === 'delivered'
 
   return (
     <p className={`${className} inline-flex items-center gap-1 whitespace-nowrap shrink-0`}>
@@ -91,11 +92,11 @@ export function MessageTimestamp({
         </span>
       )}
       {messageDate.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })}
-      {(templateStatus ? templateStatus.commandStatus === 'success' : isDelivered(message)) && (
+      {showCheck && (
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className="text-green-500" aria-label={deliveryLabel}>
+              <span className={templateStatus || confirmedDelivery ? 'text-green-500' : 'text-amber-500'} aria-label={deliveryLabel}>
                 <Icons.Check className="h-3 w-3" />
               </span>
             </TooltipTrigger>
@@ -122,6 +123,7 @@ export function MessageStatus({
   const estimatedSendTime = getEstimatedSendTime(message, locale)
   const deliveryRetryBlocked = isDeliveryRetryBlocked(message.metadata)
   const templateStatus = getTemplateDeliveryStatus(message.metadata)
+  const audioStatus = getAudioDeliveryStatus(message.metadata)
   const isCommentProposal = isSocialCommentMetadata(message.metadata) &&
     (message.role === 'assistant' || message.role === 'agent') && !message.metadata?.comment_delivery_status
 
@@ -139,9 +141,23 @@ export function MessageStatus({
     )
   }
 
+  if (audioStatus && deliveryRetryBlocked) {
+    return (
+      <div className="flex items-center gap-2 text-xs">
+        <span role="status" className={audioStatus.failed ? 'text-red-500' : audioStatus.confirmed ? 'text-green-500' : 'text-amber-500'}>
+          {t(audioStatus.labelKey)}
+        </span>
+        {(audioStatus.failed || audioStatus.labelKey === 'chat.status.deliveryUnconfirmed' ||
+          (!audioStatus.confirmed && message.metadata?.command_status === 'failed')) && (
+          <span className="text-muted-foreground">{t('chat.status.audioCheckBeforeRetry')}</span>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="flex items-center gap-2">
-      {message.metadata?.status === "pending" && (
+      {(message.metadata?.status === "pending" || message.metadata?.status === "sending" || message.metadata?.status === "queued") && (
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
