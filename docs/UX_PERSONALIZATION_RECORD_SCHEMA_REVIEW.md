@@ -3,7 +3,9 @@
 **Status:** Review findings and proposed corrections; no runtime or database changes.
 **Reviewed:** 2026-11-10, against local source and read-only metadata from the
 Makinari Supabase project matched to this workspace's configured hostname.
-**Catalog:** [52 templates and 29 business mappings](UX_PERSONALIZATION_RECORD_TEMPLATES.md).
+**Catalog:** [Record templates and business mappings](UX_PERSONALIZATION_RECORD_TEMPLATES.md).
+This historical audit covers the 52-template baseline and 29 business mappings,
+not the later [40 additional schema proposals](UX_PERSONALIZATION_RECORD_EXTENSIONS.md).
 **Follow-up:** [Implemented repair and remaining release gates](RECORD_SCHEMA_REPAIR.md).
 The findings below describe the pre-repair audit; use the follow-up for current
 implementation status. Renumbered Records migrations were applied to linked Makinari

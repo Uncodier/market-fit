@@ -18,6 +18,11 @@ The shared rules cover every role, need, size, mode, and operational state.
 This is exhaustive for the proposed launch taxonomy, not a claim to enumerate
 every possible real-world industry. Unsupported specializations use the explicit
 general path; never leave an “implementation decides” branch or guess a capability.
+The [expanded Records vertical catalog](UX_PERSONALIZATION_RECORD_VERTICALS.md)
+now specifies repair trades and other operational specializations with baseline
+parent mappings, reusable packs and 40 additional schema proposals. This document
+retains the 29-leaf UX baseline; the expansion does not change onboarding or make
+new pack installation available at runtime.
 All leaves are specified now; sensitive and unsupported features retain release
 gates. Staged implementation is not permission to omit a leaf from the registry.
 
@@ -410,6 +415,10 @@ and apply selected needs. “Hybrid” combines approved needs, not two competin
 - Roles: marketing, content_creator, designer, sales, owner; icon family: media/briefcase.
 
 ### services.field — repair/maintenance/field service
+- Specializations: [workshops and technical trades](UX_PERSONALIZATION_RECORD_VERTICALS.md)
+  distinguish mechanical/bodywork/tire shops, electronics/appliance repair, heavy
+  machinery and on-site trades; use their asset/intake/job pack proposals rather
+  than treating these three generic baseline templates as complete workshop coverage.
 - Ask: service requests, site visits, equipment checks, quotations?
 - Tree: requests -> C(maintenance_requests); work -> C(work_packages);
   checks -> C(equipment_checks); schedule -> M(reservations) where applicable.

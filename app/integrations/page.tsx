@@ -25,6 +25,8 @@ import { TestEndpointDialog } from "@/app/components/webhooks/test-endpoint-dial
 import { ChannelsSection } from "@/app/components/integrations/channels-section"
 import { ComposioSection } from "@/app/components/settings/ComposioSection"
 import { MarketplaceConfigurationCards } from "./components/MarketplaceConfigurationCards"
+import { OpenRouterSection } from "./components/OpenRouterSection"
+import { OpenRouterLoading } from "./components/OpenRouterLoading"
 import {
   listWebhookEndpoints,
   deleteWebhookEndpoint,
@@ -117,6 +119,8 @@ export default function IntegrationsPage() {
           { id: "marketplace-uber_eats", title: "Uber Eats" },
           { id: "composio-integration", title: "Composio" }
         ]
+      case "models":
+        return [{ id: "openrouter-integration", title: "OpenRouter" }]
       default:
         return []
     }
@@ -286,9 +290,12 @@ export default function IntegrationsPage() {
       <div className="flex-1">
         <StickyHeader>
           <div className="flex items-center justify-between px-4 md:px-16 w-full">
-            <Tabs value="webhooks" className="w-auto">
+            <Tabs value={activeSegment} onValueChange={setActiveSegment} className="w-auto">
               <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
                 <TabsTrigger value="webhooks" className="text-xs rounded-full px-4 whitespace-nowrap">{t("operations.integrations.webhooks")}</TabsTrigger>
+                <TabsTrigger value="channels" className="text-xs rounded-full px-4 whitespace-nowrap">{t("operations.integrations.channels")}</TabsTrigger>
+                <TabsTrigger value="integrations" className="text-xs rounded-full px-4 whitespace-nowrap">{t("layout.sidebar.integrations")}</TabsTrigger>
+                <TabsTrigger value="models" className="text-xs rounded-full px-4 whitespace-nowrap">Models</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
@@ -296,7 +303,7 @@ export default function IntegrationsPage() {
         <div className="py-8 pb-16">
           <div className="flex gap-8 justify-center max-w-[1200px] mx-auto">
             <div className="flex-1 max-w-[880px] px-4 md:px-16">
-              <IntegrationsSkeleton />
+              {activeSegment === "models" ? <OpenRouterLoading /> : <IntegrationsSkeleton />}
             </div>
           </div>
         </div>
@@ -321,6 +328,7 @@ export default function IntegrationsPage() {
               <TabsTrigger value="webhooks" className="text-xs rounded-full px-4 whitespace-nowrap">{t("operations.integrations.webhooks")}</TabsTrigger>
               <TabsTrigger value="channels" className="text-xs rounded-full px-4 whitespace-nowrap">{t("operations.integrations.channels")}</TabsTrigger>
               <TabsTrigger value="integrations" className="text-xs rounded-full px-4 whitespace-nowrap">{t("layout.sidebar.integrations")}</TabsTrigger>
+              <TabsTrigger value="models" className="text-xs rounded-full px-4 whitespace-nowrap">Models</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
@@ -424,6 +432,9 @@ export default function IntegrationsPage() {
                 siteId={currentSite.id}
               />
             </div>
+          )}
+          {activeSegment === "models" && (
+            <OpenRouterSection siteId={currentSite.id} />
           )}
             </div>
           </div>

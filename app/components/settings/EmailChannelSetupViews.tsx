@@ -4,6 +4,7 @@ import { Switch } from "@/app/components/ui/switch"
 import { Check, Cloud, Copy } from "@/app/components/ui/icons"
 import { SectionCardContent, SectionCardFooter } from "@/app/components/ui/section-card"
 import { ZAVU_INBOUND_MX_HOST, ZAVU_INBOUND_MX_PRIORITY } from "@/lib/zavu-email-dns"
+import type { ReactNode } from "react"
 
 interface EmailDnsRecord {
   type?: string
@@ -23,6 +24,10 @@ interface EmailDnsSetupProps {
   onCopy: (text: string, id: string) => void
   onSync: () => void
   onVerify: () => void
+  verifyDisabled?: boolean
+  verifyLabel?: string
+  additionalActions?: ReactNode
+  notice?: ReactNode
 }
 
 export function EmailDnsSetup({
@@ -36,6 +41,10 @@ export function EmailDnsSetup({
   onCopy,
   onSync,
   onVerify,
+  verifyDisabled,
+  verifyLabel,
+  additionalActions,
+  notice,
 }: EmailDnsSetupProps) {
   return (
     <>
@@ -55,6 +64,7 @@ export function EmailDnsSetup({
         </p>
 
         <div className="space-y-3">
+          {notice}
           {records.map((record, index) => (
             <div key={index} className="p-3 bg-background rounded border text-xs font-mono space-y-2">
               {record.type && (
@@ -67,7 +77,7 @@ export function EmailDnsSetup({
                 <span className="text-muted-foreground">Name/Host:</span>
                 <div className="flex items-center gap-2">
                   <span className="truncate max-w-[200px]">{record.name}</span>
-                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onCopy(record.name, `name-${index}`)}>
+                  <Button type="button" aria-label={`Copy DNS name ${index + 1}`} variant="ghost" size="icon" className="h-6 w-6" onClick={() => onCopy(record.name, `name-${index}`)}>
                     {copied === `name-${index}` ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
                   </Button>
                 </div>
@@ -76,7 +86,7 @@ export function EmailDnsSetup({
                 <span className="text-muted-foreground">Value/Target:</span>
                 <div className="flex items-center gap-2">
                   <span className="truncate max-w-[200px]">{record.value}</span>
-                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onCopy(record.value, `val-${index}`)}>
+                  <Button type="button" aria-label={`Copy DNS value ${index + 1}`} variant="ghost" size="icon" className="h-6 w-6" onClick={() => onCopy(record.value, `val-${index}`)}>
                     {copied === `val-${index}` ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
                   </Button>
                 </div>
@@ -85,12 +95,14 @@ export function EmailDnsSetup({
                 <div className="flex justify-between items-center">
                   <span className="text-muted-foreground">Priority:</span>
                   <div className="flex items-center gap-2">
-                    <span className="truncate max-w-[200px]">{record.priority || "10"}</span>
+                    <span className="truncate max-w-[200px]">{record.priority ?? "10"}</span>
                     <Button
+                      type="button"
+                      aria-label={`Copy DNS priority ${index + 1}`}
                       variant="ghost"
                       size="icon"
                       className="h-6 w-6"
-                      onClick={() => onCopy((record.priority || "10").toString(), `prio-${index}`)}
+                      onClick={() => onCopy((record.priority ?? "10").toString(), `prio-${index}`)}
                     >
                       {copied === `prio-${index}` ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
                     </Button>
@@ -103,6 +115,7 @@ export function EmailDnsSetup({
       </SectionCardContent>
 
       <SectionCardFooter className="justify-end gap-2 flex-wrap">
+        {additionalActions}
         <Button
           type="button"
           variant="outline"
@@ -116,9 +129,9 @@ export function EmailDnsSetup({
           type="button"
           variant="secondary"
           onClick={onVerify}
-          disabled={isProcessing}
+          disabled={isProcessing || verifyDisabled}
         >
-          {isProcessing ? "Verifying..." : "Verify DNS"}
+          {isProcessing ? "Verifying..." : verifyLabel || "Verify DNS"}
         </Button>
       </SectionCardFooter>
     </>

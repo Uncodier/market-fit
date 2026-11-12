@@ -9,8 +9,10 @@ the parent apply. School/clinic details below are expanded by the exhaustive
 [execution rules](UX_PERSONALIZATION_EXECUTION_RULES.md), both required implementation inputs.
 
 **Schema catalog:** [Business Record templates, fields, and relations](UX_PERSONALIZATION_RECORD_TEMPLATES.md)
-owns the consolidated 52-template inventory and explicit relation contract. This
-document retains installation, privacy, navigation, and UX decision-tree ownership.
+owns the 52-template baseline plus 40 additional operational definitions (92 total)
+and explicit relation contract. Its [vertical catalog](UX_PERSONALIZATION_RECORD_VERTICALS.md)
+adds specialization and pack recommendations. This document retains installation,
+privacy, navigation, and UX decision-tree ownership; expansion grants no installation approval.
 
 ## 1. Product model: packs, collections, and shortcuts
 

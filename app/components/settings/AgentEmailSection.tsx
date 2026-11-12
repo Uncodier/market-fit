@@ -3,11 +3,7 @@
 import { Button } from "@/app/components/ui/button"
 import {
   AlertCircle,
-  Check,
   CheckCircle2,
-  Cloud,
-  Copy,
-  Download,
   Mail,
   Trash2,
 } from "@/app/components/ui/icons"
@@ -39,7 +35,8 @@ import {
 } from "@/app/components/ui/alert-dialog"
 import type { SiteFormValues } from "./form-schema"
 import { apiClient } from "@/app/services/api-client-service"
-import { AgentEmailDnsDialog } from "./AgentEmailDnsDialog"
+import { ChannelSetupStepper, type ChannelSetupStep } from "./ChannelSetupStepper"
+import { AgentEmailDnsSetup } from "./AgentEmailDnsSetup"
 import { AgentMailCredentials } from "./AgentMailCredentials"
 import { buildAgentMailWebhookUrl } from "./agentmail-settings"
 import { useAgentEmailChannel } from "./use-agent-email-channel"
@@ -62,11 +59,6 @@ export function AgentEmailSection({
 
   if (!active) return null
 
-  const save = async () => {
-    if (!(await secrets.savePendingSecrets())) return
-    await channel.saveForm()
-  }
-
   const emailUsername =
     channel.agentEmail?.username || channel.agentEmail?.data?.username
   const emailDisplayName =
@@ -76,8 +68,20 @@ export function AgentEmailSection({
       || channel.agentEmail.data?.customDomain
       || channel.agentEmail.data?.domain
     : channel.agentEmail?.domain || channel.agentEmail?.data?.domain
-  const errorMessage =
-    channel.agentEmail?.error_message || channel.agentEmail?.data?.error_message
+  const setupSteps: ChannelSetupStep[] = [
+    { label: "Email address", status: channel.isNotConfigured || channel.isPending ? "current" : "complete" },
+    ...(channel.domain === "custom" || channel.isWaitingForVerification ? [{
+      label: "Verify DNS",
+      status: channel.isWaitingForVerification ? "current" as const : channel.isActive ? "complete" as const : "upcoming" as const,
+    }] : []),
+    { label: "Ready", status: channel.isActive ? "complete" : "upcoming" },
+  ]
+  const descriptions = {
+    not_configured: "Choose an email address to start setting up your agent's email channel.",
+    pending: "Your request has been submitted. Email setup is in progress.",
+    waiting_for_verification: "Verify your domain to continue setting up your agent's email channel.",
+    active: "Manage your agent's email address and connection settings.",
+  }
 
   return (
     <SectionCard id="agent-email-channel">
@@ -87,13 +91,13 @@ export function AgentEmailSection({
           Agent Email Channel
         </SectionCardTitle>
         <p className="mt-1 text-sm text-muted-foreground">
-          Request an agent email address for automated customer communication
+          {descriptions[channel.status]}
         </p>
       </SectionCardHeader>
 
-      <SectionCardContent className="space-y-4 pb-4">
-        <AgentMailCredentials secrets={secrets} webhookUrl={webhookUrl} />
+      <ChannelSetupStepper steps={setupSteps} className="px-5 pb-5" />
 
+      <SectionCardContent className="space-y-4 pb-4">
         {channel.isNotConfigured && (
           <div className="space-y-4">
             <div>
@@ -175,27 +179,16 @@ export function AgentEmailSection({
             <div className="flex-1">
               <p className="text-sm font-medium">Agent email request submitted</p>
               <p className="text-xs text-muted-foreground">
-                Your request is being processed. We&apos;ll contact you to complete the setup.
+                No action is needed right now. We&apos;ll contact you to complete the setup.
               </p>
             </div>
           </div>
         )}
 
-        {channel.isWaitingForVerification && (
-          <div className="flex items-center space-x-2 rounded-md border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-900 dark:bg-yellow-900/20">
-            <AlertCircle className="h-5 w-5 text-yellow-600" />
-            <div className="flex-1">
-              <p className="text-sm font-medium">Waiting for DNS verification</p>
-              <p className="text-xs text-muted-foreground">
-                Configure your DNS records using the zone file, then verify your domain.
-              </p>
-              {errorMessage && (
-                <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                  {errorMessage}
-                </p>
-              )}
-            </div>
-          </div>
+        {!channel.isActive && !channel.isNotConfigured && emailUsername && emailDomain && (
+          <p className="break-all text-sm text-muted-foreground">
+            Requested address: <span className="font-mono text-foreground">{emailUsername}@{emailDomain}</span>
+          </p>
         )}
 
         {channel.isActive && (
@@ -216,7 +209,7 @@ export function AgentEmailSection({
                   <Label className="text-sm font-medium text-foreground">Email Address</Label>
                   <div className="mt-1 flex items-center gap-2 rounded-md border bg-gray-50 p-3 dark:bg-gray-900">
                     <Mail className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-mono">{emailUsername}@{emailDomain}</span>
+                    <span className="min-w-0 break-all font-mono">{emailUsername}@{emailDomain}</span>
                   </div>
                 </div>
                 {emailDisplayName && (
@@ -231,75 +224,47 @@ export function AgentEmailSection({
             )}
           </div>
         )}
+        <details className="rounded-lg border p-4">
+          <summary className="cursor-pointer text-sm font-medium">
+            Advanced: AgentMail credentials & webhooks
+          </summary>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Use these settings for your own AgentMail account or webhook configuration.
+            {channel.isWaitingForVerification && " These settings do not verify your DNS records."}
+          </p>
+          <div className="mt-4 space-y-4">
+            <AgentMailCredentials secrets={secrets} webhookUrl={webhookUrl} />
+            {secrets.isDirty && (
+              <Button
+                type="button" variant="outline"
+                onClick={() => void secrets.savePendingSecrets()}
+                disabled={secrets.isSaving}
+              >
+                {secrets.isSaving ? "Saving..." : "Save credentials"}
+              </Button>
+            )}
+          </div>
+        </details>
       </SectionCardContent>
 
-      <SectionCardFooter
-        onSave={save}
-        saving={channel.isSaving || secrets.isSaving}
-        dirty={channel.form.formState.isDirty || secrets.isDirty}
-      >
+      {channel.isWaitingForVerification && (
+        <AgentEmailDnsSetup key={siteId} channel={channel} domain={emailDomain || channel.customDomain} />
+      )}
+
+      {(channel.isNotConfigured || channel.isActive) && <SectionCardFooter className="flex-wrap">
         {channel.isNotConfigured && (
-          <div className="mr-2 flex w-full items-center justify-between">
+          <div className="flex w-full flex-wrap items-center justify-between gap-3">
             <div className="text-sm text-muted-foreground">
               Configure your agent email address above
             </div>
             <Button
               type="button"
-              variant="outline"
-              onClick={channel.requestAgentEmail}
-              disabled={channel.isRequesting || !channel.canRequest}
+              onClick={async () => {
+                if (await secrets.savePendingSecrets()) await channel.requestAgentEmail()
+              }}
+              disabled={channel.isRequesting || secrets.isSaving || !channel.canRequest}
             >
               {channel.isRequesting ? "Requesting..." : "Request Agent Email"}
-            </Button>
-          </div>
-        )}
-
-        {channel.isWaitingForVerification && (
-          <div className="mr-2 flex w-full items-center justify-end gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={channel.syncCloudflare}
-              disabled={channel.isSyncingCloudflare || !channel.hasDnsRecords}
-            >
-              <Cloud className="mr-2 h-4 w-4" />
-              {channel.isSyncingCloudflare
-                ? "Syncing..."
-                : channel.isCloudflareConnected
-                  ? "Sync with Cloudflare"
-                  : "Connect Cloudflare"}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => channel.setShowDnsModal(true)}
-              disabled={!channel.hasDnsRecords}
-            >
-              <Copy className="mr-2 h-4 w-4" />
-              View All & Copy
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={channel.getDnsFiles}
-              disabled={channel.isGettingDnsFiles}
-            >
-              <Download className="mr-2 h-4 w-4" />
-              {channel.isGettingDnsFiles ? "Getting..." : "Get DNS Files"}
-            </Button>
-            <Button
-              type="button"
-              onClick={channel.verifyDomain}
-              disabled={channel.isVerifying || !channel.canVerify}
-            >
-              <Check className="mr-2 h-4 w-4" />
-              {channel.isVerifying
-                ? "Verifying..."
-                : !channel.canVerify
-                  ? `Verify (${Math.floor(channel.cooldownSeconds / 60)}:${String(
-                    channel.cooldownSeconds % 60,
-                  ).padStart(2, "0")})`
-                  : "Verify"}
             </Button>
           </div>
         )}
@@ -318,7 +283,7 @@ export function AgentEmailSection({
             </Button>
           </div>
         )}
-      </SectionCardFooter>
+      </SectionCardFooter>}
 
       <AlertDialog
         open={channel.showDeleteDialog}
@@ -353,14 +318,6 @@ export function AgentEmailSection({
         </AlertDialogContent>
       </AlertDialog>
 
-      <AgentEmailDnsDialog
-        open={channel.showDnsModal}
-        onOpenChange={channel.setShowDnsModal}
-        records={channel.dnsRecords}
-        isCloudflareConnected={channel.isCloudflareConnected}
-        isSyncingCloudflare={channel.isSyncingCloudflare}
-        onSyncCloudflare={channel.syncCloudflare}
-      />
     </SectionCard>
   )
 }

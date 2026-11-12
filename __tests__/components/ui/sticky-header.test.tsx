@@ -11,7 +11,11 @@ jest.mock("@/app/hooks/use-command-k", () => ({ useCommandK: jest.fn() }))
 
 function renderHeader() {
   render(<StickyHeader><span>Toolbar content</span></StickyHeader>)
-  return screen.getByText("Toolbar content").closest("[data-toolbar-font]")!
+  const header = screen.getByText("Toolbar content").closest("[data-toolbar-font]")
+  if (!(header instanceof HTMLElement)) {
+    throw new Error("Expected an HTML toolbar element")
+  }
+  return header
 }
 
 describe("StickyHeader responsive positioning", () => {

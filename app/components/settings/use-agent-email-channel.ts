@@ -9,6 +9,7 @@ import { secretsService } from "@/app/services/secrets-service"
 import type { SiteFormValues } from "./form-schema"
 import type { AgentMailDnsRecord } from "./AgentEmailDnsDialog"
 import { deleteAgentMailInbox } from "./agentmail-inbox-api"
+import { resolveAgentEmailStage } from "./agentmail-settings"
 
 type AgentEmailStatus =
   | "not_configured"
@@ -78,7 +79,7 @@ export function useAgentEmailChannel({
   const username = form.watch("channels.agent_email.username") || ""
   const displayName = form.watch("channels.agent_email.displayName") || ""
   const setupRequested = form.watch("channels.agent_email.setupRequested") || false
-  const status = form.watch("channels.agent_email.status") || "not_configured"
+  const status = resolveAgentEmailStage(form.watch("channels.agent_email.status"), setupRequested)
   const agentEmail = currentSite?.settings?.channels?.agent_email
 
   const dnsRecords = useMemo<AgentMailDnsRecord[]>(() => {
@@ -462,7 +463,7 @@ export function useAgentEmailChannel({
     status,
     dnsRecords,
     hasDnsRecords: dnsRecords.length > 0,
-    isPending: status === "pending" || setupRequested,
+    isPending: status === "pending",
     isActive: status === "active",
     isNotConfigured: status === "not_configured",
     isWaitingForVerification: status === "waiting_for_verification",

@@ -55,7 +55,9 @@ Use the guides below before relying on older implementation notes.
 ## Integration guides
 
 - [Business and role-based UX personalization](UX_PERSONALIZATION_DESIGN.md) — proposed identity onboarding, site defaults, personal overrides, Complete experience, team experience roles, and staged module-level UX coverage; design only.
-- [Business Record schema catalog](UX_PERSONALIZATION_RECORD_TEMPLATES.md) — dedicated review of all 52 proposed templates across 29 business leaves, fields, explicit relation keys/cardinality, dependencies and privacy gates; not implemented.
+- [Business Record schema catalog](UX_PERSONALIZATION_RECORD_TEMPLATES.md) — 92 proposed templates: 52 baseline schemas across 29 business leaves plus 40 operational extensions, with relation keys/cardinality, dependencies and privacy gates; no pack installer.
+- [Record verticals and specializations](UX_PERSONALIZATION_RECORD_VERTICALS.md) — workshop and trade subcategories, construction, logistics, agriculture, animal care, professional and other sector packs, selection rules and workflow boundaries; proposed coverage, not onboarding changes.
+- [Additional Record schemas](UX_PERSONALIZATION_RECORD_EXTENSIONS.md) — 40 proposed asset/repair, construction, logistics, agriculture, animal, legal/hiring/care, grant, retail and production templates with fields, relations and domain constraints.
 - [Record schema technical review](UX_PERSONALIZATION_RECORD_SCHEMA_REVIEW.md) — read-only DB target verification, broken mappings, internal relation and field gaps, access-policy blockers and proposed v1 corrections; no runtime changes.
 - [Record schema repair](RECORD_SCHEMA_REPAIR.md) — implemented application guards and form fixes, local relation-admission migration, validation and remaining database/privacy release gates.
 - [Recoverable Records Trash](RECORDS_TRASH.md) — atomic collection/subtree deletion, selective batch restore, authorization, version conflicts and verified linked-database rollout; browser acceptance remains pending.
@@ -157,6 +159,7 @@ environment variables before changing production configuration.
 
 ## Architecture reviews
 
+- [Optional OpenRouter BYOK implementation](OPENROUTER_BYOK_IMPLEMENTATION.md) — connection setup, automatic/manual selection, consented image verification, protected proxy and durable customer routing; deployment and real-provider acceptance remain gated.
 - [OpenRouter integration design](OPENROUTER_INTEGRATION_DESIGN.md) — dual-path proposal preserving current global providers while enabling customer-funded OpenRouter model selection and execution; compatible direct-provider adapters, including media, are required scope, with successful live image verification before enablement.
 - [External API authentication audit and remaining authorization debt — 2026-09-30](API_AUTH_AUDIT_2026-09-30.md)
 - [Local QA repair and live-test blockers — 2026-09-29](QA_REPAIR_2026-09-29.md)

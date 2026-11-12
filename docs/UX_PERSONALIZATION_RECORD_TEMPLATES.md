@@ -6,6 +6,8 @@
 [Execution rules](UX_PERSONALIZATION_EXECUTION_RULES.md) ·
 [Installation and privacy contract](UX_PERSONALIZATION_TEMPLATES_AND_DECISIONS.md) ·
 [Agency and Creator modes](UX_PERSONALIZATION_AGENCY_AND_CREATOR_MODES.md).
+**Expanded coverage:** [Verticals, specializations, and operational packs](UX_PERSONALIZATION_RECORD_VERTICALS.md) ·
+[Additional operational schemas](UX_PERSONALIZATION_RECORD_EXTENSIONS.md).
 **Technical review:** [Fields, internal relations, and live DB target audit](UX_PERSONALIZATION_RECORD_SCHEMA_REVIEW.md)
 identifies blocking mismatches and proposed v1 deltas. Its verified target findings
 supersede the earlier `person`/same-site-company assumptions in companion summaries.
@@ -18,8 +20,34 @@ The schema inventory and business-specific extensions below remain proposals.
 This subdocument owns the proposed Record schema inventory: which collections each
 business needs, their fields, relation keys, cardinality, dependencies, and release
 prerequisites. Navigation, roles, CTAs, and copy remain in the related UX documents.
-It consolidates the existing 52 templates across 29 canonical business leaves;
+It retains the baseline 52 templates across 29 canonical business leaves and adds
+40 proposed operational schemas in the extension catalog: **92 templates in total**.
 Marketing Agency and Content Creator remain first-class aliases, not extra schemas.
+The vertical catalog adds explicit specializations without changing the 12 existing
+onboarding industries or claiming new runtime business leaves.
+
+### 1.1 Expanded business coverage
+
+The baseline was complete only for its launch taxonomy, not for practical industry
+coverage. Repair shops and technical trades shared one generic field-service leaf;
+construction, logistics, agriculture, animal care, recruitment, and care services
+lacked distinct operational models. Broad labels also obscured meaningful differences
+between legal/accounting practices, clinical specialties, retail and production trades.
+
+Read the catalog in three layers:
+
+| Layer | Owned here / companion | Scope |
+| --- | --- | --- |
+| Shared baseline | Sections 3–7 below | 52 original schemas, relation notation, 29 parent business mappings and shared gates |
+| Business specializations | [Vertical catalog](UX_PERSONALIZATION_RECORD_VERTICALS.md) | Explicit specialization IDs, workshop/trade distinctions, recommended packs, field-extension proposals, workflows and module handoffs |
+| Additional entities | [Extension schemas](UX_PERSONALIZATION_RECORD_EXTENSIONS.md) | 40 new definitions with fields, requiredness, typed relations, dependencies and domain constraints |
+
+For workshops, start with assets, intake and repair jobs, then optionally add
+diagnostics, planned materials, handover checks, warranties and maintenance plans.
+Other additions cover site progress/defects, delivery/storage observations, crops and
+harvests, animal care, legal matters, hiring, care visits, grants, returns and process
+quality. Packs reuse schemas rather than creating one duplicate template per trade.
+The extension tables are part of this proposed inventory, not an implemented registry.
 
 The earlier documents contain four schema ambiguities resolved or tracked here:
 
@@ -35,8 +63,11 @@ The earlier documents contain four schema ambiguities resolved or tracked here:
 
 ## 2. Existing Records boundary
 
-Source inspection plus read-only database metadata review on 2026-11-10; see the
-technical review for actual targets, constraints, policies, and verification limits.
+The table below preserves the pre-repair source and read-only database review of
+2026-11-10. [Records repair](RECORD_SCHEMA_REPAIR.md) supersedes the historical gaps
+for stable names/labels, typed action validation, supported supplier/company targets
+and category-constrained relations. Installation/provenance, domain rules and privacy
+gates remain separate. No new database inspection was performed for this expansion.
 
 | Source | Current contract | Missing prerequisite for this catalog |
 | --- | --- | --- |
@@ -85,11 +116,15 @@ context links and access is not implemented; do not infer privacy from this cata
 - All defaults are empty except existing record `status` behavior. No automatic
   current date, staff assignment, grade scale, approval, or completion value.
 
-## 4. Business-to-template matrix
+## 4. Baseline business-to-template matrix
 
 These are recommendations, not mandatory installation lists. Managers select
 templates based on explicit needs; dependencies are reviewed before installation.
 The schema tables in section 5 define the fields and relations for every ID here.
+Use the [vertical catalog](UX_PERSONALIZATION_RECORD_VERTICALS.md) for more specific
+businesses and the [extension schemas](UX_PERSONALIZATION_RECORD_EXTENSIONS.md) for
+their additional entities. These 29 rows are compatibility parents, not the full
+specialization inventory.
 
 | Business leaf / label | Recommended templates | Main relation pattern / release review |
 | --- | --- | --- |
@@ -123,7 +158,7 @@ The schema tables in section 5 define the fields and relations for every ID here
 | other.organization / Nonprofit or member organization | program_plans, member_register, event_plans, review_notes | Approved contact for member administration; no application membership |
 | other.general / General or mixed business | general_notes, store_checklists, review_notes | Optional staff; no inferred or automatically generated schema |
 
-## 5. Complete field and relation catalog
+## 5. Baseline field and relation catalog (52)
 
 These scalar fields retain the earlier registry's proposed keys and requiredness.
 Relation keys/cardinality and corrected CRM targets below are proposals to approve.
@@ -331,7 +366,8 @@ becoming enforced constraints; they are not current implementation guarantees.
 
 | Decision | Required outcome |
 | --- | --- |
-| Baseline scope | Approve 52 shared templates and the 29 business mappings, then select rollout waves without inventing extra IDs |
+| Baseline scope | Review the 52 baseline templates and 29 compatibility mappings; preserve existing IDs |
+| Expanded coverage | Review the 40 additional definitions (92 total), specialization IDs, conditional dependencies and optional field extensions in the companion catalogs |
 | Relation keys | Approve explicit keys/cardinality above and contact/staff/company semantics; confirm optional alternative targets |
 | Missing structured links | Decide whether review-to-deliverable, editorial/sponsorship-to-production, recipe-to-batch, or staff-on-quality need versioned extensions |
 | School configuration | Approved levels/scales, conditional grading rules, uniqueness scopes, teacher assignment/access and student/contact identity |
@@ -348,7 +384,8 @@ and clinical packs. UX personalization delivery remains governed by the parent p
 Acceptance evidence must cover every template with valid/invalid payloads, required
 fields, enums/ranges, absent dependencies, wrong categories, unreadable/cross-site
 references, consistency rules, install retries/concurrency/rollback and upgrade
-conflicts. Verify that all 29 business leaves resolve, shared templates deduplicate,
+conflicts. Verify that all 29 business leaves and expanded specializations resolve,
+all 92 proposed schema IDs have definitions, shared templates deduplicate,
 personal changes do not install, and blocked data never enters AI/search/export paths.
 Use Jest plus an explicitly approved disposable database/browser target for runtime
 work. This document authorizes no implementation, remote migrations, or deployment.

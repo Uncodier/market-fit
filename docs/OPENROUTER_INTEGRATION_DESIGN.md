@@ -1,12 +1,11 @@
 # OpenRouter integration: discovery, routing, and customer-funded usage
 
-Status: integration proposal, not implemented; experimental image adapter withdrawn.
+Status: target integration design; optional connection/configuration, automatic selection, media adapters and durable routing implemented locally. Deployment and real-provider acceptance remain gated. See [implementation checkpoint](OPENROUTER_BYOK_IMPLEMENTATION.md).
 Review date: 2026-11-11.
 Scope: Makinari web application and its separate orchestration API repository.
 
-Rollback decision: restore Azure-only images; no live OpenRouter image probe
-succeeded. Customer connections, the card, routing policy, and credit exemptions
-remain unimplemented. OpenRouter images are a required integration deliverable, but require a
+Historical rollback decision: restore Azure-only global images; no live OpenRouter image probe
+succeeded. Customer connections, the card, manual policy and trusted runtime support now have local implementation; full execution coverage and activation remain pending. OpenRouter images are a required integration deliverable, but require a
 successful real generation on the actual connection before task enablement.
 Catalog presence or an AI recommendation is insufficient. See the
 [experiment and acceptance gate](/Users/prado/Desktop/Proyectos/Uncodie/Code/API/docs/OPENROUTER_IMAGES.md).
