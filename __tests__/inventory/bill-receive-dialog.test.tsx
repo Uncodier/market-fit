@@ -246,4 +246,3 @@ it("rechecks cancellation before opening list recovery", async () => {
   expect(receiveBillInventoryLines).not.toHaveBeenCalled()
   expect(sessionStorage.length).toBe(1)
 })
-
