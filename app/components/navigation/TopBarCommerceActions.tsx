@@ -128,6 +128,18 @@ export function TopBarCommerceActions({
         </div>
       )}
 
+      {pathname === "/inventory/transfers" && currentSite && (
+        <Button
+          className="!min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
+          onClick={() => window.dispatchEvent(new CustomEvent("inventory-transfers:create"))}
+          title="New Transfer"
+          aria-label="New Transfer"
+        >
+          <PlusCircle className="h-4 w-4 shrink-0" />
+          <span className="hidden sm:inline ml-2">New Transfer</span>
+        </Button>
+      )}
+
       {pathname === "/price-lists" && currentSite && (
         <Button
           className="!min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"

@@ -4,6 +4,7 @@ import { ensureCommerceLeadConverted } from "./ensure-commerce-lead-converted"
 import { grantFromOrder } from "./entitlements"
 import { isPersistedSelfServiceSalePaid, isSelfServiceOrder } from "./self-service-lifecycle"
 import { applySelfServiceInventoryRelease } from "./self-service-inventory"
+import { applyLocationInventoryDelta } from "./inventory-delta"
 
 type PaidOrderItem = {
   id: string
@@ -233,23 +234,13 @@ export async function processPostPaymentFulfillment(
     const { data: catItem } = await supabase.from("catalog_items").select("track_inventory").eq("id", catalogItemId).single()
     
     if (catItem?.track_inventory) {
-      const { data: level } = await supabase.from("inventory_levels")
-        .select("id, quantity")
-        .eq("catalog_item_id", catalogItemId)
-        .eq("location_id", order.origin_location_id)
-        .single()
-
-      if (level) {
-        const newQty = Math.max(0, level.quantity - (item.quantity || 1))
-        await supabase.from("inventory_levels").update({ quantity: newQty }).eq("id", level.id)
-      } else {
-        await supabase.from("inventory_levels").insert({
-          site_id: siteId,
-          location_id: order.origin_location_id,
-          catalog_item_id: catalogItemId,
-          quantity: Math.max(0, -(item.quantity || 1)) // floor at 0
-        })
-      }
+      await applyLocationInventoryDelta(supabase, {
+        siteId,
+        catalogItemId,
+        locationId: order.origin_location_id,
+        delta: -(item.quantity || 1),
+        floorZero: true,
+      })
     }
   }
 }

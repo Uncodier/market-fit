@@ -6,6 +6,7 @@ import { createAuthorizedShipment, type CreateShipmentInput } from './create-shi
 import { userCanOnSite } from '@/lib/permissions/site-access';
 import { ShipmentParams, ShipmentWithRelations } from "./types";
 import { Shipment } from "@/app/types";
+import { applyLocationInventoryDelta } from "@/app/commerce/inventory-delta";
 import { assertInternalShipment } from "@/lib/marketplace/mutation-guards";
 import {
   buildTrackingNumber,
@@ -217,24 +218,13 @@ export async function updateShipmentStatus(siteId: string, shipmentId: string, n
               .eq("id", item.catalog_item_id)
               .single();
             if (catItem?.track_inventory) {
-              const { data: level } = await supabase
-                .from("inventory_levels")
-                .select("id, quantity")
-                .eq("catalog_item_id", item.catalog_item_id)
-                .eq("location_id", current.origin_location_id)
-                .single();
-
-              if (level) {
-                const newQty = Math.max(0, level.quantity - item.quantity);
-                await supabase.from("inventory_levels").update({ quantity: newQty }).eq("id", level.id);
-              } else {
-                await supabase.from("inventory_levels").insert({
-                  site_id: siteId,
-                  location_id: current.origin_location_id,
-                  catalog_item_id: item.catalog_item_id,
-                  quantity: 0,
-                });
-              }
+              await applyLocationInventoryDelta(supabase, {
+                siteId,
+                catalogItemId: item.catalog_item_id,
+                locationId: current.origin_location_id,
+                delta: -item.quantity,
+                floorZero: true,
+              });
             }
           }
         }

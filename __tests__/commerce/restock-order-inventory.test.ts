@@ -2,6 +2,7 @@ import {
   shouldRestockOrder,
   restockOrderInventory,
 } from "../../app/commerce/restock-order-inventory";
+jest.mock("server-only", () => ({}));
 
 describe("shouldRestockOrder", () => {
   it("restocks completed and in-progress orders", () => {
@@ -43,6 +44,7 @@ describe("restockOrderInventory", () => {
     inventory.maybeSingle.mockResolvedValue({ data: { id: "inv-1", quantity: 4 } });
 
     const supabase = {
+      rpc: jest.fn().mockResolvedValue({ data: { quantity: 6 }, error: null }),
       from: jest.fn((table: string) => {
         if (table === "settings") return settings;
         if (table === "shipments") return shipments;
@@ -60,7 +62,11 @@ describe("restockOrderInventory", () => {
       items: [{ catalog_item_id: "sku-1", quantity: 2 }],
     });
 
-    expect(inventory.update).toHaveBeenCalledWith({ quantity: 6 });
+    expect(supabase.rpc).toHaveBeenCalledWith("apply_location_inventory_delta", {
+      p_site_id: "site-1", p_catalog_item_id: "sku-1", p_location_id: "loc-1",
+      p_delta: 2, p_floor_zero: false,
+    });
+    expect(supabase.from).not.toHaveBeenCalledWith("inventory_levels");
   });
 
   it("does not restock when policy is never", async () => {
@@ -69,6 +75,7 @@ describe("restockOrderInventory", () => {
     const inventory = createChain();
 
     const supabase = {
+      rpc: jest.fn(),
       from: jest.fn((table: string) => {
         if (table === "settings") return settings;
         if (table === "inventory_levels") return inventory;
@@ -86,5 +93,25 @@ describe("restockOrderInventory", () => {
 
     expect(inventory.update).not.toHaveBeenCalled();
     expect(inventory.insert).not.toHaveBeenCalled();
+    expect(supabase.rpc).not.toHaveBeenCalled();
+  });
+
+  it("does not clear shipment stock flags if its restock RPC fails", async () => {
+    const shipments = createChain({ data: [{ id: "shipment", origin_location_id: "origin",
+      stock_decremented: true, status: "shipped" }] });
+    const supabase = {
+      rpc: jest.fn().mockResolvedValue({ data: null, error: { message: "denied" } }),
+      from: jest.fn((table: string) => {
+        if (table === "shipments") return shipments;
+        if (table === "sale_order_items") return createChain({ data: [{ catalog_item_id: "sku", quantity: 2 }] });
+        if (table === "catalog_items") return createChain({ data: { track_inventory: true } });
+        if (table === "inventory_levels") throw new Error("Legacy stock access");
+        return createChain();
+      }),
+    };
+    await expect(restockOrderInventory(supabase, { id: "order", site_id: "site", status: "completed" }))
+      .rejects.toThrow("Failed to apply inventory delta");
+    expect(shipments.update).not.toHaveBeenCalled();
+    expect(supabase.rpc).toHaveBeenCalledTimes(1);
   });
 });

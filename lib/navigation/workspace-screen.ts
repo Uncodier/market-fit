@@ -1,4 +1,4 @@
-import { NAVIGATION_AREAS, getNavItemTitle } from '@/app/config/navigation-areas'
+import { NAVIGATION_AREAS, getNavItemTitle, getInventoryNavKey } from '@/app/config/navigation-areas'
 import { localeMessages } from '@/app/context/locale-catalog'
 
 const screens = Object.values(NAVIGATION_AREAS).flatMap(area => area.items)
@@ -7,6 +7,10 @@ const screenPaths = [...new Set(screens.map(item => item.href))].sort((a, b) => 
 /** Resolve real sidebar destinations, not menu categories or URL grouping segments. */
 export function workspaceScreenRoot(fullPath: string): string | null {
   const pathname = fullPath.split(/[?#]/)[0]
+  // Transfer details retain their historical URL, but belong to Transfer Orders,
+  // not the stock ledger screen at the exact /inventory/movements path.
+  const inventoryKey = getInventoryNavKey(pathname)
+  if (inventoryKey) return screens.find(item => item.key === inventoryKey)?.href ?? null
   return screenPaths.find(path => pathname === path || pathname.startsWith(`${path}/`)) ?? null
 }
 

@@ -31,6 +31,9 @@ Use the guides below before relying on older implementation notes.
 - [Database migrations](DATABASE_MIGRATIONS.md) — safe Supabase migration workflow.
 - [Conversation automation snooze](CONVERSATION_AUTOMATION_SNOOZE.md) — human-reply pause controls, shared database contract, authorization, realtime behavior and offline checks.
 - [Accounts payable](ACCOUNTS_PAYABLE.md) — supplier bill balances, aging filters and existing bill payment entry.
+- [Inventory assistant API](INVENTORY_ASSISTANT_API.md) — authenticated atomic batch/receipt contracts, local tool manifest and external registration boundary.
+- [Inventory movements](INVENTORY_MOVEMENTS.md) — Operations screen, read-only sample preview, atomic movement/receipt history, replay protection and migration rollout.
+- [Inventory transfer orders](INVENTORY_TRANSFER_ORDERS.md) — internal requisitions, document detail, partial receipts, in-transit custody, differences and reconciliation.
 - [Shipment documents](SHIPMENT_DOCUMENTS.md) — private carrier PDFs, packing slips, printer setup and rollout prerequisites.
 - [Catalog item sales](CATALOG_SALES.md) — item revenue, variant history, filters, access boundaries and reporting limits.
 - [Customer price lists](CUSTOMER_PRICE_LISTS.md) — lead-specific POS, Shop and Marketplace prices, identity, cache isolation and synchronization behavior.

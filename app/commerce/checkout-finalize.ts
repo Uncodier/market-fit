@@ -11,6 +11,7 @@ import { ensurePublicAccessTokenForRecord } from "@/app/documents/public-token-s
 import { grantFromOrder, syncSubscriptionEntitlements } from "./entitlements"
 import { upsertSaleOrderItemsWithModifiers } from "./checkout-order-items"
 import { readCheckoutTrackedInventoryIds } from "./checkout-inventory-metadata"
+import { applyLocationInventoryDelta } from "./inventory-delta"
 import { syncCheckoutDropinReservations } from "./checkout-reservations"
 import { kitchenDeltaForSend } from "./checkout-print-delta"
 import { recordPosClientMutation } from "@/app/pos/actions/idempotency"
@@ -159,31 +160,16 @@ export async function finalizeCheckout(params: FinalizeCheckoutParams) {
       const trackedIds = await readCheckoutTrackedInventoryIds(
         queryClient, params.siteId, params.lines.map((line) => line.catalogItemId),
       )
-      // Repeated products must observe the preceding decrement. Only catalog
-      // metadata is batched; stock reads and durable writes remain sequential.
+      // Keep repeated-product deltas sequential; the database locks each stock row.
       for (const line of params.lines) {
         if (!trackedIds.has(line.catalogItemId)) continue
-        const { data: level } = await queryClient
-          .from("inventory_levels")
-          .select("id, quantity")
-          .eq("catalog_item_id", line.catalogItemId)
-          .eq("location_id", params.finalOriginLocationId)
-          .single()
-        if (level) {
-          await queryClient
-            .from("inventory_levels")
-            .update({
-              quantity: Math.max(0, level.quantity - line.quantity),
-            })
-            .eq("id", level.id)
-        } else {
-          await queryClient.from("inventory_levels").insert({
-            site_id: params.siteId,
-            location_id: params.finalOriginLocationId,
-            catalog_item_id: line.catalogItemId,
-            quantity: Math.max(0, -line.quantity),
-          })
-        }
+        await applyLocationInventoryDelta(queryClient, {
+          siteId: params.siteId,
+          catalogItemId: line.catalogItemId,
+          locationId: params.finalOriginLocationId,
+          delta: -line.quantity,
+          floorZero: true,
+        })
       }
     }
   }

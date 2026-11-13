@@ -5,6 +5,7 @@ import { createDemoMockClient } from '@/lib/demo-data/mock-client'
 import { listPurchases } from '@/app/purchases/purchase-queries'
 import { requirePurchaseAccess } from '@/app/purchases/purchase-access'
 import { purchaseClient, siteId } from './security-fixtures'
+import type { Purchase } from '@/app/types'
 
 jest.mock('@/lib/supabase/server', () => ({ createClient: jest.fn() }))
 jest.mock('next/headers', () => ({ cookies: jest.fn() }))
@@ -21,11 +22,15 @@ describe('demo purchase list isolation', () => {
   })
   afterEach(() => jest.restoreAllMocks())
 
-  it('preserves the empty selected demo list using the existing demo implementation only', async () => {
+  it('preserves the selected demo list using the existing demo implementation only', async () => {
     const demo = createDemoMockClient(demoId)
     const auth = jest.spyOn(demo.auth, 'getUser')
     jest.mocked(createClient).mockResolvedValue(demo)
-    expect(await listPurchases({ siteId: demoId })).toEqual({ data: [], count: 0, error: null })
+    const result = await listPurchases({ siteId: demoId })
+    expect(result.error).toBeNull()
+    expect(result.data?.length).toBeGreaterThan(0)
+    expect(result.count).toBe(result.data?.length)
+    expect(result.data?.every((purchase: Purchase) => purchase.siteId === demoId)).toBe(true)
     expect(createClient).toHaveBeenCalledWith()
     expect(auth).not.toHaveBeenCalled()
   })

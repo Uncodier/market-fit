@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
+import useSWR from "swr"
 import Link from "next/link"
 import { useSite } from "@/app/context/SiteContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
@@ -10,7 +11,6 @@ import {
   setInventoryLevel,
 } from "@/app/inventory/actions"
 import { InventoryLevelWithCatalog } from "@/app/inventory/types"
-import { Location } from "@/app/types"
 import { Button } from "@/app/components/ui/button"
 import {
   SectionCard,
@@ -30,7 +30,6 @@ import {
 import { Label } from "@/app/components/ui/label"
 import { Input } from "@/app/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
-import { Skeleton } from "@/app/components/ui/skeleton"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { PlusCircle, DatabaseIcon } from "@/app/components/ui/icons"
 import { toast } from "sonner"
@@ -43,40 +42,36 @@ function parseStockQuantity(value: string): number | null {
 
 export function ProductInventoryCard({ catalogItemId }: { catalogItemId: string }) {
   const { currentSite } = useSite()
+  return <ProductInventoryContent key={`${currentSite?.id}:${catalogItemId}`} siteId={currentSite?.id} catalogItemId={catalogItemId} />
+}
+
+function ProductInventoryContent({ siteId, catalogItemId }: { siteId?: string; catalogItemId: string }) {
   const { t } = useLocalization()
   
-  const [locations, setLocations] = useState<Location[]>([])
-  const [levels, setLevels] = useState<InventoryLevelWithCatalog[]>([])
-  const [loading, setLoading] = useState(true)
   const [adding, setAdding] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   const [selectedLocation, setSelectedLocation] = useState("")
   const [quantity, setQuantity] = useState("1")
 
-  const loadData = async () => {
-    if (!currentSite || !catalogItemId) return
-    setLoading(true)
-    try {
-      const [locationsRes, levelsRes] = await Promise.all([
-        listLocations(currentSite.id),
-        listInventoryLevels({ siteId: currentSite.id, catalogItemId, pageSize: 1000 }),
-      ])
-      
-      if (locationsRes.error) throw new Error(locationsRes.error)
-      if (levelsRes.error) throw new Error(levelsRes.error)
-      
-      setLocations(locationsRes.data || [])
-      setLevels(levelsRes.data || [])
-    } catch {
-      toast.error(t("inventory.error.load") || "Error loading inventory")
-    }
-    setLoading(false)
-  }
-
-  useEffect(() => {
-    loadData()
-  }, [catalogItemId, currentSite?.id])
+  const { data: locations = [], error: locationsError, isLoading: locationsLoading, mutate: refreshLocations } = useSWR(
+    siteId ? ["product-inventory-locations", siteId] : null,
+    async ([, id]) => {
+      const result = await listLocations(id)
+      if (result.error) throw new Error("Failed to load locations")
+      return result.data || []
+    },
+    { keepPreviousData: false, shouldRetryOnError: false },
+  )
+  const { data: levels = [], error: levelsError, isLoading: levelsLoading, mutate: refreshLevels } = useSWR(
+    siteId && catalogItemId ? ["product-inventory-levels", siteId, catalogItemId] : null,
+    async ([, id, itemId]) => {
+      const result = await listInventoryLevels({ siteId: id, catalogItemId: itemId, pageSize: 1000 })
+      if (result.error) throw new Error("Failed to load inventory")
+      return result.data || []
+    },
+    { keepPreviousData: false, shouldRetryOnError: false },
+  )
 
   const resetDialog = () => {
     setSelectedLocation("")
@@ -84,7 +79,7 @@ export function ProductInventoryCard({ catalogItemId }: { catalogItemId: string 
   }
 
   const handleAddStock = async () => {
-    if (!currentSite) return
+    if (!siteId) return
     if (!selectedLocation) {
       toast.error(t("inventory.selectLocationError") || "Please select a location")
       return
@@ -98,29 +93,29 @@ export function ProductInventoryCard({ catalogItemId }: { catalogItemId: string 
 
     setAdding(true)
     try {
-      const res = await setInventoryLevel(currentSite.id, selectedLocation, catalogItemId, qtyNum)
+      const res = await setInventoryLevel(siteId, selectedLocation, catalogItemId, qtyNum)
       if (res.error) throw new Error(res.error)
       
       toast.success(t("inventory.stockAdded") || "Stock added successfully")
       resetDialog()
       setIsModalOpen(false)
-      loadData()
-    } catch (err: any) {
-      toast.error(err.message || t("inventory.toast.updateFailed") || "Failed to update stock")
+      void refreshLevels()
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : t("inventory.toast.updateFailed") || "Failed to update stock")
     } finally {
       setAdding(false)
     }
   }
 
   const handleUpdateQuantity = async (level: InventoryLevelWithCatalog, newQtyStr: string) => {
-    if (!currentSite) return
+    if (!siteId) return
     const qty = parseStockQuantity(newQtyStr)
     if (qty == null) {
       toast.error(t("inventory.invalidQuantity") || "Invalid quantity")
       return
     }
 
-    const promise = setInventoryLevel(currentSite.id, level.location_id, catalogItemId, qty)
+    const promise = setInventoryLevel(siteId, level.location_id, catalogItemId, qty)
     toast.promise(promise, {
       loading: t("inventory.toast.updating") || "Updating stock...",
       success: t("inventory.toast.updated") || "Stock updated",
@@ -128,10 +123,10 @@ export function ProductInventoryCard({ catalogItemId }: { catalogItemId: string 
     })
     
     await promise
-    loadData()
+    void refreshLevels()
   }
 
-  if (loading) {
+  if (!siteId || !catalogItemId || locationsLoading || levelsLoading) {
     return (
       <SectionCard>
         <SectionCardContent className="pt-6 space-y-4">
@@ -144,6 +139,16 @@ export function ProductInventoryCard({ catalogItemId }: { catalogItemId: string 
 
   const configuredLocationIds = new Set(levels.map((l) => l.location_id))
   const availableLocations = locations.filter((loc) => !configuredLocationIds.has(loc.id))
+  const loadError = (
+    <div className="py-6 text-center space-y-4">
+      <p role="alert" className="text-sm text-muted-foreground">
+        {t("inventory.error.load") || "Error loading inventory"}
+      </p>
+      <Button variant="outline" onClick={() => { void refreshLocations(); void refreshLevels() }}>
+        {t("common.retry") || "Retry"}
+      </Button>
+    </div>
+  )
 
   return (
     <SectionCard>
@@ -178,7 +183,7 @@ export function ProductInventoryCard({ catalogItemId }: { catalogItemId: string 
                 </DialogDescription>
               </DialogHeader>
               
-              {locations.length === 0 ? (
+              {locationsError || levelsError ? loadError : locations.length === 0 ? (
                 <div className="py-6 text-center space-y-4">
                   <p className="text-sm text-muted-foreground">
                     {t("inventory.locations.empty.description") || "Add a physical location to manage stock per store or warehouse."}
@@ -230,7 +235,7 @@ export function ProductInventoryCard({ catalogItemId }: { catalogItemId: string 
                     </Button>
                     <Button
                       onClick={handleAddStock}
-                      disabled={!selectedLocation || selectedLocation === "none" || adding}
+                      disabled={!selectedLocation || selectedLocation === "none" || adding || !!levelsError}
                     >
                       {adding
                         ? t("common.saving") || "Saving..."
@@ -244,7 +249,7 @@ export function ProductInventoryCard({ catalogItemId }: { catalogItemId: string 
         </div>
       </SectionCardHeader>
       <SectionCardContent>
-        {levels.length > 0 ? (
+        {locationsError || levelsError ? loadError : levels.length > 0 ? (
           <div className="border rounded-lg overflow-hidden">
             <table className="w-full">
               <thead>

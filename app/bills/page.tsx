@@ -173,6 +173,7 @@ export default function BillsPage() {
             totalCount={data?.count ?? 0}
             onPageChange={setPage}
             onOpen={(id) => router.push(`/bills/${id}`)}
+            onUpdate={() => void mutate()}
             onDelete={handleDelete} />
         )}
       </div>

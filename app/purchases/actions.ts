@@ -8,7 +8,7 @@ import {
   removePolizaForSource,
 } from "@/app/accounting/ensure"
 import { lineSubtotal } from "./purchase-mappers"
-import { authorizePurchaseSite, requirePurchaseAccess, requirePurchaseInSite, validatePurchaseId, validatePurchaseReferences } from "./purchase-access"
+import { authorizePurchaseSite, requirePurchaseAccess, requirePurchaseInSite, validatePurchaseReferences } from "./purchase-access"
 
 import {
   listPurchases as listPurchasesQuery,
@@ -17,6 +17,7 @@ import {
 } from "./purchase-queries"
 import { purchaseAmountDue } from "./purchase-payment-state"
 import { deleteAccountingSource, hasSourceJournal } from '@/app/accounting/source-lifecycle'
+import { receivePurchaseStock as receiveStock } from './receive-stock'
 
 // Keep explicit async exports so Next.js can register every Server Action.
 export async function listPurchases(params: Parameters<typeof listPurchasesQuery>[0]) {
@@ -269,85 +270,7 @@ export async function registerPurchasePayment(params: {
 }
 
 export async function receivePurchaseStock(siteId: string, purchaseId: string, locationId?: string | null) {
-  try {
-    const { supabase } = await requirePurchaseAccess(siteId, "update", purchaseId)
-    if (locationId != null) validatePurchaseId(locationId, "location")
-
-    const { purchase, error } = await getPurchaseById(siteId, purchaseId)
-    if (error || !purchase) return { success: false, error: error || "Purchase not found" }
-
-    if (purchase.stockReceived) {
-      return { success: true, error: null, alreadyReceived: true }
-    }
-
-    const receiveLocationId = locationId || purchase.locationId
-    if (!receiveLocationId) {
-      return { success: false, error: "Location is required to receive stock" }
-    }
-    await validatePurchaseReferences(supabase, siteId, { locationId: receiveLocationId })
-
-    const productLines = (purchase.items || []).filter(
-      (item) => item.catalogItemId && item.catalogItemKind === "product" && (Number(item.quantity) || 0) > 0
-    )
-    if (productLines.length === 0) {
-      return {
-        success: false,
-        error: "No product lines to receive into inventory",
-      }
-    }
-
-    for (const item of productLines) {
-      const qty = Number(item.quantity) || 0
-      const { data: level } = await supabase
-        .from("inventory_levels")
-        .select("id, quantity")
-        .eq("site_id", siteId)
-        .eq("location_id", receiveLocationId)
-        .eq("catalog_item_id", item.catalogItemId!)
-        .maybeSingle()
-
-      if (level) {
-        await supabase
-          .from("inventory_levels")
-          .update({
-            quantity: (Number(level.quantity) || 0) + qty,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", level.id)
-          .eq("site_id", siteId)
-      } else {
-        await supabase.from("inventory_levels").insert({
-          site_id: siteId,
-          location_id: receiveLocationId,
-          catalog_item_id: item.catalogItemId,
-          quantity: qty,
-        })
-      }
-    }
-
-    const { error: flagError } = await supabase
-      .from("purchases")
-      .update({
-        stock_received: true,
-        location_id: receiveLocationId,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", purchaseId)
-      .eq("site_id", siteId)
-
-    if (flagError) throw new Error(flagError.message)
-
-    revalidatePath("/bills")
-    revalidatePath(`/bills/${purchaseId}`)
-    revalidatePath("/inventory")
-    return { success: true, error: null, alreadyReceived: false }
-  } catch (error) {
-    console.error("Error in receivePurchaseStock:", error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Failed to receive stock",
-    }
-  }
+  return receiveStock(siteId, purchaseId, locationId)
 }
 
 export async function publishPurchase(siteId: string, purchaseId: string) {

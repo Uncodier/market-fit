@@ -9,6 +9,8 @@ export const SHARED_MODULE_IMAGE_AREAS = {
   procurementRules: "buying",
   procurementSettings: "settings",
   inventoryMinimums: "operations",
+  inventoryMovements: "operations",
+  inventoryTransfers: "operations",
   modifierGroups: "operations",
 } as const
 

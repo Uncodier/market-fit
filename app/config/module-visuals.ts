@@ -96,6 +96,8 @@ export const NAV_ITEM_ICON: Record<string, LucideIcon> = {
     catalog: Package,
   priceLists: Tag,
   inventory: Boxes,
+  inventoryMovements: Repeat,
+  inventoryTransfers: ClipboardList,
   inventoryMinimums: Sliders,
   printers: Printer,
   records: TableRows,

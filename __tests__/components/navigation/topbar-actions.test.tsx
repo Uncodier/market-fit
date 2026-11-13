@@ -73,6 +73,7 @@ it.each([
   ["/orders", "orders:create"],
   ["/shipments", "shipments:create"],
   ["/inventory", "inventory:create-stock"],
+  ["/inventory/transfers", "inventory-transfers:create"],
   ["/price-lists", "price-lists:create"],
   ["/promotions", "promotions:create"],
   ["/subscriptions", "subscriptions:create"],

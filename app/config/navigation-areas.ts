@@ -98,6 +98,8 @@ export const NAVIGATION_AREAS: Record<
       { key: "visits", href: "/visits" },
       { key: "checkIn", href: "/pos/check-in" },
       { key: "inventory", href: "/inventory" },
+      { key: "inventoryMovements", href: "/inventory/movements" },
+      { key: "inventoryTransfers", href: "/inventory/transfers" },
       { key: "inventoryMinimums", href: "/inventory/minimums" },
       { key: "printers", href: "/settings", settingsTab: "printers" },
     ],
@@ -241,11 +243,22 @@ export function buildNavItemHref(
 }
 
 /** Active state for sidebar items (pathname from `usePathname`, searchParams from `useSearchParams`). */
+export function getInventoryNavKey(pathname: string): string | null {
+  const path = pathname.split(/[?#]/)[0]
+  if (path.startsWith("/inventory/movements/")) return "inventoryTransfers"
+  const routes = NAVIGATION_AREAS.operations.items.filter(item => item.href === "/inventory" || item.href.startsWith("/inventory/"))
+    .sort((a, b) => b.href.length - a.href.length)
+  return routes.find(item => path === item.href || path.startsWith(`${item.href}/`))?.key ?? null
+}
+
 export function isNavItemActive(
   item: AreaNavItem,
   pathname: string,
   searchParams: URLSearchParams
 ): boolean {
+  if (item.href === "/inventory" || item.href.startsWith("/inventory/")) {
+    return getInventoryNavKey(pathname) === item.key
+  }
   if (item.key === "catalog" &&
       (pathname === "/catalog/modifier-groups" || pathname.startsWith("/catalog/modifier-groups/"))) {
     return false
@@ -328,6 +341,8 @@ export function isConfigurationNavPath(
 }
 
 export function getNavItemTitle(item: AreaNavItem, t: (k: string) => string): string {
+  if (item.key === "inventoryMovements") return "Inventory Ledger"
+  if (item.key === "inventoryTransfers") return "Inventory Transfers"
   if (item.key === "modifierGroups") {
     const key = "catalog.modifiers.groupsTitle"
     const title = t(key)

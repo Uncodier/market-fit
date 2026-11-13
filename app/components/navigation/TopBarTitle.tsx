@@ -101,6 +101,7 @@ export function TopBarTitle({
 
   // Get the default title from the first route segment
   const getDefaultTitle = useCallback(() => {
+    if (pathname.startsWith('/inventory/movements/')) return 'Transfer Details'
     const screenTitle = workspaceScreenTitle(`${pathname}?${searchParams.toString()}`, t)
     if (screenTitle && !hasId(`${pathname}?${searchParams.toString()}`)) return screenTitle
     const procurementTitle = procurementRouteTitle(pathname, t)

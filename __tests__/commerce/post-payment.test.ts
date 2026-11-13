@@ -2,6 +2,7 @@ import { processPostPaymentFulfillment } from "../../app/commerce/post-payment";
 import { createAuthorizedShipment } from "../../app/shipments/create-shipment";
 import { ensureCommerceLeadConverted } from "../../app/commerce/ensure-commerce-lead-converted";
 import { grantFromOrder } from "../../app/commerce/entitlements";
+jest.mock("server-only", () => ({}));
 
 jest.mock("../../lib/supabase/server", () => ({
   createServiceClient: jest.fn(),
@@ -76,7 +77,7 @@ describe("processPostPaymentFulfillment", () => {
         if (table === "shipments") return shipmentsChain;
         return createChainable();
       }),
-      rpc: jest.fn(),
+      rpc: jest.fn().mockResolvedValue({ data: { quantity: 0 }, error: null }),
     };
 
     const { createServiceClient } = require("../../lib/supabase/server");
@@ -139,8 +140,11 @@ describe("processPostPaymentFulfillment", () => {
       shippingAddress: { line1: "123 St" },
     }));
 
-    // Inventory decremented
-    expect(inventoryChain.update).toHaveBeenCalledWith({ quantity: 8 });
+    expect(mockSupabase.rpc).toHaveBeenCalledWith("apply_location_inventory_delta", {
+      p_site_id: "site-1", p_catalog_item_id: "cat-2", p_location_id: "loc-123",
+      p_delta: -2, p_floor_zero: true,
+    });
+    expect(mockSupabase.from).not.toHaveBeenCalledWith("inventory_levels");
   });
 
   it.each([
@@ -191,11 +195,24 @@ describe("processPostPaymentFulfillment", () => {
     // No shipment
     expect(createAuthorizedShipment).not.toHaveBeenCalled();
 
-    // Inventory inserted (since level didn't exist)
-    expect(inventoryChain.insert).toHaveBeenCalledWith(expect.objectContaining({
-      location_id: "loc-123",
-      quantity: 0
-    }));
+    expect(mockSupabase.rpc).toHaveBeenCalledWith("apply_location_inventory_delta", {
+      p_site_id: "site-1", p_catalog_item_id: "cat-3", p_location_id: "loc-123",
+      p_delta: -3, p_floor_zero: true,
+    });
+    expect(mockSupabase.from).not.toHaveBeenCalledWith("inventory_levels");
+  });
+
+  it("surfaces a non-Stripe inventory failure without retry or fallback", async () => {
+    setupOrder("pickup", [{ catalog_item_id: "cat-3", quantity: 0 }], true);
+    settingsChain.single.mockResolvedValue({ data: { commerce: {} } });
+    catalogChain.single.mockResolvedValue({ data: { track_inventory: true } });
+    mockSupabase.rpc.mockResolvedValue({ data: null, error: { message: "denied" } });
+    await expect(processPostPaymentFulfillment("order", "site-1", "sale-1", undefined, ""))
+      .rejects.toThrow("Failed to apply inventory delta");
+    expect(mockSupabase.rpc).toHaveBeenCalledTimes(1);
+    expect(mockSupabase.rpc).toHaveBeenCalledWith("apply_location_inventory_delta",
+      expect.objectContaining({ p_delta: -1 }));
+    expect(mockSupabase.from).not.toHaveBeenCalledWith("inventory_levels");
   });
 
   it("reuses shipment and delegates Stripe inventory to the idempotent RPC", async () => {

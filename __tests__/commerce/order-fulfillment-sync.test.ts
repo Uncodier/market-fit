@@ -125,6 +125,27 @@ describe("revokeOrderFulfillment", () => {
     jest.clearAllMocks();
   });
 
+  it("propagates restock failure instead of reporting successful revocation", async () => {
+    const query = {
+      select: jest.fn().mockReturnThis(), update: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({ data: {
+        id: "order", site_id: "site", status: "completed",
+      } }),
+      then: (resolve: (value: unknown) => unknown) => Promise.resolve({ data: [] }).then(resolve),
+    };
+    const client = { from: jest.fn(() => query), rpc: jest.fn() };
+    jest.mocked(restockOrderInventory).mockRejectedValueOnce(new Error("Failed to apply inventory delta"));
+    const log = jest.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      await expect(revokeOrderFulfillment(client, "order"))
+        .rejects.toThrow("Failed to apply inventory delta");
+      expect(restockOrderInventory).toHaveBeenCalledTimes(1);
+    } finally {
+      log.mockRestore();
+    }
+  });
+
   it("cancels items and reservations and revokes entitlements", async () => {
     const orders = {
       select: jest.fn().mockReturnThis(),
@@ -150,6 +171,7 @@ describe("revokeOrderFulfillment", () => {
       in: jest.fn().mockResolvedValue({}),
     };
     const supabase = {
+      rpc: jest.fn(),
       from: jest.fn((table: string) => {
         if (table === "sale_orders") return orders;
         if (table === "sale_order_items") return items;

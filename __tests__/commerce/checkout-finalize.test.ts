@@ -6,6 +6,7 @@ import { bumpCacheEpoch } from "@/lib/redis/json-cache"
 import { upsertSaleOrderItemsWithModifiers } from "@/app/commerce/checkout-order-items"
 import { recordPosClientMutation } from "@/app/pos/actions/idempotency"
 import { applySelfServiceInventoryRelease } from "@/app/commerce/self-service-inventory"
+jest.mock("server-only", () => ({}))
 
 jest.mock("next/cache", () => ({ revalidatePath: jest.fn() }))
 jest.mock("@/lib/redis/json-cache", () => ({ bumpCacheEpoch: jest.fn().mockResolvedValue(true) }))
@@ -92,7 +93,7 @@ describe("finalizeCheckout", () => {
     const firstWriteGate = new Promise<void>((resolve) => { releaseWrite = resolve })
     const client = { from: jest.fn((table: string) => {
       let columns = ""
-      let payload: { quantity: number } | undefined
+      if (table === "inventory_levels") throw new Error("Legacy stock access")
       const filters: Record<string, unknown> = {}
       const query = {
         select: (value: string) => { columns = value; return query },
@@ -110,26 +111,18 @@ describe("finalizeCheckout", () => {
         },
         single: async () => {
           if (table === "settings") return { data: { commerce: { decrement_stock_on: "pay" } } }
-          if (table === "inventory_levels") {
-            expect(filters).toEqual({ catalog_item_id: "sku", location_id: "origin" })
-            events.push(`read:${stock}`)
-            return { data: { id: "level", quantity: stock } }
-          }
           return { data: null }
-        },
-        update: (value: { quantity: number }) => { payload = value; return query },
-        then: (resolve: (value: { error: null }) => unknown, reject: (error: unknown) => unknown) => {
-          const write = async () => {
-            if (!payload) throw new Error("Unexpected write")
-            events.push(`write:${payload.quantity}`)
-            if (stock === 10) { startedWrite?.(); await firstWriteGate }
-            stock = payload.quantity
-            return { error: null }
-          }
-          return write().then(resolve, reject)
         },
       }
       return query
+    }), rpc: jest.fn(async (name: string, args: Record<string, unknown>) => {
+      expect(name).toBe("apply_location_inventory_delta")
+      expect(args).toEqual({ p_site_id: "site-1", p_catalog_item_id: "sku",
+        p_location_id: "origin", p_delta: expect.any(Number), p_floor_zero: true })
+      events.push(`delta:${args.p_delta}`)
+      if (stock === 10) { startedWrite?.(); await firstWriteGate }
+      stock = Math.max(0, stock + Number(args.p_delta))
+      return { data: { quantity: stock }, error: null }
     }) }
     let finished = false
     const pending = finalizeCheckout({
@@ -143,13 +136,28 @@ describe("finalizeCheckout", () => {
     }).then((result) => { finished = true; return result })
     await firstWriteStarted
     expect(finished).toBe(false)
-    expect(events).toEqual(["read:10", "write:8"])
+    expect(events).toEqual(["delta:-2"])
     expect(ensurePublicAccessTokenForRecord).not.toHaveBeenCalled()
     releaseWrite?.()
     await expect(pending).resolves.toEqual(expect.objectContaining({ success: true }))
-    expect(events).toEqual(["read:10", "write:8", "read:8", "write:5"])
+    expect(events).toEqual(["delta:-2", "delta:-3"])
     expect(stock).toBe(5)
     expect(metadataBatches).toEqual([["sku", "untracked"]])
+  })
+
+  it("rejects a failed inventory RPC before advertising completion", async () => {
+    const params = posUpdateParams()
+    const query = { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(),
+      single: jest.fn().mockResolvedValue({ data: { commerce: {} } }),
+      in: jest.fn().mockResolvedValue({ data: [{ id: "sku", track_inventory: true }], error: null }) }
+    const client = { from: jest.fn(() => query),
+      rpc: jest.fn().mockResolvedValue({ data: null, error: { message: "denied" } }) }
+    await expect(finalizeCheckout({ ...params, supabase: client,
+      finalOriginLocationId: "origin", orderInitialStatus: "completed",
+      lines: [{ catalogItemId: "sku", quantity: 2 }] })).rejects.toThrow("Failed to apply inventory delta")
+    expect(client.rpc).toHaveBeenCalledTimes(1)
+    expect(ensurePublicAccessTokenForRecord).not.toHaveBeenCalled()
+    expect(client.from).not.toHaveBeenCalledWith("inventory_levels")
   })
 
   it("derives ordinary public free completion from trusted payment state", async () => {

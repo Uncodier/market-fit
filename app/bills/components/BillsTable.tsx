@@ -1,17 +1,10 @@
 "use client"
 
 import React from "react"
-import { Button } from "@/app/components/ui/button"
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/app/components/ui/table"
-import { MoreHorizontal, Pencil, Trash2 } from "@/app/components/ui/icons"
 import { Pagination } from "@/app/components/ui/pagination"
 import { Skeleton } from "@/app/components/ui/skeleton"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/app/components/ui/dropdown-menu"
+import { BillRowActions } from "./BillRowActions"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { formatCurrency } from "@/app/components/dashboard/campaign-revenue-donut"
 import { format } from "date-fns"
@@ -35,6 +28,7 @@ interface BillsTableProps {
   onPageChange: (page: number) => void
   onOpen: (id: string) => void
   onDelete: (id: string) => void
+  onUpdate?: () => void
 }
 
 export function BillsTable({
@@ -45,6 +39,7 @@ export function BillsTable({
   onPageChange,
   onOpen,
   onDelete,
+  onUpdate,
 }: BillsTableProps) {
   const { t } = useLocalization()
   const totalPages = Math.ceil(totalCount / pageSize)
@@ -120,30 +115,7 @@ export function BillsTable({
                     />
                   </TableCell>
                   <TableCell className="py-3.5 text-right" onClick={(e) => e.stopPropagation()}>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 opacity-100 md:opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => onOpen(purchase.id)}>
-                          <Pencil className="h-4 w-4 mr-2" />
-                          {t("common.open") || "Open"}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="text-destructive"
-                          onClick={() => onDelete(purchase.id)}
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          {t("common.delete") || "Delete"}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <BillRowActions key={`${purchase.siteId}-${purchase.id}`} purchase={purchase} onOpen={onOpen} onDelete={onDelete} onUpdate={onUpdate} />
                   </TableCell>
                 </DocumentListRow>
               )

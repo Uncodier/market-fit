@@ -25,9 +25,10 @@ const STATUS_KEYS: Record<PurchaseStatus, { key: string; fallback: string }> = {
 interface StatusBarProps {
   currentStatus: PurchaseStatus
   onStatusChange: (status: PurchaseStatus) => void
+  disabled?: boolean
 }
 
-export function StatusBar({ currentStatus, onStatusChange }: StatusBarProps) {
+export function StatusBar({ currentStatus, onStatusChange, disabled }: StatusBarProps) {
   const { t } = useLocalization()
 
   return (
@@ -38,6 +39,7 @@ export function StatusBar({ currentStatus, onStatusChange }: StatusBarProps) {
       styles={STATUS_STYLES}
       labels={(status) => t(STATUS_KEYS[status].key) || STATUS_KEYS[status].fallback}
       onChange={onStatusChange}
+      disabled={disabled}
     />
   )
 }

@@ -89,7 +89,7 @@ export function purchaseClient(options: {
       return chain
     }),
     rpc: jest.fn(async (name: string, args: Record<string, unknown>): Promise<{
-      data: boolean | null; error: { message: string } | null
+      data: unknown; error: { message: string } | null
     }> => {
       if (name === "user_can") {
         events.push(`can:${args.p_command}`)
@@ -100,6 +100,9 @@ export function purchaseClient(options: {
       }
       events.push(`write:rpc:${name}`)
       writes.push({ table: name, operation: "rpc", data: args })
+      if (name === "apply_inventory_operations") {
+        return { data: { success: true, requestId: args.p_request_id, movementIds: [catalogItemId], alreadyApplied: false }, error: null }
+      }
       return { data: null, error: null }
     }),
   }

@@ -11,7 +11,6 @@ import {
   deletePurchase,
   publishPurchase,
   unpublishPurchase,
-  receivePurchaseStock,
   updatePurchase,
 } from "@/app/purchases/actions"
 import { Purchase } from "@/app/types"
@@ -38,6 +37,9 @@ import { PurchaseInvoice } from "../components/PurchaseInvoice"
 import { RegisterPurchasePaymentDialog } from "../components/RegisterPurchasePaymentDialog"
 import { CreatePurchaseDialog } from "../components/CreatePurchaseDialog"
 import { Skeleton } from "@/app/components/ui/skeleton"
+import { ReceivePurchaseStockDialog } from "../components/ReceivePurchaseStockDialog"
+import { usePendingReceipt } from "../use-pending-receipt"
+import { isDemoSiteId, isDemoModeActive } from "@/lib/demo-utils"
 
 export default function BillDetailPage(props: { params: Promise<{ id: string }> }) {
   const unwrappedParams = React.use(props.params)
@@ -45,15 +47,19 @@ export default function BillDetailPage(props: { params: Promise<{ id: string }> 
   const { currentSite } = useSite()
   const { t } = useLocalization()
   const [purchase, setPurchase] = useState<Purchase | null>(null)
+  const { pending: pendingReceipt, actorId } = usePendingReceipt(currentSite?.id, purchase?.id)
   const [loading, setLoading] = useState(true)
   const [paymentOpen, setPaymentOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
+  const [receiveOpen, setReceiveOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [sending, setSending] = useState(false)
+  const readOnly = isDemoSiteId(currentSite?.id) || isDemoModeActive()
 
   const load = async () => {
     if (!currentSite?.id || !unwrappedParams.id) return
     setLoading(true)
+    setPurchase(null)
     try {
       const res = await getPurchaseById(currentSite.id, String(unwrappedParams.id))
       if (res.error || !res.purchase) {
@@ -79,7 +85,7 @@ export default function BillDetailPage(props: { params: Promise<{ id: string }> 
   }, [currentSite?.id, unwrappedParams.id])
 
   const onPublish = async () => {
-    if (!currentSite?.id || !purchase) return
+    if (readOnly || !currentSite?.id || !purchase) return
     setBusy(true)
     try {
       const res = await publishPurchase(currentSite.id, purchase.id)
@@ -94,7 +100,7 @@ export default function BillDetailPage(props: { params: Promise<{ id: string }> 
   }
 
   const onUnpublish = async () => {
-    if (!currentSite?.id || !purchase) return
+    if (readOnly || !currentSite?.id || !purchase) return
     setBusy(true)
     try {
       const res = await unpublishPurchase(currentSite.id, purchase.id)
@@ -108,25 +114,8 @@ export default function BillDetailPage(props: { params: Promise<{ id: string }> 
     }
   }
 
-  const onReceive = async () => {
-    if (!currentSite?.id || !purchase) return
-    setBusy(true)
-    try {
-      const res = await receivePurchaseStock(currentSite.id, purchase.id, purchase.locationId)
-      if (res.error) toast.error(res.error)
-      else if (res.alreadyReceived) {
-        toast.success(t("bills.success.alreadyReceived") || "Stock already received")
-      } else {
-        toast.success(t("bills.success.received") || "Stock received")
-        await load()
-      }
-    } finally {
-      setBusy(false)
-    }
-  }
-
   const handleStatusChange = async (newStatus: string) => {
-    if (!currentSite?.id || !purchase) return
+    if (readOnly || !currentSite?.id || !purchase) return
     try {
       const res = await updatePurchase({
         siteId: currentSite.id,
@@ -147,7 +136,7 @@ export default function BillDetailPage(props: { params: Promise<{ id: string }> 
   }
 
   const onDelete = async () => {
-    if (!currentSite?.id || !purchase) return
+    if (readOnly || !currentSite?.id || !purchase) return
     const res = await deletePurchase(currentSite.id, purchase.id)
     if (res.error) toast.error(res.error)
     else {
@@ -157,12 +146,12 @@ export default function BillDetailPage(props: { params: Promise<{ id: string }> 
   }
 
   const handlePrint = () => {
-    if (!purchase) return
+    if (readOnly || !purchase) return
     window.open(`/bill-pdf/${purchase.id}`, "_blank")
   }
 
   const handleSend = async () => {
-    if (!purchase) return
+    if (readOnly || !purchase) return
     if (!purchase.vendorEmail) {
       toast.error(
         t("bills.detail.sendMissingEmail") ||
@@ -187,7 +176,7 @@ export default function BillDetailPage(props: { params: Promise<{ id: string }> 
   }
 
   const handleCopyVendorLink = async () => {
-    if (!purchase) return
+    if (readOnly || !purchase) return
 
     setSending(true)
     try {
@@ -243,7 +232,7 @@ export default function BillDetailPage(props: { params: Promise<{ id: string }> 
                     variant="ghost"
                     size="sm"
                     onClick={() => setPaymentOpen(true)}
-                    disabled={busy}
+                    disabled={busy || readOnly}
                     className="flex items-center gap-1 text-green-600 hover:bg-green-50 hover:text-green-700"
                   >
                     <CreditCard className="h-4 w-4" />
@@ -257,7 +246,7 @@ export default function BillDetailPage(props: { params: Promise<{ id: string }> 
                 variant="ghost"
                 size="sm"
                 onClick={() => setEditOpen(true)}
-                disabled={busy}
+                disabled={busy || readOnly}
                 className="flex items-center gap-1"
               >
                 <Pencil className="h-4 w-4" />
@@ -270,7 +259,7 @@ export default function BillDetailPage(props: { params: Promise<{ id: string }> 
                 variant="ghost"
                 size="sm"
                 onClick={handlePrint}
-                disabled={busy}
+                disabled={busy || readOnly}
                 className="flex items-center gap-1"
               >
                 <Printer className="h-4 w-4" />
@@ -285,7 +274,7 @@ export default function BillDetailPage(props: { params: Promise<{ id: string }> 
                     variant="ghost"
                     size="sm"
                     onClick={handleSend}
-                    disabled={busy || sending}
+                    disabled={busy || sending || readOnly}
                     className="flex items-center gap-1"
                   >
                     <Send className="h-4 w-4" />
@@ -302,7 +291,7 @@ export default function BillDetailPage(props: { params: Promise<{ id: string }> 
                     variant="ghost"
                     size="sm"
                     onClick={handleCopyVendorLink}
-                    disabled={busy || sending}
+                    disabled={busy || sending || readOnly}
                     className="flex items-center gap-1"
                   >
                     <Link className="h-4 w-4" />
@@ -312,17 +301,17 @@ export default function BillDetailPage(props: { params: Promise<{ id: string }> 
                 </>
               )}
 
-              {purchase && !purchase.stockReceived && (
+              {purchase && (!purchase.stockReceived || pendingReceipt) && (
                 <>
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={onReceive}
-                    disabled={busy}
+                    onClick={() => setReceiveOpen(true)}
+                    disabled={busy || readOnly}
                     className="flex items-center gap-1"
                   >
                     <Package className="h-4 w-4" />
-                    {t("bills.action.receive") || "Receive stock"}
+                    {pendingReceipt ? "Retry saved receipt" : t("bills.action.receive") || "Receive stock"}
                   </Button>
                   <div className="w-px h-6 bg-border mx-1" />
                 </>
@@ -334,7 +323,7 @@ export default function BillDetailPage(props: { params: Promise<{ id: string }> 
                     variant="ghost"
                     size="sm"
                     onClick={onPublish}
-                    disabled={busy}
+                    disabled={busy || readOnly}
                     className="flex items-center gap-1 text-primary hover:bg-primary/10"
                   >
                     <BookOpen className="h-4 w-4 mr-1" />
@@ -345,7 +334,7 @@ export default function BillDetailPage(props: { params: Promise<{ id: string }> 
                     variant="ghost"
                     size="sm"
                     onClick={onUnpublish}
-                    disabled={busy}
+                    disabled={busy || readOnly}
                     className="flex items-center gap-1 text-orange-600 hover:bg-orange-50"
                   >
                     {t("bills.action.unpublish") || "Unpublish"}
@@ -360,7 +349,7 @@ export default function BillDetailPage(props: { params: Promise<{ id: string }> 
                   <Button
                     variant="ghost"
                     size="sm"
-                    disabled={busy}
+                    disabled={busy || readOnly}
                     className="flex items-center gap-1 text-destructive hover:bg-destructive/10 hover:text-destructive"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -387,6 +376,7 @@ export default function BillDetailPage(props: { params: Promise<{ id: string }> 
                 <StatusBar
                   currentStatus={purchase.status}
                   onStatusChange={handleStatusChange}
+                  disabled={readOnly}
                 />
               )}
             </div>
@@ -395,10 +385,14 @@ export default function BillDetailPage(props: { params: Promise<{ id: string }> 
       </StickyHeader>
 
       <div className="px-4 md:px-16 py-8 bg-muted/50 dark:bg-background min-h-screen">
-        {loading || !purchase ? (
+        {loading ? (
           <div className="space-y-4 max-w-[800px] mx-auto">
             <Skeleton className="h-40 w-full" />
             <Skeleton className="h-64 w-full" />
+          </div>
+        ) : !purchase ? (
+          <div className="max-w-[800px] mx-auto" role="alert">
+            {t("bills.error.notFound") || "Bill not found"}
           </div>
         ) : (
           <div className="max-w-[800px] mx-auto">
@@ -414,19 +408,28 @@ export default function BillDetailPage(props: { params: Promise<{ id: string }> 
         )}
       </div>
 
-      <RegisterPurchasePaymentDialog
+      {!readOnly && <RegisterPurchasePaymentDialog
         purchase={purchase}
         open={paymentOpen}
         onOpenChange={setPaymentOpen}
         onSuccess={load}
-      />
+      />}
 
-      <CreatePurchaseDialog
+      {!readOnly && purchase && currentSite?.id && <ReceivePurchaseStockDialog
+        key={`${actorId}-${currentSite.id}-${purchase.id}`}
+        siteId={currentSite.id}
+        purchase={purchase}
+        open={receiveOpen}
+        onOpenChange={setReceiveOpen}
+        onSuccess={load}
+      />}
+
+      {!readOnly && <CreatePurchaseDialog
         open={editOpen}
         onOpenChange={setEditOpen}
         purchaseToEdit={purchase}
         onSuccess={() => load()}
-      />
+      />}
     </div>
   )
 }

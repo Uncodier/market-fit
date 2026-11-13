@@ -1,6 +1,7 @@
 import { processPostPaymentFulfillment } from "@/app/commerce/post-payment"
 import { grantFromOrder, revokeFromOrder } from "@/app/commerce/entitlements"
 import { restockOrderInventory } from "@/app/commerce/restock-order-inventory"
+import type { InventoryDeltaClient } from "./inventory-delta"
 
 const TERMINAL_SALE_STATUSES = new Set(["cancelled", "refunded"])
 
@@ -65,7 +66,7 @@ export async function fulfillLinkedOrderAfterPayment(params: {
 }
 
 export async function revokeOrderFulfillment(
-  supabase: QueryClient,
+  supabase: QueryClient & InventoryDeltaClient,
   orderId: string,
   options?: { cancelOrder?: boolean; previousStatus?: string | null },
 ): Promise<void> {
@@ -132,6 +133,7 @@ export async function revokeOrderFulfillment(
       })
     } catch (error) {
       console.error("Failed to restock inventory for order:", orderId, error)
+      throw error
     }
   }
 }

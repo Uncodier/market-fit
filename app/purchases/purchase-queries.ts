@@ -1,7 +1,7 @@
 "use server"
 
 import { mapPurchase } from "./purchase-mappers"
-import { authenticatePurchaseRequest, authorizePurchaseSite, purchaseListClient, requirePurchaseAccess, validatePurchaseId } from "./purchase-access"
+import { authenticatePurchaseRequest, authorizePurchaseSite, purchaseListClient, validatePurchaseId } from "./purchase-access"
 
 export async function listPurchases(params: {
   siteId: string
@@ -67,7 +67,10 @@ export async function listPurchases(params: {
 
 export async function getPurchaseById(siteId: string, id: string) {
   try {
-    const { supabase } = await requirePurchaseAccess(siteId, "select", id)
+    // Demo reads share the selected-fixture boundary with the list. Real IDs
+    // remain UUID-validated before authentication or resource queries.
+    if (typeof siteId !== "string" || !siteId.startsWith("demo-")) validatePurchaseId(id)
+    const { supabase } = await purchaseListClient(siteId)
 
     const { data, error } = await supabase
       .from("purchases")

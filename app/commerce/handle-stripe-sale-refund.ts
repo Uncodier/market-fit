@@ -1,6 +1,7 @@
 import { revokeOrderFulfillment } from "@/app/commerce/order-fulfillment-sync"
+import type { InventoryDeltaClient } from "./inventory-delta"
 
-type QueryClient = {
+type QueryClient = InventoryDeltaClient & {
   from: (table: string) => any
 }
 

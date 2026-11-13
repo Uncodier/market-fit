@@ -1,4 +1,6 @@
-type QueryClient = {
+import { applyLocationInventoryDelta, type InventoryDeltaClient } from "./inventory-delta"
+
+type QueryClient = InventoryDeltaClient & {
   from: (table: string) => any
 }
 
@@ -25,26 +27,12 @@ async function addStock(
 
   if (!catalogItem?.track_inventory) return
 
-  const { data: level } = await supabase
-    .from("inventory_levels")
-    .select("id, quantity")
-    .eq("catalog_item_id", catalogItemId)
-    .eq("location_id", locationId)
-    .maybeSingle()
-
-  if (level) {
-    await supabase
-      .from("inventory_levels")
-      .update({ quantity: (Number(level.quantity) || 0) + quantity })
-      .eq("id", level.id)
-    return
-  }
-
-  await supabase.from("inventory_levels").insert({
-    site_id: siteId,
-    location_id: locationId,
-    catalog_item_id: catalogItemId,
-    quantity,
+  await applyLocationInventoryDelta(supabase, {
+    siteId,
+    locationId,
+    catalogItemId,
+    delta: quantity,
+    floorZero: false,
   })
 }
 

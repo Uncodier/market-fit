@@ -71,6 +71,7 @@ describe("handleStripeSaleRefund", () => {
     orders.maybeSingle.mockResolvedValue({ data: { id: "order-1" } });
 
     const supabase = {
+      rpc: jest.fn(),
       from: jest.fn((table: string) => (table === "sales" ? sales : orders)),
     };
 
@@ -91,7 +92,7 @@ describe("handleStripeSaleRefund", () => {
     });
     const orders = createChain();
     orders.maybeSingle.mockResolvedValue({ data: { id: "order-1" } });
-    const supabase = { from: jest.fn((table) => table === "sales" ? sales : orders) };
+    const supabase = { rpc: jest.fn(), from: jest.fn((table) => table === "sales" ? sales : orders) };
 
     const result = await handleStripeSaleRefund(supabase, "pi_123");
 
@@ -103,7 +104,7 @@ describe("handleStripeSaleRefund", () => {
   it("skips unknown payment intents", async () => {
     const sales = createChain();
     sales.maybeSingle.mockResolvedValue({ data: null });
-    const supabase = { from: jest.fn().mockReturnValue(sales) };
+    const supabase = { rpc: jest.fn(), from: jest.fn().mockReturnValue(sales) };
 
     const result = await handleStripeSaleRefund(supabase, "pi_missing");
 
@@ -121,6 +122,7 @@ describe("handleStripeSaleRefund", () => {
     orders.maybeSingle.mockResolvedValue({ data: { id: "order-2" } });
 
     const supabase = {
+      rpc: jest.fn(),
       from: jest.fn((table: string) => (table === "sales" ? sales : orders)),
     };
 
@@ -137,7 +139,7 @@ describe("handleStripeSaleRefund", () => {
     sales.maybeSingle.mockResolvedValue({ data: { id: "sale-1", site_id: "site-1", status: "completed" } });
     const orders = createChain();
     orders.maybeSingle.mockResolvedValue({ data: { id: "order-1" } });
-    const supabase = { from: jest.fn((table) => table === "sales" ? sales : orders) };
+    const supabase = { rpc: jest.fn(), from: jest.fn((table) => table === "sales" ? sales : orders) };
     await handleStripeSaleRefund(supabase, "pi_1", { revokeOnly: true });
     expect(sales.update).not.toHaveBeenCalled();
     expect(revokeOrderFulfillment).toHaveBeenCalledTimes(1);
@@ -151,7 +153,7 @@ describe("handleStripeSaleRefund", () => {
     if (stage === "update") sales.error = { message: "write failed" };
     const orders = createChain();
     orders.maybeSingle.mockResolvedValue({ error: { message: "order unavailable" } });
-    const supabase = { from: jest.fn((table) => table === "sales" ? sales : orders) };
+    const supabase = { rpc: jest.fn(), from: jest.fn((table) => table === "sales" ? sales : orders) };
     await expect(handleStripeSaleRefund(supabase, "pi_1")).rejects.toThrow("Unable to");
     expect(revokeOrderFulfillment).not.toHaveBeenCalled();
   });
