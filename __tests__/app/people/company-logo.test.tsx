@@ -22,6 +22,7 @@ it('shows a building icon when the company has no logo', () => {
 
   const fallback = screen.getByRole('img', { name: 'Acme logo unavailable' })
   expect(fallback.querySelector('svg')).toBeInTheDocument()
+  expect(fallback.querySelector('[aria-hidden="true"]')).toBeInTheDocument()
   expect(screen.queryByAltText('Acme logo')).not.toBeInTheDocument()
 })
 
