@@ -19,6 +19,8 @@ export function LookupChipsInput({
   const [text, setText] = useState("")
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [lookupError, setLookupError] = useState<string | null>(null)
+  const [completed, setCompleted] = useState(false)
   const [suggestions, setSuggestions] = useState<LookupOption[]>([])
   const listRef = useRef<HTMLDivElement | null>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -43,6 +45,8 @@ export function LookupChipsInput({
     onTextChange?.("")
     setOpen(false)
     setLoading(false)
+    setLookupError(null)
+    setCompleted(false)
     setSuggestions([])
   }, [values, cancel, onTextChange])
 
@@ -50,6 +54,8 @@ export function LookupChipsInput({
     // Invalidate immediately, not when the next debounce fires.
     cancel()
     setLoading(false)
+    setLookupError(null)
+    setCompleted(false)
     setSuggestions([])
     const query = value.trim()
     if (!query) return
@@ -59,9 +65,15 @@ export function LookupChipsInput({
       setLoading(true)
       try {
         const results = await fetcherRef.current(query)
-        if (requestGeneration === generation.current) setSuggestions(results)
-      } catch {
-        if (requestGeneration === generation.current) setSuggestions([])
+        if (requestGeneration === generation.current) {
+          setSuggestions(results)
+          setCompleted(true)
+        }
+      } catch (error) {
+        if (requestGeneration === generation.current) {
+          setSuggestions([])
+          setLookupError(error instanceof Error ? error.message : 'Could not load suggestions. Please try again.')
+        }
       } finally {
         if (requestGeneration === generation.current) setLoading(false)
       }
@@ -76,6 +88,8 @@ export function LookupChipsInput({
     const next = seen.has(option.text) ? values : [...values, option]
     cancel()
     setLoading(false)
+    setLookupError(null)
+    setCompleted(false)
     setSuggestions([])
     setText("")
     onTextChange?.("")
@@ -143,6 +157,10 @@ export function LookupChipsInput({
         </div>
       )}
       {loading && <p className="text-xs text-muted-foreground">Searching…</p>}
+      {open && !loading && lookupError && <p role="alert" className="text-xs text-destructive">{lookupError}</p>}
+      {open && !loading && !lookupError && completed && visibleSuggestions.length === 0 && (
+        <p role="status" className="text-xs text-muted-foreground">No matching suggestions. Try a more specific name or select a different search term.</p>
+      )}
     </div>
   )
 }

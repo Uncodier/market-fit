@@ -73,7 +73,7 @@ describe('Finder screen API authentication', () => {
       { id: 42, text: 'Sales & Marketing' }
     ])
     expect(fetch).toHaveBeenCalledWith(
-      `/api/finder/autocomplete/${category}?q=Sales%20%26%20Marketing&page=0&site_id=site-a`,
+      `/api/finder/autocomplete/${category}?q=Sales%20%26%20Marketing&page=1&site_id=site-a`,
       expect.objectContaining({
         method: 'GET', headers: expect.objectContaining({ Authorization: 'Bearer test-user-token' })
       })

@@ -2,6 +2,7 @@ import { apiClient } from '@/app/services/api-client-service'
 import { resolveCompanyFilters } from './company-filters'
 import { resolvePersonLocationFilters } from './person-location-filters'
 import { hasLookupFilterNames, resolveLookupFilters } from './lookup-filters'
+import { normalizeLinkedInFilters } from './linkedin-filters'
 
 export interface LookupOption {
   id?: number | string | null
@@ -19,7 +20,7 @@ export async function lookupFetcher(type: string, q: string, siteId?: string): P
     web_technologies: 'web_technologies'
   }
   const category = categoryMap[type] || type
-  const url = `/api/finder/autocomplete/${encodeURIComponent(category)}?q=${encodeURIComponent(q)}&page=0${siteId ? `&site_id=${encodeURIComponent(siteId)}` : ''}`
+  const url = `/api/finder/autocomplete/${encodeURIComponent(category)}?q=${encodeURIComponent(q)}&page=1${siteId ? `&site_id=${encodeURIComponent(siteId)}` : ''}`
   const res = await apiClient.get<{ results?: LookupOption[] }>(url, { includeAuth: true })
   if (!res.success) throw new Error(res.error?.message || 'Finder lookup failed')
 
@@ -30,6 +31,7 @@ export async function lookupFetcher(type: string, q: string, siteId?: string): P
 }
 
 export async function searchFinderPeople(payload: unknown) {
+  payload = normalizeLinkedInFilters(payload)
   if (hasCompanyNames(payload)) {
     payload = await resolveCompanyFilters(payload, (name, siteId) => lookupFetcher('organizations', name, siteId))
   }
@@ -56,6 +58,7 @@ export async function searchFinderPeople(payload: unknown) {
 }
 
 export async function createFinderQuery(payload: unknown) {
+  payload = normalizeLinkedInFilters(payload)
   if (hasCompanyNames(payload)) {
     payload = await resolveCompanyFilters(payload, (name, siteId) => lookupFetcher('organizations', name, siteId))
   }

@@ -51,7 +51,7 @@ it('resolves both company and person location before creating an enrichment quer
     .mockResolvedValueOnce({ success: true, data: { results: [{ id: 71, text: 'Paris, France' }] } })
   await createFinderQuery({ site_id: 'site-a', organization_names: ['Acme'], person_location_names: ['Paris, France'] })
   expect(apiClient.get).toHaveBeenLastCalledWith(
-    '/api/finder/autocomplete/locations?q=Paris%2C%20France&page=0&site_id=site-a', { includeAuth: true },
+    '/api/finder/autocomplete/locations?q=Paris%2C%20France&page=1&site_id=site-a', { includeAuth: true },
   )
   expect(apiClient.post).toHaveBeenCalledWith('/api/finder/person_role_search/createQuery',
     { site_id: 'site-a', organizations: [42], person_locations: [71] }, { includeAuth: true })

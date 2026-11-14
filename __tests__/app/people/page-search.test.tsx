@@ -224,6 +224,29 @@ it('includes and clears a company LinkedIn draft from the dedicated section', as
     expect.objectContaining({ organization_linkedin_public_identifiers: undefined }), { includeAuth: true })
 })
 
+it.each(['draft', 'Enter'] as const)('extracts the company slug from a full LinkedIn URL entered via %s', async mode => {
+  ;(apiClient.post as jest.Mock).mockResolvedValue({ success: true, data: { search_results: [], total_persons: 0 } })
+  render(<PeopleSearchPage />)
+  fireEvent.click(screen.getAllByRole('heading', { name: 'LinkedIn Identifiers' })[1])
+  const input = screen.getByPlaceholderText('linkedin.com/company/slug')
+  fireEvent.change(input, { target: { value: 'https://www.linkedin.com/company/apple/' } })
+  if (mode === 'Enter') fireEvent.keyDown(input, { key: 'Enter' })
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Search' })) })
+  for (const suffix of ['', '/totals']) {
+    expect(apiClient.post).toHaveBeenCalledWith(`/api/finder/person_role_search${suffix}`,
+      expect.objectContaining({ organization_linkedin_public_identifiers: ['apple'] }), { includeAuth: true })
+  }
+})
+
+it('shows a validation error instead of searching without an invalid company LinkedIn filter', async () => {
+  render(<PeopleSearchPage />)
+  fireEvent.click(screen.getAllByRole('heading', { name: 'LinkedIn Identifiers' })[1])
+  fireEvent.change(screen.getByPlaceholderText('linkedin.com/company/slug'), { target: { value: 'https://example.com/company/apple/' } })
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Search' })) })
+  expect(apiClient.post).not.toHaveBeenCalled()
+  expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('valid LinkedIn company'))
+})
+
 it('includes and clears domain draft text without requiring Enter', async () => {
   ;(apiClient.post as jest.Mock).mockResolvedValue({ success: true, data: { search_results: [], total_persons: 0 } })
   render(<PeopleSearchPage />)

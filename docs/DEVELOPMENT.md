@@ -28,6 +28,20 @@ lists or search. A `401`/`403` from the backend remains an access error, not an
 empty list. The saved-list sidebar itself reads from Supabase under the user's
 session.
 
+Finder autocomplete must use the account-scoped Forager endpoint with the
+server-only `FORAGER_ACCOUNT_ID` and `FORAGER_API_KEY` in the API repository.
+The public organization lookup can return empty results for company names even
+when domain queries succeed. Autocomplete starts at page 1; this is separate
+from the zero-based person-search pagination. Missing lookup configuration or
+provider errors must remain visible errors, not empty suggestions. Deploy the
+API-side correction as well as the web-side feedback changes.
+
+LinkedIn person/company filters accept either bare public identifiers or valid
+LinkedIn profile URLs. The web request boundary extracts `/in/<slug>` or
+`/company/<slug>`, deduplicates identifiers and sends only slugs to Forager for
+search, totals and saved-query creation. Invalid hosts, profile kinds or paths
+stop the request instead of silently dropping the filter.
+
 Finder lookup filters retain both selected provider IDs and draft/manual text.
 Before search, totals or enrichment-query creation, names must resolve to one
 exact autocomplete match. Missing or ambiguous matches stop the request and ask

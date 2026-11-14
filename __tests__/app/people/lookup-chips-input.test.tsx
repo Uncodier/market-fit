@@ -180,3 +180,23 @@ it('does not automatically retry a failure but allows another lookup', async () 
   await advance(250)
   expect(fetcher).toHaveBeenCalledTimes(2)
 })
+
+it('shows an explicit empty state instead of disappearing after loading', async () => {
+  render(<Lookup fetcher={jest.fn().mockResolvedValue([])} />)
+  type('Apple')
+  await advance(250)
+  expect(screen.getByRole('status')).toHaveTextContent('No matching suggestions')
+  expect(screen.queryByText('Searching…')).not.toBeInTheDocument()
+  type('Microsoft')
+  expect(screen.queryByRole('status')).not.toBeInTheDocument()
+})
+
+it('shows lookup failures and clears the error on the next input', async () => {
+  render(<Lookup fetcher={jest.fn().mockRejectedValue(new Error('Finder API is unavailable'))} />)
+  type('Apple')
+  await advance(250)
+  expect(screen.getByRole('alert')).toHaveTextContent('Finder API is unavailable')
+  expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  type('Microsoft')
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+})
