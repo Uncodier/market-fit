@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react"
 import { toast } from "sonner"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { shouldCheckVersion } from "./version-check-policy"
+import { isPosDocument } from "@/lib/navigation/document-reload-policy"
 
 const POLL_INTERVAL_MS = 5 * 60 * 1000
 const CHECK_TIMEOUT_MS = 10_000
@@ -63,7 +64,7 @@ export function useVersionCheck(): void {
       event.preventDefault()
       if (disposed) return
       const pathname = window.location.pathname
-      if (pathname === "/pos" || pathname.startsWith("/pos/")) {
+      if (isPosDocument(pathname)) {
         // The global hook cannot observe debounced cart saves, payment dialogs,
         // or register mutations. An empty persisted cart is not proof of safety.
         toast.warning("Update deferred while POS is open", {

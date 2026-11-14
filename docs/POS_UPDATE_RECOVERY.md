@@ -35,6 +35,17 @@ not gain remote access or erase stored POS work.
 - This is deferred, consent-only document replacement, not hot-swapping running
   application code. Old deployed Server Actions can still require a planned update.
 
+The same live-route protection applies to navigation recovery and `safeReload`,
+including its force option and asynchronous global creation/data-refresh callbacks.
+Missing session-storage flags cannot bypass it. Outside POS, these recovery paths
+also defer while the browser reports offline; reconnecting does not itself reload.
+Successful data-only refreshes remain available. Confirmed security revocations
+use their separate authorization boundary and are not suppressed by this policy.
+
+This protects the mounted document, not browser-controlled reloads, tab eviction,
+or a cold launch without network. A downloaded data snapshot is not an offline
+application shell; those cases require separately verified shell caching.
+
 ## Connection and access recovery
 
 `SyncStatus.online` retains its legacy meaning of remote-work availability so
@@ -53,6 +64,19 @@ deadline, disconnect and cleanup, so aborted DB transport can release the pendin
 Auth SDK work is not forcibly replaced; a genuinely stuck auth operation still
 needs to settle or explicit access retry. Late denials remain authoritative for
 the same scope, and stale success cannot authorize a newer scope.
+
+Transient service unavailability (HTTP 5xx, rate limiting, connection/schema-cache
+errors PGRST000–002, and aborted transport) also restores only the same previously
+verified actor/site with a complete downloaded snapshot. It preserves local work
+and suspends remote replay until fresh verification succeeds. Explicit 401/403,
+permission denial, confirmed sign-out and scope changes remain blocking; no initial
+synchronization or missing snapshot is synthesized from a server error.
+
+Continuity regressions:
+
+```bash
+npm test -- --runInBand __tests__/hooks/safe-reload.test.ts __tests__/lib/navigation/stale-router.test.ts __tests__/hooks/use-version-check.test.tsx __tests__/pos/pos-access-recovery.test.tsx __tests__/pos/use-pos-location-access.test.tsx __tests__/pos/pos-offline-access-revocation.test.tsx
+```
 
 Without eligible cached data, online auth transport errors report session
 verification failure; DB transport errors report permission verification failure.

@@ -1,16 +1,20 @@
 import { shouldPreventAutoRefresh, getAutoRefreshPreventionReason } from '../hooks/use-prevent-refresh'
+import { shouldDeferDocumentReload } from '@/lib/navigation/document-reload-policy'
 
 /**
  * Safe reload function that checks if the current page should prevent auto-refresh
  * before performing a page reload. This helps prevent losing work on create/edit pages.
  * 
- * @param force - If true, will force the reload even if prevention is active
+ * @param force - Bypasses edit-page prevention, never POS/offline protection
  * @param reason - Optional reason for the reload (for logging)
  * @returns boolean - true if reload was executed, false if prevented
  */
 export function safeReload(force: boolean = false, reason?: string): boolean {
   // Always allow reload in non-browser environments
   if (typeof window === 'undefined') return false
+  // Check the live route before sessionStorage: delayed global callbacks may
+  // finish after navigation, and storage flags may be missing or unavailable.
+  if (shouldDeferDocumentReload()) return false
   
   // Check if auto-refresh should be prevented
   const shouldPrevent = shouldPreventAutoRefresh()

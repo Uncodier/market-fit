@@ -1,4 +1,5 @@
 import { appendArtifactIfNeeded } from "./artifact-url"
+import { shouldDeferDocumentReload } from "./document-reload-policy"
 
 export const NAVIGATION_PENDING_MS = 300
 export const NAVIGATION_SLOW_MS = 10_000
@@ -153,6 +154,7 @@ export function startNavigationWatchdog(href: string): void {
   }
   recoverNavigation = () => {
     if (generation !== watchdogGeneration || !isCurrent()) return
+    if (shouldDeferDocumentReload()) return
     // Some callers use Next's router directly. Do not replay an old destination
     // over a newer untracked intent; recovery only reloads the current document.
     cancelNavigationWatchdog()

@@ -291,14 +291,18 @@ export function usePosLocationAccess(siteId?: string, userId?: string, authLoadi
   return { ...state, retry };
 }
 
-/** Only transport loss can use cached access; explicit auth/permission errors stay denied. */
+/** Availability failures can use cached access, never remote authorization. */
 function isPosConnectionFailure(error: unknown): boolean {
   if (isPosAuthorizationDenial(error)) return false;
   if (!error || typeof error !== "object") return false;
-  const value = error as { name?: string; message?: string; status?: number };
+  const value = error as { name?: string; message?: string; status?: number; code?: string };
+  // A reachable gateway does not prove the auth/database service is available.
+  // PGRST000-002 are connection/schema-cache availability errors without HTTP status.
+  if (value.status === 429 || (value.status && value.status >= 500 && value.status < 600) ||
+    ["PGRST000", "PGRST001", "PGRST002"].includes(value.code ?? "")) return true;
   if (value.status && value.status >= 400 && value.status < 500) return false;
   if (!navigator.onLine) return true;
-  return value.name === "AuthRetryableFetchError" ||
+  return value.name === "AuthRetryableFetchError" || value.name === "AbortError" ||
     /failed to fetch|fetch failed|networkerror|network request failed|load failed|network connection/i.test(value.message || "");
 }
 

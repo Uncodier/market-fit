@@ -21,18 +21,44 @@ describe("SPA-first navigation", () => {
     delete (window as Window & { _isArtifactSession?: boolean })._isArtifactSession
     Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" })
     mockLocation()
+    Object.defineProperty(navigator, "onLine", { configurable: true, value: true })
   })
   afterEach(() => {
     cancelNavigationWatchdog()
     jest.restoreAllMocks()
     jest.useRealTimers()
     Object.defineProperty(window, "location", { configurable: true, value: originalLocation })
+    Reflect.deleteProperty(navigator, "onLine")
   })
 
   it("builds string hrefs from Next UrlObjects", () => {
     expect(hrefToString("/leads")).toBe("/leads")
     expect(hrefToString({ pathname: "/dashboard", search: "tab=overview" })).toBe("/dashboard?tab=overview")
     expect(hrefToString({ pathname: "/robots", query: { mode: "imprenta" } })).toBe("/robots?mode=imprenta")
+  })
+
+  it.each(["/pos", "/pos/", "/pos/check-in"])("never replaces %s during navigation recovery", (pathname) => {
+    const location = mockLocation(pathname)
+    startNavigationWatchdog("/leads")
+    jest.advanceTimersByTime(NAVIGATION_SLOW_MS)
+    recoverPendingNavigation(getNavigationFeedback()!.id)
+    expect(location.reload).not.toHaveBeenCalled()
+    expect(location.assign).not.toHaveBeenCalled()
+    expect(location.replace).not.toHaveBeenCalled()
+  })
+
+  it("defers offline recovery until an explicit online retry outside POS", () => {
+    const location = mockLocation()
+    startNavigationWatchdog("/leads")
+    jest.advanceTimersByTime(NAVIGATION_SLOW_MS)
+    const id = getNavigationFeedback()!.id
+    Object.defineProperty(navigator, "onLine", { configurable: true, value: false })
+    recoverPendingNavigation(id)
+    expect(location.reload).not.toHaveBeenCalled()
+    Object.defineProperty(navigator, "onLine", { configurable: true, value: true })
+    expect(location.reload).not.toHaveBeenCalled()
+    recoverPendingNavigation(id)
+    expect(location.reload).toHaveBeenCalledTimes(1)
   })
 
   it("uses SPA navigation and never reloads merely because time elapses", () => {

@@ -37,7 +37,7 @@ it.each([0, 40])("reviews a paid or partially paid order with balance %s without
   expect(screen.getByText("Payment status").parentElement).toHaveTextContent(amountDue === 0 ? "Paid" : "Unpaid");
   expect(screen.getByText("Coffee")).toBeInTheDocument();
   expect(screen.getByText("Table 5")).toBeInTheDocument();
-  expect(screen.getByText(/does not confirm checkout completion/)).toBeInTheDocument();
+  expect(screen.getByText(/cancellation requires server confirmation and never refunds a recorded payment/)).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: /charge|pay|sync/i })).not.toBeInTheDocument();
   expect(checkoutCart).not.toHaveBeenCalled();
   expect(updateOutboxRow).not.toHaveBeenCalled();

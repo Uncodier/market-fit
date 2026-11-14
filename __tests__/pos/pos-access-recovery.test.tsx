@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { usePosLocationAccess } from "@/app/pos/hooks/use-pos-location-access";
 import { createClient } from "@/lib/supabase/client";
-import { clearPosPrivateData } from "@/app/pos/local/db";
+import { clearPosPrivateData, hasPosCachedSnapshot } from "@/app/pos/local/db";
 import { suspendPosPermission } from "@/app/pos/local/location-permission-state";
 
 jest.mock("@/lib/supabase/client", () => ({ createClient: jest.fn() }));
@@ -18,6 +18,7 @@ async function settle() { await act(async () => { for (let i = 0; i < 40; i++) a
 beforeEach(() => {
   jest.useFakeTimers();
   jest.clearAllMocks();
+  jest.mocked(hasPosCachedSnapshot).mockResolvedValue(true);
   suspendPosPermission();
   localStorage.clear();
   localStorage.setItem("pos-location-scope-v1", JSON.stringify(["actor-a", "site-a", "collaborator"]));
@@ -29,6 +30,64 @@ beforeEach(() => {
   } as never);
 });
 afterEach(() => jest.useRealTimers());
+
+it.each([
+  { status: 503, message: "Service unavailable" },
+  { status: 502, message: "Bad gateway" },
+  { status: 504, message: "Gateway timeout" },
+  { status: 429, message: "Too many requests" },
+  { code: "PGRST002", message: "Schema cache unavailable" },
+  { name: "AbortError", message: "The operation was aborted" },
+])("keeps the synced POS generation on service failure %j", async (error) => {
+  const { result } = renderHook(() => usePosLocationAccess("site-a", "actor-a"));
+  await settle();
+  const generation = result.current.lease?.generation;
+  rpc.mockImplementation(() => ({ abortSignal: () => Promise.resolve({ data: null, error }) }));
+  act(() => window.dispatchEvent(new Event("focus")));
+  await settle();
+  expect(result.current).toMatchObject({ status: "allowed", lease: { generation, offline: true } });
+  act(() => jest.advanceTimersByTime(120_000));
+  await settle();
+  expect(result.current).toMatchObject({ status: "allowed", lease: { generation, offline: true } });
+  expect(clearPosPrivateData).not.toHaveBeenCalled();
+});
+
+it("uses cached-only access when authentication is temporarily unavailable", async () => {
+  auth.mockResolvedValue({ data: { user: null }, error: { status: 503, message: "Unavailable" } });
+  const { result } = renderHook(() => usePosLocationAccess("site-a", "actor-a"));
+  await settle();
+  expect(result.current).toMatchObject({ status: "allowed", lease: { offline: true } });
+  expect(rpc).not.toHaveBeenCalled();
+  expect(clearPosPrivateData).not.toHaveBeenCalled();
+});
+
+it("keeps a synchronized POS available offline beyond the remote verification deadline", async () => {
+  const { result } = renderHook(() => usePosLocationAccess("site-a", "actor-a"));
+  await settle();
+  const generation = result.current.lease?.generation;
+  act(() => {
+    Object.defineProperty(navigator, "onLine", { configurable: true, value: false });
+    window.dispatchEvent(new Event("offline"));
+  });
+  await settle();
+  auth.mockClear();
+  rpc.mockClear();
+  act(() => jest.advanceTimersByTime(5 * 60_000));
+  await settle();
+  expect(result.current).toMatchObject({ status: "allowed", lease: { generation, offline: true } });
+  expect(auth).not.toHaveBeenCalled();
+  expect(rpc).not.toHaveBeenCalled();
+  expect(clearPosPrivateData).not.toHaveBeenCalled();
+});
+
+it("does not grant local access on service failure before a complete synchronization", async () => {
+  jest.mocked(hasPosCachedSnapshot).mockResolvedValue(false);
+  auth.mockResolvedValue({ data: { user: null }, error: { status: 503, message: "Unavailable" } });
+  const { result } = renderHook(() => usePosLocationAccess("site-a", "actor-a"));
+  await settle();
+  expect(result.current).toMatchObject({ status: "unavailable", reason: "session" });
+  expect(clearPosPrivateData).not.toHaveBeenCalled();
+});
 
 it("aborts timed-out RPC transport and allows manual verification without clearing stored work", async () => {
   const updated = jest.fn();
