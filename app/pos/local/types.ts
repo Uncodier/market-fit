@@ -62,6 +62,8 @@ export type PosOutboxRow = {
   lastError?: string | null;
   /** Local cart identity only; never sent to checkout as authorization. */
   checkoutCartSessionId?: string;
+  /** Picker-only preview; never payment evidence or a checkout input. */
+  pickerAmountDueAfterPayment?: number;
   recoveryState?: import("../checkout-recovery-types").PosCheckoutRecoveryState;
   recoveryOrderId?: string | null;
   recoverySaleId?: string | null;

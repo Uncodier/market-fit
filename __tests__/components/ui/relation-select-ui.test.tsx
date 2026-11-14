@@ -5,6 +5,18 @@ import { Dialog, DialogContent, DialogTitle, DialogBody } from '@/app/components
 const options = [{ id: 'supplier', label: 'Approved supplier' }]
 beforeAll(() => { global.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} } })
 
+test('shows disabled options but never selects them by click or Enter', () => {
+  const onValueChange = jest.fn()
+  render(<RelationSelect label="Order" options={[{ id: 'pending', label: 'Table 1', disabled: true }]}
+    value={null} onValueChange={onValueChange} allowCreate={false} />)
+  fireEvent.click(screen.getByLabelText('Order'))
+  fireEvent.click(screen.getByText('Table 1'))
+  expect(screen.getByText('Table 1').closest('[aria-disabled]')).toHaveAttribute('aria-disabled', 'true')
+  fireEvent.change(screen.getByLabelText('Order'), { target: { value: 'Table 1' } })
+  fireEvent.keyDown(screen.getByLabelText('Order'), { key: 'Enter' })
+  expect(onValueChange).not.toHaveBeenCalled()
+})
+
 test('associates its label and selects a portaled option without closing the parent dialog', () => {
   const onClose = jest.fn(), onValueChange = jest.fn()
   render(<Dialog open onOpenChange={onClose}><DialogContent aria-describedby={undefined}>

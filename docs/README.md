@@ -5,6 +5,8 @@ Use the guides below before relying on older implementation notes.
 
 ## Start here
 
+- [Instance ownership access](INSTANCE_OWNERSHIP_ACCESS.md) — restricted-member RLS, child-resource guards, attribution, local verification and pending rollout.
+
 - [Instance asset loading](INSTANCE_ASSET_LOADING.md) — grouped RLS reads, identity-bound cache invalidation, auxiliary freshness, unknown counts and rollout limits.
 
 - [14035 integration readiness](MERGE_14035_READINESS.md) — route inventory,

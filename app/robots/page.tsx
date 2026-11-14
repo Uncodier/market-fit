@@ -30,7 +30,7 @@ function RobotsPageContent() {
   const workspace = useWorkspaceTabs(presentation)
   const { isMobileWorkspace, showList, backToInstances, selectInstance } = useMobileInstanceNavigation(workspace)
   return (
-    <div className={`flex flex-col h-full w-full ${workspace.isCanvasMode ? 'overflow-visible' : 'overflow-hidden'} relative`}>
+    <div className={`flex flex-col h-full min-h-0 w-full ${workspace.isCanvasMode ? 'overflow-visible' : 'overflow-hidden'} relative ${isMobileWorkspace ? 'pt-[var(--topbar-height,64px)]' : ''}`}>
       {creation.avatarError && <div role="alert" className="text-sm text-destructive">
         {creation.avatarError} <button type="button" onClick={creation.retryAvatars}>Retry</button>
       </div>}
@@ -38,7 +38,7 @@ function RobotsPageContent() {
       {isMobileWorkspace && !showList && <MobileInstanceToolbar {...workspace} onBack={backToInstances} />}
       <InstanceModals {...workspace} />
       {showList && <MobileInstanceList key={workspace.currentSite?.id} {...workspace} onSelect={selectInstance} />}
-      <div hidden={showList} className={showList ? "hidden" : `absolute inset-0 ${styles.detail}`} aria-hidden={showList}>
+      <div hidden={showList} className={showList ? "hidden" : `${isMobileWorkspace ? 'relative flex-1 min-h-0' : 'absolute inset-0'} ${styles.detail}`} aria-hidden={showList}>
         <RobotsWorkspace {...workspace} />
       </div>
     </div>

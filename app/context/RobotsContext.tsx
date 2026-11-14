@@ -4,8 +4,11 @@ import { createContext, useContext, useEffect, useState, ReactNode, useCallback,
 import useSWR from 'swr'
 import { usePathname } from "next/navigation"
 import { useSite } from "@/app/context/SiteContext"
+import { useAuth } from "@/app/hooks/use-auth"
+import { useRobotsPermissionRevision } from "@/app/hooks/use-robots-permission-revision"
 import { createClient } from "@/lib/supabase/client"
 import { sortRobotInstances } from "@/lib/navigation/robots-instance"
+import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js'
 
 function shouldLoadRobots(pathname: string | null): boolean {
   if (!pathname) return false
@@ -30,7 +33,7 @@ interface Robot {
   created_at?: string;
   updated_at?: string;
   requirement_title?: string;
-  requirement_backlog?: any;
+  requirement_backlog?: unknown;
 }
 
 interface RobotsByActivity {
@@ -75,7 +78,7 @@ function extractRequirementId(name?: string): string | null {
   return null
 }
 
-function applyRequirementTitles(robots: Robot[], requirements: Array<{ id: string; title: string; backlog: any }>): Robot[] {
+function applyRequirementTitles(robots: Robot[], requirements: Array<{ id: string; title: string; backlog: unknown }>): Robot[] {
   if (!requirements.length) return robots
 
   const reqMap = Object.fromEntries(
@@ -113,29 +116,27 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
   const pathname = usePathname()
   const loadRobots = shouldLoadRobots(pathname)
   const { currentSite } = useSite()
-  const [error, setError] = useState<string | null>(null)
+  const siteId = currentSite?.id
+  const { user } = useAuth()
+  const userId = user?.id
+  const { revision: permissionRevision, pending: permissionPending } = useRobotsPermissionRevision(
+    loadRobots ? currentSite?.id ?? null : null, userId ?? null)
   const [lastRefreshAt, setLastRefreshAt] = useState<number | null>(null)
   const [refreshCount, setRefreshCount] = useState(0)
   // Kept for API compatibility; Realtime always mutates (never gated).
   const [, setAutoRefreshEnabled] = useState(true)
-  const robotsSubscriptionRef = useRef<any>(null)
+  const robotsSubscriptionRef = useRef<RealtimeChannel | null>(null)
+  const retireRealtimeRef = useRef<(() => void) | null>(null)
   const robotsSubscriptionStatusRef = useRef<string>('INIT')
   const isResubscribingRef = useRef(false)
   const enrichingRef = useRef(false)
   
-  const [isSiteContextReady, setIsSiteContextReady] = useState(false)
-  
-  useEffect(() => {
-    if (currentSite?.id) {
-      setIsSiteContextReady(true)
-    } else {
-      setIsSiteContextReady(false)
-    }
-  }, [currentSite?.id])
+  const isSiteContextReady = Boolean(siteId)
 
-  const { data: robotsData, isLoading, mutate } = useSWR(
-    loadRobots && isSiteContextReady && currentSite?.id ? ['remote_instances', currentSite.id] : null,
-    async ([_, siteId]) => {
+  const { data: cachedRobots, error: robotsFetchError, isLoading: robotsLoading, mutate } = useSWR(
+    loadRobots && isSiteContextReady && currentSite?.id && userId && permissionRevision !== null
+      ? ['remote_instances', currentSite.id, userId, permissionRevision] : null,
+    async ([, siteId]) => {
       const supabase = createClient()
       const { data: robots, error: robotsError } = await supabase
         .from('remote_instances')
@@ -146,15 +147,17 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
       if (robotsError) {
         const errorDetail = robotsError instanceof Error ? robotsError.message : (robotsError?.message || JSON.stringify(robotsError));
         console.error('Error fetching robots:', errorDetail, robotsError)
-        setError(errorDetail || 'Failed to fetch robots')
         throw new Error(errorDetail || 'Failed to fetch robots')
       }
-      setError(null)
 
       // Return instances immediately; requirement titles enrich in a follow-up effect
       return (robots || []) as Robot[]
-    }
+    },
+    { keepPreviousData: false }
   )
+  const isLoading = permissionPending || robotsLoading
+  const robotsData = permissionRevision !== null ? cachedRobots : undefined
+  const error = permissionRevision !== null && robotsFetchError ? robotsFetchError.message : null
 
   // Non-blocking enrichment of requirement titles after instances paint
   useEffect(() => {
@@ -218,7 +221,7 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
     return { robotsByActivity: organized, totalRunningRobots: runningCount }
   }, [robotsData])
 
-  const activityMap: Record<string, string> = {
+  const activityMap = useMemo<Record<string, string>>(() => ({
     "free-agent": "Free Agent",
     "channel-market-fit": "Channel Market Fit",
     "engage": "Engage in Social Networks", 
@@ -229,12 +232,12 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
     "build-requirements": "Build Requirements",
     "execute-plan": "Execute Plan",
     "Assistant Session": "Assistant Session"
-  }
+  }), [])
 
   const getRobotsForActivity = useCallback((activityName: string): Robot[] => {
     const fullActivityName = activityMap[activityName] || activityName
     return robotsByActivity[fullActivityName] || []
-  }, [robotsByActivity])
+  }, [robotsByActivity, activityMap])
 
   const getActiveRobotForActivity = useCallback((activityName: string): Robot | null => {
     const robots = getRobotsForActivity(activityName)
@@ -264,7 +267,7 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
     return null
   }, [robotsByActivity])
 
-  const refreshRobots = useCallback(async (siteId?: string) => {
+  const refreshRobots = useCallback(async () => {
     if (!isSiteContextReady) return
     try {
       await mutate()
@@ -276,6 +279,8 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
   }, [mutate, isSiteContextReady])
 
   const teardownRealtimeSubscription = useCallback(() => {
+    retireRealtimeRef.current?.()
+    retireRealtimeRef.current = null
     if (robotsSubscriptionRef.current) {
       try {
         const supabase = createClient()
@@ -290,22 +295,25 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
   }, [])
 
   const setupRealtimeSubscription = useCallback(() => {
-    if (!currentSite?.id || !isSiteContextReady) return
+    if (!siteId || !isSiteContextReady || !userId || permissionRevision === null) return
 
     const supabase = createClient()
     teardownRealtimeSubscription()
 
+    let disposed = false
+    retireRealtimeRef.current = () => { disposed = true }
     const channel = supabase
-      .channel(`robots_context_${currentSite.id}`)
+      .channel(`robots_context_${siteId}_${userId}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'remote_instances',
-          filter: `site_id=eq.${currentSite.id}`
+          filter: `site_id=eq.${siteId}`
         },
-        (payload: any) => {
+        (payload: RealtimePostgresChangesPayload<Robot>) => {
+          if (disposed) return
           mutate((current) => {
             const robots = current || []
             if (payload.eventType === 'DELETE') {
@@ -325,7 +333,7 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
           }, false)
         }
       )
-      .subscribe((status: string, err?: any) => {
+      .subscribe((status: string, err?: Error) => {
         robotsSubscriptionStatusRef.current = status
         if (status === 'CHANNEL_ERROR') {
           console.warn('🔄 [RobotsContext] Temporary subscription error (auto-reconnecting...)', err || '')
@@ -335,7 +343,8 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
       })
 
     robotsSubscriptionRef.current = channel
-  }, [currentSite?.id, isSiteContextReady, teardownRealtimeSubscription, mutate])
+    return () => { disposed = true }
+  }, [siteId, isSiteContextReady, userId, permissionRevision, teardownRealtimeSubscription, mutate])
 
   const ensureRealtimeHealthy = useCallback(() => {
     if (!currentSite?.id || !isSiteContextReady) return
@@ -361,8 +370,9 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
 
   useEffect(() => {
     if (!loadRobots || !currentSite?.id || !isSiteContextReady) return
-    setupRealtimeSubscription()
+    const dispose = setupRealtimeSubscription()
     return () => {
+      dispose?.()
       teardownRealtimeSubscription()
     }
   }, [loadRobots, currentSite?.id, isSiteContextReady, setupRealtimeSubscription, teardownRealtimeSubscription])

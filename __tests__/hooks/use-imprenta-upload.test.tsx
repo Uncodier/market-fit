@@ -27,7 +27,7 @@ const options = {
   instanceId: "instance-a", siteId: "site-a", onUploaded,
   getViewport: () => ({
     canvasWidth: 1000, canvasHeight: 800, scale: 2,
-    position: { x: 100, y: 200 }, interacting: false,
+    position: { x: 100, y: 200 }, interacting: false, hoveredNodeId: null,
   }),
 }
 

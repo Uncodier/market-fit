@@ -135,6 +135,15 @@ export function Sidebar({
         event.key.toLowerCase() !== "a"
       ) return
 
+      const isEditing = [event.target, document.activeElement].some((element) =>
+        element instanceof HTMLElement && (
+          element.matches("input, textarea, select") ||
+          element.isContentEditable ||
+          element.closest('[contenteditable=""], [contenteditable="true"], [contenteditable="plaintext-only"]') !== null
+        )
+      )
+      if (isEditing) return
+
       event.preventDefault()
       if (!event.repeat) setIsAppsLauncherOpen(true)
     }

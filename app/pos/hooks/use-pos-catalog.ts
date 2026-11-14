@@ -16,6 +16,7 @@ import { isStorefrontAvailable } from "@/app/catalog/storefront-availability";
 import type { PosInventorySnapshot } from "@/app/pos/inventory-availability";
 import { createPosRefreshQueue } from "../local/refresh-queue";
 import { readPosLocalWithDeadline } from "../local/read-deadline";
+import { subscribePosOrderPickerChanges } from "../local/order-picker-changes";
 
 type LocalCatalog = Awaited<ReturnType<typeof readLocalCatalog>>;
 
@@ -61,14 +62,16 @@ export function usePosCatalog(siteId: string | undefined) {
     const current = () => activeSiteId.current === siteId && sequence === ordersSequence.current;
     try {
       const [orders, customers] = await Promise.allSettled([
-        readPosLocalWithDeadline(() => readLocalPendingOrders(siteId)),
+        readPosLocalWithDeadline(() => readLocalPendingOrders(siteId)).then(value => {
+          if (current()) {
+            setPendingOrders(value);
+            setOrdersSiteId(siteId);
+          }
+          return value;
+        }),
         readPosLocalWithDeadline(() => getPosDb().leads.where("site_id").equals(siteId).toArray()),
       ]);
       if (!current()) return;
-      if (orders.status === "fulfilled") {
-        setPendingOrders(orders.value);
-        setOrdersSiteId(siteId);
-      }
       if (customers.status === "fulfilled" && customerSequence === customersSequence.current) {
         setLeadsValue(customers.value);
         setCustomersSiteId(siteId);
@@ -157,6 +160,30 @@ export function usePosCatalog(siteId: string | undefined) {
     }, siteId);
     return () => { unsub(); catalogQueue.stop(); ordersQueue.stop(); };
   }, [siteId, reloadCatalog, reloadOrders]);
+
+  useEffect(() => {
+    if (!siteId) return;
+    // This lane is independent of customer reads and sync counters. Invalidate
+    // earlier reads immediately so a late snapshot cannot undo a local action.
+    const queue = createPosRefreshQueue(async () => {
+      const sequence = ++ordersSequence.current;
+      try {
+        const orders = await readPosLocalWithDeadline(() => readLocalPendingOrders(siteId));
+        if (activeSiteId.current !== siteId || sequence !== ordersSequence.current) return;
+        setPendingOrders(orders);
+        setOrdersSiteId(siteId);
+      } catch {
+        if (activeSiteId.current === siteId) setReadErrors(previous => ({
+          siteId, catalog: previous.siteId === siteId && previous.catalog, orders: true,
+        }));
+      }
+    });
+    const unsubscribe = subscribePosOrderPickerChanges(() => {
+      ordersSequence.current += 1;
+      queue.request();
+    });
+    return () => { unsubscribe(); queue.stop(); ordersSequence.current += 1; };
+  }, [siteId]);
 
   const catalogError = readErrors.siteId === siteId && readErrors.catalog;
   const ordersError = readErrors.siteId === siteId && readErrors.orders;

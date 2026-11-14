@@ -364,6 +364,23 @@ regression tests:
 npm test -- --runInBand __tests__/pos/payment-register-preflight.test.tsx __tests__/pos/register-preflight-close.test.tsx __tests__/pos/register-payment-queue.test.ts __tests__/pos/use-pos-checkout-preparation.test.tsx __tests__/pos/checkout-feedback.test.ts
 ```
 
+## POS order picker local feedback
+
+The POS order dropdown observes committed Dexie order/outbox writes (including
+other tabs), independently of sync counters and customer reads. Payments appear
+as pending or requiring review and cannot be selected for another collection.
+This display overlay never reduces the authoritative cached balance. Confirmed
+full payments hide stale open-order snapshots; partial payments wait for the
+server receipt and balance. Matching receipt IDs retire the overlay so later
+refunds or added items remain visible. Rejected/cancelled attempts restore an
+existing order; rejected uncreated drafts disappear without deleting queue history.
+
+Offline regression coverage:
+
+```bash
+npm test -- --runInBand __tests__/pos/order-picker-projection.test.ts __tests__/pos/order-picker-changes.test.ts __tests__/pos/order-picker-payment-ui.test.tsx __tests__/pos/use-pos-catalog.test.tsx
+```
+
 ## Before handing off
 
 - Review the diff for unrelated edits and accidental secret exposure.

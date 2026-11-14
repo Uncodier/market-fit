@@ -11,14 +11,14 @@ type Props = Pick<ReturnType<typeof useWorkspaceTabs>,
 export function MobileInstanceToolbar({ workspaceTabs, activeWorkspaceTab, handleWorkspaceTabChange,
   isCanvasMode, activeRobotInstance, onBack }: Props) {
   return (
-    <StickyHeader className="md:hidden">
-      <div className="flex w-full min-w-0 items-center">
+    <StickyHeader className="h-[71px] md:hidden">
+      <div className="flex h-full w-full min-w-0 items-center">
         <MobileInstanceBackButton onBack={onBack} />
         {!isCanvasMode ? (
-          <Tabs value={activeWorkspaceTab} onValueChange={handleWorkspaceTabChange} className="min-w-0 flex-1">
+          <Tabs value={activeWorkspaceTab} onValueChange={handleWorkspaceTabChange} className="flex h-full min-w-0 flex-1 items-center">
             <ResponsiveTabsList tabs={workspaceTabs} activeTab={activeWorkspaceTab} onTabChange={handleWorkspaceTabChange}
               className="w-auto rounded-full border border-border/40 bg-background/35 shadow-sm backdrop-blur-md"
-              containerClassName="justify-center" />
+              containerClassName="h-full justify-center" />
           </Tabs>
         ) : <span className="truncate text-sm font-medium">{activeRobotInstance?.requirement_title || activeRobotInstance?.name || "New Agent"}</span>}
       </div>

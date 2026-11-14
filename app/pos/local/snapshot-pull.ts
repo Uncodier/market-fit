@@ -6,6 +6,7 @@ import type { LocalPendingOrder, LocalPromotion } from "./types";
 import type { PosPermissionLease } from "./location-permission-state";
 import { assertPosRemotePermission, canStartPosRemoteRequest, requirePosRemotePermission } from "./remote-permission";
 import { isRejectedLocalDraft } from "./rejected-order-projection";
+import { projectPosOrderPicker } from "./order-picker-projection";
 
 const SCHEMA_VERSION = 1;
 
@@ -55,7 +56,7 @@ export async function readLocalPendingOrders(siteId: string) {
       db.pendingOrders.where("site_id").equals(siteId).toArray(),
       db.outbox.where("siteId").equals(siteId).toArray(),
     ]);
-    return orders.filter(order => !isRejectedLocalDraft(order, rows));
+    return projectPosOrderPicker(siteId, orders, rows);
   });
 }
 

@@ -19,7 +19,6 @@ import {
   type ImprentaLiteBand,
 } from "@/app/lib/imprenta-canvas-draw"
 import type { ImprentaThumbCache } from "@/app/lib/imprenta-thumb-cache"
-
 export type GridCacheEntry = {
   nodes: InstanceNode[]
   positions: Record<string, { x: number; y: number }>
@@ -32,11 +31,7 @@ export type GridCacheEntry = {
   nodeIndexes: Map<string, number>
 }
 
-/**
- * Module-level helper: rebuilds the spatial grid only when one of the input refs changes
- * identity. Kept outside the component so it is not subject to HMR/React-Compiler closure
- * transforms that (in some Turbopack builds) renamed the equivalent `useCallback` target.
- */
+/** Identity-keyed grid helper kept module-level for HMR/React-Compiler compatibility. */
 export function readCachedIdsAndGrid(
   cacheRef: MutableRefObject<GridCacheEntry | null>,
   nodes: InstanceNode[],
@@ -80,7 +75,6 @@ export function readCachedIdsAndGrid(
   cacheRef.current = entry
   return entry
 }
-
 export interface ImprentaNodesCanvasProps {
   /** Nodes to consider (already includes dummies filtered out by the parent). */
   nodes: InstanceNode[]
@@ -119,11 +113,7 @@ export interface ImprentaNodesCanvasProps {
 
 const DEFAULT_PAD_WORLD = 96
 
-/**
- * Canvas-based lite node layer. Subscribes directly to the viewport store, skips React
- * reconcile on pan/zoom, and repaints once per rAF coalesced. Owns pointer hit testing
- * for lite nodes so the existing drag/connection pipelines keep working.
- */
+/** Lite node layer: direct viewport subscription, coalesced drawing and grid hit testing. */
 export function ImprentaNodesCanvas({
   nodes,
   positions,
@@ -379,12 +369,7 @@ export function ImprentaNodesCanvas({
     scheduleRef.current?.()
   }, [nodes, positions, heights, nodeW, rowH, isDarkMode, selectedId, skipIds])
 
-  /**
-   * Hit test using the spatial grid so it scales to thousands of nodes.
-   * For a client coordinate, resolves the world position, asks the grid for the
-   * (usually small) set of candidate ids whose cell the point falls into, and
-   * performs bbox containment only on those.
-   */
+  /** Resolve client coordinates against spatial candidates in reverse paint order. */
   const hitTest = useCallback(
     (clientX: number, clientY: number): InstanceNode | null => {
       const canvas = canvasRef.current
@@ -403,14 +388,15 @@ export function ImprentaNodesCanvas({
       const cached = readCachedIdsAndGrid(gridCacheRef, nodesRef.current, pos, h, w, rH)
       const point: GraphBBox = { minX: wx, minY: wy, maxX: wx, maxY: wy }
       const candidates = collectIdsFromGrid(cached.grid, point)
-      const all = cached.nodes
       const s = snap.scale
       const band = bandFromScale(s, markerMaxRef.current, microMaxRef.current, simpleMaxRef.current)
-      
-      // Iterate in stable reverse order so children (later in array) win over parents.
-      for (let i = all.length - 1; i >= 0; i--) {
-        const node = all[i]
-        if (!candidates.has(node.id)) continue
+      // Only visit spatial candidates, in reverse paint order so children win.
+      const orderedIds = Array.from(candidates).sort(
+        (a, b) => (cached.nodeIndexes.get(b) ?? 0) - (cached.nodeIndexes.get(a) ?? 0)
+      )
+      for (const id of orderedIds) {
+        const node = cached.nodesById.get(id)
+        if (!node || skipRef.current?.has(id)) continue
         const p = pos[node.id]
         if (!p) continue
         const hh = h[node.id] || rH

@@ -60,7 +60,8 @@ function CarouselNavButton({
   )
 }
 
-const leadCache = new Map<string, any>()
+const remoteCache = new Map<string, { total: number; rows: AudienceLeadRow[] }>()
+const leadDetailCache = new Map<string, Lead>()
 
 export function ImprentaAudienceLeadsCarousel({ audienceId, siteId, embeddedLeads, totalCount }: Props) {
   const [page, setPage] = useState(0)
@@ -103,9 +104,9 @@ export function ImprentaAudienceLeadsCarousel({ audienceId, siteId, embeddedLead
       return
     }
     
-    const cacheKey = `audience_${audienceId}_${page}`
-    if (leadCache.has(cacheKey)) {
-      const res = leadCache.get(cacheKey)
+    const cacheKey = JSON.stringify([siteId, audienceId, page])
+    if (remoteCache.has(cacheKey)) {
+      const res = remoteCache.get(cacheKey)!
       setTotal(res.total)
       setRow(res.rows[0] ?? null)
       setErr(null)
@@ -121,12 +122,12 @@ export function ImprentaAudienceLeadsCarousel({ audienceId, siteId, embeddedLead
       setRow(null)
       setTotal(0)
     } else {
-      leadCache.set(cacheKey, res)
+      remoteCache.set(cacheKey, res)
       setTotal(res.total)
       setRow(res.rows[0] ?? null)
     }
     setLoading(false)
-  }, [audienceId, page, inViewport])
+  }, [audienceId, siteId, page, inViewport])
 
   useEffect(() => {
     // If we have an audienceId, prefer fetching remote, but fallback to embedded if it fails or if we prefer it
@@ -164,15 +165,10 @@ export function ImprentaAudienceLeadsCarousel({ audienceId, siteId, embeddedLead
       return
     }
     
-    const cacheKey = `lead_${leadId}_${siteId}`
-    if (leadCache.has(cacheKey)) {
-      const res = leadCache.get(cacheKey)
-      if (res.error || !res.lead) {
-        setLeadErr(res.error || "Could not load lead")
-        setLeadDetail(null)
-      } else {
-        setLeadDetail(res.lead as Lead)
-      }
+    const cacheKey = JSON.stringify([siteId, leadId])
+    if (leadDetailCache.has(cacheKey)) {
+      setLeadDetail(leadDetailCache.get(cacheKey)!)
+      setLeadErr(null)
       setLeadLoading(false)
       return
     }
@@ -184,7 +180,7 @@ export function ImprentaAudienceLeadsCarousel({ audienceId, siteId, embeddedLead
     void getLeadById(leadId, siteId).then((res) => {
       if (cancelled) return
       setLeadLoading(false)
-      leadCache.set(cacheKey, res)
+      if (!res.error && res.lead) leadDetailCache.set(cacheKey, res.lead)
       if (res.error || !res.lead) {
         setLeadErr(res.error || "Could not load lead")
         setLeadDetail(null)

@@ -327,7 +327,11 @@ const { className, activeRobotInstance, isBrowserVisible, hasTopHeaderSpace, ski
         className={cn(
           "absolute right-0 left-0 bottom-0 z-20 pointer-events-none flex flex-col items-center transition-colors duration-300 ease-in-out chat-input-container !bg-transparent",
           // Half of the header inset (135px) minus half of the carousel + gap (48px) requires 87px of bottom padding.
-          isEmpty ? "top-[calc(var(--topbar-height,64px)+71px)] justify-center pb-[calc(var(--topbar-height,64px)+23px)]" : "top-auto justify-end pb-[15px]"
+          isEmpty
+            ? cn("justify-center", hasTopHeaderSpace
+              ? "top-[calc(var(--topbar-height,64px)+71px)] pb-[calc(var(--topbar-height,64px)+23px)]"
+              : "top-0 pb-12 lg:top-[calc(var(--topbar-height,64px)+71px)] lg:pb-[calc(var(--topbar-height,64px)+23px)]")
+            : "top-auto justify-end pb-[15px]"
         )}
         style={{
           width: '100%',

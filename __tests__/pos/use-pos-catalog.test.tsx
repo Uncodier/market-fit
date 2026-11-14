@@ -5,6 +5,9 @@ import { readLocalCatalog, readLocalPendingOrders, readLocalPromotions, readTaxe
 import { getPosDb, type PosLead } from "@/app/pos/local/db";
 import { subscribePosSync, type SyncStatus } from "@/app/pos/local/sync-engine";
 import type { PosInventorySnapshot } from "@/app/pos/inventory-availability";
+import { subscribePosOrderPickerChanges } from "@/app/pos/local/order-picker-changes";
+
+jest.mock("@/app/pos/local/order-picker-changes", () => ({ subscribePosOrderPickerChanges: jest.fn(() => jest.fn()) }));
 
 jest.mock("@/app/pos/local/snapshot-pull", () => ({
   readLocalCatalog: jest.fn(), readLocalPendingOrders: jest.fn(), readLocalPromotions: jest.fn(), readTaxesByItemIds: jest.fn(),
@@ -52,6 +55,48 @@ describe("usePosCatalog inventory", () => {
     expect(result.current.inventorySnapshot).toEqual({ levels: [], policy: "warn" });
     await act(async () => result.current.reload());
     expect(result.current.inventorySnapshot).toEqual(inventory);
+  });
+
+  it("publishes committed order changes while customer reads hang and counters stay unchanged", async () => {
+    const { result } = renderHook(() => usePosCatalog("site-1"));
+    await waitFor(() => expect(result.current.hydrated).toBe(true));
+    const stuck = deferred<PosLead[]>();
+    jest.mocked(getPosDb).mockReturnValue({ priceListItems: { toArray: async () => [] },
+      leads: { where: () => ({ equals: () => ({ toArray: () => stuck.promise }) }) },
+    } as never);
+    let reload!: Promise<void>;
+    await act(async () => { reload = result.current.reload(); });
+    const raw = { id: "order", status: "pending", amount_due: 20, pos_picker_payment_pending: true };
+    jest.mocked(readLocalPendingOrders).mockResolvedValue([{ id: "order", site_id: "site-1", status: "pending", created_at: "", raw }]);
+    await act(async () => jest.mocked(subscribePosOrderPickerChanges).mock.calls[0][0]());
+    expect(result.current.pendingOrders).toEqual([raw]);
+    await act(async () => { stuck.resolve([]); await reload; });
+    expect(result.current.pendingOrders).toEqual([raw]);
+  });
+
+  it("refreshes cancellations even when failed and pending counts have not changed", async () => {
+    const raw = { id: "order", status: "pending", amount_due: 20 };
+    jest.mocked(readLocalPendingOrders).mockResolvedValue([{ id: "order", site_id: "site-1", status: "pending", created_at: "", raw }]);
+    const { result } = renderHook(() => usePosCatalog("site-1"));
+    await waitFor(() => expect(result.current.pendingOrders).toEqual([raw]));
+    jest.mocked(readLocalPendingOrders).mockResolvedValue([]);
+    await act(async () => jest.mocked(subscribePosOrderPickerChanges).mock.calls[0][0]());
+    expect(result.current.pendingOrders).toEqual([]);
+  });
+
+  it("does not let a pre-payment local read undo a committed picker update", async () => {
+    const { result } = renderHook(() => usePosCatalog("site-1"));
+    await waitFor(() => expect(result.current.hydrated).toBe(true));
+    const stale = deferred<Awaited<ReturnType<typeof readLocalPendingOrders>>>();
+    jest.mocked(readLocalPendingOrders).mockReturnValueOnce(stale.promise);
+    let reload!: Promise<void>;
+    await act(async () => { reload = result.current.reload(); });
+    const raw = { id: "order", status: "pending", amount_due: 20, pos_picker_payment_pending: true };
+    jest.mocked(readLocalPendingOrders).mockResolvedValue([{ id: "order", site_id: "site-1", status: "pending", created_at: "", raw }]);
+    await act(async () => jest.mocked(subscribePosOrderPickerChanges).mock.calls[0][0]());
+    expect(result.current.pendingOrders).toEqual([raw]);
+    await act(async () => { stale.resolve([]); await reload; });
+    expect(result.current.pendingOrders).toEqual([raw]);
   });
 
   it("does not synthesize inventory for legacy local snapshots", async () => {

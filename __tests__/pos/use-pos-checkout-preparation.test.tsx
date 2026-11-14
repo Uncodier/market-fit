@@ -2,7 +2,7 @@ import { act, renderHook } from "@testing-library/react";
 import { usePosCheckout } from "@/app/pos/hooks/use-pos-checkout";
 import { fetchPosOrder as getPosOrder } from "@/app/pos/operation-client";
 import { posOrderVersion } from "@/app/pos/order-version";
-import { enqueueCheckout } from "@/app/pos/local/outbox";
+import { enqueueCheckout, updateOutboxRow } from "@/app/pos/local/outbox";
 import { enqueueRegisteredCheckout } from "@/app/pos/register/prepare-payment";
 import { toast } from "sonner";
 import { resetCheckoutCartSession } from "@/app/pos/local/checkout-attempt-storage";
@@ -24,7 +24,7 @@ jest.mock("@/app/pos/hooks/use-payment-register-preflight", () => ({
   usePaymentRegisterPreflight: () => ({ start: jest.fn(), take: jest.fn() }),
 }));
 jest.mock("@/app/context/SiteContext", () => ({ useSite: () => ({ currentSite: null }) }));
-jest.mock("@/app/pos/local/outbox", () => ({ enqueueCheckout: jest.fn(), enqueueCreateLead: jest.fn() }));
+jest.mock("@/app/pos/local/outbox", () => ({ enqueueCheckout: jest.fn(), enqueueCreateLead: jest.fn(), updateOutboxRow: jest.fn() }));
 jest.mock("@/app/pos/register/prepare-payment", () => ({ enqueueRegisteredCheckout: jest.fn() }));
 jest.mock("@/app/pos/local/sync-engine", () => ({ syncPosCheckout: jest.fn(), refreshPosSyncCounts: jest.fn() }));
 jest.mock("@/app/pos/local/db", () => ({ getPosDb: () => ({
@@ -59,6 +59,7 @@ describe("POS payment preparation", () => {
     permissionCurrent = true;
     pendingDelete.mockReset().mockResolvedValue(undefined);
     pendingPut.mockReset().mockResolvedValue(undefined);
+    jest.mocked(updateOutboxRow).mockReset().mockResolvedValue(undefined);
     outboxFirst.mockReset().mockResolvedValue({ status: "failed", lastError: "old sale failure" });
     jest.mocked(enqueueRegisteredCheckout).mockImplementation(async (siteId, data) => {
       await enqueueCheckout(siteId, data);
@@ -68,6 +69,16 @@ describe("POS payment preparation", () => {
     jest.mocked(getPosOrder).mockResolvedValue({ data: snapshot } as never);
   });
   afterEach(() => { Object.defineProperty(navigator, "onLine", { configurable: true, value: true }); });
+
+  it("stores the picker preview separately and confirms even if that optional write fails", async () => {
+    jest.mocked(updateOutboxRow).mockRejectedValueOnce(new Error("Storage unavailable"));
+    const input = args();
+    const { result } = renderHook(() => usePosCheckout(input));
+    await act(async () => { await result.current.handleCheckout(payments); });
+    expect(updateOutboxRow).toHaveBeenCalledWith("row", { pickerAmountDueAfterPayment: 0 });
+    expect(input.onCleared).toHaveBeenCalledTimes(1);
+    expect(syncPosCheckout).toHaveBeenCalled();
+  });
 
   it.each(["SAVE20", null])("persists the promotion preview for offline reopening: %s", async (code) => {
     const input = { ...args(), activeOrderId: "local_original", expectedOrderVersion: undefined,

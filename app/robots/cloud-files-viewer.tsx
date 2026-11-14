@@ -9,11 +9,13 @@ export interface CloudFileFolder {
   title?: string | null
 }
 
-export function CloudFilesViewer({ url, files, onFileSelect, className }: {
+export function CloudFilesViewer({ url, files, onFileSelect, className, toolbarTarget, filesToggleTarget }: {
   url: string
   files: CloudFileFolder[]
   onFileSelect?: (path: string) => void
   className?: string
+  toolbarTarget?: HTMLElement | null
+  filesToggleTarget?: HTMLElement | null
 }) {
   const [chosenUrl, setChosenUrl] = useState<string | null>(null)
   const [collapsedUrl, setCollapsedUrl] = useState<string | null>(null)
@@ -43,5 +45,5 @@ export function CloudFilesViewer({ url, files, onFileSelect, className }: {
       })}
     </div>
   )
-  return <ZipViewer url={selectedUrl} className={className} onFileSelect={onFileSelect} folderNavigation={navigation} />
+  return <ZipViewer url={selectedUrl} className={className} onFileSelect={onFileSelect} folderNavigation={navigation} folderCount={folders.length} toolbarTarget={toolbarTarget} filesToggleTarget={filesToggleTarget} />
 }

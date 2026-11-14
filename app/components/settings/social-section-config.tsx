@@ -35,7 +35,18 @@ export const SOCIAL_PLATFORMS: SocialPlatformOption[] = [
   { value: "bluesky", label: "Bluesky", icon: BlueskyIcon },
 ]
 
-export const NEW_ACCOUNT_SOCIAL_PLATFORMS = SOCIAL_PLATFORMS
+// Temporarily hide these networks from the selector without affecting existing accounts.
+const HIDDEN_SOCIAL_PLATFORM_VALUES = new Set([
+  "facebook",
+  "threads",
+  "twitter",
+  "x",
+  "youtube",
+])
+
+export const NEW_ACCOUNT_SOCIAL_PLATFORMS = SOCIAL_PLATFORMS.filter(
+  (platform) => !HIDDEN_SOCIAL_PLATFORM_VALUES.has(platform.value),
+)
 
 const OAUTH_CONNECT_PLATFORM_VALUES = new Set([
   "facebook",

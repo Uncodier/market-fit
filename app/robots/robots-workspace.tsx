@@ -1,4 +1,5 @@
 import { Tabs } from "@/app/components/ui/tabs"
+import { useState } from 'react'
 
 import { Globe, ExternalLink, RotateCw, Monitor, Laptop, Tablet, Smartphone, Download, Archive, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen } from "@/app/components/ui/icons"
 
@@ -29,6 +30,8 @@ import { RequirementRunnerCard } from './requirement-runner-card'
 import type { useWorkspaceTabs } from "./use-workspace-tabs"
 
 export function RobotsWorkspace(input: ReturnType<typeof useWorkspaceTabs>) {
+  const [archiveToolbarTarget, setArchiveToolbarTarget] = useState<HTMLDivElement | null>(null)
+  const [archiveFilesToggleTarget, setArchiveFilesToggleTarget] = useState<HTMLDivElement | null>(null)
   const { isCanvasMode, workspaceTabs, activeWorkspaceTab, handleWorkspaceTabChange, hasBrowserContent, isMobileBrowserVisible, isBrowserVisible, isChatHidden, desktopToolbarRef, hasRequirementPreview, activeBrowserTab, isZipUrl, activeUrlToDisplay, selectedFilePath, iframeRef, displayedIframeUrl, desktopDeviceControlsRef, setViewportSize, viewportSize, allArtifactItems, desktopTabsWidth, desktopWorkspaceTabs, setDesktopTabsPreferredWidth, desktopLayoutToggleRef, setWorkspaceLayout, containerRef, isMobile, scale, isResuming, isInstanceStarting, latestPreviewUrl, latestSourceCodeUrl, artifacts, isActivityRobot, hasMessageBeenSent, isInstanceRunning, requirementPreviewFrameKey, setSelectedFilePath, artifactReloadCounter, theme, rawActiveUrlToDisplay, t, handleIframeLoad, iframeSrc, isPreviewHidden, viewMode, activeRobotInstance, currentSite, siteChangeKey, setHasMessageBeenSent, handleNewInstanceCreated } = input
   return (<>
       <div className={`absolute inset-0 flex flex-col min-h-0 ${isCanvasMode ? 'overflow-visible' : 'overflow-hidden'}`}>
@@ -57,7 +60,7 @@ export function RobotsWorkspace(input: ReturnType<typeof useWorkspaceTabs>) {
           <div className={cn(
             "flex flex-col lg:flex-row flex-1 min-h-0",
             isCanvasMode ? "overflow-visible" : "overflow-hidden lg:pt-0",
-            !isCanvasMode && workspaceTabs.length > 1 && "pt-[52px]",
+            !isCanvasMode && workspaceTabs.length > 1 && "md:pt-[52px]",
           )}>
             {hasBrowserContent && (
               <div className={cn(
@@ -66,12 +69,14 @@ export function RobotsWorkspace(input: ReturnType<typeof useWorkspaceTabs>) {
                 isBrowserVisible ? "lg:flex" : "lg:hidden",
                 isChatHidden ? "lg:w-full" : "lg:w-2/3",
               )}>
-                <div className="grid grid-rows-[1fr] lg:grid-rows-[auto_1fr] m-0 bg-card absolute inset-x-0 bottom-0 top-[calc(var(--topbar-height,64px)+71px)] overflow-hidden">
+                <div className="grid grid-rows-[1fr] lg:grid-rows-[auto_1fr] m-0 bg-card absolute inset-x-0 bottom-0 top-0 md:top-[calc(var(--topbar-height,64px)+71px)] overflow-hidden">
                   <div
                     ref={desktopToolbarRef}
-                    className="hidden h-11 shrink-0 lg:grid grid-cols-[minmax(33%,1fr)_auto_auto_auto] items-center gap-2 px-3 py-0 border-b border-black/5 dark:border-white/5 bg-background"
+                    className={cn("hidden h-11 shrink-0 lg:grid items-center gap-2 px-3 py-0 border-b border-black/5 dark:border-white/5 bg-background",
+                      isZipUrl ? 'grid-cols-[auto_minmax(0,1fr)_auto]' : 'grid-cols-[minmax(33%,1fr)_auto_auto_auto]')}
                   >
-                    {hasRequirementPreview && activeBrowserTab.kind !== 'artifact' ? (
+                    {isZipUrl && <div ref={setArchiveFilesToggleTarget} className="flex shrink-0 items-center" />}
+                    {isZipUrl || (hasRequirementPreview && activeBrowserTab.kind !== 'artifact') ? (
                       <div className="flex h-7 min-w-0 items-center gap-2 bg-black/5 dark:bg-white/10 border border-transparent rounded-full px-2.5 py-0">
                         {isZipUrl ? (
                           <>
@@ -92,6 +97,7 @@ export function RobotsWorkspace(input: ReturnType<typeof useWorkspaceTabs>) {
                             >
                               <Download className="h-3 w-3" />
                             </button>
+                            <div ref={setArchiveToolbarTarget} className="flex shrink-0 items-center" />
                           </>
                         ) : (
                           <>
@@ -126,7 +132,7 @@ export function RobotsWorkspace(input: ReturnType<typeof useWorkspaceTabs>) {
                       <div className="min-w-0" />
                     )}
 
-                    <div ref={desktopDeviceControlsRef} className="min-w-0">
+                    <div ref={desktopDeviceControlsRef} className={cn('min-w-0', isZipUrl && 'hidden')}>
                       {activeBrowserTab.kind !== 'artifact' && !isZipUrl && hasRequirementPreview && (
                         <div className="flex items-center gap-1 bg-black/5 dark:bg-white/10 border border-transparent rounded-full p-0.5 mx-1">
                           {([
@@ -156,7 +162,7 @@ export function RobotsWorkspace(input: ReturnType<typeof useWorkspaceTabs>) {
                     <Tabs
                       value={allArtifactItems.find((item) => item.isActive)?.id ?? 'preview'}
                       onValueChange={handleWorkspaceTabChange}
-                      className="w-full min-w-0"
+                      className={cn('w-full min-w-0', isZipUrl && 'hidden')}
                       style={desktopTabsWidth ? { width: `${desktopTabsWidth}px` } : undefined}
                     >
                       <ResponsiveTabsList
@@ -219,11 +225,15 @@ export function RobotsWorkspace(input: ReturnType<typeof useWorkspaceTabs>) {
                                 files={input.artifactScreens.filter(file => cloudRevisionFormat(file.url))}
                                 className="w-full h-full"
                                 onFileSelect={setSelectedFilePath}
+                                toolbarTarget={archiveToolbarTarget}
+                                filesToggleTarget={archiveFilesToggleTarget}
                               /> : <ZipViewer
                                 key={`${activeUrlToDisplay}|${requirementPreviewFrameKey}`}
                                 url={activeUrlToDisplay}
                                 className="w-full h-full"
                                 onFileSelect={setSelectedFilePath}
+                                toolbarTarget={archiveToolbarTarget}
+                                filesToggleTarget={archiveFilesToggleTarget}
                               />}
                             </div>
                           ) : activeBrowserTab.kind === 'artifact' ? (
@@ -311,7 +321,7 @@ export function RobotsWorkspace(input: ReturnType<typeof useWorkspaceTabs>) {
                     activeRobotInstance={activeRobotInstance}
                     conversationContext={<RequirementRunnerCard key={`${currentSite?.id}-${activeRobotInstance?.id}`} instance={activeRobotInstance} siteId={currentSite?.id} />}
                     isBrowserVisible={hasBrowserContent}
-                    hasTopHeaderSpace
+                    hasTopHeaderSpace={!isMobile || input.searchParams.get('artifact') === 'true'}
                     onMessageSent={setHasMessageBeenSent}
                     onNewInstanceCreated={handleNewInstanceCreated}
                   />

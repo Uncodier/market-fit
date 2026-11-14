@@ -71,3 +71,31 @@ test("desktop retains its instance header even when navigating through a list UR
   expect(screen.getByText("Desktop instances")).toBeInTheDocument()
   expect(screen.queryByRole("region", { name: "Instances" })).not.toBeInTheDocument()
 })
+
+test("mobile reserves the topbar inset and lays out the workspace below the in-flow toolbar", () => {
+  render(<RobotsPage />)
+  const toolbar = screen.getByLabelText("Workspace sections").closest("header")!
+  const detail = screen.getByLabelText("Agent draft").parentElement!
+
+  expect(toolbar.parentElement).toHaveClass("pt-[var(--topbar-height,64px)]", "min-h-0")
+  expect(toolbar.nextElementSibling).toBe(detail)
+  expect(detail).toHaveClass("relative", "flex-1", "min-h-0")
+  expect(detail).not.toHaveClass("absolute", "inset-0")
+})
+
+test("desktop keeps the full-height absolute workspace without a second topbar inset", () => {
+  mockMobile = false
+  render(<RobotsPage />)
+  const detail = screen.getByLabelText("Agent draft").parentElement!
+
+  expect(detail).toHaveClass("absolute", "inset-0")
+  expect(detail.parentElement).not.toHaveClass("pt-[var(--topbar-height,64px)]")
+})
+
+test("centers workspace tabs vertically using a full-height flex row rather than an inline baseline", () => {
+  render(<RobotsPage />)
+  const tabsRoot = screen.getByLabelText("Workspace sections").parentElement!
+
+  expect(tabsRoot).toHaveClass("flex", "h-full", "items-center")
+  expect(tabsRoot.parentElement).toHaveClass("flex", "h-full", "items-center")
+})

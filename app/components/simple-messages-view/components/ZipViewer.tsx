@@ -17,6 +17,9 @@ interface ZipViewerProps {
   isDarkMode?: boolean
   onFileSelect?: (path: string) => void
   folderNavigation?: (tree: React.ReactNode) => React.ReactNode
+  folderCount?: number
+  toolbarTarget?: HTMLElement | null
+  filesToggleTarget?: HTMLElement | null
 }
 
 
@@ -25,7 +28,7 @@ export const ZipViewer: React.FC<ZipViewerProps & { className?: string }> = (pro
   <ArchiveRevisionViewer key={props.url} {...props} />
 )
 
-const ArchiveRevisionViewer: React.FC<ZipViewerProps & { className?: string }> = ({ url, isDarkMode: propIsDarkMode, className, onFileSelect, folderNavigation }) => {
+const ArchiveRevisionViewer: React.FC<ZipViewerProps & { className?: string }> = ({ url, isDarkMode: propIsDarkMode, className, onFileSelect, folderNavigation, folderCount = 1, toolbarTarget, filesToggleTarget }) => {
   const { isDarkMode: contextIsDarkMode } = useTheme()
   const isDarkMode = propIsDarkMode ?? contextIsDarkMode
 
@@ -46,7 +49,7 @@ const ArchiveRevisionViewer: React.FC<ZipViewerProps & { className?: string }> =
     ?? archiveFiles.find(file => isPreviewableHtml(file.path)) ?? archiveFiles[0] ?? null
   const selectedFile = chosenFile ?? initialFile
   const [filesVisibilityOverride, setFilesVisibilityOverride] = useState<boolean | null>(null)
-  const filesVisible = filesVisibilityOverride ?? (!!folderNavigation || archiveFiles.length > 1)
+  const filesVisible = filesVisibilityOverride ?? ((!!folderNavigation && folderCount > 1) || archiveFiles.length > 1)
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set(['/']))
   const [, setRawZip] = useState<Blob | null>(null)
   const [editorFailed, setEditorFailed] = useState(false)
@@ -268,6 +271,8 @@ const ArchiveRevisionViewer: React.FC<ZipViewerProps & { className?: string }> =
   return (
     <div className={`flex flex-col w-full h-full bg-background ${className || ''}`}>
       <ArchiveViewerToolbar canPreview={canPreview} mode={contentMode} onModeChange={setContentMode}
+        toolbarTarget={toolbarTarget}
+        filesToggleTarget={filesToggleTarget}
         previewLabel={isMarkdown ? 'Markdown preview' : 'Isolated preview'}
         filesVisible={filesVisible} onToggleFiles={() => setFilesVisibilityOverride(!filesVisible)} />
       <div className="flex flex-1 overflow-hidden min-h-0">

@@ -62,7 +62,8 @@ export function PosOrderSelect({
           t,
           o.id === activeOrderId ? orderNotes : undefined,
         ),
-        description: formatOrderListDescription(o),
+        description: [o.pos_picker_message, formatOrderListDescription(o)].filter(Boolean).join(" · "),
+        disabled: Boolean(o.pos_picker_payment_pending),
         searchText: [
           o.order_number,
           o.notes,

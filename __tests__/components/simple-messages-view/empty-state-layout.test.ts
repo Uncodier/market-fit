@@ -16,11 +16,17 @@ describe('new agent empty state', () => {
 
   it('centers the empty composer and suggestions without moving the active chat input', () => {
     expect(viewSource).toContain(
-      'isEmpty ? "top-[calc(var(--topbar-height,64px)+71px)] justify-center pb-[calc(var(--topbar-height,64px)+23px)]" : "top-auto justify-end pb-[15px]"',
+      '"top-[calc(var(--topbar-height,64px)+71px)] pb-[calc(var(--topbar-height,64px)+23px)]"',
     )
+    expect(viewSource).toContain('"top-auto justify-end pb-[15px]"')
     expect(viewSource).toContain(
       'isEmpty ? "flex flex-col gap-3" : "flex flex-col w-full gap-2"',
     )
     expect(viewSource).toContain('placeholderSuggestions={isEmpty ? EMPTY_STATE_TYPEWRITER_PROMPTS : undefined}')
+  })
+
+  it('omits the fixed-header inset when the mobile toolbar is outside the conversation', () => {
+    expect(viewSource).toContain('cn("justify-center", hasTopHeaderSpace')
+    expect(viewSource).toContain('"top-0 pb-12 lg:top-[calc(var(--topbar-height,64px)+71px)] lg:pb-[calc(var(--topbar-height,64px)+23px)]"')
   })
 })

@@ -12,18 +12,17 @@ import { liteNodeMarkerRect } from "@/app/lib/imprenta-canvas-draw"
 
 import type { ImprentaHoverStore } from "@/app/lib/imprenta-hover-store"
 
-function collectNodeAndAncestorIds(startId: string, nodes: InstanceNode[]) {
+function collectNodeAndAncestorIds(startId: string, byId: Map<string, InstanceNode>) {
   const chain = new Set<string>()
-  const byId = new Map(nodes.map(n => [n.id, n]))
-  let curr = startId
-  while (curr) {
+  let curr: string | null = startId
+  while (curr && !chain.has(curr)) {
     chain.add(curr)
-    const n = byId.get(curr)
-    if (!n || !n.parent_node_id) break
-    curr = n.parent_node_id
+    curr = byId.get(curr)?.parent_node_id || null
   }
   return chain
 }
+
+type DragOverride = { id: string; x: number; y: number } | null
 
 export interface ImprentaParentEdgesCanvasProps {
   nodes: InstanceNode[]
@@ -37,7 +36,7 @@ export interface ImprentaParentEdgesCanvasProps {
   hoverStore?: ImprentaHoverStore
   /** Stroke for edges on the hovered node → root chain. */
   hoverChainStroke?: string
-  dragStore?: { get: () => any; subscribe: (l: any) => () => void }
+  dragStore?: { get: () => DragOverride; subscribe: (listener: (snap: DragOverride) => void) => () => void }
   /** World padding beyond the visible viewport (keeps edges from popping when panning). */
   padWorld?: number
   /**
@@ -106,17 +105,17 @@ export function ImprentaParentEdgesCanvas({
   
   useEffect(() => {
     if (!dragStore) return
-    return dragStore.subscribe((snap: any) => {
+    dragOverrideRef.current = dragStore.get()
+    scheduleRef.current?.()
+    return dragStore.subscribe((snap) => {
       dragOverrideRef.current = snap
-      if (scheduleRef.current) scheduleRef.current()
+      scheduleRef.current?.()
     })
   }, [dragStore])
   const straightBelowRef = useRef(straightLinesBelowScale)
   straightBelowRef.current = straightLinesBelowScale
   const markerMaxRef = useRef(markerMax)
   markerMaxRef.current = markerMax
-  const hoverStoreRef = useRef(hoverStore)
-  hoverStoreRef.current = hoverStore
   const hoverChainRef = useRef<ReadonlySet<string> | null>(null)
   const hoverChainStrokeRef = useRef(hoverChainStroke)
   hoverChainStrokeRef.current = hoverChainStroke
@@ -142,6 +141,8 @@ export function ImprentaParentEdgesCanvas({
 
     let rafId: number | null = null
     let lastSnapshot: ViewportSnapshot = viewportStore.get()
+    let lastHoveredId: string | null = null
+    let lastHoverNodes: Map<string, InstanceNode> | null = null
 
     const getCachedIdsAndGrid = () => {
       const all = nodesRef.current
@@ -231,8 +232,13 @@ export function ImprentaParentEdgesCanvas({
       )
 
       const cached = getCachedIdsAndGrid()
-      const allNodes = cached.nodes
+      const hoveredId = hoverStore ? hoverStore.get() : snap.hoveredNodeId
       const candidates = collectIdsFromGrid(cached.grid, world)
+      if (hoveredId !== lastHoveredId || cached.nodesById !== lastHoverNodes) {
+        hoverChainRef.current = hoveredId ? collectNodeAndAncestorIds(hoveredId, cached.nodesById) : null
+        lastHoveredId = hoveredId
+        lastHoverNodes = cached.nodesById
+      }
       const override = dragOverrideRef.current
       const resolve = (id: string): { x: number; y: number } | undefined =>
         override && override.id === id ? override : pos[id]
@@ -347,19 +353,7 @@ export function ImprentaParentEdgesCanvas({
       schedule()
     })
 
-    const updateHoverChain = (hoveredId: string | null) => {
-      if (!hoveredId) {
-        hoverChainRef.current = null
-      } else {
-        hoverChainRef.current = collectNodeAndAncestorIds(hoveredId, nodesRef.current)
-      }
-      schedule()
-    }
-
-    if (hoverStore) {
-      updateHoverChain(hoverStore.get())
-    }
-    const unsubHover = hoverStore?.subscribe(updateHoverChain)
+    const unsubHover = hoverStore?.subscribe(() => schedule())
 
     schedule()
 
@@ -372,7 +366,7 @@ export function ImprentaParentEdgesCanvas({
         rafId = null
       }
     }
-  }, [viewportStore])
+  }, [viewportStore, hoverStore])
 
   useEffect(() => {
     scheduleRef.current?.()
@@ -385,6 +379,7 @@ export function ImprentaParentEdgesCanvas({
     strokeStyle,
     dragOverride,
     straightLinesBelowScale,
+    markerMax,
     hoverChainStroke,
   ])
 

@@ -13,6 +13,7 @@ import type { PosCartItem } from "@/app/pos/components/CartPanel";
 import { getPosCheckoutGate } from "@/app/pos/checkout-gates";
 import {
   enqueueCreateLead,
+  updateOutboxRow,
 } from "@/app/pos/local/outbox";
 import { enqueueRegisteredCheckout } from "@/app/pos/register/prepare-payment";
 import { refreshPosSyncCounts } from "@/app/pos/local/sync-engine";
@@ -223,6 +224,11 @@ export function usePosCheckout({
     const nextAmountDue = roundMoney(
       Math.max(0, amountDue - totalPaid),
     );
+    if (params.payments.length) {
+      // A display hint must not prevent confirmation of an already accepted receipt.
+      await updateOutboxRow(queuedCheckout.id, { pickerAmountDueAfterPayment: nextAmountDue }).catch(() => undefined);
+      if (!isCurrent()) return;
+    }
     const db = getPosDb();
     // Do not publish a reduced balance or completed order for an unconfirmed payment.
     const confirmedOrUnpaid = !params.payments.length || queuedCheckout.status === "synced";

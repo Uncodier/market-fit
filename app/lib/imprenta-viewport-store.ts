@@ -13,6 +13,7 @@ import type { ZoomableViewportInfo } from "@/app/components/agents/zoomable-canv
 export type ViewportSnapshot = ZoomableViewportInfo & {
   /** True while the user is actively panning / pinching / wheel-zooming. */
   interacting: boolean
+  hoveredNodeId: string | null
 }
 
 export type ViewportStore = {
@@ -29,6 +30,7 @@ const DEFAULT_SNAPSHOT: ViewportSnapshot = {
   canvasWidth: 0,
   canvasHeight: 0,
   interacting: false,
+  hoveredNodeId: null,
 }
 
 export function createViewportStore(initial?: Partial<ViewportSnapshot>): ViewportStore {
