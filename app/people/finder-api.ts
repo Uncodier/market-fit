@@ -1,4 +1,7 @@
 import { apiClient } from '@/app/services/api-client-service'
+import { resolveCompanyFilters } from './company-filters'
+import { resolvePersonLocationFilters } from './person-location-filters'
+import { hasLookupFilterNames, resolveLookupFilters } from './lookup-filters'
 
 export interface LookupOption {
   id?: number | string | null
@@ -27,6 +30,13 @@ export async function lookupFetcher(type: string, q: string, siteId?: string): P
 }
 
 export async function searchFinderPeople(payload: unknown) {
+  if (hasCompanyNames(payload)) {
+    payload = await resolveCompanyFilters(payload, (name, siteId) => lookupFetcher('organizations', name, siteId))
+  }
+  if (hasPersonLocationNames(payload)) {
+    payload = await resolvePersonLocationFilters(payload, (name, siteId) => lookupFetcher('locations', name, siteId))
+  }
+  if (hasLookupFilterNames(payload)) payload = await resolveLookupFilters(payload, lookupFetcher)
   // Keep the Search action pending until both requests settle, even on rejection.
   const [search, totals] = await Promise.allSettled([
     apiClient.post<{ search_results: Record<string, unknown>[]; total_search_results: number }>(
@@ -45,6 +55,23 @@ export async function searchFinderPeople(payload: unknown) {
   return [search.value, totals.value] as const
 }
 
-export function createFinderQuery(payload: unknown) {
+export async function createFinderQuery(payload: unknown) {
+  if (hasCompanyNames(payload)) {
+    payload = await resolveCompanyFilters(payload, (name, siteId) => lookupFetcher('organizations', name, siteId))
+  }
+  if (hasPersonLocationNames(payload)) {
+    payload = await resolvePersonLocationFilters(payload, (name, siteId) => lookupFetcher('locations', name, siteId))
+  }
+  if (hasLookupFilterNames(payload)) payload = await resolveLookupFilters(payload, lookupFetcher)
   return apiClient.post('/api/finder/person_role_search/createQuery', payload, { includeAuth: true })
+}
+
+function hasCompanyNames(payload: unknown) {
+  return payload !== null && typeof payload === 'object' &&
+    'organization_names' in payload && payload.organization_names !== undefined
+}
+
+function hasPersonLocationNames(payload: unknown) {
+  return payload !== null && typeof payload === 'object' &&
+    'person_location_names' in payload && payload.person_location_names !== undefined
 }

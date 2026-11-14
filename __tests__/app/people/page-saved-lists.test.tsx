@@ -1,6 +1,7 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import PeopleSearchPage from '@/app/people/page'
 import { createClient } from '@/lib/supabase/client'
+import { apiClient } from '@/app/services/api-client-service'
 import { deferred } from './test-helpers'
 
 let mockSiteId = 'site-a'
@@ -33,6 +34,7 @@ const from = jest.fn(() => ({ select, eq, order }))
 beforeEach(() => {
   mockSiteId = 'site-a'
   jest.clearAllMocks()
+  order.mockReset()
   ;(createClient as jest.Mock).mockReturnValue({ from })
   order.mockResolvedValue({ data: [pendingList], error: null })
   jest.spyOn(console, 'log').mockImplementation(() => {})
@@ -122,4 +124,23 @@ it('does not report an empty list for a malformed database response', async () =
   fireEvent.mouseDown(screen.getByRole('tab', { name: 'Saved lists' }))
   expect(await screen.findByRole('alert')).toHaveTextContent('Could not load saved lists')
   expect(screen.queryByText('No saved lists yet')).not.toBeInTheDocument()
+})
+
+it('keeps saved company IDs, domains and person location IDs when searching again', async () => {
+  const query = { organizations: [42, '43'], organization_domains: ['acme.com'], person_locations: [71, '72'] }
+  ;(apiClient.get as jest.Mock).mockResolvedValue({ success: true, data: { role_query: { query } } })
+  ;(apiClient.post as jest.Mock).mockResolvedValue({ success: true, data: { search_results: [], total_persons: 0 } })
+  render(<PeopleSearchPage />)
+  fireEvent.mouseDown(screen.getByRole('tab', { name: 'Saved lists' }))
+  const savedList = await screen.findByText('List 11111111…')
+  await act(async () => { fireEvent.click(savedList) })
+  fireEvent.mouseDown(screen.getByRole('tab', { name: 'Search people' }))
+  expect(screen.getByRole('button', { name: 'Remove ID 42' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Remove ID 43' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Remove ID 71' })).toBeInTheDocument()
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Search' })) })
+  for (const suffix of ['', '/totals']) {
+    expect(apiClient.post).toHaveBeenCalledWith(`/api/finder/person_role_search${suffix}`,
+      expect.objectContaining({ organizations: [42, 43], organization_domains: ['acme.com'], person_locations: [71, 72] }), { includeAuth: true })
+  }
 })

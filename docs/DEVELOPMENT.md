@@ -28,6 +28,21 @@ lists or search. A `401`/`403` from the backend remains an access error, not an
 empty list. The saved-list sidebar itself reads from Supabase under the user's
 session.
 
+Finder lookup filters retain both selected provider IDs and draft/manual text.
+Before search, totals or enrichment-query creation, names must resolve to one
+exact autocomplete match. Missing or ambiguous matches stop the request and ask
+the user to select a suggestion; they never become an unfiltered search. This
+applies to company/person locations, industries and exclusions, skills, company
+keywords, web technologies and job-posting locations/exclusions. UI-only name
+fields are removed before forwarding. Saved queries hydrate editable filter state
+instead of clearing lookup filters.
+
+Local regression coverage (no provider credits or live mutations):
+
+```bash
+npm test -- --runInBand __tests__/app/people __tests__/api/finder-proxy.test.ts __tests__/app/services/finder-api-client.test.ts
+```
+
 Both `package-lock.json` and `yarn.lock` are currently checked in, and no
 `packageManager` field selects one as authoritative. The documented commands use
 npm, but do not update dependencies or regenerate either lockfile until the

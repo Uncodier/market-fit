@@ -7,7 +7,9 @@ import { deferred } from './test-helpers'
 jest.mock('@/app/services/api-client-service', () => ({ apiClient: { post: jest.fn(), get: jest.fn() } }))
 jest.mock('@/app/context/LayoutContext', () => ({ useLayout: () => ({ isLayoutCollapsed: false }) }))
 jest.mock('@/app/context/SiteContext', () => ({ useSite: () => ({ currentSite: { id: 'site-a' } }) }))
-jest.mock('@/app/context/LocalizationContext', () => ({ useLocalization: () => ({ t: () => '' }) }))
+jest.mock('@/app/context/LocalizationContext', () => ({ useLocalization: () => ({
+  t: (key: string) => key === 'commerce.pagination.next' ? 'Next page' : '',
+}) }))
 jest.mock('@/app/context/BillingLimitContext', () => ({ useBillingLimit: () => ({ showBillingLimit: jest.fn(), showBillingLimitFromError: jest.fn() }) }))
 jest.mock('@/app/hooks/use-billing-check', () => ({ useBillingCheck: () => ({ creditsAvailable: 100 }) }))
 jest.mock('@/app/hooks/use-mobile-view', () => ({ useIsMobile: () => false }))
@@ -19,6 +21,8 @@ jest.mock('sonner', () => ({ toast: { error: jest.fn(), success: jest.fn() } }))
 beforeEach(() => {
   jest.useFakeTimers()
   jest.clearAllMocks()
+  ;(apiClient.post as jest.Mock).mockReset()
+  ;(apiClient.get as jest.Mock).mockReset()
   jest.spyOn(console, 'log').mockImplementation(() => {})
   jest.spyOn(console, 'error').mockImplementation(() => {})
 })
@@ -64,6 +68,173 @@ it('cancels the actual page lookup when Clear resets filters', async () => {
   await act(async () => { jest.advanceTimersByTime(500) })
   expect(input).toHaveValue('')
   expect(apiClient.get).not.toHaveBeenCalled()
+})
+
+it.each(['draft', 'Enter'] as const)('resolves a company name entered via %s for both search and totals', async mode => {
+  ;(apiClient.get as jest.Mock).mockResolvedValue({ success: true, data: { results: [{ id: '42', text: 'Acme' }] } })
+  ;(apiClient.post as jest.Mock).mockResolvedValue({ success: true, data: { search_results: [], total_persons: 0 } })
+  render(<PeopleSearchPage />)
+  fireEvent.click(screen.getByRole('heading', { name: 'Company' }))
+  const input = screen.getByPlaceholderText('Search companies')
+  fireEvent.change(input, { target: { value: 'Acme' } })
+  if (mode === 'Enter') fireEvent.keyDown(input, { key: 'Enter' })
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Search' })) })
+  for (const suffix of ['', '/totals']) {
+    expect(apiClient.post).toHaveBeenCalledWith(`/api/finder/person_role_search${suffix}`,
+      expect.objectContaining({ organizations: [42] }), { includeAuth: true })
+  }
+})
+
+it.each([
+  { results: [] },
+  { results: [{ id: 42, text: 'Acme Consulting' }] },
+  { results: [{ id: 42, text: 'Acme' }, { id: 43, text: 'Acme' }] },
+])('does not run an unfiltered search when a company cannot be uniquely resolved: %j', async ({ results }) => {
+  ;(apiClient.get as jest.Mock).mockResolvedValue({ success: true, data: { results } })
+  render(<PeopleSearchPage />)
+  fireEvent.click(screen.getByRole('heading', { name: 'Company' }))
+  const input = screen.getByPlaceholderText('Search companies')
+  fireEvent.change(input, { target: { value: 'Acme' } })
+  fireEvent.keyDown(input, { key: 'Enter' })
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Search' })) })
+  expect(apiClient.post).not.toHaveBeenCalled()
+  expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('Acme'))
+})
+
+it('preserves selected provider IDs and manually entered domains', async () => {
+  ;(apiClient.get as jest.Mock).mockResolvedValue({ success: true, data: { results: [{ id: '42', text: 'Acme' }] } })
+  ;(apiClient.post as jest.Mock).mockResolvedValue({ success: true, data: { search_results: [], total_persons: 0 } })
+  render(<PeopleSearchPage />)
+  fireEvent.click(screen.getByRole('heading', { name: 'Company' }))
+  const input = screen.getByPlaceholderText('Search companies')
+  fireEvent.change(input, { target: { value: 'Acme' } })
+  await act(async () => { jest.advanceTimersByTime(250) })
+  fireEvent.click(screen.getByRole('button', { name: 'Acme' }))
+  fireEvent.change(input, { target: { value: 'acme.com' } })
+  fireEvent.keyDown(input, { key: 'Enter' })
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Search' })) })
+  expect(apiClient.post).toHaveBeenCalledWith('/api/finder/person_role_search',
+    expect.objectContaining({ organizations: [42], organization_domains: ['acme.com'] }), { includeAuth: true })
+})
+
+it.each(['draft', 'Enter', 'suggestion'] as const)('includes the person location entered via %s in search and totals', async mode => {
+  ;(apiClient.get as jest.Mock).mockResolvedValue({ success: true, data: { results: [{ id: '71', text: 'Mexico City, Mexico' }] } })
+  ;(apiClient.post as jest.Mock).mockResolvedValue({ success: true, data: { search_results: [], total_persons: 0 } })
+  render(<PeopleSearchPage />)
+  fireEvent.click(screen.getByRole('heading', { name: 'Location' }))
+  const input = screen.getByPlaceholderText('Search locations')
+  fireEvent.change(input, { target: { value: 'Mexico City, Mexico' } })
+  if (mode === 'Enter') fireEvent.keyDown(input, { key: 'Enter' })
+  if (mode === 'suggestion') {
+    await act(async () => { jest.advanceTimersByTime(250) })
+    fireEvent.click(screen.getByRole('button', { name: 'Mexico City, Mexico' }))
+  }
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Search' })) })
+  for (const suffix of ['', '/totals']) {
+    expect(apiClient.post).toHaveBeenCalledWith(`/api/finder/person_role_search${suffix}`,
+      expect.objectContaining({ person_locations: [71] }), { includeAuth: true })
+  }
+})
+
+it.each([
+  { results: [] },
+  { results: [{ id: 71, text: 'Paris, France' }, { id: 72, text: 'Paris, Texas' }] },
+])('blocks search instead of ignoring an unresolved person location: %j', async ({ results }) => {
+  ;(apiClient.get as jest.Mock).mockResolvedValue({ success: true, data: { results } })
+  render(<PeopleSearchPage />)
+  fireEvent.click(screen.getByRole('heading', { name: 'Location' }))
+  fireEvent.change(screen.getByPlaceholderText('Search locations'), { target: { value: 'Paris' } })
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Search' })) })
+  expect(apiClient.post).not.toHaveBeenCalled()
+  expect(toast.error).toHaveBeenCalledWith(expect.stringContaining('Paris'))
+})
+
+it('clears the person location draft when all filters are cleared', async () => {
+  ;(apiClient.post as jest.Mock).mockResolvedValue({ success: true, data: { search_results: [], total_persons: 0 } })
+  render(<PeopleSearchPage />)
+  fireEvent.click(screen.getByRole('heading', { name: 'Location' }))
+  fireEvent.change(screen.getByPlaceholderText('Search locations'), { target: { value: 'Paris' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Clear' }))
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Search' })) })
+  expect(apiClient.get).not.toHaveBeenCalled()
+  expect(apiClient.post).toHaveBeenCalledWith('/api/finder/person_role_search',
+    expect.objectContaining({ person_locations: undefined }), { includeAuth: true })
+})
+
+const lookupCases = [
+  ['Industry', 'Search industries', 'person_industries'],
+  ['Industry', 'Search industries to exclude', 'person_industries_exclude'],
+  ['Skills', 'Search skills', 'person_skills'],
+  ['Location & Industry', 'Search locations', 'organization_locations'],
+  ['Location & Industry', 'Search industries', 'organization_industries'],
+  ['Location & Industry', 'Search industries to exclude', 'organization_industries_exclude'],
+  ['Location & Industry', 'Keywords', 'organization_keywords'],
+  ['Web & Tech', 'Search technologies', 'organization_web_technologies'],
+  ['Job Postings', 'Search locations', 'job_post_locations'],
+  ['Job Postings', 'Search locations to exclude', 'job_post_locations_exclude'],
+] as const
+
+describe.each(lookupCases)('%s / %s (%s)', (heading, placeholder, field) => {
+  it.each(['draft', 'Enter', 'suggestion'] as const)('sends %s input to search and totals', async mode => {
+    ;(apiClient.get as jest.Mock).mockResolvedValue({ success: true, data: { results: [{ id: '42', text: 'Exact' }] } })
+    ;(apiClient.post as jest.Mock).mockResolvedValue({ success: true, data: { search_results: [], total_persons: 0 } })
+    render(<PeopleSearchPage />)
+    fireEvent.click(screen.getByRole('heading', { name: heading }))
+    const input = screen.getByPlaceholderText(placeholder)
+    fireEvent.change(input, { target: { value: 'Exact' } })
+    if (mode === 'Enter') fireEvent.keyDown(input, { key: 'Enter' })
+    if (mode === 'suggestion') {
+      await act(async () => { jest.advanceTimersByTime(250) })
+      fireEvent.click(screen.getByRole('button', { name: 'Exact' }))
+    }
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Search' })) })
+    for (const suffix of ['', '/totals']) {
+      expect(apiClient.post).toHaveBeenCalledWith(`/api/finder/person_role_search${suffix}`,
+        expect.objectContaining({ [field]: [42] }), { includeAuth: true })
+    }
+  })
+
+  it('clears the draft without leaving a hidden filter', async () => {
+    ;(apiClient.post as jest.Mock).mockResolvedValue({ success: true, data: { search_results: [], total_persons: 0 } })
+    render(<PeopleSearchPage />)
+    fireEvent.click(screen.getByRole('heading', { name: heading }))
+    fireEvent.change(screen.getByPlaceholderText(placeholder), { target: { value: 'Exact' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Clear' }))
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Search' })) })
+    expect(apiClient.get).not.toHaveBeenCalled()
+    expect(apiClient.post).toHaveBeenCalledWith('/api/finder/person_role_search',
+      expect.objectContaining({ [field]: undefined }), { includeAuth: true })
+  })
+})
+
+it('includes and clears a company LinkedIn draft from the dedicated section', async () => {
+  ;(apiClient.post as jest.Mock).mockResolvedValue({ success: true, data: { search_results: [], total_persons: 0 } })
+  render(<PeopleSearchPage />)
+  const headings = screen.getAllByRole('heading', { name: 'LinkedIn Identifiers' })
+  fireEvent.click(headings[1])
+  const input = screen.getByPlaceholderText('linkedin.com/company/slug')
+  fireEvent.change(input, { target: { value: 'acme' } })
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Search' })) })
+  expect(apiClient.post).toHaveBeenCalledWith('/api/finder/person_role_search',
+    expect.objectContaining({ organization_linkedin_public_identifiers: ['acme'] }), { includeAuth: true })
+  fireEvent.click(screen.getByRole('button', { name: 'Clear' }))
+  expect(input).toHaveValue('')
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Search' })) })
+  expect(apiClient.post).toHaveBeenLastCalledWith('/api/finder/person_role_search/totals',
+    expect.objectContaining({ organization_linkedin_public_identifiers: undefined }), { includeAuth: true })
+})
+
+it('includes and clears domain draft text without requiring Enter', async () => {
+  ;(apiClient.post as jest.Mock).mockResolvedValue({ success: true, data: { search_results: [], total_persons: 0 } })
+  render(<PeopleSearchPage />)
+  fireEvent.click(screen.getByRole('heading', { name: 'Domains' }))
+  const input = screen.getAllByPlaceholderText('example.com')[0]
+  fireEvent.change(input, { target: { value: 'acme.com' } })
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Search' })) })
+  expect(apiClient.post).toHaveBeenCalledWith('/api/finder/person_role_search',
+    expect.objectContaining({ organization_domains: ['acme.com'] }), { includeAuth: true })
+  fireEvent.click(screen.getByRole('button', { name: 'Clear' }))
+  expect(input).toHaveValue('')
 })
 
 it('keeps the pagination inside a viewport-sized, scrollable results panel', async () => {

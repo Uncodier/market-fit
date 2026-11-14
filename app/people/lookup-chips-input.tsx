@@ -7,12 +7,14 @@ export function LookupChipsInput({
   values,
   onChange,
   placeholder = "Search",
-  fetcher
+  fetcher,
+  onTextChange
 }: {
   values: LookupOption[]
   onChange: (next: LookupOption[]) => void
   placeholder?: string
   fetcher: (query: string) => Promise<LookupOption[]>
+  onTextChange?: (text: string) => void
 }) {
   const [text, setText] = useState("")
   const [open, setOpen] = useState(false)
@@ -38,10 +40,11 @@ export function LookupChipsInput({
   useEffect(() => {
     cancel()
     setText("")
+    onTextChange?.("")
     setOpen(false)
     setLoading(false)
     setSuggestions([])
-  }, [values, cancel])
+  }, [values, cancel, onTextChange])
 
   const doSearch = useCallback((value: string) => {
     // Invalidate immediately, not when the next debounce fires.
@@ -75,6 +78,7 @@ export function LookupChipsInput({
     setLoading(false)
     setSuggestions([])
     setText("")
+    onTextChange?.("")
     setOpen(false)
     onChange(next)
   }
@@ -94,6 +98,7 @@ export function LookupChipsInput({
         onChange={(e) => {
           const v = e.target.value
           setText(v)
+          onTextChange?.(v)
           setOpen(Boolean(v.trim()))
           doSearch(v)
         }}
