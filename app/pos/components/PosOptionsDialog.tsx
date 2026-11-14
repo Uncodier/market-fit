@@ -25,6 +25,7 @@ import type { CartModifier } from "@/app/commerce/cart-modifiers"
 import { usePosOptionsData } from "./pos-options-data"
 import type { PosCartModifier } from "./CartPanel"
 import type { PosItemAvailability } from "../cart-availability"
+import { canResolvePosShortage } from "../stock-shortage"
 
 export type PosOptionsConfirm = {
   item: CatalogItem
@@ -129,7 +130,11 @@ function PosOptionsDialogContent({
   }, [item])
 
   const availability = sellableItem ? getAvailability?.(sellableItem) : undefined
-  const canConfirm = !!sellableItem && modifiersValid && !loading && !error && availability?.sellable !== false
+  const canSelect = (candidate: CatalogItem) => {
+    const stock = getAvailability?.(candidate)
+    return stock?.sellable !== false || canResolvePosShortage(candidate, stock)
+  }
+  const canConfirm = !!sellableItem && modifiersValid && !loading && !error && canSelect(sellableItem)
 
   const handleConfirm = () => {
     if (!sellableItem || !canConfirm || !item) return
@@ -193,7 +198,7 @@ function PosOptionsDialogContent({
                       setSelectedOptions((prev) => {
                         const next = { ...prev, [axisId]: valueId }
                         const hasAvailableCombination = children.some((child) =>
-                          getAvailability?.(child).sellable !== false && Object.entries(next).every(
+                          canSelect(child) && Object.entries(next).every(
                             ([axis, value]) => child.metadata?.option_values?.[axis] === value,
                           ),
                         )
@@ -201,7 +206,7 @@ function PosOptionsDialogContent({
                       })
                     }
                     childrenItems={children}
-                    isItemAvailable={(child) => getAvailability?.(child).sellable !== false}
+                    isItemAvailable={canSelect}
                     presentation="pdp"
                     currency={currency}
                     fallbackImageUrl={item.image_url || null}
@@ -248,9 +253,9 @@ function PosOptionsDialogContent({
             modifierGroups.every((g) => (g.min_select ?? 0) === 0) && (
               <Button
                 variant="ghost"
-                disabled={!sellableItem || loading || error || availability?.sellable === false}
+                disabled={!sellableItem || loading || error || !canSelect(sellableItem)}
                 onClick={() => {
-                  if (!sellableItem || loading || error || availability?.sellable === false) return
+                  if (!sellableItem || loading || error || !canSelect(sellableItem)) return
                   onConfirm({ item: sellableItem, modifiers: [] })
                   onOpenChange(false)
                 }}

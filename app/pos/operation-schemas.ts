@@ -19,6 +19,7 @@ const modifier = z.object({
   saleOrderItemId: id.optional(), groupId: id.or(z.literal("")).optional(),
 }).strict();
 const line = modifier.omit({ groupId: true }).extend({
+  completedWithoutStock: z.boolean().optional(),
   reservationStart: date.optional(), reservationEnd: date.optional(),
   clientLineKey: z.string().min(1).max(256).optional(),
   modifiers: z.array(modifier).max(25).optional(),

@@ -59,6 +59,14 @@ it("never treats an unconfirmed collected payment as paid", async () => {
   expect(posSessionFromOrder(order, [])?.existingPaymentTotal).toBe(0);
 });
 
+it("preserves explicit completion through local queued order restoration", async () => {
+  if (row.payload.kind === "checkout") row.payload.data.lines[0].completedWithoutStock = true;
+  const order = await readOfflineOrder("site", "local_original", undefined, () => true);
+  const cart = posSessionFromOrder(order, [])!.cart!;
+  expect(cart[0].completedWithoutStock).toBe(true);
+  expect(posCheckoutLines(cart)[0].completedWithoutStock).toBe(true);
+});
+
 it("preserves mixed currencies for hosts and modifiers without relabeling prices", async () => {
   mockItems.mockResolvedValue([
     { id: "coffee", site_id: "site", name: "Coffee", currency: "USD" },

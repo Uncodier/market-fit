@@ -6,6 +6,15 @@ import type { CheckoutCartParams } from "./checkout-types"
 /** Staff privilege requires fresh site authorization even for internal Server Action callers. */
 export async function authorizeCheckoutBoundary(params: CheckoutCartParams) {
   if (!params || !["pos", "sales", "shop", "marketplace", "quote"].includes(params.source)) throw new Error("Invalid checkout source.")
+  for (const line of params.lines || []) {
+    if (line.completedWithoutStock !== undefined &&
+      (params.source !== "pos" || typeof line.completedWithoutStock !== "boolean")) {
+      throw new Error("Explicit completion is only available for POS checkout.")
+    }
+    if (line.modifiers?.some((modifier) => "completedWithoutStock" in modifier)) {
+      throw new Error("Modifiers inherit completion from their parent item.")
+    }
+  }
   if (params.source === "pos") return { params, publicCheckout: false }
   if (params.source === "sales" || params.isStaffMutation === true) {
     const access = await requirePrivateCommerceSiteAccess(params.siteId, ["select", "insert", "update"])

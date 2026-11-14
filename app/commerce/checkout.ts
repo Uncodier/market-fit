@@ -327,6 +327,7 @@ export async function checkoutCart(params: CheckoutCartParams) {
       existingReservationId: params.existingReservationId,
       effectiveExistingOrderId,
       fulfillment: params.fulfillment,
+      intent: params.intent,
       ...(selfService ? { selfServiceLocationId: params.selfServiceLocationId } : {}),
       ...(boundary.publicCheckout ? { publicCheckout: true } : {}),
       buyerPriceContext,

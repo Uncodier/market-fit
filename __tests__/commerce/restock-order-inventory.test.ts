@@ -3,6 +3,7 @@ import {
   restockOrderInventory,
 } from "../../app/commerce/restock-order-inventory";
 jest.mock("server-only", () => ({}));
+jest.mock("../../app/commerce/order-inventory-scope", () => ({ usesOrderLineInventoryReceipts: jest.fn().mockResolvedValue(false) }));
 
 describe("shouldRestockOrder", () => {
   it("restocks completed and in-progress orders", () => {
@@ -67,6 +68,22 @@ describe("restockOrderInventory", () => {
       p_delta: 2, p_floor_zero: false,
     });
     expect(supabase.from).not.toHaveBeenCalledWith("inventory_levels");
+  });
+
+  it("does not manufacture stock when cancelling explicit completed fulfillment", async () => {
+    const supabase = {
+      rpc: jest.fn(),
+      from: jest.fn((table: string) => table === "settings"
+        ? createChain({ data: { commerce: {} } })
+        : table === "sale_order_items"
+          ? createChain({ data: [{ catalog_item_id: "sku", quantity: 2, metadata: { completed_without_stock: true } }] })
+          : createChain({ data: [] })),
+    };
+    await restockOrderInventory(supabase, {
+      id: "order", site_id: "site", status: "completed", origin_location_id: "origin",
+    });
+    expect(supabase.rpc).not.toHaveBeenCalled();
+    expect(supabase.from).not.toHaveBeenCalledWith("catalog_items");
   });
 
   it("does not restock when policy is never", async () => {

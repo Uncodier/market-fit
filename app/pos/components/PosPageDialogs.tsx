@@ -18,6 +18,7 @@ import { isAccessOnlyItem } from "@/app/catalog/product-details"
 import { DynamicQuoteFieldsModal } from "@/app/components/commerce/DynamicQuoteFieldsModal"
 import type { CatalogItem } from "@/app/types"
 import { PosOptionsDialog } from "./PosOptionsDialog"
+import { PosStockShortageDialog } from "./PosStockShortageDialog"
 import { PosRequireLeadDialog } from "./PosRequireLeadDialog"
 import { PaymentDialogSkeleton } from "./payment-dialog-skeleton"
 import { PaymentCashRegisterDialog } from "../register/CashRegisterOptions"
@@ -171,6 +172,15 @@ export function PosPageDialogs({
 
   return (
     <>
+      {siteId && cartApi.shortage && cartApi.shortage.context.originLocationId === cartApi.originLocationId && (
+        <PosStockShortageDialog
+          key={cartApi.shortage.id}
+          siteId={siteId} item={cartApi.shortage.item} quantity={cartApi.shortage.quantity}
+          locationId={cartApi.originLocationId} currency={cartApi.cartCurrency}
+          inventory={catalog.inventorySnapshot} locations={catalog.locations}
+          onComplete={cartApi.completeShortage} onClose={cartApi.dismissShortage}
+        />
+      )}
       {checkout.isPaymentDialogOpen && cartApi.sessionReady &&
         (cartApi.loadingOrder || cartApi.cart.length > 0) && (
         <LoadingDialogContext.Provider

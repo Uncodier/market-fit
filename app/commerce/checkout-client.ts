@@ -25,6 +25,7 @@ function checkoutMutation(params: CheckoutCartParams): {
 }
 
 export type CheckoutCartSuccess = {
+  inventoryReviewRequired?: boolean
   success: true
   saleId: string
   orderId: string

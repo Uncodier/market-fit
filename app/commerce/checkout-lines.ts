@@ -41,6 +41,7 @@ type ProcessCheckoutLinesParams = {
   originLocationId?: string
   existingReservationId?: string
   effectiveExistingOrderId?: string
+  intent?: CheckoutCartParams["intent"]
   fulfillment: CheckoutCartParams["fulfillment"]
   selfServiceLocationId?: string
   publicCheckout?: boolean
@@ -180,6 +181,7 @@ export async function processCheckoutLines(params: ProcessCheckoutLinesParams) {
       reservationEnd: line.reservationEnd,
       isRoundRobinDropin,
       client_line_key: clientLineKey,
+      ...(line.completedWithoutStock === true ? { completed_without_stock: true } : {}),
       parent_client_line_key: null,
       modifier_group_id: null,
       parent_name:
@@ -216,6 +218,7 @@ export async function processCheckoutLines(params: ProcessCheckoutLinesParams) {
         reservationEnd: undefined,
         isRoundRobinDropin: false,
         client_line_key: `${clientLineKey}:mod:${modifier.groupId || "g"}:${modifier.catalogItemId}`,
+        ...(line.completedWithoutStock === true ? { completed_without_stock: true } : {}),
         parent_client_line_key: clientLineKey,
         modifier_group_id: modifier.groupId || null,
         parent_name: null,

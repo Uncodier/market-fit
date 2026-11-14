@@ -51,7 +51,11 @@ async function observeCheckout({ row, permission, print }: Feedback): Promise<vo
     if (!current()) return;
     if (!stored || stored.siteId !== row.siteId || stored.id !== row.id) { review(); return; }
     if (stored.status === "synced") {
-      toast.success(stored.resultOrderNumber ? `Order ${stored.resultOrderNumber} confirmed.` : "Order confirmed.", { id });
+      if (stored.inventoryReviewRequired) {
+        toast.warning("Payment/order confirmed. Inventory history requires review; no stock movement was guessed. Do not collect again.", { id, duration: 15_000 });
+      } else {
+        toast.success(stored.resultOrderNumber ? `Order ${stored.resultOrderNumber} confirmed.` : "Order confirmed.", { id });
+      }
       try {
         await printAfterPosCheckout({ ...print, skipReceipt: paid, orderId: stored.resultOrderId,
           orderNumber: stored.resultOrderNumber, kitchenDelta: stored.resultKitchenDelta,

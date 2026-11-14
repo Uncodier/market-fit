@@ -79,6 +79,7 @@ export function mergeItemIntoCart(
   const price = extras?.cartPrice ?? resolvePrice(item)
 
   const existing = prev.find((c) => {
+    if (Boolean(c.completedWithoutStock) !== Boolean(extras?.completedWithoutStock)) return false
     // Adding a product must not grow a historical/manual line at an old customer's price.
     if (c.saleOrderItemId || c.priceSource === "restored" || c.priceSource === "manual") return false
     if (c.cartPrice !== price || (c.modifiers || []).some((modifier) =>

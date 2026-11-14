@@ -12,6 +12,7 @@ import { grantFromOrder, syncSubscriptionEntitlements } from "./entitlements"
 import { upsertSaleOrderItemsWithModifiers } from "./checkout-order-items"
 import { readCheckoutTrackedInventoryIds } from "./checkout-inventory-metadata"
 import { applyLocationInventoryDelta } from "./inventory-delta"
+import { posCheckoutShipmentItems, settlePosCheckoutInventory } from "./checkout-pos-inventory"
 import { syncCheckoutDropinReservations } from "./checkout-reservations"
 import { kitchenDeltaForSend } from "./checkout-print-delta"
 import { recordPosClientMutation } from "@/app/pos/actions/idempotency"
@@ -76,6 +77,7 @@ export async function finalizeCheckout(params: FinalizeCheckoutParams) {
     || selfServiceLocationFromItems(params.existingItems)
   const fulfillmentIntent = params.publicCheckout && params.isFullyPaid && !selfService
     ? "complete" : params.intent
+  let inventoryReviewRequired = false
   let upsertedItems = await upsertSaleOrderItemsWithModifiers({
     supabase: params.supabase,
     supabaseAdmin: params.supabaseAdmin,
@@ -130,6 +132,23 @@ export async function finalizeCheckout(params: FinalizeCheckoutParams) {
       })
       await bumpCacheEpoch("order-data", params.siteId)
     }
+  } else if (params.source === "pos" && params.finalOriginLocationId && params.orderInitialStatus === "completed") {
+    if (params.fulfillment === "ship") {
+      const itemIds = posCheckoutShipmentItems(upsertedItems)
+      if (itemIds.length && params.resolvedUserId) {
+        const result = await createAuthorizedShipment(params.supabaseAdmin, {
+          siteId: params.siteId, saleOrderId: params.order.id, saleId: params.sale.id,
+          leadId: params.finalLeadId, originLocationId: params.finalOriginLocationId,
+          shippingAddress: params.shippingAddress, userId: params.resolvedUserId, itemIds,
+        })
+        if (result.error) throw new Error(`Shipment error: ${result.error}`)
+      }
+    } else {
+      inventoryReviewRequired = await settlePosCheckoutInventory({
+        client: params.supabaseAdmin, siteId: params.siteId, orderId: params.order.id,
+        locationId: params.finalOriginLocationId, lines: upsertedItems,
+      })
+    }
   } else if (
     params.fulfillment === "ship" &&
     params.finalOriginLocationId &&
@@ -150,6 +169,13 @@ export async function finalizeCheckout(params: FinalizeCheckoutParams) {
     params.finalOriginLocationId &&
     params.orderInitialStatus === "completed"
   ) {
+    const inventoryLines = params.processedLines.length
+      ? params.processedLines.map((line) => ({
+        catalogItemId: line.catalog_item_id,
+        quantity: line.completed_without_stock === true ? 0
+          : line.quantity,
+      })).filter((line) => line.quantity > 0)
+      : params.lines.filter((line) => line.completedWithoutStock !== true)
     const { data: settings } = await queryClient
       .from("settings")
       .select("commerce")
@@ -158,10 +184,10 @@ export async function finalizeCheckout(params: FinalizeCheckoutParams) {
     const policy = settings?.commerce?.decrement_stock_on || "ship"
     if (policy !== "never") {
       const trackedIds = await readCheckoutTrackedInventoryIds(
-        queryClient, params.siteId, params.lines.map((line) => line.catalogItemId),
+        queryClient, params.siteId, inventoryLines.map((line) => line.catalogItemId),
       )
       // Keep repeated-product deltas sequential; the database locks each stock row.
-      for (const line of params.lines) {
+      for (const line of inventoryLines) {
         if (!trackedIds.has(line.catalogItemId)) continue
         await applyLocationInventoryDelta(queryClient, {
           siteId: params.siteId,
@@ -296,6 +322,7 @@ export async function finalizeCheckout(params: FinalizeCheckoutParams) {
     notes: order.notes ?? params.notes ?? null,
     fulfillment: order.fulfillment_method ?? params.fulfillment ?? null,
     quotationCompleted: Boolean(params.quoteForAccept),
+    ...(inventoryReviewRequired ? { inventoryReviewRequired: true } : {}),
   }
   if (params.clientMutationId && params.source === "pos") {
     const saved = await recordPosClientMutation({

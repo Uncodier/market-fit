@@ -5,6 +5,7 @@ export function posCheckoutLines(cart: PosCartItem[]): CheckoutLine[] {
   return cart.filter((item) => item.cartQty > 0).map((item) => ({
     catalogItemId: item.id,
     quantity: item.cartQty,
+    ...(item.completedWithoutStock === true ? { completedWithoutStock: true } : {}),
     unitPriceOverride: item.cartPrice,
     saleOrderItemId: item.saleOrderItemId,
     reservationStart: item.reservationStart,

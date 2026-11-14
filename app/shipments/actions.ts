@@ -7,6 +7,9 @@ import { userCanOnSite } from '@/lib/permissions/site-access';
 import { ShipmentParams, ShipmentWithRelations } from "./types";
 import { Shipment } from "@/app/types";
 import { applyLocationInventoryDelta } from "@/app/commerce/inventory-delta";
+import { reconcileOrderLineInventory } from "@/app/commerce/order-line-inventory";
+import { usesOrderLineInventoryReceipts } from "@/app/commerce/order-inventory-scope";
+import { isUnassignedShipmentLine } from './shipment-line-selection';
 import { assertInternalShipment } from "@/lib/marketplace/mutation-guards";
 import {
   buildTrackingNumber,
@@ -121,24 +124,42 @@ export async function setShipmentLineItems(siteId: string, shipmentId: string, i
   try {
     const supabase = await createClient();
     await assertInternalShipment(supabase, siteId, shipmentId);
+    const { data: shipment, error: shipmentError } = await supabase.from('shipments')
+      .select('sale_order_id, status').eq('site_id', siteId).eq('id', shipmentId).single();
+    if (shipmentError || !shipment) throw new Error('Shipment not found');
+    if (!['pending', 'preparing'].includes(shipment.status)) throw new Error('Dispatched shipment lines cannot be changed');
+    if (itemIds.length) {
+      const { data: lines, error } = await supabase.from('sale_order_items')
+        .select('id, shipment_id, status, metadata').eq('site_id', siteId)
+        .eq('sale_order_id', shipment.sale_order_id).in('id', itemIds);
+      if (error || lines?.length !== new Set(itemIds).size || lines.some((line: any) =>
+        !isUnassignedShipmentLine({ ...line, shipment_id: line.shipment_id === shipmentId ? null : line.shipment_id }))) {
+        throw new Error('Shipment lines are unavailable or already assigned');
+      }
+    }
 
     let clearQuery = supabase
       .from("sale_order_items")
       .update({ shipment_id: null })
       .eq("site_id", siteId)
+      .eq('sale_order_id', shipment.sale_order_id)
       .eq("shipment_id", shipmentId);
 
     if (itemIds.length > 0) {
       clearQuery = clearQuery.not("id", "in", `(${itemIds.join(",")})`);
     }
-    await clearQuery;
+    const { error: clearError } = await clearQuery;
+    if (clearError) throw new Error('Shipment line removal could not be confirmed');
 
     if (itemIds.length > 0) {
-      await supabase
+      const { data: attached, error } = await supabase
         .from("sale_order_items")
         .update({ shipment_id: shipmentId })
         .eq("site_id", siteId)
-        .in("id", itemIds);
+        .eq('sale_order_id', shipment.sale_order_id)
+        .or(`shipment_id.is.null,shipment_id.eq.${shipmentId}`)
+        .in("id", itemIds).select('id');
+      if (error || attached?.length !== new Set(itemIds).size) throw new Error('Shipment line assignment could not be confirmed');
     }
 
     revalidatePath(`/shipments/${shipmentId}`);
@@ -167,7 +188,11 @@ export async function createShipment(params: CreateShipmentInput) {
 
 export async function updateShipmentStatus(siteId: string, shipmentId: string, newStatus: string) {
   try {
-    const supabase = await createClient();
+    const supabase = await createClient(true);
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user || !await userCanOnSite(supabase, siteId, 'update')) {
+      return { error: 'Shipment update is not authorized' };
+    }
 
     const { data: current } = await supabase
       .from("shipments")
@@ -191,31 +216,45 @@ export async function updateShipmentStatus(siteId: string, shipmentId: string, n
     if (newStatus === "shipped") updates.shipped_at = new Date().toISOString();
     if (newStatus === "delivered") updates.delivered_at = new Date().toISOString();
 
-    if ((newStatus === "shipped" || newStatus === "delivered") && !current.stock_decremented) {
-      const { data: settings } = await supabase
+    if (newStatus === "shipped" || newStatus === "delivered") {
+      const receiptOwned = await usesOrderLineInventoryReceipts(supabase, siteId, current.sale_order_id);
+      const { data: settings, error: settingsError } = await supabase
         .from("settings")
         .select("commerce")
         .eq("site_id", siteId)
         .single();
+      if (settingsError) throw new Error('Shipment inventory policy could not be read');
       const policy = settings?.commerce?.decrement_stock_on || "ship";
 
-      if (
+      if ((receiptOwned || !current.stock_decremented) && (
         (policy === "ship" && (newStatus === "shipped" || newStatus === "delivered")) ||
         (policy === "order_complete" && newStatus === "delivered")
-      ) {
-        const { data: orderItems } = await supabase
+      )) {
+        const { data: orderItems, error: itemsError } = await supabase
           .from("sale_order_items")
-          .select("catalog_item_id, quantity")
+          .select("id, catalog_item_id, quantity, metadata")
+          .eq("site_id", siteId)
           .eq("sale_order_id", current.sale_order_id)
           .eq("shipment_id", shipmentId)
           .not("catalog_item_id", "is", null);
+        if (itemsError) throw new Error('Shipment inventory lines could not be read');
 
         if (orderItems && orderItems.length > 0) {
           for (const item of orderItems) {
+            if (receiptOwned) {
+              const receipt = await reconcileOrderLineInventory(supabase, {
+                siteId, orderId: current.sale_order_id, lineId: item.id,
+                locationId: current.origin_location_id, targetQuantity: Number(item.quantity),
+              });
+              if (receipt.reviewRequired) throw new Error('Inventory review required before shipping this order');
+              continue;
+            }
+            if (item.metadata?.completed_without_stock === true) continue;
             const { data: catItem } = await supabase
               .from("catalog_items")
               .select("track_inventory")
               .eq("id", item.catalog_item_id)
+              .eq("site_id", siteId)
               .single();
             if (catItem?.track_inventory) {
               await applyLocationInventoryDelta(supabase, {
@@ -236,6 +275,7 @@ export async function updateShipmentStatus(siteId: string, shipmentId: string, n
       .from("shipments")
       .update(updates)
       .eq("id", shipmentId)
+      .eq("site_id", siteId)
       .select()
       .single();
 

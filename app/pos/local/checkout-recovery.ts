@@ -19,6 +19,7 @@ export async function applyPosCheckoutRecovery(row: PosOutboxRow, recovery: PosC
       recoveryMessage: recovery.message, recoveryOrderId: result.orderId, recoverySaleId: result.saleId,
       resultOrderId: result.orderId, resultSaleId: result.saleId, resultOrderNumber: result.orderNumber,
       resultKitchenDelta: result.kitchenDelta, resultFulfillment: result.fulfillment,
+      inventoryReviewRequired: result.inventoryReviewRequired === true,
     });
     return;
   }

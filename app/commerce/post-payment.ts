@@ -5,11 +5,15 @@ import { grantFromOrder } from "./entitlements"
 import { isPersistedSelfServiceSalePaid, isSelfServiceOrder } from "./self-service-lifecycle"
 import { applySelfServiceInventoryRelease } from "./self-service-inventory"
 import { applyLocationInventoryDelta } from "./inventory-delta"
+import { posCheckoutShipmentItems, settlePosCheckoutInventory } from "./checkout-pos-inventory"
 
 type PaidOrderItem = {
   id: string
   catalog_item_id: string | null
   quantity: number
+  status?: string
+  shipment_id?: string | null
+  metadata?: { completed_without_stock?: boolean } | null
 }
 
 export async function processPostPaymentFulfillment(
@@ -95,7 +99,7 @@ export async function processPostPaymentFulfillment(
   // 1. Load line items
   const { data: saleOrderItems, error: itemsError } = await supabase
     .from('sale_order_items')
-    .select('id, catalog_item_id, quantity')
+    .select('id, catalog_item_id, quantity, status, shipment_id, metadata')
     .eq('sale_order_id', orderId)
   if (itemsError) {
     throw new Error(`Failed to load paid order items: ${itemsError.message}`)
@@ -136,6 +140,26 @@ export async function processPostPaymentFulfillment(
 
   // Card checkouts start as draft; entitlements are only granted once paid.
   await grantFromOrder(orderId, true)
+
+  // POS uses persisted line receipts, including payments collected outside POS.
+  // Fulfillment status must never substitute for an inventory debit receipt.
+  if (sale?.source === "pos") {
+    if (order.origin_location_id && fulfillmentMethod === "ship") {
+      const itemIds = posCheckoutShipmentItems(paidOrderItems)
+      if (itemIds.length) {
+        const result = await createAuthorizedShipment(supabase, {
+          siteId, saleOrderId: orderId, saleId, leadId, userId, itemIds,
+          originLocationId: order.origin_location_id, shippingAddress: order.shipping_address,
+        })
+        if (result.error) throw new Error(result.error)
+      }
+    } else if (order.origin_location_id) {
+      const needsReview = await settlePosCheckoutInventory({ client: supabase, siteId, orderId,
+        locationId: order.origin_location_id, lines: paidOrderItems })
+      if (needsReview) throw new Error("Payment recorded. Legacy inventory requires reconciliation; do not collect again.")
+    }
+    return
+  }
 
   // 4. Create shipment if applicable
   let shipmentId: string | undefined;

@@ -12,6 +12,7 @@ export type PosCheckoutRecovery = {
     orderNumber?: string | null;
     kitchenDelta?: import("@/lib/printer/core/types").KitchenDelta | null;
     fulfillment?: string | null;
+    inventoryReviewRequired?: boolean;
   };
 };
 

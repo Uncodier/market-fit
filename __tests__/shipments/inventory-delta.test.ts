@@ -1,5 +1,6 @@
 import { updateShipmentStatus } from "@/app/shipments/actions"
 import { createClient } from "@/lib/supabase/server"
+import { userCanOnSite } from '@/lib/permissions/site-access'
 
 jest.mock("server-only", () => ({}))
 jest.mock("next/cache", () => ({ revalidatePath: jest.fn() }))
@@ -19,10 +20,13 @@ function fixture(options: { tracked?: boolean; decremented?: boolean; policy?: s
   const shipments = chain({ status: "preparing", stock_decremented: options.decremented ?? false,
     sale_order_id: "order", origin_location_id: "origin" })
   const client = {
+    auth: { getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'actor' } } }) },
     rpc: jest.fn().mockResolvedValue({ data: { quantity: 0 }, error: options.rpcError ? { message: "denied" } : null }),
     from: jest.fn((table: string) => {
       if (table === "inventory_levels") throw new Error("Legacy stock access")
       if (table === "shipments") return shipments
+      if (table === 'sale_orders') return { maybeSingle: jest.fn().mockResolvedValue({ data: { sale: { source: 'shop' } } }),
+        select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis() }
       if (table === "settings") return chain({ commerce: { decrement_stock_on: options.policy ?? "ship" } })
       if (table === "sale_order_items") return chain([{ catalog_item_id: "sku", quantity: 3 }])
       if (table === "catalog_items") return chain({ track_inventory: options.tracked ?? true })
@@ -30,6 +34,7 @@ function fixture(options: { tracked?: boolean; decremented?: boolean; policy?: s
     }),
   }
   jest.mocked(createClient).mockResolvedValue(client as never)
+  jest.mocked(userCanOnSite).mockResolvedValue(true)
   return { client, shipments }
 }
 

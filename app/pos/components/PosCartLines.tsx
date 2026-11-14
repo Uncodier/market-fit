@@ -79,6 +79,7 @@ export function PosCartLines({
                   <p className="text-xs text-amber-600 dark:text-amber-400">Backorder: {item.backorderQty}</p>
                 )}
                 {item.inventoryMessage && <p className="text-xs text-destructive">{item.inventoryMessage}</p>}
+                {item.completedWithoutStock && <p className="text-xs text-amber-600">Completed without stock</p>}
                 <div className="text-muted-foreground text-xs mt-0.5">
                   {formatPrice(unitTotal, item.currency || "USD")}
                   {item.cartDiscountPercent
@@ -109,7 +110,7 @@ export function PosCartLines({
                   size="icon"
                   className="h-6 w-6 rounded-full"
                   onClick={() => updateQty(lineKey, 1)}
-                  disabled={item.inventoryCanIncrease === false || (Boolean(item.reservationStart) && item.cartQty >= (item.reservationAvailableQty || 1))}
+                  disabled={Boolean(item.reservationStart) && item.cartQty >= (item.reservationAvailableQty || 1)}
                 >
                   <Plus className="h-3 w-3" />
                 </Button>

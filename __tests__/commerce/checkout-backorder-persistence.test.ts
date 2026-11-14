@@ -63,6 +63,56 @@ describe("durable POS backorder metadata", () => {
     modifier_group_id: "group", backorder_quantity: 3,
   })
 
+  it.each(["draft", "send", "pay"])("persists explicit host/modifier completion independently of %s and payment", async (intent) => {
+    const client = recordClient()
+    const processedLines = [parent, modifier].map((line) => ({ ...line, completed_without_stock: true }))
+    const params = {
+      supabase: client, supabaseAdmin: client, isAdmin: false, siteId: "site", orderId: "order",
+      existingItems: [], processedLines, lines: [], intent, isFullyPaid: false,
+    }
+    await upsertSaleOrderItemsWithModifiers(params)
+    expect(client.tables.sale_order_items.map((row) => row.status)).toEqual(["completed", "completed"])
+    expect(client.tables.sale_order_items.map((row) => row.metadata)).toEqual([
+      expect.objectContaining({ completed_without_stock: true, backorder_quantity: 0, is_new: false }),
+      expect.objectContaining({ completed_without_stock: true, backorder_quantity: 0, is_new: false }),
+    ])
+    await upsertSaleOrderItemsWithModifiers({ ...params, existingOrderId: "order", existingItems: client.tables.sale_order_items })
+    expect(client.tables.sale_order_items).toHaveLength(2)
+  })
+
+  it.each([true, false])("does not overwrite an unkeyed legacy line with a new completed delta (new first=%s)", async (newFirst) => {
+    const old: Row = { id: "legacy", site_id: "site", sale_order_id: "order", catalog_item_id: "sku",
+      quantity: 2, status: "new", parent_sale_order_item_id: null, metadata: {} }
+    const client = recordClient({ sale_order_items: [old] })
+    const original = processedLine({ client_line_key: "legacy", quantity: 2 })
+    const addition = processedLine({ client_line_key: "new-delta", quantity: 1, completed_without_stock: true })
+    await upsertSaleOrderItemsWithModifiers({
+      supabase: client, supabaseAdmin: client, isAdmin: false, siteId: "site", orderId: "order",
+      existingOrderId: "order", existingItems: [old],
+      processedLines: newFirst ? [addition, original] : [original, addition],
+      lines: [{ catalogItemId: "sku" }], intent: "send", isFullyPaid: false,
+    })
+    expect(client.tables.sale_order_items).toHaveLength(2)
+    expect(old).toMatchObject({ quantity: 2, status: "new" })
+    expect(old.metadata?.completed_without_stock).toBeUndefined()
+    expect(client.tables.sale_order_items.find((row) => row.id !== "legacy"))
+      .toMatchObject({ quantity: 1, status: "completed", metadata: { completed_without_stock: true } })
+  })
+
+  it("serializes explicit completion without a backorder and does not imply payment", async () => {
+    const client = recordClient()
+    const result = await persistCheckoutRecords({
+      supabase: client, supabaseAdmin: client, isAdmin: false, siteId: "site", source: "pos",
+      fulfillment: "none", intent: "send", quoteForAccept: null,
+      processedLines: [{ ...parent, completed_without_stock: true }],
+      orderSubtotal: 40, orderTaxTotal: 0, orderShippingCost: 0, orderCurrency: "USD",
+    })
+    expect(result.isFullyPaid).toBe(false)
+    expect(client.tables.sale_orders[0].items?.[0].metadata).toMatchObject({
+      completed_without_stock: true, backorder_quantity: 0, is_new: false,
+    })
+  })
+
   it("persists host and modifier shortage markers without introducing a lifecycle status", async () => {
     const client = recordClient()
     const admin = recordClient()

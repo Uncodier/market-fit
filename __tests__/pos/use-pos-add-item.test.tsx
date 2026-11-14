@@ -124,7 +124,8 @@ describe("instant POS additions", () => {
       void result.current.add.addToCart(sku);
     });
     expect(result.current.inventory.displayCart[0]).toMatchObject({ cartQty: 2, cartPrice: 10 });
-    expect(toast.error).toHaveBeenCalledTimes(1);
+    expect(result.current.inventory.shortage).toMatchObject({ item: { id: item.id } });
+    expect(toast.error).not.toHaveBeenCalled();
     expect(createClient).not.toHaveBeenCalled();
   });
 });

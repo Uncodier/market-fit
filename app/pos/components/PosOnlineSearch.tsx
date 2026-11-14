@@ -5,6 +5,7 @@ import type { CatalogItem } from "@/app/types"
 import { Button } from "@/app/components/ui/button"
 import { searchPosCatalog } from "../actions/search-catalog"
 import type { PosItemAvailability } from "../cart-availability"
+import { canResolvePosShortage } from "../stock-shortage"
 import { useLocalization } from "@/app/context/LocalizationContext"
 
 type Props = {
@@ -62,7 +63,7 @@ export function PosOnlineSearch({ siteId, query, online, hydrated, catalogItems,
           const item = local.get(suggestion.id)
           const synced = hydrated && item && item.updated_at === suggestion.updated_at &&
             item.status === "active" && item.is_pos_available !== false && !item.parent_id
-          const available = synced && getAvailability(item).sellable
+          const available = synced && (getAvailability(item).sellable || canResolvePosShortage(item, getAvailability(item)))
           return <Button key={suggestion.id} variant="outline" disabled={!available}
             onClick={() => { if (available && item) onAdd(item) }}>
             {suggestion.name}{!synced ? " — Sync catalog to use" : !available ? " — Unavailable" : ""}

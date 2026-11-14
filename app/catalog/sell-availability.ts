@@ -1,9 +1,14 @@
 import { createClient, createServiceClient } from "@/lib/supabase/server"
-import { variantSelectionBlockReason } from "@/app/catalog/product-details"
+import { needsBuyerAccount, variantSelectionBlockReason } from "@/app/catalog/product-details"
+import { isDynamicPricedItem } from "@/app/catalog/dynamic-pricing"
 import type { CatalogAvailabilityResult } from "./types"
 
 export type CatalogSellOptions = {
   skipVariantSelection?: boolean
+  /** POS-only, freshly authorized below; never bypasses catalog/variant validation. */
+  completedWithoutStock?: boolean
+  /** Internal, server-verified persisted fulfillment credit; not a checkout input. */
+  inventoryAlreadyCompleted?: boolean
   /** Internal checkout reuses its already-authorized client, never a browser flag. */
   checkoutClient?: Awaited<ReturnType<typeof createClient>>
 }
@@ -22,7 +27,12 @@ export async function getCatalogAvailability(
   if (!Number.isFinite(quantity) || quantity <= 0) {
     return { sellable: false, reason: "Quantity must be a positive finite number", policy: "block" }
   }
-  const supabase = options?.checkoutClient || (forceServiceRole ? await createServiceClient(true) : await createClient())
+  const completionAccess = options?.completedWithoutStock === true || options?.inventoryAlreadyCompleted === true
+    ? await (await import("@/app/pos/checkout-request-access")).requirePosCheckoutAccess(siteId) : null
+  if (completionAccess && "error" in completionAccess) {
+    return { sellable: false, reason: completionAccess.error, policy: "block" }
+  }
+  const supabase = completionAccess?.supabase || options?.checkoutClient || (forceServiceRole ? await createServiceClient(true) : await createClient())
 
   const [itemRes, settingsRes] = await Promise.all([
     supabase.from("catalog_items").select("*").eq("id", catalogItemId).eq("site_id", siteId).single(),
@@ -30,6 +40,9 @@ export async function getCatalogAvailability(
   ])
 
   if (itemRes.error || !itemRes.data) return { sellable: false, reason: "Item not found", policy: "block" }
+  // A server-verified fulfilled line is a collection, not a new catalog sale.
+  // Later archival, variant changes or stock policies must not invalidate its debt.
+  if (completionAccess && options?.inventoryAlreadyCompleted === true) return { sellable: true, policy: "block" }
   if (settingsRes.error) {
     return { sellable: false, reason: "Unable to verify stock policy", policy: "block" }
   }
@@ -64,6 +77,15 @@ export async function getCatalogAvailability(
 
   if (item.status !== "active") {
     return { sellable: false, reason: "Item is archived", policy }
+  }
+
+  // Fulfillment is acknowledged explicitly; this does not reserve or consume stock.
+  if (completionAccess && options?.completedWithoutStock === true) {
+    if (item.is_reservation || needsBuyerAccount(item) || isDynamicPricedItem(item) ||
+      (item.availability_mode === "manual" && item.availability_status !== "available")) {
+      return { sellable: false, reason: "This item cannot be completed without stock", policy }
+    }
+    return { sellable: true, policy }
   }
 
   if (item.availability_mode === "always") {

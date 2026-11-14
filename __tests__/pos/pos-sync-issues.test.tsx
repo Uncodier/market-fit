@@ -232,6 +232,13 @@ it("does not offer payment checks for pending/synced checkouts or other failed o
   expectNoBlindRetry();
 });
 
+it("keeps a durable inventory review warning on a confirmed payment", async () => {
+  storedRows = [checkoutRow({ status: "synced", inventoryReviewRequired: true })];
+  render(<PosSyncIssues {...props} />);
+  expect(await screen.findByText(/Inventory history requires reconciliation/)).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Check payment status" })).not.toBeInTheDocument();
+});
+
 it("shows zero queued payment and a legacy method without inventing a charge", async () => {
   const row = checkoutRow();
   if (row.payload.kind === "checkout") { row.payload.data.payments = []; row.payload.data.paymentMethod = "cash"; }

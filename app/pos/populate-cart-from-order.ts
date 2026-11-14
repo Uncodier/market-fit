@@ -38,6 +38,8 @@ export function buildCartFromSaleOrderItems(
         currency: localCheckoutSnapshot ? child.metadata?.local_currency : orderCurrency || catalogItem?.currency,
         saleOrderItemId: child.id?.startsWith("local_") ? undefined : child.id,
         backorderQty: Number(child.metadata?.backorder_quantity) || 0,
+        inventoryCompletedQty: !localCheckoutSnapshot && child.status === "completed"
+          ? Math.max(0, Number(child.quantity) || 0) : 0,
       }
     })
     const lineKey = oi.metadata?.client_line_key || oi.id || uuidv4()
@@ -55,6 +57,8 @@ export function buildCartFromSaleOrderItems(
         reservationEnd: oi.metadata?.reservation_end,
       } : {}),
       backorderQty: Number(oi.metadata?.backorder_quantity) || 0,
+      inventoryCompletedQty: !localCheckoutSnapshot && oi.status === "completed" ? hostQty : 0,
+      completedWithoutStock: oi.metadata?.completed_without_stock === true,
       lineKey,
       modifiers,
     } as PosCartItem

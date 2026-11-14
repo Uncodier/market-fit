@@ -12,6 +12,7 @@ export interface PosCartModifier {
   /** Reference to the persisted modifier whose price is in the order currency. */
   saleOrderItemId?: string
   backorderQty?: number
+  inventoryCompletedQty?: number
 }
 
 export interface PosCartItem extends CatalogItem {
@@ -34,4 +35,8 @@ export interface PosCartItem extends CatalogItem {
   backorderQty?: number
   inventoryMessage?: string
   inventoryCanIncrease?: boolean
+  /** Explicit operator instruction; the server authorizes and records completion. */
+  completedWithoutStock?: boolean
+  /** Persisted fulfilled units do not need stock again for collection. */
+  inventoryCompletedQty?: number
 }

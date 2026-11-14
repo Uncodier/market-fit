@@ -20,6 +20,7 @@ import {
 } from "@/app/pos/catalog-alphabet"
 import { PosAlphabetIndex } from "./PosAlphabetIndex"
 import type { PosItemAvailability } from "../cart-availability"
+import { canResolvePosShortage } from "../stock-shortage"
 
 interface PosCatalogGridProps {
   items: CatalogItem[]
@@ -96,6 +97,7 @@ export function PosCatalogGrid({ items, loading, onAdd, t, getAvailability }: Po
           displayedItems.map((item) => {
             const availability = getAvailability?.(item)
             const isAvailable = availability?.sellable ?? isStorefrontAvailable(item)
+            const canSelect = isAvailable || canResolvePosShortage(item, availability)
             const itemInitial = getCatalogItemInitial(item.name)
             const isLetterAnchor = letterAnchors.get(itemInitial) === item.id
             return (
@@ -104,14 +106,14 @@ export function PosCatalogGrid({ items, loading, onAdd, t, getAvailability }: Po
                 data-catalog-item-id={item.id}
                 data-catalog-letter={isLetterAnchor ? itemInitial : undefined}
                 role="button"
-                tabIndex={isAvailable ? 0 : -1}
-                aria-disabled={!isAvailable}
+                tabIndex={canSelect ? 0 : -1}
+                aria-disabled={!canSelect}
                 aria-label={item.name}
                 title={availability?.reason}
-                className={`relative transition-shadow overflow-hidden flex flex-col h-40 min-w-[180px] ${isLetterAnchor ? "scroll-mt-[calc(var(--topbar-height,64px)+87px)]" : ""} ${!isAvailable ? "opacity-50 grayscale cursor-not-allowed" : "cursor-pointer hover:shadow-md"}`}
-                onClick={() => isAvailable && onAdd(item)}
+                className={`relative transition-shadow overflow-hidden flex flex-col h-40 min-w-[180px] ${isLetterAnchor ? "scroll-mt-[calc(var(--topbar-height,64px)+87px)]" : ""} ${!isAvailable ? "opacity-50 grayscale" : ""} ${canSelect ? "cursor-pointer hover:shadow-md" : "cursor-not-allowed"}`}
+                onClick={() => canSelect && onAdd(item)}
                 onKeyDown={(event) => {
-                  if (isAvailable && (event.key === "Enter" || event.key === " ")) {
+                  if (canSelect && (event.key === "Enter" || event.key === " ")) {
                     event.preventDefault()
                     onAdd(item)
                   }

@@ -20,6 +20,7 @@ import type { PosCartItem, PosCartModifier } from "@/app/pos/components/CartPane
 import { isStorefrontAvailable } from "@/app/catalog/storefront-availability";
 import type { PosItemAvailability } from "../cart-availability";
 import { getPosItemModifierGroups } from "../item-options";
+import { canResolvePosShortage } from "../stock-shortage";
 
 type Args = {
   siteId?: string;
@@ -52,7 +53,7 @@ export function usePosAddItem({
   ), [catalogItems]);
   const canAdd = (item: CatalogItem) => {
     const availability = getItemAvailability?.(item);
-    if (availability && !availability.sellable) {
+    if (availability && !availability.sellable && !canResolvePosShortage(item, availability)) {
       toast.error(availability.reason || "Sold out");
       return false;
     }
@@ -172,6 +173,10 @@ export function usePosAddItem({
 
   const addToCart = async (item: CatalogItem) => {
     if (!siteId || !userId) return;
+    if (requiresVariantSelection(item) || variantParentIds.has(item.id)) {
+      openOptions(item);
+      return;
+    }
     if (!canAdd(item)) return;
 
     if (isDynamicPricedItem(item)) {

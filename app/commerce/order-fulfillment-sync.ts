@@ -2,6 +2,7 @@ import { processPostPaymentFulfillment } from "@/app/commerce/post-payment"
 import { grantFromOrder, revokeFromOrder } from "@/app/commerce/entitlements"
 import { restockOrderInventory } from "@/app/commerce/restock-order-inventory"
 import type { InventoryDeltaClient } from "./inventory-delta"
+import type { OrderLineInventoryClient } from "./order-line-inventory"
 
 const TERMINAL_SALE_STATUSES = new Set(["cancelled", "refunded"])
 
@@ -38,12 +39,19 @@ export async function fulfillLinkedOrderAfterPayment(params: {
 }): Promise<void> {
   const { data: order } = await params.supabase
     .from("sale_orders")
-    .select("id, status")
+    .select("id, status, sale:sales(source)")
     .eq("sale_id", params.saleId)
     .eq("site_id", params.siteId)
     .maybeSingle()
 
   if (!order || order.status === "cancelled") return
+
+  const linkedSale = Array.isArray(order.sale) ? order.sale[0] : order.sale
+  if (linkedSale?.source === "pos" && order.status !== "pending") {
+    await processPostPaymentFulfillment(order.id, params.siteId, params.saleId,
+      params.leadId || undefined, params.userId || "")
+    return
+  }
 
   if (order.status === "pending") {
     await params.supabase
@@ -66,7 +74,7 @@ export async function fulfillLinkedOrderAfterPayment(params: {
 }
 
 export async function revokeOrderFulfillment(
-  supabase: QueryClient & InventoryDeltaClient,
+  supabase: QueryClient & InventoryDeltaClient & OrderLineInventoryClient,
   orderId: string,
   options?: { cancelOrder?: boolean; previousStatus?: string | null },
 ): Promise<void> {
@@ -110,7 +118,16 @@ export async function revokeOrderFulfillment(
       )
   }
 
-  if (!alreadyCancelled) {
+  // POS receipt reconciliation is safe to resume after cancellation was saved
+  // but the first stock refund failed. Legacy refunds retain their old gate.
+  let resumePosRestock = false
+  if (alreadyCancelled && order.sale_id) {
+    const { data: sale, error } = await supabase.from("sales").select("source")
+      .eq("id", order.sale_id).eq("site_id", order.site_id).maybeSingle()
+    if (error) throw new Error("Unable to verify cancelled order inventory ownership")
+    resumePosRestock = sale?.source === "pos"
+  }
+  if (!alreadyCancelled || resumePosRestock) {
     try {
       let saleAlreadyPaid = false
       if (priorStatus === "pending" && order.sale_id) {

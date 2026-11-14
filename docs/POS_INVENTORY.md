@@ -10,10 +10,10 @@ rows mean zero, not permission to use another location's inventory.
 The existing **Inventory → Commerce Policies → Stock Shortage Policy** setting
 (`settings.commerce.stock_shortage_policy`) controls shortages:
 
-- `block`: show **Sold Out** and reject additions or quantity increases beyond
-  available stock, including numpad edits.
-- `allow` / `warn`: show **Backorder**, permit the shortage, and notify the cashier.
-  Only the quantity above available stock is marked as backordered.
+- `block`: show **Sold Out**. Additions or quantity increases beyond available
+  stock open the shortage-resolution dialog, including numpad edits.
+- `allow` / `warn`: show **Backorder**. New shortages also require the cashier to
+  choose a resolution; existing backorders retain their shortage markers.
 - Missing policy preserves the existing `allow` default. Invalid policy or
   failed inventory reads do not produce an apparently valid empty snapshot.
 
@@ -27,6 +27,95 @@ stock allowance. Modifiers consume their quantity multiplied by host quantity.
 Changing location or synchronizing new stock recalculates cart warnings and
 blocks checkout if the cart no longer satisfies the policy. Reducing/removing
 an invalid line remains possible.
+
+### Resolving a new shortage
+
+For physical inventory items with known stock, the cashier can:
+
+- **Add as completed**: explicitly acknowledge that the newly added units and
+  their extras were already fulfilled. Only the new cart delta becomes completed;
+  the existing line is unchanged. Payment is still required. Server-authorized
+  checkout persists completed line/unit status and `metadata.completed_without_stock`;
+  these units are excluded from subsequent stock deduction, shipment and restock.
+- **Create purchase requisition**: save a real procurement draft for review and
+  submission. The catalog determines valuation, not the POS sale price.
+- **Request transfer from another location**: offered only for authorized snapshot
+  locations with stock, requesting up to the available quantity when only part of
+  the shortage can be supplied. The existing transfer workflow
+  requires approval, dispatch and receipt; the request itself moves no stock.
+
+Requests require online access and their existing server permissions. Neither
+request changes the cart or claims inventory has arrived. The dialog links to the
+created document. Cancelling leaves the cart unchanged. Unknown stock, manual
+unavailability, reservations, digital/account products and dynamic quotes do not
+gain an inventory override. Subsequent increases require a new decision.
+
+Purchase requisitions use the existing procurement permissions and whole-unit
+quantity contract (fractional shortages round up). Their legacy creation RPC is
+not idempotent: uncertain writes block another attempt in the dialog and link to
+the requisition list for review. Transfers retain their actor-bound idempotency
+key for retries. Reopening a cancelled dialog starts a new request; review any
+unconfirmed purchase first.
+
+### Collecting completed orders
+
+Persisted completed quantities are not counted as new inventory demand when
+collecting an existing POS order. The server independently reads fulfillment
+under the user's site/order access, matches persisted host/modifier identities,
+and caps the availability credit at actual completed units. New lines and excess
+quantities still undergo normal availability checks. Client completion quantities
+are only display hints, never server authorization or proof of a stock debit.
+
+POS stock accounting uses `order_line_inventory_receipts`. Fulfillment status
+does not determine whether to debit stock: the atomic RPC processes the full
+persisted line quantity against its prior processed high-water mark. Payment
+after operational completion therefore performs the first debit; repeated
+collection or shipment processing cannot debit those quantities again.
+
+The receipt separately tracks processed demand, actual units removed and actual
+units refunded. Floor-zero shortages remain collectible; a replay after stock
+replenishment cannot charge the shortage again, and refunds cannot invent units
+that were never removed. Refund requests fence future new debits, including when
+the original actual debit was zero. Cancellation retries resume receipt-based
+refunds even if the order status was already saved as cancelled.
+
+Shipments receive all eligible unassigned lines, including partially completed
+fulfillment, not a quantity reduced by fulfillment status. Already assigned lines,
+cancelled lines and explicit no-stock completions are excluded. Conditional
+assignment cannot silently move a line from another shipment. Shipment debit and
+refund use the same per-line receipt budget as checkout.
+
+### Migration and historical reconciliation
+
+Deploy `supabase/migrations/20261114000000_order_line_inventory_receipts.sql`
+before the updated application, after target-schema verification and explicit
+approval. New ordinary POS lines receive a known-zero receipt in their insert
+transaction. Other commerce and self-service retain their existing inventory
+owners. Stop old application writers during rollout: they do not update receipts.
+
+Historical lines without receipts are not backfilled from completed/payment
+status or shipment flags. Their first use creates a durable review record and
+moves no inventory. POS collection succeeds with `inventoryReviewRequired`; the
+confirmation and persisted sync queue warn the cashier not to collect again.
+Shipping and restocking stop for reconciliation rather than claiming success.
+An operator must verify actual movement history before resolving a review record.
+No remote migration or historical reconciliation is performed by local tests.
+
+The service-role-only `resolve_order_line_inventory_review` RPC accepts
+`p_site_id`, `p_order_id`, `p_line_id`, `p_location_id`, `p_processed_quantity`,
+`p_actual_debited_quantity`, `p_actual_restocked_quantity` and `p_reason`. Use it
+only in an approved operator session after verifying the target and evidence.
+The reason must identify the operator and evidence (20–2000 characters).
+Quantities must satisfy `0 <= restocked <= debited <= processed <= 1e9`.
+This attestation moves no stock; it records the known historical budget, reason,
+timestamp and available actor identity. It only resolves a review receipt and
+cannot overwrite an already known budget. Browser roles cannot execute it.
+After attestation, retry the inventory operation, not the payment collection.
+
+For an operationally completed old order with verified **no previous stock
+movement**, all three historical quantities are zero. For a verified prior
+debit, record both processed demand and actual removed units; they can differ
+when stock was floored at zero. Never set these values from order status alone.
 
 ## Synchronization and server validation
 
@@ -128,6 +217,28 @@ summaries exclude cancelled lines, while detail status controls and product
 search retain the cancellation history.
 
 ## Backorder scope
+
+### Explicit completion without stock
+
+The shortage dialog's **Add as completed** choice is different from a backorder.
+The POS payload retains `completedWithoutStock: true` on the new host line;
+modifiers inherit it. The server authenticates POS access and still validates
+same-site active catalog items, variant selection and policy. This choice does
+not permit manual-unavailable, reservation, recurring, digital or dynamic-price
+items. Public and other checkout sources cannot request it.
+
+Authorized lines persist with `status = 'completed'`,
+`metadata.completed_without_stock = true`, and `backorder_quantity = 0`.
+Existing order-line unit triggers propagate the completed status. Completion is
+fulfillment, not payment: unpaid totals remain collectible. The serialized order
+items preserve the marker. The inventory receipt migration above is required.
+
+Explicit lines and inherited modifiers consume no inventory during checkout or
+shipment, and cancellation does not add fictitious stock for them. Ordinary
+lines retain normal stock validation and atomic floor-zero inventory deltas.
+Paying an existing completed line credits only server-verified persisted
+fulfillment quantities, not client status claims. This does not introduce a
+stock reservation or change the existing shipment concurrency limitations.
 
 The server persists its calculated `metadata.backorder_quantity` in
 `sale_order_items` and the serialized `sale_orders.items` representation. Client

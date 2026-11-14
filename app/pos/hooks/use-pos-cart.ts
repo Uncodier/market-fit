@@ -426,6 +426,9 @@ export function usePosCart({
     updateQty: inventoryCart.updateQty,
     setItemQty: inventoryCart.setItemQty,
     getItemAvailability: inventoryCart.getItemAvailability,
+    shortage: inventoryCart.shortage,
+    dismissShortage: inventoryCart.dismissShortage,
+    completeShortage: inventoryCart.completeShortage,
     validateInventory: () => {
       if (recordedPromoNeedsReview) {
         toast.error("This order has a recorded promotion. Reload the original order before payment, or update it in Orders.");

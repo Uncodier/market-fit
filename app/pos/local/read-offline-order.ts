@@ -65,6 +65,7 @@ export async function readOfflineOrder(siteId: string, orderId: string, cached: 
       quantity: line.quantity, unit_price: line.unitPriceOverride,
       status: "sent", parent_sale_order_item_id: null as string | null,
       metadata: { client_line_key: line.clientLineKey || id,
+        completed_without_stock: line.completedWithoutStock === true,
         local_currency: priceCurrency(line.catalogItemId, line.saleOrderItemId),
         reservation_start: line.reservationStart, reservation_end: line.reservationEnd },
     }, ...(line.modifiers || []).map((modifier, modifierIndex) => ({
@@ -73,6 +74,7 @@ export async function readOfflineOrder(siteId: string, orderId: string, cached: 
       quantity: modifier.quantity * line.quantity, unit_price: modifier.unitPriceOverride,
       status: "sent", parent_sale_order_item_id: id,
       metadata: { modifier_group_id: modifier.groupId,
+        completed_without_stock: line.completedWithoutStock === true,
         local_currency: priceCurrency(modifier.catalogItemId, modifier.saleOrderItemId) },
     }))];
   });

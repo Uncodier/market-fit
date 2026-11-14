@@ -17,9 +17,10 @@ export function posCartQuantities(cart: PosCartItem[]) {
     quantities.set(id, (quantities.get(id) || 0) + quantity)
   for (const line of cart) {
     if (!(line.cartQty > 0)) continue
-    add(line.id, line.cartQty)
+    if (line.completedWithoutStock) continue
+    add(line.id, Math.max(0, line.cartQty - (line.inventoryCompletedQty || 0)))
     for (const modifier of line.modifiers || []) {
-      add(modifier.catalogItemId, modifier.cartQty * line.cartQty)
+      add(modifier.catalogItemId, Math.max(0, modifier.cartQty * line.cartQty - (modifier.inventoryCompletedQty || 0)))
     }
   }
   return quantities
@@ -46,6 +47,7 @@ export function posCartInventoryError(
   }
   const previous = previousCart ? posCartQuantities(previousCart) : null
   for (const [id, quantity] of posCartQuantities(cart)) {
+    if (quantity <= 0) continue
     // Always permit removing/reducing a line after a location or stock change.
     if (previous && quantity <= (previous.get(id) || 0)) continue
     const availability = availabilityForId(id, quantity, context)
@@ -92,10 +94,14 @@ export function annotatePosCartInventory(cart: PosCartItem[], context: PosCartIn
     return { availability, backorderQty }
   }
   return cart.map((line) => {
-    const host = allocate(line.id, line.cartQty)
+    const remaining = line.completedWithoutStock ? 0 : Math.max(0, line.cartQty - (line.inventoryCompletedQty || 0))
+    const host = remaining > 0 ? allocate(line.id, remaining) : {
+      availability: { sellable: true } as PosItemAvailability, backorderQty: 0,
+    }
     const modifiers = (line.modifiers || []).map((modifier) => ({
       ...modifier,
-      backorderQty: allocate(modifier.catalogItemId, modifier.cartQty * line.cartQty).backorderQty,
+      backorderQty: line.completedWithoutStock || modifier.cartQty * line.cartQty <= (modifier.inventoryCompletedQty || 0)
+        ? 0 : allocate(modifier.catalogItemId, modifier.cartQty * line.cartQty - (modifier.inventoryCompletedQty || 0)).backorderQty,
     }))
     const inventoryMessage = !host.availability.sellable
       ? host.availability.reason || "Sold out" : undefined

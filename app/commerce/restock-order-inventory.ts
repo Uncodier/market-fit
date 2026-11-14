@@ -1,142 +1,46 @@
-import { applyLocationInventoryDelta, type InventoryDeltaClient } from "./inventory-delta"
+import 'server-only'
+import { restockLegacyOrderInventory } from './restock-legacy-order-inventory'
+import { reconcileOrderLineInventory, type OrderLineInventoryClient } from './order-line-inventory'
+import { usesOrderLineInventoryReceipts } from './order-inventory-scope'
 
-type QueryClient = InventoryDeltaClient & {
-  from: (table: string) => any
-}
+export { shouldRestockOrder } from './restock-legacy-order-inventory'
+export type { RestockOrderLine } from './restock-legacy-order-inventory'
 
-export type RestockOrderLine = {
-  catalog_item_id?: string | null
-  id?: string | null
-  quantity?: number | null
-}
-
-async function addStock(
-  supabase: QueryClient,
-  siteId: string,
-  locationId: string,
-  catalogItemId: string,
-  quantity: number,
-) {
-  if (!catalogItemId || !(quantity > 0)) return
-
-  const { data: catalogItem } = await supabase
-    .from("catalog_items")
-    .select("track_inventory")
-    .eq("id", catalogItemId)
-    .maybeSingle()
-
-  if (!catalogItem?.track_inventory) return
-
-  await applyLocationInventoryDelta(supabase, {
-    siteId,
-    locationId,
-    catalogItemId,
-    delta: quantity,
-    floorZero: false,
-  })
-}
-
-function catalogItemIdFromLine(line: RestockOrderLine): string | null {
-  return line.catalog_item_id || null
-}
-
-export function shouldRestockOrder(
-  orderStatus: string | null | undefined,
-  options?: { saleAlreadyPaid?: boolean },
-): boolean {
-  if (!orderStatus || orderStatus === "cancelled") return false
-  if (orderStatus === "pending") return Boolean(options?.saleAlreadyPaid)
-  return true
-}
-
+/** The caller must authorize cancellation/refund before supplying its database client. */
 export async function restockOrderInventory(
-  supabase: QueryClient,
-  order: {
-    id: string
-    site_id: string
-    status?: string | null
-    origin_location_id?: string | null
-    items?: RestockOrderLine[] | null
-    saleAlreadyPaid?: boolean
-  },
+  client: Parameters<typeof restockLegacyOrderInventory>[0] & OrderLineInventoryClient,
+  order: Parameters<typeof restockLegacyOrderInventory>[1],
 ): Promise<void> {
-  if (!shouldRestockOrder(order.status, { saleAlreadyPaid: order.saleAlreadyPaid })) return
-
-  const { data: settings } = await supabase
-    .from("settings")
-    .select("commerce")
-    .eq("site_id", order.site_id)
-    .maybeSingle()
-
-  const policy = settings?.commerce?.decrement_stock_on || "ship"
-  if (policy === "never") return
-
-  const { data: decrementedShipments } = await supabase
-    .from("shipments")
-    .select("id, origin_location_id, stock_decremented, status")
-    .eq("sale_order_id", order.id)
-    .eq("stock_decremented", true)
-
-  if (decrementedShipments && decrementedShipments.length > 0) {
-    for (const shipment of decrementedShipments) {
-      if (!shipment.origin_location_id) continue
-
-      const { data: shippedItems } = await supabase
-        .from("sale_order_items")
-        .select("catalog_item_id, quantity")
-        .eq("sale_order_id", order.id)
-        .eq("shipment_id", shipment.id)
-
-      for (const item of shippedItems || []) {
-        const catalogItemId = catalogItemIdFromLine(item)
-        if (!catalogItemId) continue
-        await addStock(
-          supabase,
-          order.site_id,
-          shipment.origin_location_id,
-          catalogItemId,
-          item.quantity || 1,
-        )
-      }
-
-      const shipmentUpdate: { stock_decremented: boolean; status?: string } = {
-        stock_decremented: false,
-      }
-      if (shipment.status !== "delivered") {
-        shipmentUpdate.status = "cancelled"
-      }
-
-      await supabase
-        .from("shipments")
-        .update(shipmentUpdate)
-        .eq("id", shipment.id)
-    }
-    return
+  if (!await usesOrderLineInventoryReceipts(client, order.site_id, order.id)) {
+    return restockLegacyOrderInventory(client, order)
   }
 
-  if (!order.origin_location_id) return
-
-  const { data: saleOrderItems } = await supabase
-    .from("sale_order_items")
-    .select("catalog_item_id, quantity")
-    .eq("sale_order_id", order.id)
-
-  const lines: RestockOrderLine[] =
-    saleOrderItems && saleOrderItems.length > 0
-      ? saleOrderItems
-      : Array.isArray(order.items)
-        ? order.items
-        : []
-
+  // Status, current policy and shipment flags do not prove a stock movement.
+  // Replays (including already-cancelled orders) reconcile the durable refund total.
+  const { data: lines, error } = await client.from('sale_order_items')
+    .select('id').eq('site_id', order.site_id).eq('sale_order_id', order.id)
+  if (error || !Array.isArray(lines)) throw new Error('Order inventory lines could not be read')
+  if (!lines.length && order.items?.length) {
+    throw new Error('Inventory review required: persisted order lines are missing')
+  }
   for (const line of lines) {
-    const catalogItemId = catalogItemIdFromLine(line)
-    if (!catalogItemId) continue
-    await addStock(
-      supabase,
-      order.site_id,
-      order.origin_location_id,
-      catalogItemId,
-      line.quantity || 1,
-    )
+    // Full cancellation refunds the receipt budget, even if the line was reduced.
+    // The RPC caps this supported maximum target to the actual historical debit.
+    const receipt = await reconcileOrderLineInventory(client, {
+      siteId: order.site_id, orderId: order.id, lineId: line.id,
+      locationId: null, targetQuantity: 1_000_000_000, mode: 'restock',
+    })
+    if (receipt.reviewRequired) throw new Error('Inventory review required before restocking this order')
+  }
+
+  const { data: shipments, error: readError } = await client.from('shipments')
+    .select('id, status').eq('site_id', order.site_id).eq('sale_order_id', order.id)
+  if (readError) throw new Error('Restocked shipment status could not be read')
+  for (const shipment of shipments || []) {
+    const { error: updateError } = await client.from('shipments').update({
+      stock_decremented: false,
+      ...(shipment.status === 'delivered' ? {} : { status: 'cancelled' }),
+    }).eq('site_id', order.site_id).eq('sale_order_id', order.id).eq('id', shipment.id)
+    if (updateError) throw new Error('Restocked shipment status could not be confirmed')
   }
 }

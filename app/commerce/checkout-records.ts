@@ -69,7 +69,7 @@ function serializedItems(
     unitPrice: line.unit_price,
     subtotal: line.subtotal,
     metadata: {
-      is_new: intent === "send",
+      is_new: intent === "send" && line.completed_without_stock !== true,
       ...selfServiceMetadata(selfServiceLocationId, selfService),
       client_line_key: line.client_line_key,
       parent_client_line_key: line.parent_client_line_key,
@@ -79,6 +79,8 @@ function serializedItems(
       ...(line.backorder_quantity !== undefined
         ? { backorder_quantity: line.backorder_quantity }
         : {}),
+      ...(line.completed_without_stock === true
+        ? { completed_without_stock: true, backorder_quantity: 0 } : {}),
     },
   }))
 }

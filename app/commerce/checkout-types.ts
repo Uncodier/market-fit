@@ -10,6 +10,8 @@ export interface CheckoutLineModifier {
 export interface CheckoutLine {
   catalogItemId: string
   quantity: number
+  /** Explicit POS fulfillment without an inventory movement; modifiers inherit it. */
+  completedWithoutStock?: boolean
   unitPriceOverride?: number
   /** Persisted order-line reference; its currency is resolved by the server. */
   saleOrderItemId?: string
@@ -99,6 +101,10 @@ export type ProcessedCheckoutLine = {
   subtotal: number
   /** Server-calculated POS shortage snapshot; does not change fulfillment status. */
   backorder_quantity?: number
+  /** Authorized POS completion, distinct from a backorder or a payment state. */
+  completed_without_stock?: boolean
+  /** Availability exemption only. Never evidence of an inventory debit. */
+  inventory_completed_quantity?: number
   is_reservation_dropin: boolean
   reservationStart?: string
   reservationEnd?: string

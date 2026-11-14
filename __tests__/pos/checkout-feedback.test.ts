@@ -12,7 +12,7 @@ jest.mock("@/app/pos/local/sync-engine", () => ({ syncPosCheckout: jest.fn() }))
 jest.mock("@/app/pos/local/db", () => ({ getPosDb: () => ({ outbox: { where: () => ({ equals: () => ({ first }) }) } }) }));
 jest.mock("@/app/pos/print-after-checkout", () => ({ printAfterPosCheckout: jest.fn() }));
 jest.mock("@/app/pos/print-local-receipt", () => ({ printLocalPosReceipt: jest.fn() }));
-jest.mock("sonner", () => ({ toast: { message: jest.fn(), success: jest.fn(), error: jest.fn() } }));
+jest.mock("sonner", () => ({ toast: { message: jest.fn(), success: jest.fn(), error: jest.fn(), warning: jest.fn() } }));
 
 const row: PosOutboxRow = { id: "row", siteId: "site", clientMutationId: "mutation", kind: "checkout",
   status: "pending", attempts: 0, createdAt: "", updatedAt: "", payload: { kind: "checkout", data: {
@@ -51,6 +51,14 @@ it("shares confirmation and printing when local cleanup retries the same pending
   expect(syncPosCheckout).toHaveBeenCalledTimes(1);
   expect(printAfterPosCheckout).toHaveBeenCalledTimes(1);
   expect(toast.success).toHaveBeenCalledTimes(1);
+});
+
+it("distinguishes inventory reconciliation from an unconfirmed payment", async () => {
+  first.mockResolvedValue({ ...row, status: "synced", inventoryReviewRequired: true });
+  await confirmPosCheckoutInBackground(input);
+  expect(toast.warning).toHaveBeenCalledWith(expect.stringContaining("Do not collect again"), expect.anything());
+  expect(toast.success).not.toHaveBeenCalled();
+  expect(toast.error).not.toHaveBeenCalled();
 });
 
 it("keeps the observer slot while the printer is still processing", async () => {

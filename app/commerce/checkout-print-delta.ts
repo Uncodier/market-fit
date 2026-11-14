@@ -14,10 +14,10 @@ export function kitchenDeltaForSend(params: {
 }): KitchenDelta | null {
   if (params.intent !== "send") return null
   const next = params.nextItems
-    ? mapSaleOrderItemsToDeltaLines(params.nextItems)
-    : (params.processedLines || []).map(mapProcessedLineToDeltaLine)
+    ? mapSaleOrderItemsToDeltaLines(params.nextItems.filter((item) => item.metadata?.completed_without_stock !== true))
+    : (params.processedLines || []).filter((line) => line.completed_without_stock !== true).map(mapProcessedLineToDeltaLine)
   const delta = computeKitchenDelta(
-    mapSaleOrderItemsToDeltaLines(params.existingItems || []),
+    mapSaleOrderItemsToDeltaLines((params.existingItems || []).filter((item) => item.metadata?.completed_without_stock !== true)),
     next,
   )
   return kitchenDeltaHasWork(delta) ? delta : { kind: "none", adds: [], qtyChanges: [], voids: [] }

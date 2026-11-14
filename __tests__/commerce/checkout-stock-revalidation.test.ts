@@ -2,10 +2,12 @@
 import { processCheckoutLines } from "@/app/commerce/checkout-lines"
 import type { CheckoutLine } from "@/app/commerce/checkout-types"
 import { createClient, createServiceClient } from "@/lib/supabase/server"
+import { requirePosCheckoutAccess } from "@/app/pos/checkout-request-access"
 import { resolveUnitPrice } from "@/app/price-lists/actions"
 import { checkoutStockClient, stockFixture, stockItem, type StockFixture } from "./helpers/checkout-stock-client"
 
 jest.mock("@/lib/supabase/server", () => ({ createClient: jest.fn(), createServiceClient: jest.fn() }))
+jest.mock("@/app/pos/checkout-request-access", () => ({ requirePosCheckoutAccess: jest.fn() }))
 jest.mock("@/app/catalog/tax-actions", () => ({ getTaxesByCatalogItemIds: jest.fn().mockResolvedValue({ data: {} }) }))
 jest.mock("@/app/commerce/pass-round-robin-server", () => ({ assertCommerceReservationSlot: jest.fn() }))
 jest.mock("@/app/price-lists/actions", () => ({ resolveUnitPrice: jest.fn().mockResolvedValue({ price: 10 }) }))
@@ -21,6 +23,7 @@ describe("checkout stock revalidation", () => {
     client = checkoutStockClient(fixture)
     jest.mocked(createClient).mockResolvedValue(client as unknown as Awaited<ReturnType<typeof createClient>>)
     jest.mocked(createServiceClient).mockResolvedValue(client as unknown as Awaited<ReturnType<typeof createServiceClient>>)
+    jest.mocked(requirePosCheckoutAccess).mockResolvedValue({ supabase: client, role: "owner", user: { id: "actor" } } as never)
   })
 
   const process = (lines: CheckoutLine[], priceListChannel = "pos") => processCheckoutLines({
@@ -38,6 +41,24 @@ describe("checkout stock revalidation", () => {
       { catalogItemId: "sku", quantity: 3 },
     ])).rejects.toThrow("requested 6, available 5")
     expect(resolveUnitPrice).not.toHaveBeenCalled()
+  })
+
+  it("keeps explicit completion and inherited modifiers separate from ordinary SKU stock demand", async () => {
+    fixture.settings = { commerce: { stock_shortage_policy: "block" } }
+    const result = await process([
+      { catalogItemId: "host", quantity: 4, completedWithoutStock: true,
+        modifiers: [{ catalogItemId: "sku", quantity: 2 }] },
+      { catalogItemId: "sku", quantity: 5 },
+    ])
+    expect(result.processedLines.map((line) => line.completed_without_stock)).toEqual([true, true, undefined])
+    expect(result.processedLines.map((line) => line.backorder_quantity)).toEqual([0, 0, 0])
+    expect(result.processedLines.map((line) => line.quantity)).toEqual([4, 8, 5])
+    expect(requirePosCheckoutAccess).toHaveBeenCalledWith("site")
+  })
+
+  it("does not accept the explicit flag outside staff POS processing", async () => {
+    await expect(process([{ catalogItemId: "sku", quantity: 6, completedWithoutStock: true }], "shop"))
+      .rejects.toThrow("POS")
   })
 
   it.each(["allow", "warn"])("allocates %s shortage sequentially and ignores forged client metadata", async (policy) => {

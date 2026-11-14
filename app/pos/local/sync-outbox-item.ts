@@ -122,7 +122,7 @@ export async function applyOutboxItem(row: PosOutboxRow, permission: PosPermissi
       throw new Error(res.error);
     }
 
-    const details = res as Pick<CheckoutCartSuccess, "orderNumber" | "kitchenDelta" | "fulfillment">;
+    const details = res as Pick<CheckoutCartSuccess, "orderNumber" | "kitchenDelta" | "fulfillment" | "inventoryReviewRequired">;
 
     if (res.orderId && data.existingOrderId?.startsWith("local_")) {
       await mapLocalId({
@@ -150,6 +150,7 @@ export async function applyOutboxItem(row: PosOutboxRow, permission: PosPermissi
       resultOrderNumber: details.orderNumber || null,
       resultKitchenDelta: details.kitchenDelta || null,
       resultFulfillment: details.fulfillment || null,
+      inventoryReviewRequired: details.inventoryReviewRequired === true,
       lastError: null,
       recoveryState: undefined,
       recoveryMessage: null,

@@ -6,7 +6,9 @@ import { bumpCacheEpoch } from "@/lib/redis/json-cache"
 import { upsertSaleOrderItemsWithModifiers } from "@/app/commerce/checkout-order-items"
 import { recordPosClientMutation } from "@/app/pos/actions/idempotency"
 import { applySelfServiceInventoryRelease } from "@/app/commerce/self-service-inventory"
+import { reconcileOrderLineInventory } from "@/app/commerce/order-line-inventory"
 jest.mock("server-only", () => ({}))
+jest.mock("@/app/commerce/order-line-inventory", () => ({ reconcileOrderLineInventory: jest.fn() }))
 
 jest.mock("next/cache", () => ({ revalidatePath: jest.fn() }))
 jest.mock("@/lib/redis/json-cache", () => ({ bumpCacheEpoch: jest.fn().mockResolvedValue(true) }))
@@ -48,7 +50,11 @@ jest.mock("@/app/commerce/ensure-commerce-lead-converted", () => ({
 }))
 
 describe("finalizeCheckout", () => {
-  beforeEach(() => jest.clearAllMocks())
+  beforeEach(() => {
+    jest.clearAllMocks()
+    jest.mocked(reconcileOrderLineInventory).mockResolvedValue({ reviewRequired: false,
+      debitedQuantity: 0, restockedQuantity: 0, appliedQuantity: 0, skipped: false })
+  })
 
   function posUpdateParams(): Parameters<typeof finalizeCheckout>[0] {
     type Query = { select: jest.Mock; in: jest.Mock; eq: jest.Mock; single: jest.Mock }
@@ -126,7 +132,7 @@ describe("finalizeCheckout", () => {
     }) }
     let finished = false
     const pending = finalizeCheckout({
-      ...params, supabase: client as never,
+      ...params, source: "sales", supabase: client as never,
       lines: [
         { catalogItemId: "sku", quantity: 2 },
         { catalogItemId: "untracked", quantity: 4 },
@@ -152,12 +158,75 @@ describe("finalizeCheckout", () => {
       in: jest.fn().mockResolvedValue({ data: [{ id: "sku", track_inventory: true }], error: null }) }
     const client = { from: jest.fn(() => query),
       rpc: jest.fn().mockResolvedValue({ data: null, error: { message: "denied" } }) }
-    await expect(finalizeCheckout({ ...params, supabase: client,
+    await expect(finalizeCheckout({ ...params, source: "sales", supabase: client,
       finalOriginLocationId: "origin", orderInitialStatus: "completed",
       lines: [{ catalogItemId: "sku", quantity: 2 }] })).rejects.toThrow("Failed to apply inventory delta")
     expect(client.rpc).toHaveBeenCalledTimes(1)
     expect(ensurePublicAccessTokenForRecord).not.toHaveBeenCalled()
     expect(client.from).not.toHaveBeenCalledWith("inventory_levels")
+  })
+
+  it("uses full persisted quantities for inventory receipts, not completed fulfillment credits", async () => {
+    const query = { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(),
+      single: jest.fn().mockResolvedValue({ data: { commerce: {} } }),
+      in: jest.fn().mockResolvedValue({ data: [{ id: "extra", track_inventory: true }], error: null }) }
+    const client = { from: jest.fn(() => query), rpc: jest.fn().mockResolvedValue({ data: { quantity: 0 }, error: null }) }
+    jest.mocked(upsertSaleOrderItemsWithModifiers).mockResolvedValueOnce([
+      { id: "host", quantity: 2, metadata: { completed_without_stock: true } },
+      { id: "done-extra", quantity: 4, metadata: { completed_without_stock: true } },
+      { id: "old", quantity: 2, status: "completed" },
+      { id: "extra", quantity: 5, status: "preparing" },
+    ])
+    await finalizeCheckout({ ...posUpdateParams(), supabase: client,
+      finalOriginLocationId: "origin", orderInitialStatus: "completed",
+      lines: [{ catalogItemId: "host", quantity: 2, completedWithoutStock: true }],
+      processedLines: [
+        { catalog_item_id: "host", quantity: 2, completed_without_stock: true },
+        { catalog_item_id: "done-extra", quantity: 4, completed_without_stock: true },
+        { catalog_item_id: "old", quantity: 2, inventory_completed_quantity: 2 },
+        { catalog_item_id: "extra", quantity: 5, inventory_completed_quantity: 3 },
+      ] as never,
+    })
+    expect(client.rpc).not.toHaveBeenCalled()
+    expect(reconcileOrderLineInventory).toHaveBeenCalledTimes(2)
+    expect(reconcileOrderLineInventory).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ lineId: "old", targetQuantity: 2 }))
+    expect(reconcileOrderLineInventory).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ lineId: "extra", targetQuantity: 5 }))
+  })
+
+  it("does not create a shipment or inventory movement for explicit completed items", async () => {
+    const params = posUpdateParams()
+    await finalizeCheckout({ ...params, fulfillment: "ship", finalOriginLocationId: "origin",
+      resolvedUserId: "actor", orderInitialStatus: "completed",
+      processedLines: [{ catalog_item_id: "sku", quantity: 2, completed_without_stock: true }] as never,
+    })
+    expect(createAuthorizedShipment).not.toHaveBeenCalled()
+    expect(params.supabase.from).not.toHaveBeenCalledWith("inventory_levels")
+  })
+
+  it("ships unassigned lines regardless of completion while preserving explicit and already assigned lines", async () => {
+    const rows = [
+      { id: "ack", metadata: { client_line_key: "ack", completed_without_stock: true } },
+      { id: "done", metadata: { client_line_key: "done" } },
+      { id: "shipped", shipment_id: "previous-shipment", metadata: { client_line_key: "shipped" } },
+      { id: "new", metadata: { client_line_key: "new" } },
+    ]
+    jest.mocked(upsertSaleOrderItemsWithModifiers).mockResolvedValueOnce(rows)
+    await finalizeCheckout({ ...posUpdateParams(), fulfillment: "ship", finalOriginLocationId: "origin",
+      resolvedUserId: "actor", orderInitialStatus: "completed", processedLines: [
+        { client_line_key: "ack", quantity: 1, completed_without_stock: true },
+        { client_line_key: "done", quantity: 1, inventory_completed_quantity: 1 },
+        { client_line_key: "shipped", quantity: 1 },
+        { client_line_key: "new", quantity: 1 },
+      ] as never })
+    expect(createAuthorizedShipment).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ itemIds: ["done", "new"] }))
+  })
+
+  it("allows confirmed collection while surfacing ambiguous legacy inventory", async () => {
+    jest.mocked(upsertSaleOrderItemsWithModifiers).mockResolvedValueOnce([{ id: "legacy", quantity: 1, status: "completed" }])
+    jest.mocked(reconcileOrderLineInventory).mockResolvedValueOnce({ reviewRequired: true,
+      debitedQuantity: 0, restockedQuantity: 0, appliedQuantity: 0, skipped: false })
+    const result = await finalizeCheckout({ ...posUpdateParams(), finalOriginLocationId: "origin", orderInitialStatus: "completed" })
+    expect(result).toMatchObject({ success: true, inventoryReviewRequired: true })
   })
 
   it("derives ordinary public free completion from trusted payment state", async () => {

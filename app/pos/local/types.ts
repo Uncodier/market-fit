@@ -73,6 +73,7 @@ export type PosOutboxRow = {
   resultOrderNumber?: string | null;
   resultKitchenDelta?: import("@/lib/printer/core/types").KitchenDelta | null;
   resultFulfillment?: string | null;
+  inventoryReviewRequired?: boolean;
   resultLeadId?: string | null;
   createdAt: string;
   updatedAt: string;

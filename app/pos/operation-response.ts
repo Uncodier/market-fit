@@ -12,6 +12,7 @@ const kitchenDelta = z.object({
   qtyChanges: z.array(z.object({ key: text, name: text, from: number, to: number, modifiers }).passthrough()),
 });
 const checkoutSuccess = z.object({
+  inventoryReviewRequired: z.boolean().optional(),
   success: z.literal(true), saleId: id, orderId: id,
   publicAccessToken: text.optional(), orderNumber: nullableText, status: nullableText,
   total: number.nullable().optional(), currency: nullableText, createdAt: nullableText,

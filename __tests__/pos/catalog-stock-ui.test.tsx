@@ -26,16 +26,16 @@ const item = {
 const snapshot: PosInventorySnapshot = { levels: [], policy: "block" }
 
 describe("POS stock UI", () => {
-  it("keeps sold-out products visible and prevents mouse and keyboard additions", () => {
+  it("keeps sold-out products selectable to resolve shortages by mouse or keyboard", () => {
     const onAdd = jest.fn()
     render(<PosCatalogGrid items={[item]} loading={false} onAdd={onAdd} t={() => ""}
       getAvailability={(candidate) => getPosItemAvailability(candidate, snapshot, "store")} />)
     expect(screen.getByText("Sold Out")).toBeInTheDocument()
     const card = screen.getByRole("button", { name: "Product" })
-    expect(card).toHaveAttribute("aria-disabled", "true")
+    expect(card).toHaveAttribute("aria-disabled", "false")
     fireEvent.click(card)
     fireEvent.keyDown(card, { key: "Enter" })
-    expect(onAdd).not.toHaveBeenCalled()
+    expect(onAdd).toHaveBeenCalledTimes(2)
   })
 
   it("labels backorder products and allows adding them under the existing policy", () => {
@@ -54,16 +54,16 @@ describe("POS stock UI", () => {
     expect(screen.getByRole("button", { name: "Product" })).toHaveAttribute("aria-disabled", "true")
   })
 
-  it("displays backorder quantity in the cart and disables unavailable quantity increases", () => {
+  it("displays backorders and keeps quantity controls enabled to open shortage resolution", () => {
     render(<PosCartLines cart={[{
       ...item, cartQty: 3, cartPrice: 10, backorderQty: 2, inventoryCanIncrease: false,
     } as PosCartItem]} selectedCartItemId={null} setSelectedCartItemId={jest.fn()} updateQty={jest.fn()} />)
     expect(screen.getByText("Backorder: 2")).toBeInTheDocument()
-    expect(screen.getAllByRole("button")[1]).toBeDisabled()
+    expect(screen.getAllByRole("button")[1]).not.toBeDisabled()
     expect(screen.getAllByRole("button")[0]).not.toBeDisabled()
   })
 
-  it("uses cached variants and blocks sold-out options without requiring an online query", async () => {
+  it("uses cached variants and allows resolving sold-out choices without an online query", async () => {
     const parent = { ...item, id: "parent", name: "Parent", metadata: {
       variant_axes: [{ id: "size", kind: "custom", label: "Size", values: [
         { id: "small", label: "Small" }, { id: "large", label: "Large" },
@@ -81,9 +81,9 @@ describe("POS stock UI", () => {
         policy: "block", levels: [{ catalog_item_id: "large", location_id: "store", quantity: 1 }],
       }, "store")} />)
     const small = await screen.findByRole("button", { name: /Small/ })
-    expect(small).toBeDisabled()
+    expect(small).not.toBeDisabled()
     fireEvent.click(small)
-    expect(screen.getByRole("button", { name: "Confirm" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Confirm" })).not.toBeDisabled()
     fireEvent.click(screen.getByRole("button", { name: /Large/ }))
     fireEvent.click(screen.getByRole("button", { name: "Confirm" }))
     expect(onConfirm).toHaveBeenCalledWith(expect.objectContaining({ item: expect.objectContaining({ id: "large" }) }))

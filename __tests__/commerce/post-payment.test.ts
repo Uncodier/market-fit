@@ -2,7 +2,9 @@ import { processPostPaymentFulfillment } from "../../app/commerce/post-payment";
 import { createAuthorizedShipment } from "../../app/shipments/create-shipment";
 import { ensureCommerceLeadConverted } from "../../app/commerce/ensure-commerce-lead-converted";
 import { grantFromOrder } from "../../app/commerce/entitlements";
+import { reconcileOrderLineInventory } from "@/app/commerce/order-line-inventory";
 jest.mock("server-only", () => ({}));
+jest.mock("@/app/commerce/order-line-inventory", () => ({ reconcileOrderLineInventory: jest.fn() }));
 
 jest.mock("../../lib/supabase/server", () => ({
   createServiceClient: jest.fn(),
@@ -116,6 +118,18 @@ describe("processPostPaymentFulfillment", () => {
       amount: 20,
       paid: true,
     }));
+  });
+
+  it("reconciles persisted POS quantities instead of debiting serialized products again", async () => {
+    setupOrder("pickup", [{ id: "cat-1", quantity: 2 }], true);
+    salesChain.single.mockResolvedValue({ data: { source: "pos", amount: 20 } });
+    itemsChain.eq.mockReset().mockReturnValue(itemsChain)
+      .mockResolvedValueOnce({ data: [{ id: "line-1", quantity: 2, status: "completed" }] });
+    jest.mocked(reconcileOrderLineInventory).mockResolvedValue({ reviewRequired: false, debitedQuantity: 2,
+      restockedQuantity: 0, appliedQuantity: 0, skipped: false });
+    await processPostPaymentFulfillment("order-1", "site-1", "sale-1", undefined, "user-1");
+    expect(reconcileOrderLineInventory).toHaveBeenCalledWith(mockSupabase, expect.objectContaining({ lineId: "line-1", targetQuantity: 2 }));
+    expect(mockSupabase.rpc).not.toHaveBeenCalled();
   });
 
   it("promotes 'ship' items to 'new' and creates a shipment", async () => {

@@ -1,9 +1,11 @@
 /** @jest-environment node */
 import { assertCanSell, getCatalogAvailability } from "@/app/catalog/sell-availability"
 import { createClient, createServiceClient } from "@/lib/supabase/server"
+import { requirePosCheckoutAccess } from "@/app/pos/checkout-request-access"
 import { checkoutStockClient, stockFixture, type StockFixture } from "../commerce/helpers/checkout-stock-client"
 
 jest.mock("@/lib/supabase/server", () => ({ createClient: jest.fn(), createServiceClient: jest.fn() }))
+jest.mock("@/app/pos/checkout-request-access", () => ({ requirePosCheckoutAccess: jest.fn() }))
 
 describe("backend catalog stock revalidation", () => {
   let fixture: StockFixture
@@ -14,6 +16,43 @@ describe("backend catalog stock revalidation", () => {
     client = checkoutStockClient(fixture)
     jest.mocked(createClient).mockResolvedValue(client as unknown as Awaited<ReturnType<typeof createClient>>)
     jest.mocked(createServiceClient).mockResolvedValue(client as unknown as Awaited<ReturnType<typeof createServiceClient>>)
+    jest.mocked(requirePosCheckoutAccess).mockResolvedValue({ supabase: client, role: "owner", user: { id: "actor" } } as never)
+  })
+
+  it("requires fresh POS authorization before explicit completion without stock", async () => {
+    jest.mocked(requirePosCheckoutAccess).mockResolvedValueOnce({ error: "Forbidden" } as never)
+    await expect(assertCanSell("site", "sku", 6, "origin", true, { completedWithoutStock: true })).rejects.toThrow("Forbidden")
+    expect(client.reads).toEqual([])
+    expect(createServiceClient).not.toHaveBeenCalled()
+  })
+
+  it("permits authorized explicit completion under block without reading/decrementing inventory", async () => {
+    fixture.settings = { commerce: { stock_shortage_policy: "block" } }
+    await expect(assertCanSell("site", "sku", 6, "origin", false, { completedWithoutStock: true })).resolves.toMatchObject({ sellable: true })
+    expect(requirePosCheckoutAccess).toHaveBeenCalledWith("site")
+    expect(client.reads.some((read) => read.table === "inventory_levels")).toBe(false)
+  })
+
+  it.each([
+    { status: "archived" }, { is_reservation: true }, { kind: "digital_asset" }, { is_dynamic_price: true },
+    { is_recurring: true }, { availability_mode: "manual", availability_status: "unavailable" },
+  ])("does not bypass catalog restrictions for explicit completion: %j", async (changes) => {
+    Object.assign(fixture.items[0], changes)
+    await expect(assertCanSell("site", "sku", 6, "origin", false, { completedWithoutStock: true })).rejects.toThrow()
+  })
+
+  it("does not bypass site identity for explicit completion", async () => {
+    await expect(assertCanSell("foreign", "sku", 6, "origin", false, { completedWithoutStock: true })).rejects.toThrow("Item not found")
+  })
+
+  it("collects verified completed quantities despite later archival, variant or policy changes", async () => {
+    fixture.items[0].status = "archived"
+    fixture.childCount = 2
+    fixture.settingsError = true
+    await expect(assertCanSell("site", "sku", 1, "origin", false, { inventoryAlreadyCompleted: true }))
+      .resolves.toMatchObject({ sellable: true })
+    await expect(assertCanSell("foreign", "sku", 1, "origin", false, { inventoryAlreadyCompleted: true }))
+      .rejects.toThrow("Item not found")
   })
 
   it.each(["allow", "warn", "block"])("uses the stored %s policy", async (policy) => {

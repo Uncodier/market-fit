@@ -47,3 +47,15 @@ it("applies explicit evidence returned after going offline to the same local sco
   await expect(reconcilePosCheckout("site", row.id)).resolves.toMatchObject({ state: "rejected" });
   expect(updateOutboxRow).toHaveBeenCalledWith(row.id, expect.objectContaining({ status: "failed", recoveryState: "rejected" }));
 });
+
+it("retains inventory review on a successfully recovered payment", async () => {
+  jest.mocked(fetchPosCheckoutStatus).mockResolvedValueOnce({ data: {
+    state: "completed", message: "Confirmed", result: {
+      success: true, orderId: "order", saleId: "sale", inventoryReviewRequired: true,
+    },
+  } });
+  await reconcilePosCheckout("site", row.id);
+  expect(updateOutboxRow).toHaveBeenCalledWith(row.id, expect.objectContaining({
+    status: "synced", inventoryReviewRequired: true,
+  }));
+});

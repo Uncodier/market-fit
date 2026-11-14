@@ -43,6 +43,9 @@ export async function upsertSaleOrderItemsWithModifiers(params: {
   const resolveItemStatus = (pl: any, existingItem: any) => {
     // Release and inventory use current locked payment state, not this snapshot.
     if (params.selfService) return selfServiceLineState(false, existingItem)
+    if (pl.completed_without_stock === true) {
+      return { newStatus: "completed", sentAt: existingItem?.sent_at || null }
+    }
     let newStatus = "draft"
     let sentAt: string | null = null
 
@@ -71,6 +74,7 @@ export async function upsertSaleOrderItemsWithModifiers(params: {
       const byKey = existingItems.find(
         (ei: any) =>
           !ei.parent_sale_order_item_id &&
+          !matchedExistingIds.has(ei.id) &&
           ei.metadata?.client_line_key === pl.client_line_key,
       )
       if (byKey) return byKey
@@ -83,6 +87,8 @@ export async function upsertSaleOrderItemsWithModifiers(params: {
       return existingItems.find(
         (ei: any) =>
           !ei.parent_sale_order_item_id &&
+          !matchedExistingIds.has(ei.id) &&
+          (pl.completed_without_stock !== true || pl.client_line_key === ei.id) &&
           ei.catalog_item_id === pl.catalog_item_id &&
           !ei.metadata?.client_line_key,
       )
@@ -113,6 +119,8 @@ export async function upsertSaleOrderItemsWithModifiers(params: {
         .from("sale_order_items")
         .update(dbPayload)
         .eq("id", dbPayload.id)
+        .eq("site_id", siteId)
+        .eq("sale_order_id", orderId)
         .select()
         .single()
       if (error) {
@@ -171,6 +179,8 @@ export async function upsertSaleOrderItemsWithModifiers(params: {
         ...(pl.backorder_quantity !== undefined
           ? { backorder_quantity: pl.backorder_quantity }
           : {}),
+        ...(pl.completed_without_stock === true
+          ? { completed_without_stock: true, backorder_quantity: 0 } : {}),
       },
       _is_reservation_dropin: pl.is_reservation_dropin,
       _reservationStart: pl.reservationStart,
@@ -221,6 +231,8 @@ export async function upsertSaleOrderItemsWithModifiers(params: {
         ...(pl.backorder_quantity !== undefined
           ? { backorder_quantity: pl.backorder_quantity }
           : {}),
+        ...(pl.completed_without_stock === true
+          ? { completed_without_stock: true, backorder_quantity: 0 } : {}),
       },
       _is_reservation_dropin: false,
       _reservationStart: undefined,

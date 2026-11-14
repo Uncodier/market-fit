@@ -216,6 +216,9 @@ function PosSyncIssuesSession({ siteId, open, onOpenChange, t, onReviewOrder }: 
                     </div>
                   )}
                   {row.recoveryMessage && <p className="text-xs font-medium">{row.recoveryMessage}</p>}
+                  {row.inventoryReviewRequired && <p role="alert" className="text-xs font-medium text-amber-600">
+                    Payment/order confirmed. Inventory history requires reconciliation by a manager. No stock movement was guessed; do not collect again.
+                  </p>}
                   {row.lastError && (
                     <div className="text-destructive text-xs font-medium">{row.lastError}</div>
                   )}

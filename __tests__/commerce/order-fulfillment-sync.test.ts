@@ -125,6 +125,18 @@ describe("revokeOrderFulfillment", () => {
     jest.clearAllMocks();
   });
 
+  it("resumes a POS receipt refund even after the cancellation status was persisted", async () => {
+    const query = { select: jest.fn().mockReturnThis(), update: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(), maybeSingle: jest.fn()
+        .mockResolvedValueOnce({ data: { id: "order", site_id: "site", sale_id: "sale", status: "cancelled" } })
+        .mockResolvedValueOnce({ data: { source: "pos" } }),
+      then: (resolve: (value: unknown) => unknown) => Promise.resolve({ data: [] }).then(resolve),
+    };
+    const client = { from: jest.fn(() => query), rpc: jest.fn() };
+    await revokeOrderFulfillment(client, "order");
+    expect(restockOrderInventory).toHaveBeenCalledWith(client, expect.objectContaining({ status: "cancelled" }));
+  });
+
   it("propagates restock failure instead of reporting successful revocation", async () => {
     const query = {
       select: jest.fn().mockReturnThis(), update: jest.fn().mockReturnThis(),
