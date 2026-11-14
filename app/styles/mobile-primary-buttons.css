@@ -36,6 +36,33 @@
     min-width: 48px !important;
   }
 
+  /* Keep icon-bearing topbar actions compact across the full mobile breakpoint. */
+  [data-toolbar-font] .btn-primary-well:has(> .btn-primary > .safari-icon-fix),
+  [data-toolbar-font] .btn-primary-well:has(> .btn-primary > svg),
+  [data-toolbar-font] .btn-primary:has(> .safari-icon-fix),
+  [data-toolbar-font] .btn-primary:has(> svg) {
+    width: 48px !important;
+    min-width: 48px !important;
+    max-width: 48px !important;
+    padding: 0 !important;
+    gap: 0 !important;
+  }
+
+  /* Visually hide labels without removing their accessible names. */
+  [data-toolbar-font] .btn-primary:has(> .safari-icon-fix) > span:not(.safari-icon-fix):not(.btn-glass-surface),
+  [data-toolbar-font] .btn-primary:has(> svg) > span:not(.safari-icon-fix):not(.btn-glass-surface) {
+    display: block !important;
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border-width: 0 !important;
+  }
+
   /* Keep the original fill rich; glass highlights must not wash out active CTAs. */
   html .btn-primary:not(:disabled):not([aria-disabled="true"]) {
     background-color: rgb(var(--btn-fill) / 0.94) !important;

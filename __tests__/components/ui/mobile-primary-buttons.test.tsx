@@ -101,6 +101,50 @@ describe("mobile primary buttons", () => {
     expect(declarations("[data-toolbar-font] .btn-primary-well")["min-height"]).toBe("48px !important")
   })
 
+  it("keeps topbar icon actions square and visually hides only their labels on mobile", () => {
+    const css = postcss.parse(readFileSync(path.join(process.cwd(), "app/styles/mobile-primary-buttons.css"), "utf8"))
+    const valuesFor = (selector: string) => {
+      const values: Record<string, string> = {}
+      css.walkRules((rule) => {
+        if (!rule.selectors.includes(selector)) return
+        rule.walkDecls((decl) => {
+          values[decl.prop] = `${decl.value}${decl.important ? " !important" : ""}`
+        })
+      })
+      return values
+    }
+    for (const icon of [".safari-icon-fix", "svg"]) {
+      const button = `[data-toolbar-font] .btn-primary:has(> ${icon})`
+      const well = `[data-toolbar-font] .btn-primary-well:has(> .btn-primary > ${icon})`
+      for (const selector of [button, well]) {
+        expect(valuesFor(selector)).toMatchObject({
+          width: "48px !important",
+          "min-width": "48px !important",
+          "max-width": "48px !important",
+          padding: "0 !important",
+          gap: "0 !important",
+        })
+      }
+      expect(valuesFor(`${button} > span:not(.safari-icon-fix):not(.btn-glass-surface)`)).toMatchObject({
+        display: "block !important",
+        position: "absolute !important",
+        width: "1px !important",
+        height: "1px !important",
+        overflow: "hidden !important",
+        clip: "rect(0, 0, 0, 0) !important",
+      })
+    }
+    const onClick = jest.fn()
+    render(<div data-toolbar-font><Button onClick={onClick}>
+      <svg aria-hidden="true" data-testid="topbar-icon" />
+      <span className="hidden sm:inline ml-2">Create</span>
+    </Button></div>)
+    const button = screen.getByRole("button", { name: "Create" })
+    expect(button).toContainElement(screen.getByTestId("topbar-icon"))
+    fireEvent.click(button)
+    expect(onClick).toHaveBeenCalledTimes(1)
+  })
+
   it("replaces opaque desktop paint with tinted glass and removes Safari's hard-edged blobs", () => {
     const css = postcss.parse(readFileSync(path.join(process.cwd(), "app/styles/mobile-primary-buttons.css"), "utf8"))
     const glass = css.nodes.flatMap((node) => node.type === "atrule" ? node.nodes ?? [] : [])
