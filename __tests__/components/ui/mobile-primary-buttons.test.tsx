@@ -74,7 +74,12 @@ describe("mobile primary buttons", () => {
       expect(parent).toBeDefined()
     })
     css.walkDecls((declaration) => {
-      expect(["--btn-tint", "--btn-fill", "color"]).not.toContain(declaration.prop)
+      expect(["--btn-tint", "--btn-fill"]).not.toContain(declaration.prop)
+      if (declaration.prop === "color") {
+        expect(declaration.parent?.type).toBe("rule")
+        expect((declaration.parent as postcss.Rule).selector).toContain("[data-toolbar-font]")
+        expect(declaration.value).toBe("hsl(var(--foreground))")
+      }
       if (declaration.prop === "box-shadow") expect(declaration.value).not.toContain("inset")
     })
   })
@@ -143,6 +148,33 @@ describe("mobile primary buttons", () => {
     expect(button).toContainElement(screen.getByTestId("topbar-icon"))
     fireEvent.click(button)
     expect(onClick).toHaveBeenCalledTimes(1)
+  })
+
+  it("removes mobile topbar glass paint and decoration without changing other CTAs", () => {
+    const css = postcss.parse(readFileSync(path.join(process.cwd(), "app/styles/mobile-primary-buttons.css"), "utf8"))
+    const paint = css.nodes.flatMap((node) => node.type === "atrule" ? node.nodes ?? [] : [])
+      .find((node) => node.type === "rule" && node.selectors.includes("html [data-toolbar-font] .btn-primary.btn-primary"))
+    expect(paint?.type).toBe("rule")
+    const values: Record<string, string> = {}
+    if (paint?.type === "rule") paint.walkDecls((decl) => {
+      expect(decl.important).toBe(true)
+      values[decl.prop] = decl.value
+    })
+    expect(values).toMatchObject({
+      "background-color": "transparent",
+      "background-image": "none",
+      border: "0",
+      "box-shadow": "none",
+      "backdrop-filter": "none",
+      "-webkit-backdrop-filter": "none",
+      "text-shadow": "none",
+      color: "hsl(var(--foreground))",
+    })
+    const surface = css.nodes.flatMap((node) => node.type === "atrule" ? node.nodes ?? [] : [])
+      .find((node) => node.type === "rule" && node.selectors.includes("html [data-toolbar-font] .btn-primary > .btn-glass-surface"))
+    const hidden: string[] = []
+    if (surface?.type === "rule") surface.walkDecls("display", (decl) => hidden.push(decl.value))
+    expect(hidden).toEqual(["none"])
   })
 
   it("replaces opaque desktop paint with tinted glass and removes Safari's hard-edged blobs", () => {

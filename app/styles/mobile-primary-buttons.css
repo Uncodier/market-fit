@@ -173,4 +173,29 @@
       backdrop-filter: none !important;
     }
   }
+
+  /* Topbar actions are bare icons, not glass CTAs, in every mobile state. */
+  html [data-toolbar-font] .btn-primary.btn-primary,
+  html [data-toolbar-font] .btn-primary-well.btn-primary-well {
+    background-color: transparent !important;
+    background-image: none !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    text-shadow: none !important;
+    color: hsl(var(--foreground)) !important;
+  }
+
+  html [data-toolbar-font] .btn-primary > .btn-glass-surface,
+  html [data-toolbar-font] .btn-primary::before,
+  html [data-toolbar-font] .btn-primary::after,
+  html [data-toolbar-font] .btn-primary-well::before,
+  html [data-toolbar-font] .btn-primary-well::after {
+    display: none !important;
+  }
+
+  html [data-toolbar-font] .btn-primary svg {
+    filter: none !important;
+  }
 }
