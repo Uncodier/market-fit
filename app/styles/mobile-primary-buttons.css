@@ -1,4 +1,4 @@
-/* Mobile liquid glass: retain the shared tint, fill, sizing and icon tokens. */
+/* Shared mobile primary buttons: bare actions with accessible touch targets. */
 @media (max-width: 767px) {
   /* Remove the recessed surround, including its hover and disabled variants. */
   .btn-primary-well::before,
@@ -27,20 +27,20 @@
   }
 
   /* Match the approximate 48px Safari back control in the mobile reference. */
-  [data-toolbar-font] .btn-primary-well,
-  [data-toolbar-font] .btn-primary {
+  .btn-primary-well,
+  .btn-primary {
     min-height: 48px !important;
   }
 
-  [data-toolbar-font] .btn-primary {
+  .btn-primary {
     min-width: 48px !important;
   }
 
-  /* Keep icon-bearing topbar actions compact across the full mobile breakpoint. */
-  [data-toolbar-font] .btn-primary-well:has(> .btn-primary > .safari-icon-fix),
-  [data-toolbar-font] .btn-primary-well:has(> .btn-primary > svg),
-  [data-toolbar-font] .btn-primary:has(> .safari-icon-fix),
-  [data-toolbar-font] .btn-primary:has(> svg) {
+  /* Keep icon-bearing primary actions compact across the full mobile breakpoint. */
+  .btn-primary-well:has(> .btn-primary > .safari-icon-fix),
+  .btn-primary-well:has(> .btn-primary > svg),
+  .btn-primary:has(> .safari-icon-fix),
+  .btn-primary:has(> svg) {
     width: 48px !important;
     min-width: 48px !important;
     max-width: 48px !important;
@@ -49,8 +49,8 @@
   }
 
   /* Visually hide labels without removing their accessible names. */
-  [data-toolbar-font] .btn-primary:has(> .safari-icon-fix) > span:not(.safari-icon-fix):not(.btn-glass-surface),
-  [data-toolbar-font] .btn-primary:has(> svg) > span:not(.safari-icon-fix):not(.btn-glass-surface) {
+  .btn-primary:has(> .safari-icon-fix) > span:not(.safari-icon-fix):not(.btn-glass-surface),
+  .btn-primary:has(> svg) > span:not(.safari-icon-fix):not(.btn-glass-surface) {
     display: block !important;
     position: absolute !important;
     width: 1px !important;
@@ -174,9 +174,9 @@
     }
   }
 
-  /* Topbar actions are bare icons, not glass CTAs, in every mobile state. */
-  html [data-toolbar-font] .btn-primary.btn-primary,
-  html [data-toolbar-font] .btn-primary-well.btn-primary-well {
+  /* All primary actions are bare controls, not glass CTAs, on mobile. */
+  html .btn-primary.btn-primary.btn-primary,
+  html .btn-primary-well.btn-primary-well.btn-primary-well {
     background-color: transparent !important;
     background-image: none !important;
     border: 0 !important;
@@ -187,15 +187,15 @@
     color: hsl(var(--foreground)) !important;
   }
 
-  html [data-toolbar-font] .btn-primary > .btn-glass-surface,
-  html [data-toolbar-font] .btn-primary::before,
-  html [data-toolbar-font] .btn-primary::after,
-  html [data-toolbar-font] .btn-primary-well::before,
-  html [data-toolbar-font] .btn-primary-well::after {
+  html .btn-primary > .btn-glass-surface,
+  html .btn-primary::before,
+  html .btn-primary::after,
+  html .btn-primary-well::before,
+  html .btn-primary-well::after {
     display: none !important;
   }
 
-  html [data-toolbar-font] .btn-primary svg {
+  html .btn-primary svg {
     filter: none !important;
   }
 }

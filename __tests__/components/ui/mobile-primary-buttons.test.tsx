@@ -77,7 +77,7 @@ describe("mobile primary buttons", () => {
       expect(["--btn-tint", "--btn-fill"]).not.toContain(declaration.prop)
       if (declaration.prop === "color") {
         expect(declaration.parent?.type).toBe("rule")
-        expect((declaration.parent as postcss.Rule).selector).toContain("[data-toolbar-font]")
+        expect((declaration.parent as postcss.Rule).selector).toContain(".btn-primary")
         expect(declaration.value).toBe("hsl(var(--foreground))")
       }
       if (declaration.prop === "box-shadow") expect(declaration.value).not.toContain("inset")
@@ -99,14 +99,14 @@ describe("mobile primary buttons", () => {
     expect(declarations(".btn-primary")["min-height"]).toBe("48px !important")
     expect(declarations(".btn-primary-well")["min-height"]).toBe("48px !important")
     expect(declarations(".btn-primary.btn-primary-circular")["min-width"]).toBe("48px !important")
-    expect(declarations("[data-toolbar-font] .btn-primary")).toMatchObject({
+    expect(declarations(".btn-primary")).toMatchObject({
       "min-height": "48px !important",
       "min-width": "48px !important",
     })
-    expect(declarations("[data-toolbar-font] .btn-primary-well")["min-height"]).toBe("48px !important")
+    expect(declarations(".btn-primary-well")["min-height"]).toBe("48px !important")
   })
 
-  it("keeps topbar icon actions square and visually hides only their labels on mobile", () => {
+  it("keeps shared icon actions square and visually hides only their labels on mobile", () => {
     const css = postcss.parse(readFileSync(path.join(process.cwd(), "app/styles/mobile-primary-buttons.css"), "utf8"))
     const valuesFor = (selector: string) => {
       const values: Record<string, string> = {}
@@ -119,8 +119,8 @@ describe("mobile primary buttons", () => {
       return values
     }
     for (const icon of [".safari-icon-fix", "svg"]) {
-      const button = `[data-toolbar-font] .btn-primary:has(> ${icon})`
-      const well = `[data-toolbar-font] .btn-primary-well:has(> .btn-primary > ${icon})`
+      const button = `.btn-primary:has(> ${icon})`
+      const well = `.btn-primary-well:has(> .btn-primary > ${icon})`
       for (const selector of [button, well]) {
         expect(valuesFor(selector)).toMatchObject({
           width: "48px !important",
@@ -140,7 +140,7 @@ describe("mobile primary buttons", () => {
       })
     }
     const onClick = jest.fn()
-    render(<div data-toolbar-font><Button onClick={onClick}>
+    render(<div><Button onClick={onClick}>
       <svg aria-hidden="true" data-testid="topbar-icon" />
       <span className="hidden sm:inline ml-2">Create</span>
     </Button></div>)
@@ -150,10 +150,10 @@ describe("mobile primary buttons", () => {
     expect(onClick).toHaveBeenCalledTimes(1)
   })
 
-  it("removes mobile topbar glass paint and decoration without changing other CTAs", () => {
+  it("removes shared mobile primary glass paint and decoration", () => {
     const css = postcss.parse(readFileSync(path.join(process.cwd(), "app/styles/mobile-primary-buttons.css"), "utf8"))
     const paint = css.nodes.flatMap((node) => node.type === "atrule" ? node.nodes ?? [] : [])
-      .find((node) => node.type === "rule" && node.selectors.includes("html [data-toolbar-font] .btn-primary.btn-primary"))
+      .find((node) => node.type === "rule" && node.selectors.includes("html .btn-primary.btn-primary.btn-primary"))
     expect(paint?.type).toBe("rule")
     const values: Record<string, string> = {}
     if (paint?.type === "rule") paint.walkDecls((decl) => {
@@ -171,7 +171,7 @@ describe("mobile primary buttons", () => {
       color: "hsl(var(--foreground))",
     })
     const surface = css.nodes.flatMap((node) => node.type === "atrule" ? node.nodes ?? [] : [])
-      .find((node) => node.type === "rule" && node.selectors.includes("html [data-toolbar-font] .btn-primary > .btn-glass-surface"))
+      .find((node) => node.type === "rule" && node.selectors.includes("html .btn-primary > .btn-glass-surface"))
     const hidden: string[] = []
     if (surface?.type === "rule") surface.walkDecls("display", (decl) => hidden.push(decl.value))
     expect(hidden).toEqual(["none"])
