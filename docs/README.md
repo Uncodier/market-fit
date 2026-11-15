@@ -4,6 +4,8 @@ This directory contains operational documentation for the Makinari application.
 Use the guides below before relying on older implementation notes.
 
 ## Start here
+- [Disposable QA — 2026-11-14](QA_DISPOSABLE_2026-11-14.md) — current isolated QA execution, authored E2E additions, repairs, maturation evidence and remaining gates.
+
 
 - [Instance ownership access](INSTANCE_OWNERSHIP_ACCESS.md) — restricted-member RLS, child-resource guards, attribution, local verification and pending rollout.
 

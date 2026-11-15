@@ -3,6 +3,17 @@ import { setupFeedback, type SiteSetupFeedback } from './site-setup-feedback'
 
 type Translator = (key: string, params?: Record<string, string | number>) => string
 
+/** Keep critical setup feedback visible even if a translation is unavailable. */
+export function setupTranslator(t: Translator): Translator {
+  return (key, params) => {
+    const translated = t(key, params)
+    if (translated && translated !== key) return translated
+    const text = (messages as Record<string, string>)[key] || key
+    return text.replace(/\{\{\s*(\w+)\s*\}\}/g, (match, name) =>
+      params?.[name] === undefined ? match : String(params[name]))
+  }
+}
+
 const setupTextKeys = Object.entries(messages)
   .filter(([key]) => key.startsWith('account.setup.'))
   .reduce<Record<string, string>>((keys, [key, message]) => ({ ...keys, [message]: key }), {})

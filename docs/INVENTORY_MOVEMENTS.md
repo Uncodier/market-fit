@@ -2,6 +2,14 @@
 
 ## Workspace screen
 
+The stock-level list at `/inventory` sorts by `inventory_levels.updated_at`, with
+`id` as a stable tie-breaker. The table has no creation timestamp. Legacy
+`newest`/`created_at` sort inputs map to recently updated; `oldest` means least
+recently updated. Database and transport failures show a generic load error,
+not an empty-stock state. This list repair requires a web deployment, not a schema
+migration. Regression coverage is in `__tests__/inventory/actions.test.ts` and
+`__tests__/inventory/InventoryLevelsTab.test.tsx`.
+
 `/inventory/movements` is the Inventory Ledger in Operations, with sticky filters,
 search, sorting and pagination. It is distinct from `/inventory/transfers`, the
 transfer order/requisition document list with **New Transfer**. Transfer details

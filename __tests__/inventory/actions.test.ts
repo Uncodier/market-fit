@@ -26,7 +26,12 @@ describe("inventory actions", () => {
       eq: jest.fn().mockReturnThis(),
       ilike: jest.fn().mockReturnThis(),
       range: jest.fn().mockReturnThis(),
-      order: jest.fn().mockReturnThis(),
+      order: jest.fn(function (this: unknown, column: string) {
+        if (!['updated_at', 'id'].includes(column)) {
+          throw new Error(`column inventory_levels.${column} does not exist`);
+        }
+        return this;
+      }),
       // Supabase builders remain chainable until awaited, including after range().
       then: (resolve: (value: QueryResult) => unknown) => Promise.resolve(queryResult).then(resolve),
     });
@@ -111,9 +116,11 @@ describe("inventory actions", () => {
     });
 
     it.each([
-      [undefined, [['created_at', { ascending: false }]]],
-      ['oldest', [['created_at', { ascending: true }]]],
-      ['updated_at', [['updated_at', { ascending: false }], ['created_at', { ascending: false }]]],
+      [undefined, [['updated_at', { ascending: false }], ['id', { ascending: true }]]],
+      ['oldest', [['updated_at', { ascending: true }], ['id', { ascending: true }]]],
+      ['updated_at', [['updated_at', { ascending: false }], ['id', { ascending: true }]]],
+      ['newest', [['updated_at', { ascending: false }], ['id', { ascending: true }]]],
+      ['created_at', [['updated_at', { ascending: false }], ['id', { ascending: true }]]],
     ] as const)('applies pagination and %s ordering before executing the query', async (sort, orders) => {
       await expect(listInventoryLevels({ siteId: 'site-123', page: 3, pageSize: 10, sort }))
         .resolves.toEqual({ data: [], count: 0 });

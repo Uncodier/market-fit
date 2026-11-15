@@ -37,7 +37,8 @@ function text(locale: SupportedLocale, key: string, params?: Record<string, stri
 }
 
 export function procurementValueLabel(value: string, locale: SupportedLocale) {
-  return localeMessages[locale][`procurement.values.${value}`] ?? value.replaceAll('_', ' ').replace(/^./, letter => letter.toUpperCase())
+  // Unknown values can be user-authored credential types, not application enums.
+  return localeMessages[locale][`procurement.values.${value}`] ?? localeMessages.en[`procurement.values.${value}`] ?? value
 }
 
 /** Translate only application-owned diagnostics, never supplier names or free text. */

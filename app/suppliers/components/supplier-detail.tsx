@@ -131,7 +131,7 @@ export function SupplierDetail({ siteId, id, onCancel }: { siteId: string; id: s
           <DialogFooter><Button type="button" variant="outline" disabled={saving} onClick={cancel}>{t('procurement.common.cancel')}</Button>{demo ? <Button type="submit" disabled>{t('procurement.partners.suppliers.create')}</Button> : saveButton}</DialogFooter>
         </DialogForm>
       </DialogContent>
-    </Dialog> : <Tabs value={tab} onValueChange={setTab} className="w-full min-w-0"><ProcurementWorkspace className="bg-background !px-4 !py-5 lg:!px-8" title={snapshot?.name ?? t('procurement.partners.suppliers.details')} toolbar={<div aria-label="Supplier navigation and status" className="flex w-full min-w-0 flex-nowrap items-center justify-between gap-3">
+    </Dialog> : <Tabs value={tab} onValueChange={setTab} className="w-full min-w-0"><ProcurementWorkspace className="bg-background !px-4 !py-5 lg:!px-8" title={snapshot?.name ?? t('procurement.partners.suppliers.details')} toolbar={<div aria-label={t('procurement.surfaces.suppliers.navigationStatus')} className="flex w-full min-w-0 flex-nowrap items-center justify-between gap-3">
       <ResponsiveTabsList tabs={['about', 'contacts', 'representatives', 'activity'].map(value => ({ value, label: valueLabel(value) }))} activeTab={tab} onTabChange={setTab} containerClassName="min-w-0 flex-1" className="w-full min-w-0 max-w-full" />
       {draft && <SupplierStatusWidget status={draft.status} disabled={!canEdit || saving || blocked}
         onChange={status => updateDraft({ ...draft, status })} onArchive={() => setConfirmation("archive")} />}

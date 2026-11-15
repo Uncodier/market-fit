@@ -48,7 +48,7 @@ export function CredentialForm({ credential, onSaved, onCancel, open = true, dem
   }
   return <DocumentDialog open={open} onClose={onCancel} busy={busy} title={t(credential ? 'procurement.portal.credentials.addImmutable' : 'procurement.portal.credentials.uploadPersonal')} description={t('procurement.portal.credentials.dialogDescription')}>
     <DialogForm onSubmit={submit}><DialogBody className="space-y-4">
-    {demo && <p role="status">Read-only demo credential. Uploading and saving are disabled; no file is stored.</p>}
+    {demo && <p role="status">{t('procurement.surfaces.demo.credentialReadOnly')}</p>}
     <fieldset disabled={demo || busy} className="space-y-4">
     <p className="text-sm text-muted-foreground">{t('procurement.portal.credentials.holderHint')}</p>
     <div className="grid gap-4 md:grid-cols-2">{field('holder_name', t('procurement.portal.credentials.legalName'))}{field('title', t('procurement.portal.credentials.title'))}

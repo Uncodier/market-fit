@@ -35,7 +35,7 @@ export function TenderActivity({ tender, publications, receipts = [], portalEnab
     <SectionCard>
       <SectionCardHeader title={t('procurement.workflow.tender.workspacePortal')}
         description={t('procurement.workflow.tender.portalDescription', { status: valueLabel(portalEnabled ? 'enabled' : 'disabled') })} />
-      {demo && <SectionCardContent><p className="text-sm text-muted-foreground">Explore the local demo portal. Publishing and portal settings remain disabled.</p></SectionCardContent>}
+      {demo && <SectionCardContent><p className="text-sm text-muted-foreground">{t('procurement.surfaces.demo.portalHint')}</p></SectionCardContent>}
       <SectionCardFooter className="flex-wrap">
         <Button variant="ghost" size="sm" asChild><Link href={`/tenders/${siteSlug}`}>{t('procurement.workflow.tender.workspacePortal')}</Link></Button>
         <Button variant="outline" size="sm" disabled={busy || demo} onClick={onTogglePortal}>{t(portalEnabled ? 'procurement.workflow.tender.disablePortal' : 'procurement.workflow.tender.enablePortal')}</Button>

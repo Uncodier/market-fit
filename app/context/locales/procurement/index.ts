@@ -1,3 +1,8 @@
+import surfacesJa from './surfaces-ja.json'
+import surfacesDe from './surfaces-de.json'
+import surfacesFr from './surfaces-fr.json'
+import surfacesEs from './surfaces-es.json'
+import surfacesEn from './surfaces-en.json'
 import type { SupportedLocale } from '../../locale-preferences'
 import commonEn from './common-en.json'
 import commonEs from './common-es.json'
@@ -41,9 +46,9 @@ import quoteDetailDe from './quote-detail-de.json'
 import quoteDetailJa from './quote-detail-ja.json'
 
 export const procurementMessages: Record<SupportedLocale, Record<string, string>> = {
-  en: { ...commonEn, ...errorsEn, ...detailsEn, ...workflowEn, ...policyEn, ...portalEn, ...partnersEn, ...quoteDetailEn },
-  es: { ...commonEs, ...errorsEs, ...detailsEs, ...workflowEs, ...policyEs, ...portalEs, ...partnersEs, ...quoteDetailEs },
-  fr: { ...commonFr, ...errorsFr, ...detailsFr, ...workflowFr, ...policyFr, ...portalFr, ...partnersFr, ...quoteDetailFr },
-  de: { ...commonDe, ...errorsDe, ...detailsDe, ...workflowDe, ...policyDe, ...portalDe, ...partnersDe, ...quoteDetailDe },
-  ja: { ...commonJa, ...errorsJa, ...detailsJa, ...workflowJa, ...policyJa, ...portalJa, ...partnersJa, ...quoteDetailJa },
+  en: { ...commonEn, ...errorsEn, ...detailsEn, ...workflowEn, ...policyEn, ...portalEn, ...partnersEn, ...quoteDetailEn, ...surfacesEn },
+  es: { ...commonEs, ...errorsEs, ...detailsEs, ...workflowEs, ...policyEs, ...portalEs, ...partnersEs, ...quoteDetailEs, ...surfacesEs },
+  fr: { ...commonFr, ...errorsFr, ...detailsFr, ...workflowFr, ...policyFr, ...portalFr, ...partnersFr, ...quoteDetailFr, ...surfacesFr },
+  de: { ...commonDe, ...errorsDe, ...detailsDe, ...workflowDe, ...policyDe, ...portalDe, ...partnersDe, ...quoteDetailDe, ...surfacesDe },
+  ja: { ...commonJa, ...errorsJa, ...detailsJa, ...workflowJa, ...policyJa, ...portalJa, ...partnersJa, ...quoteDetailJa, ...surfacesJa },
 }

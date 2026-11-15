@@ -26,7 +26,7 @@ import { SortDropdown } from "@/app/components/ui/sort-dropdown"
 export default function InventoryPage() {
   const searchParams = useSearchParams()
   const urlSort = searchParams ? searchParams.get('sort') : null
-  const defaultSort = urlSort === 'updated_at' ? 'updated_at' : (urlSort === 'created_at' || urlSort === 'newest' ? 'newest' : (urlSort === 'oldest' ? 'oldest' : 'newest'))
+  const defaultSort = urlSort === 'oldest' ? 'oldest' : 'updated_at'
   const [sortBy, setSortBy] = useState(defaultSort)
 
   const { currentSite } = useSite()
@@ -143,7 +143,14 @@ export default function InventoryPage() {
               </Button>
               <div className="w-px h-6 bg-border mx-1 hidden sm:block" />
               {activeTab === "levels" && (
-                <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
+                <SortDropdown
+                  sortBy={sortBy}
+                  setSortBy={(value) => { setSortBy(value); setPage(1); }}
+                  options={[
+                    { value: "updated_at", label: "Recently updated" },
+                    { value: "oldest", label: "Least recently updated" },
+                  ]}
+                />
               )}
               <PrinterSyncBadge module="inventory" />
               {activeTab === "levels" && (

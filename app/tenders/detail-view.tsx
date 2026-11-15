@@ -63,7 +63,7 @@ export function TenderDetailView({ siteSlug, tenderSlug, tender, closed = true, 
     <div className="min-h-screen bg-background flex flex-col pb-24 lg:pb-0">
       <TenderHeader siteSlug={siteSlug} />
       <main className={tenderDetailClasses.main}>
-        {demo && tenderSlug === 'demo-tender-awarded' && <div className="mb-6"><a className="underline" href="https://app.makinari.com/purchases/orders/demo-order-workplace?client=demo-procurement">View awarded order</a></div>}
+        {demo && tenderSlug === 'demo-tender-awarded' && <div className="mb-6"><a className="underline" href="https://app.makinari.com/purchases/orders/demo-order-workplace?client=demo-procurement">{t('procurement.surfaces.demo.viewOrder')}</a></div>}
         <nav aria-label={t('procurement.portal.public.navigation')} className="mb-6 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground break-words">
           <Link className="hover:underline" href="/tenders">{t('procurement.portal.public.tenders')}</Link>
           <span aria-hidden="true">/</span>

@@ -1,0 +1,6 @@
+{
+  "deals.loading": "Loading deals",
+  "deals.siteError": "Unable to load your site. Please try again.",
+  "deals.selectSite": "Select a site to view deals.",
+  "deals.loadError": "Unable to load deals. Please try again."
+}

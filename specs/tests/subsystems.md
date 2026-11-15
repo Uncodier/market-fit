@@ -23,6 +23,15 @@ automatic retries, and has a 20-minute suite timeout.
    Quotations subtab, find the exact linked sales quotation (paginating if needed),
    open it, verify both persistent identities, reload, return through browser
    history and re-read the same quotation under the authenticated user's RLS.
+3. **POS customer draft → Cancel → CRM → POS** (newly authored; offline only):
+   start with a fresh empty basket, select the exact QA lead, open the genuine
+   **Create** tab and enter a unique run-namespaced synthetic name/email. **Cancel**
+   must retain the selected lead UUID and empty new-order session. Reopening starts
+   on **Search** with an empty query, and **Create** fields are reset. Visit the
+   same CRM lead, return to POS and reload; selection must still persist. Separate
+   authenticated same-site exact-name reads prove the draft lead is absent before
+   and after the journey. No **Create Customer**, lead write, order or payment is
+   performed. The supplied QA lead remains read-only; no cleanup deletion is used.
 
 ## Environment and ownership
 
@@ -47,7 +56,9 @@ or ambiguous identities fail closed; no broad deletion, upsert or service role.
 
 ```sh
 npm run test:e2e -- --suite subsystems --list
+npm run test:e2e -- --suite subsystems --validate
 npm test -- --runInBand __tests__/e2e/subsystem-crossflows.test.ts __tests__/e2e/qa-module-policy.test.ts
+npm test -- --runInBand __tests__/e2e/native-cancel-contracts.test.ts
 ```
 
 Discovery and Jest are offline evidence only. The native browser specs contain no
@@ -59,5 +70,11 @@ remaining defects must be recorded separately after execution on Azure. Failure
 artifacts may contain authenticated synthetic data; retain them privately and use
 the installer's allowlisted evidence export, never upload dotenv or Auth state.
 
-These two journeys are an initial cross-screen battery, not a claim that every
+The new case lives in `tests/subsystems/pos-customer-cancel.spec.ts` and does not
+alter either previously executed test. Its matching offline source contract pins
+UI cancellation/reset controls, exact-name absence reads and read-only cart UUID
+assertions. The historical **2/2** result above applies only to the original two
+journeys, not to the newly authored case; current discovery has three cases.
+
+These three journeys are an initial cross-screen battery, not a claim that every
 screen/modal, fulfillment, booking, Stripe or integration subsystem is covered.

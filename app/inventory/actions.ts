@@ -132,13 +132,10 @@ export async function listInventoryLevels({ siteId, locationId, catalogItemId, q
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
 
-    if (sort === 'oldest') {
-      query = query.range(from, to).order("created_at", { ascending: true });
-    } else if (sort === 'updated_at') {
-      query = query.range(from, to).order("updated_at", { ascending: false }).order("created_at", { ascending: false });
-    } else {
-      query = query.range(from, to).order("created_at", { ascending: false });
-    }
+    // Stock levels track updates, not creation. IDs stabilize equal timestamps.
+    query = query.range(from, to)
+      .order("updated_at", { ascending: sort === 'oldest' })
+      .order("id", { ascending: true });
 
     const { data, count, error } = await query;
 

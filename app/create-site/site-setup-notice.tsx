@@ -4,13 +4,14 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 
 import { useRef, useState } from 'react'
 import { Button } from '@/app/components/ui/button'
-import { localizeSetupFeedback } from './localized-feedback'
+import { localizeSetupFeedback, setupTranslator } from './localized-feedback'
 import type { SiteSetupFeedback } from './site-setup-feedback'
 
 export function SiteSetupNotice({ feedback, onCheck }: {
   feedback: SiteSetupFeedback; onCheck: () => Promise<void>
 }) {
-  const { t } = useLocalization()
+  const localization = useLocalization()
+  const t = setupTranslator(localization.t)
   const [checking, setChecking] = useState(false)
   const checkingStarted = useRef(false)
   const checkStatus = async () => {

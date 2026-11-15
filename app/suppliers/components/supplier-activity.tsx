@@ -39,10 +39,10 @@ export function SupplierActivity({ siteId, id, version }: { siteId: string; id: 
   return <SectionCard className="min-w-0 overflow-visible rounded-none border-0 bg-transparent shadow-none">
     <SectionCardHeader className="px-0 pb-3 pt-0 [&_h3]:text-xs [&_h3]:font-medium [&_h3]:uppercase [&_h3]:tracking-wider [&_h3]:text-muted-foreground" title={t('procurement.partners.activity.title')} description={t('procurement.partners.activity.description')} />
     <SectionCardContent className="space-y-3 px-0 pb-0">
-    {isDemoSiteId(siteId) && <nav aria-label="Related demo procurement" className="flex flex-wrap gap-4 text-sm underline">
-      <Link href={`/purchases/tenders/${id === 'demo-supplier-cedar' ? 'demo-tender-awarded' : 'demo-tender-workplace'}`}>Workplace technology tender</Link>
-      <Link href={`/purchases/quotes/demo-quote-${id.replace('demo-supplier-', '')}`}>Supplier quotation</Link>
-      {id === 'demo-supplier-cedar' && <Link href="/purchases/orders/demo-order-workplace">Awarded purchase order</Link>}
+    {isDemoSiteId(siteId) && <nav aria-label={t('procurement.surfaces.demo.relatedProcurement')} className="flex flex-wrap gap-4 text-sm underline">
+      <Link href={`/purchases/tenders/${id === 'demo-supplier-cedar' ? 'demo-tender-awarded' : 'demo-tender-workplace'}`}>{t('procurement.surfaces.demo.workplaceTender')}</Link>
+      <Link href={`/purchases/quotes/demo-quote-${id.replace('demo-supplier-', '')}`}>{t('procurement.surfaces.demo.supplierQuote')}</Link>
+      {id === 'demo-supplier-cedar' && <Link href="/purchases/orders/demo-order-workplace">{t('procurement.surfaces.demo.awardedOrder')}</Link>}
     </nav>}
     <ProcurementState loading={loading} error={message(error)} empty={!loading && !error && !activity.length} emptyTitle={t('procurement.partners.activity.empty')} description={t('procurement.partners.activity.emptyHint')} compact />
     {!loading && !error && <ol className="space-y-2">{activity.map(event => <li key={event.version} className="border-b py-2 text-sm last:border-0">

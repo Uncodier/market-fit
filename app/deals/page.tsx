@@ -27,6 +27,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { LayoutGrid, Target, XCircle, TrendingUp } from "@/app/components/ui/icons"
 import { SortDropdown } from "@/app/components/ui/sort-dropdown"
+import { Button } from "@/app/components/ui/button"
 
 function DealsTableSkeleton() {
   return (
@@ -67,20 +68,22 @@ export default function DealsPage() {
   const [activeTab, setActiveTab] = useState("all")
   const [searchQuery, setSearchQuery] = useState("")
   const [viewType, setViewType] = useMobileView("kanban")
-  const { currentSite } = useSite()
+  const { currentSite, isLoading: siteLoading, error: siteError, refreshSites } = useSite()
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "value_desc" | "value_asc">("newest")
 
-  const { data: dbDealsData, isLoading: loading, mutate: mutateDeals } = useSWR(
+  const { data: dbDealsData, error: dealsError, isLoading: loading, isValidating, mutate: mutateDeals } = useSWR(
     currentSite?.id ? ['deals', currentSite.id] : null,
     async ([, siteId]) => {
       const result = await getDeals(siteId)
-      if (result.error) throw new Error(result.error)
-      return result.deals || []
+      if (result.error || !Array.isArray(result.deals)) throw new Error('Unable to load deals')
+      return result.deals
     },
     {}
   )
 
   const dbDeals = dbDealsData || []
+  const pending = dbDealsData === undefined && !dealsError && (siteLoading || (Boolean(currentSite?.id) && loading))
+  const hasVisibleData = dbDeals.length > 0
 
   useEffect(() => {
     const refreshWindow = window as Window & { refreshDealsList?: () => Promise<Deal[] | undefined> }
@@ -90,7 +93,7 @@ export default function DealsPage() {
 
 
   const getFilteredDeals = (status: string) => {
-    let filtered = dbDeals
+    let filtered = [...dbDeals]
     
     // Status tab filter
     if (status !== "all") {
@@ -230,9 +233,22 @@ export default function DealsPage() {
           "bg-muted/30 flex-1 min-h-0 min-w-0 overflow-y-auto",
           viewType === "kanban" ? "py-4 md:py-8" : "p-4 md:p-8 space-y-4 overflow-x-hidden"
         )}>
-              {loading ? (
-              viewType === "table" ? <DealsTableSkeleton /> : <DealsKanbanSkeleton />
-            ) : filteredDeals.length === 0 && !searchQuery ? (
+              {pending ? (
+              <div role="status" aria-label={t('deals.loading') || 'Loading deals'} aria-busy="true">
+                {viewType === "table" ? <DealsTableSkeleton /> : <DealsKanbanSkeleton />}
+              </div>
+            ) : !currentSite?.id ? (
+              <div role={siteError ? 'alert' : 'status'} className="space-y-3 p-6">
+                <p>{siteError ? t('deals.siteError') || 'Unable to load your site. Please try again.' : t('deals.selectSite') || 'Select a site to view deals.'}</p>
+                <Button variant="outline" disabled={siteLoading} onClick={() => void refreshSites()}>{t('common.retry') || 'Retry'}</Button>
+              </div>
+            ) : (
+              <>
+              {dealsError && <div role="alert" className="space-y-3 p-6">
+                <p>{t('deals.loadError') || 'Unable to load deals. Please try again.'}</p>
+                <Button variant="outline" disabled={isValidating} onClick={() => void mutateDeals()}>{t('common.retry') || 'Retry'}</Button>
+              </div>}
+              {dealsError && !hasVisibleData ? null : filteredDeals.length === 0 && !searchQuery ? (
               <IsEmpty 
                 icon={<Briefcase className="h-10 w-10 text-muted-foreground" />}
                 title={t('deals.empty.title') || "No deals found"}
@@ -259,6 +275,8 @@ export default function DealsPage() {
                     )}
                   </TabsContent>
                 ))}
+              </>
+            )}
               </>
             )}
         </div>

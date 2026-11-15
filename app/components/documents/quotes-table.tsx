@@ -12,7 +12,6 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 import { TenderQuotationBadge } from "@/app/quotations/components/TenderQuotationBadge"
-import { formatCurrency } from "@/app/lib/formatters"
 import {
   DocumentListHead,
   DocumentListRow,
@@ -92,7 +91,10 @@ export function QuotesTable({
   onPageChange,
   onRowClick,
 }: QuotesTableProps) {
-  const { t } = useLocalization()
+  const { t, locale } = useLocalization()
+  const formatCurrency = (value: number, currency: string) => new Intl.NumberFormat(locale, {
+    style: "currency", currency,
+  }).format(value)
   const totalPages = Math.ceil(totalCount / pageSize)
   const indexOfFirstItem = (page - 1) * pageSize
   const hasPendingTaxes = rows.some(row => row.total == null)

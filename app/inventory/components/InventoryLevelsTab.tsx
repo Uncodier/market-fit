@@ -60,7 +60,7 @@ export function InventoryLevelsTab({
   }
 
   const { data, error, isLoading, mutate } = useSWR(
-    siteId ? ["inventory_levels", siteId, page, q, selectedLocation, sort] : null,
+    siteId ? ["inventory_levels", siteId, page, pageSize, q, selectedLocation, sort] : null,
     fetcher,
   )
 
@@ -123,7 +123,7 @@ export function InventoryLevelsTab({
     )
   }
 
-  if (error) {
+  if (error || data?.error) {
     return <div className="p-6 text-center text-red-500">{t("inventory.error.load") || "Error loading inventory"}</div>
   }
 

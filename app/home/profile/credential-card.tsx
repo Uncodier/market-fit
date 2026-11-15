@@ -22,7 +22,7 @@ export function CredentialCard({ credential, demo, archiving, onEdit, onArchive 
         {credential.archived_at && <Badge variant="secondary" className="shrink-0">{t('procurement.portal.credentials.archived')}</Badge>}
       </div>
       {!credential.archived_at && <div className="flex flex-wrap items-center gap-2">
-        <Button variant="outline" size="sm" onClick={onEdit}>{demo ? 'Preview credential' : t('procurement.portal.credentials.addRevision')}</Button>
+        <Button variant="outline" size="sm" onClick={onEdit}>{demo ? t('procurement.surfaces.demo.previewCredential') : t('procurement.portal.credentials.addRevision')}</Button>
         <Button variant="outline" size="sm" disabled={demo || archiving !== null} onClick={onArchive}>{t(archiving === credential.id ? 'procurement.portal.credentials.archiving' : 'procurement.portal.credentials.archiveHistory')}</Button>
       </div>}
     </header>
@@ -40,7 +40,7 @@ export function CredentialCard({ credential, demo, archiving, onEdit, onArchive 
         <p className="text-xs text-muted-foreground">{formatNumber(Math.ceil(revision.byte_size / 1024))} KiB · {t(revision.state === 'ready' ? 'procurement.portal.credentials.uploaded' : 'procurement.portal.credentials.incomplete')}</p>
       </div> },
       { label: t('procurement.portal.access'), render: revision => revision.state === 'ready' && (demo
-        ? <span className="text-xs text-muted-foreground">Example only · no file stored</span>
+        ? <span className="text-xs text-muted-foreground">{t('procurement.surfaces.demo.noFile')}</span>
         : <Button variant="ghost" size="sm" asChild><a href={`/api/procurement/credentials/revisions/${revision.id}/file`}><Download className="mr-2 h-4 w-4" />{t('procurement.portal.credentials.download')}</a></Button>) },
     ]} />
   </section>

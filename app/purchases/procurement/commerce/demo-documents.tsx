@@ -1,5 +1,7 @@
 'use client'
 
+import { useProcurementI18n } from '@/app/purchases/procurement/i18n/use-procurement-i18n'
+
 import Link from 'next/link'
 import { Button } from '@/app/components/ui/button'
 import { QuotationInvoice } from '@/app/quotations/components/QuotationInvoice'
@@ -11,11 +13,12 @@ import { SharedEvidence } from '../evidence/shared-evidence'
 import { CommerceApproval } from './CommerceApproval'
 
 export function DemoQuotationDocument({ id, siteId }: { id: string; siteId: string }) {
+  const { t } = useProcurementI18n()
   const quote = demoProcurementQuotes.find(item => item.id === id)
   return <main className="mx-auto w-full max-w-5xl space-y-6 p-6">
     <ProcurementDemoNotice />
-    <Button variant="outline" asChild><Link href="/purchases/quotes">Back to quotations</Link></Button>
-    {!quote ? <p role="alert">Demo quotation not found.</p> : <>
+    <Button variant="outline" asChild><Link href="/purchases/quotes">{t('procurement.quoteDetail.back')}</Link></Button>
+    {!quote ? <p role="alert">{t('procurement.surfaces.demo.quoteMissing')}</p> : <>
       <QuotationInvoice quotation={{
         id: quote.id, reference: quote.reference, status: quote.award_id ? 'accepted' : 'sent',
         created_at: quote.recorded_at, valid_until: '2026-12-31T18:00:00Z', currency: quote.currency,
@@ -34,10 +37,11 @@ export function DemoQuotationDocument({ id, siteId }: { id: string; siteId: stri
 }
 
 export function DemoOrderDocument({ id, siteId }: { id: string; siteId: string }) {
+  const { t } = useProcurementI18n()
   const order = demoOrderDocument(siteId, id)
   return <PurchaseOrderDetailShell order={order} notice={<ProcurementDemoNotice />} relatedQuotationHref="/purchases/quotes/demo-quote-cedar">
     {order ?
       <OrderDocument order={order} buyerName="Demo workplace team" />
-      : <p role="alert">Demo order not found.</p>}
+      : <p role="alert">{t('procurement.surfaces.demo.orderMissing')}</p>}
   </PurchaseOrderDetailShell>
 }

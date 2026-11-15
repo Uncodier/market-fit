@@ -18,8 +18,8 @@ const styles: Record<Status, string> = {
 export function SupplierStatusWidget({ status, disabled, onChange, onArchive }: {
   status: Status; disabled: boolean; onChange: (status: Status) => void; onArchive: () => void
 }) {
-  const { valueLabel } = useProcurementI18n()
-  return <div role="group" aria-label="Supplier status" aria-disabled={disabled} className="min-w-0 max-w-[55%] shrink-0 overflow-x-auto">
+  const { t, valueLabel } = useProcurementI18n()
+  return <div role="group" aria-label={t('procurement.surfaces.suppliers.status')} aria-disabled={disabled} className="min-w-0 max-w-[55%] shrink-0 overflow-x-auto">
     <ProgressiveStatusBar current={status} forwardPath={forwardPath} outcomes={outcomes}
       styles={styles} labels={valueLabel} disabled={disabled || status === "archived"}
       onChange={next => { if (disabled || status === "archived") return; if (next === "archived") onArchive(); else onChange(next) }} />

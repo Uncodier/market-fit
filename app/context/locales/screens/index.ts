@@ -1,4 +1,6 @@
 import missingEn from './missing-en.json';
+import dealsEn from './deals-en.json';
+import dealsEs from './deals-es.json';
 import missingEs from './missing-es.json';
 import missingFr from './missing-fr.json';
 import missingDe from './missing-de.json';
@@ -35,11 +37,11 @@ import type { SupportedLocale } from '../../locale-preferences';
 export const screenMessages: Record<SupportedLocale, Record<string, string>> = {
   en: {
     ...missingEn, ...systemEn, ...accountEn, ...authFlowsEn, ...commercePagesEn,
-    ...contentEn, ...detailsEn, ...operationsEn, ...publicEn, ...procurementSharedEn,
+    ...contentEn, ...detailsEn, ...operationsEn, ...publicEn, ...procurementSharedEn, ...dealsEn,
   },
   es: {
     ...missingEs, ...systemEs, ...accountEs, ...authFlowsEs, ...commercePagesEs,
-    ...contentEs, ...detailsEs, ...operationsEs, ...publicEs, ...procurementSharedEs,
+    ...contentEs, ...detailsEs, ...operationsEs, ...publicEs, ...procurementSharedEs, ...dealsEs,
   },
   fr: { ...missingFr, ...operationsFr, ...bookingFr, ...procurementSharedFr },
   de: { ...missingDe, ...operationsDe, ...bookingDe, ...procurementSharedDe },

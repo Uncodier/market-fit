@@ -55,10 +55,9 @@ export function VoiceAgentSettingsFields({
     (voice) => voice.id === value.ttsVoiceId
   )
 
-  if (isLoading) return <VoiceOptionsLoading />
-
   return (
     <div className="space-y-3">
+      {isLoading && <VoiceOptionsLoading />}
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor={languageId}>Call language</Label>

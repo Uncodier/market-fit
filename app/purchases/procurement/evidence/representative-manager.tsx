@@ -15,11 +15,12 @@ import { DialogForm, DialogBody, DialogFooter } from '@/app/components/ui/dialog
 import { isProcurementDemo } from '../ui/is-demo'
 
 export function RepresentativeManager({ siteId, supplierId }: { siteId: string; supplierId: string }) {
+  const { t } = useProcurementI18n()
   const { user } = useAuthContext()
-  if (isProcurementDemo(siteId)) return <Card><CardHeader><CardTitle>Supplier representatives</CardTitle></CardHeader><CardContent className="space-y-3">
+  if (isProcurementDemo(siteId)) return <Card><CardHeader><CardTitle>{t('procurement.surfaces.suppliers.representatives')}</CardTitle></CardHeader><CardContent className="space-y-3">
     <DocumentTable rows={[{ id: 'demo-representative', name: 'Taylor Brooks', email: 'taylor@example.com' }]} empty="No representatives" compact columns={[
       { label: 'Representative', render: row => row.name }, { label: 'Account', render: row => row.email },
-      { label: 'Status', render: () => 'Active' }, { label: 'Access', render: () => <Button variant="outline" disabled>Revoke access</Button> },
+      { label: 'Status', render: () => 'Active' }, { label: 'Access', render: () => <Button variant="outline" disabled>{t('procurement.surfaces.suppliers.revoke')}</Button> },
     ]} />
   </CardContent></Card>
   return user ? <AccountRepresentatives key={`${user.id}:${siteId}:${supplierId}`} siteId={siteId} supplierId={supplierId} userId={user.id} /> : null

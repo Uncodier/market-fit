@@ -21,7 +21,7 @@ The shared runner/config integrates `--suite records`, one native admin
 project, one worker, zero retries, existing admin UI authentication, and
 `recordsPolicy()` in preflight. Smoke/regression must never discover these files.
 Discovery does not invoke fixtures or authorize subsequent execution. There are
-12 deterministic cases, no placeholder assertions, conditional skips, mocks,
+13 deterministic cases, no placeholder assertions, conditional skips, mocks,
 route fulfillment, or private Server Action calls from test code.
 
 Live execution is intentionally not a copy/paste command here. First obtain
@@ -130,6 +130,7 @@ an arbitrary first row or a privileged client. Supplied targets are never edited
 | DB negative admission | Direct public Data API update/insert | Wrong category, foreign, nonexistent, membership-row and undeclared links return `23514`; prior JSON/timestamp unchanged; rejected insert absent |
 | Recoverable collection Trash | UI confirmation/delete/restore | Cancel does not change data; active subtree disappears; one-batch restoration restores collection/descendants but not earlier standalone trash; individual restore then succeeds |
 | Stale editor conflict | Two authenticated browser tabs | Second tab cannot overwrite saved title/version, retains its draft, disables save and reloads the latest persisted value |
+| Cancel individual Record deletion | Populated detail → Delete Record → Cancel → list → same detail → reload | Exact UUID remains accessible; title and zero-valued field remain rendered; complete user-scoped row (including timestamp/data/status) equals the pre-cancel snapshot both immediately and after navigation/reload |
 
 DB tests are deliberately in `db-admission.spec.ts`: they do **not** prove browser
 or Server Action rejection. Positive UI assertions always include separate
@@ -137,6 +138,19 @@ user-scoped persisted reads; an optimistic toast alone cannot pass the case.
 Negative picker assertions wait for the real filtered records response, avoiding
 a false pass from a transient initial empty state. Preview checks exercise the
 actual resolver through Relations, not mocked return values.
+
+The individual-delete cancellation case is in `tests/records/delete-cancel.spec.ts`.
+It uses a UI-created, saved run-owned Record and the real **Delete Record**
+alertdialog; it never confirms deletion. Existing fixture cleanup still moves its
+exact owned rows to Trash. This is distinct from collection-batch cancellation.
+Its matching source contract is validated offline with:
+
+```sh
+npm test -- --runInBand __tests__/e2e/native-cancel-contracts.test.ts
+```
+
+Source contracts pin the controls and durable assertions; they are not live UI
+or database execution evidence. No existing case/assertion is replaced.
 
 ## Honest gaps / release gates
 

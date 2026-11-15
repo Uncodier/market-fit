@@ -18,13 +18,14 @@ import { demoPortalOpportunities } from '@/lib/demo-data/procurement-portal'
 export function TenderSubmissionEntry({ publicationId, open, onClose, returnTo, onSubmitted }: {
   publicationId: string; open: boolean; onClose: () => void; returnTo: string; onSubmitted?: () => void
 }) {
+  const { t } = useProcurementI18n()
   const { user } = useAuthContext()
   const demo = usePortalDemo()
   if (demo) {
     const opportunity = demoPortalOpportunities.find(row => row.publication_id === publicationId)
     return opportunity ? <DemoSubmissionPreview opportunity={opportunity} open={open} onCancel={onClose} />
-      : <SubmissionShell open={open} onClose={onClose} title="Demo preview" description="Real tender participation is disabled in demo mode.">
-        <div className="p-6"><Button asChild><Link href="/tenders">Browse demo tenders</Link></Button></div>
+      : <SubmissionShell open={open} onClose={onClose} title={t('procurement.surfaces.demo.preview')} description={t('procurement.surfaces.demo.participationDisabled')}>
+        <div className="p-6"><Button asChild><Link href="/tenders">{t('procurement.surfaces.demo.browseTenders')}</Link></Button></div>
       </SubmissionShell>
   }
   return <AccountEntry key={`${user?.id ?? 'guest'}:${publicationId}`} userId={user?.id} publicationId={publicationId} open={open} onClose={onClose} returnTo={returnTo} onSubmitted={onSubmitted} />

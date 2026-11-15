@@ -165,7 +165,7 @@ function RevisionDetail({ attachment, requirementId, fictional = false }: { atta
       <MetadataField label={t('procurement.portal.credentials.expiryDate')}>
         {metadata.non_expiring ? t('procurement.portal.credentials.nonExpiring') : date(metadata.expires_on)}
       </MetadataField>
-      {requirementId && <MetadataField label="Requirement reference" wide>{requirementId}</MetadataField>}
+      {requirementId && <MetadataField label={t('procurement.surfaces.evidence.requirementReference')} wide>{requirementId}</MetadataField>}
       <MetadataField label={t('procurement.quoteDetail.evidence.revisionId')} wide>{attachment.revision_id}</MetadataField>
     </dl>
     <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t pt-4">
@@ -175,7 +175,7 @@ function RevisionDetail({ attachment, requirementId, fictional = false }: { atta
           mime: revision.mime_type, bytes: formatNumber(revision.byte_size),
         })}</p>
       </div>
-      {fictional ? <p className="text-xs text-muted-foreground">Fictional file metadata only. No file is stored or available to download.</p> : <Button variant="outline" size="sm" asChild>
+      {fictional ? <p className="text-xs text-muted-foreground">{t('procurement.surfaces.demo.noDownload')}</p> : <Button variant="outline" size="sm" asChild>
         <a href={`/api/procurement/credentials/revisions/${encodeURIComponent(attachment.revision_id)}/file`}
           download={revision.original_name} aria-label={`${t('procurement.portal.evidence.download')}: ${revision.original_name}`}>
           {t('procurement.portal.evidence.download')}
