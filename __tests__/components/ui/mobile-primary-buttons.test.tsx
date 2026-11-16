@@ -173,7 +173,9 @@ describe("mobile primary buttons", () => {
     const surface = css.nodes.flatMap((node) => node.type === "atrule" ? node.nodes ?? [] : [])
       .find((node) => node.type === "rule" && node.selectors.includes("html .btn-primary > .btn-glass-surface"))
     const hidden: string[] = []
-    if (surface?.type === "rule") surface.walkDecls("display", (decl) => hidden.push(decl.value))
+    if (surface?.type === "rule") surface.walkDecls("display", (decl) => {
+      hidden.push(decl.value)
+    })
     expect(hidden).toEqual(["none"])
   })
 
