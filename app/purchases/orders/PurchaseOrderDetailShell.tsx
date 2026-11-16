@@ -6,6 +6,7 @@ import { Badge } from '@/app/components/ui/badge'
 import { Button } from '@/app/components/ui/button'
 import { ChevronLeft, Printer, RotateCcw } from '@/app/components/ui/icons'
 import { StickyHeader } from '@/app/components/ui/sticky-header'
+import { ToolbarActionGroup, ToolbarActionGroups } from '@/app/components/ui/toolbar-action-groups'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs'
 import { useLocalization } from '@/app/context/LocalizationContext'
 import { OrderStatusBar } from '@/app/orders/components/OrderStatusBar'
@@ -36,21 +37,18 @@ export function PurchaseOrderDetailShell({ order, buyAgainHref, children, notice
               <TabsTrigger value="details">{t('orders.detail.tabs.details') || 'Details'}</TabsTrigger>
               <TabsTrigger value="shipments" disabled={!order}>{t('orders.detail.tabs.shipments') || 'Shipments'}</TabsTrigger>
             </TabsList>
-            <div className="flex items-center gap-1">
-              <Button asChild variant="ghost" size="sm"><Link href="/purchases/orders"><ChevronLeft className="mr-1 h-4 w-4" />{t('buyer.orders.detail.backToOrders') || 'Back to orders'}</Link></Button>
-              {order && <>
-                <div className="mx-1 h-6 w-px bg-border" />
-                <Button variant="ghost" size="sm" onClick={() => window.print()} className="flex items-center gap-1"><Printer className="h-4 w-4" />{t('common.print') || 'Print'}</Button>
-                {buyAgainHref && <>
-                  <div className="mx-1 h-6 w-px bg-border" />
-                  <Button asChild variant="ghost" size="sm"><Link href={buyAgainHref}><RotateCcw className="mr-1 h-4 w-4" />{t('buyer.orders.buyAgain') || 'Buy Again'}</Link></Button>
-                </>}
-                {relatedQuotationHref && <>
-                  <div className="mx-1 h-6 w-px bg-border" />
-                  <Button asChild variant="ghost" size="sm"><Link href={relatedQuotationHref}>View awarded quotation</Link></Button>
-                </>}
-              </>}
-            </div>
+            <ToolbarActionGroups>
+              <ToolbarActionGroup label="Navigation actions">
+                <Button asChild variant="ghost" size="sm"><Link href="/purchases/orders"><ChevronLeft className="mr-1 h-4 w-4" />{t('buyer.orders.detail.backToOrders') || 'Back to orders'}</Link></Button>
+                {order && relatedQuotationHref && <Button asChild variant="ghost" size="sm"><Link href={relatedQuotationHref}>View awarded quotation</Link></Button>}
+              </ToolbarActionGroup>
+              <ToolbarActionGroup label="Document actions">
+                {order && <Button variant="ghost" size="sm" onClick={() => window.print()} className="flex items-center gap-1"><Printer className="h-4 w-4" />{t('common.print') || 'Print'}</Button>}
+              </ToolbarActionGroup>
+              <ToolbarActionGroup label="Purchasing actions">
+                {order && buyAgainHref && <Button asChild variant="ghost" size="sm"><Link href={buyAgainHref}><RotateCcw className="mr-1 h-4 w-4" />{t('buyer.orders.buyAgain') || 'Buy Again'}</Link></Button>}
+              </ToolbarActionGroup>
+            </ToolbarActionGroups>
           </div>
           <div className="flex flex-shrink-0 items-center justify-end gap-3">
             <span className="text-xs text-muted-foreground">Read-only</span>

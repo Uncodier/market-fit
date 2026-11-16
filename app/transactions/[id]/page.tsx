@@ -8,6 +8,7 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { getExpenseById, deleteExpense } from "@/app/transactions/actions"
 import { Button } from "@/app/components/ui/button"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
+import { ToolbarActionGroups, ToolbarActionGroup } from "@/app/components/ui/toolbar-action-groups"
 import { Pencil, Trash2 } from "@/app/components/ui/icons"
 import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogCancel, AlertDialogAction, AlertDialogTrigger } from "@/app/components/ui/alert-dialog"
 import { CreateExpenseDialog } from "../components/CreateExpenseDialog"
@@ -180,70 +181,74 @@ export default function ExpenseDetailPage(props: { params: Promise<{ id: string 
       <StickyHeader>
         <div className="flex flex-col w-full">
           <div className="px-4 md:px-16 flex items-center h-[50px]">
-            <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleEdit}
-                className="flex items-center gap-1"
-              >
-                <Pencil className="h-4 w-4" />
-                {t('common.edit') || "Edit"}
-              </Button>
+            <ToolbarActionGroups>
+              <ToolbarActionGroup label="Expense editing">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleEdit}
+                  className="flex items-center gap-1"
+                >
+                  <Pencil className="h-4 w-4" />
+                  {t('common.edit') || "Edit"}
+                </Button>
 
-              <div className="w-px h-6 bg-border mx-1" />
+              </ToolbarActionGroup>
+              <ToolbarActionGroup label="Expense accounting">
 
-              {expense && (
-                expense.accounting_state !== 'posted' ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handlePublish}
-                    className="flex items-center gap-1 text-primary hover:bg-primary/10"
-                  >
-                    {t('common.publish') || "Publish"}
-                  </Button>
-                ) : (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleUnpublish}
-                    className="flex items-center gap-1 text-orange-600 hover:bg-orange-50"
-                  >
-                    {t('common.cancel') || "Cancel"}
-                  </Button>
-                )
-              )}
+                {expense && (
+                  expense.accounting_state !== 'posted' ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handlePublish}
+                      className="flex items-center gap-1 text-primary hover:bg-primary/10"
+                    >
+                      {t('common.publish') || "Publish"}
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleUnpublish}
+                      className="flex items-center gap-1 text-orange-600 hover:bg-orange-50"
+                    >
+                      {t('common.cancel') || "Cancel"}
+                    </Button>
+                  )
+                )}
 
-              <div className="w-px h-6 bg-border mx-1" />
+              </ToolbarActionGroup>
+              <ToolbarActionGroup label="Expense deletion">
 
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="flex items-center gap-1 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    {t('common.delete') || "Delete"}
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>{t('expenses.detail.deleteTitle') || "Delete Expense"}</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      {t('expenses.detail.deleteConfirm') || "Are you sure you want to delete this expense? This action cannot be undone."}
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>{t('common.cancel') || "Cancel"}</AlertDialogCancel>
-                    <AlertDialogAction className="!bg-destructive hover:!bg-destructive/90 !text-destructive-foreground" onClick={handleDelete}>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="flex items-center gap-1 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
                       {t('common.delete') || "Delete"}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>{t('expenses.detail.deleteTitle') || "Delete Expense"}</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {t('expenses.detail.deleteConfirm') || "Are you sure you want to delete this expense? This action cannot be undone."}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>{t('common.cancel') || "Cancel"}</AlertDialogCancel>
+                      <AlertDialogAction className="!bg-destructive hover:!bg-destructive/90 !text-destructive-foreground" onClick={handleDelete}>
+                        {t('common.delete') || "Delete"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </ToolbarActionGroup>
+            </ToolbarActionGroups>
           </div>
         </div>
       </StickyHeader>

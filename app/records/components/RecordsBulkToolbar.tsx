@@ -20,7 +20,7 @@ export function RecordsBulkToolbar({ selectedRecords, setSelectedRecords, isBulk
   categories, handleBulkStatusChange, handleBulkCategoryChange, handleBulkDelete }: Props) {
   const { t } = useLocalization()
   return (
-                <div className="flex min-w-0 items-center gap-3">
+                <div data-toolbar-icon-actions className="flex min-w-0 items-center gap-3">
                   <Badge variant="outline" className="rounded-full px-2 py-0">
                     {selectedRecords.size} {t("records.bulk.selected") || "selected"}
                   </Badge>

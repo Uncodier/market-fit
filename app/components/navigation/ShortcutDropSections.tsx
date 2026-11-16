@@ -31,7 +31,7 @@ export function ShortcutDropSections({
         }`}
       >
         {pinnedOverview ? (
-          <div className="my-2 w-full border-y border-black/5 py-2 dark:border-white/5">
+          <div className="my-2 flex w-full flex-col space-y-1 border-y border-black/5 py-2 dark:border-white/5">
             {renderShortcut(pinnedOverview)}
             {pinnedShortcuts.map(renderShortcut)}
           </div>

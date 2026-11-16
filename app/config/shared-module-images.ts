@@ -1,5 +1,7 @@
 /** Only these server-owned module prompts may generate using Makinari credits. */
 export const SHARED_MODULE_IMAGE_AREAS = {
+  appsLauncher: "applications",
+  notifications: "settings",
   profile: "settings",
   suppliers: "buying",
   accountsPayable: "buying",

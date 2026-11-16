@@ -61,6 +61,8 @@ import {
   ThumbsUp,
   Key,
   Wallet,
+  Bell,
+  LayoutGrid,
   type LucideIcon,
 } from "@/app/components/ui/icons"
 
@@ -77,6 +79,8 @@ export const AREA_ICON: Record<WorkspaceArea, LucideIcon> = {
 }
 
 export const NAV_ITEM_ICON: Record<string, LucideIcon> = {
+  appsLauncher: LayoutGrid,
+  notifications: Bell,
     suppliers: Building,
     purchaseRequests: ClipboardList,
     procurementApprovals: CheckSquare,

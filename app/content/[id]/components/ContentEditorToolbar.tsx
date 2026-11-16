@@ -3,6 +3,7 @@
 import { useState } from "react"
 import type { Editor } from "@tiptap/react"
 import { Button } from "@/app/components/ui/button"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
 import { ContentDeleteDialog } from "./ContentDeleteDialog"
 import type { DeleteContentOptions, DeleteContentResult } from "../../delete-content-types"
 import {
@@ -75,6 +76,7 @@ export function ContentEditorToolbar({
   if (!currentEditor) return null
 
   const iconButton = (
+    label: string,
     command: () => void,
     icon: React.ReactNode,
     active = false,
@@ -86,13 +88,14 @@ export function ContentEditorToolbar({
       onClick={command}
       className={active ? "bg-muted" : ""}
       disabled={disabled}
+      aria-label={label}
     >
       {icon}
     </Button>
   )
 
   return (
-    <div className="flex h-[71px] items-center gap-1 overflow-hidden whitespace-nowrap border-b py-2 pl-5 pr-4">
+    <div data-toolbar-icon-actions className="flex h-[71px] items-center gap-1 overflow-hidden whitespace-nowrap border-b py-2 pl-5 pr-4">
       <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
         <Button
           variant="secondary"
@@ -147,45 +150,58 @@ export function ContentEditorToolbar({
         >
           <div className="flex flex-nowrap items-center gap-1 pr-2">
             {iconButton(
+              "Bold",
               () => currentEditor.chain().focus().toggleBold().run(),
               <Bold className="h-4 w-4" />,
               currentEditor.isActive("bold"),
             )}
             {iconButton(
+              "Italic",
               () => currentEditor.chain().focus().toggleItalic().run(),
               <Italic className="h-4 w-4" />,
               currentEditor.isActive("italic"),
             )}
             {iconButton(
+              "Bullet list",
               () => currentEditor.chain().focus().toggleBulletList().run(),
               <List className="h-4 w-4" />,
               currentEditor.isActive("bulletList"),
             )}
             {iconButton(
+              "Numbered list",
               () => currentEditor.chain().focus().toggleOrderedList().run(),
               <ListOrdered className="h-4 w-4" />,
               currentEditor.isActive("orderedList"),
             )}
             {iconButton(
+              "Quote",
               () => currentEditor.chain().focus().toggleBlockquote().run(),
               <Quote className="h-4 w-4" />,
               currentEditor.isActive("blockquote"),
             )}
             {iconButton(
+              "Code block",
               () => currentEditor.chain().focus().toggleCodeBlock().run(),
               <Code className="h-4 w-4" />,
               currentEditor.isActive("codeBlock"),
             )}
 
             <DropdownMenu onOpenChange={setIsHeadingDropdownOpen}>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className={currentEditor.isActive("heading") ? "bg-muted" : ""}>
-                  {currentEditor.isActive("heading")
-                    ? <span className="inline-flex h-4 w-4 items-center justify-center font-bold">H{currentEditor.getAttributes("heading").level}</span>
-                    : <ParagraphIcon className="h-4 w-4" />}
-                  <ChevronDown className="ml-1 h-3 w-3" />
-                </Button>
-              </DropdownMenuTrigger>
+              <TooltipProvider delayDuration={200}>
+                <Tooltip>
+                  <DropdownMenuTrigger asChild>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="sm" aria-label="Text style" data-toolbar-icon-action="off" className={currentEditor.isActive("heading") ? "bg-muted" : ""}>
+                        {currentEditor.isActive("heading")
+                          ? <span className="inline-flex h-4 w-4 items-center justify-center font-bold">H{currentEditor.getAttributes("heading").level}</span>
+                          : <ParagraphIcon className="h-4 w-4" />}
+                        <ChevronDown className="ml-1 h-3 w-3" />
+                      </Button>
+                    </TooltipTrigger>
+                  </DropdownMenuTrigger>
+                  <TooltipContent side="bottom">Text style</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               <DropdownMenuContent align="start">
                 <DropdownMenuItem onClick={() => currentEditor.chain().focus().setParagraph().run()}>
                   <ParagraphIcon className="mr-2 h-4 w-4" />
@@ -203,11 +219,11 @@ export function ContentEditorToolbar({
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {iconButton(() => {
+            {iconButton("Insert link", () => {
               const url = window.prompt("Enter the URL")
               if (url) currentEditor.chain().focus().setLink({ href: url }).run()
             }, <LinkIcon className="h-4 w-4" />, currentEditor.isActive("link"))}
-            {iconButton(() => {
+            {iconButton("Insert image", () => {
               const url = window.prompt("Enter the image URL")
               if (url) currentEditor.chain().focus().setImage({ src: url }).run()
             }, <ImageIcon className="h-4 w-4" />)}
@@ -215,6 +231,7 @@ export function ContentEditorToolbar({
             {(["left", "center", "right", "justify"] as const).map((align) => {
               const Icon = { left: AlignLeft, center: AlignCenter, right: AlignRight, justify: AlignJustify }[align]
               return <span key={align}>{iconButton(
+                align === "justify" ? "Justify" : `Align ${align}`,
                 () => currentEditor.chain().focus().setTextAlign(align).run(),
                 <Icon className="h-4 w-4" />,
                 currentEditor.isActive({ textAlign: align }),
@@ -222,12 +239,14 @@ export function ContentEditorToolbar({
             })}
             <div className="mx-1 h-6 w-px bg-border" />
             {iconButton(
+              "Undo",
               () => currentEditor.chain().focus().undo().run(),
               <Undo className="h-4 w-4" />,
               false,
               !currentEditor.can().undo(),
             )}
             {iconButton(
+              "Redo",
               () => currentEditor.chain().focus().redo().run(),
               <Redo className="h-4 w-4" />,
               false,

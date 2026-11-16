@@ -63,7 +63,7 @@ function WorkspaceProcurement({ itemId, siteId }: { itemId: string; siteId: stri
   return <div className="mx-auto max-w-[1000px] space-y-6">
     {demo && <ProcurementDemoNotice />}
     {error && <p role="alert" className="text-destructive">{message(error)}</p>}
-    <div role="toolbar" aria-label={t('procurement.portal.catalog.actions')} className="flex justify-end gap-1 border-b pb-3">
+    <div role="toolbar" data-toolbar-icon-actions aria-label={t('procurement.portal.catalog.actions')} className="flex justify-end gap-1 border-b pb-3">
       <Button variant="ghost" size="icon" title={t('procurement.portal.catalog.createRequest')} aria-label={t('procurement.portal.catalog.createRequest')} asChild><Link href="/purchases/requests/new"><ClipboardList className="h-4 w-4" /></Link></Button>
       <Button variant="ghost" size="icon" title={t('procurement.portal.catalog.createTender')} aria-label={t('procurement.portal.catalog.createTender')} asChild><Link href="/purchases/tenders/new"><FileText className="h-4 w-4" /></Link></Button>
       <Button variant="ghost" size="icon" title={t('procurement.portal.catalog.manageSuppliers')} aria-label={t('procurement.portal.catalog.manageSuppliers')} asChild><Link href="/suppliers"><Users className="h-4 w-4" /></Link></Button>

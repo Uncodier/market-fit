@@ -73,7 +73,7 @@ describe("mobile sidebar viewport", () => {
     expect(sidebar).toHaveClass("overflow-y-auto", "overflow-x-hidden", "overscroll-y-contain")
     expect(sidebar).not.toHaveClass("overflow-hidden")
     for (const name of ["AI Workspace", "layout.sidebar.notifications", "layout.sidebar.account"]) {
-      const link = screen.getByRole("link", { name })
+      const link = screen.getByRole("link", { name: new RegExp(name) })
       expect(link.closest(".overflow-y-auto")).toBe(sidebar)
     }
   })
@@ -89,7 +89,7 @@ describe("mobile sidebar viewport", () => {
 
   it("reserves bottom safe-area space and expands the mobile menu even when desktop is collapsed", () => {
     const { sidebar } = renderMobileSidebar(true)
-    const account = screen.getByRole("link", { name: "layout.sidebar.account" })
+    const account = screen.getByRole("link", { name: /layout\.sidebar\.account/ })
     const footer = account.closest(".flex-none")
 
     expect(sidebar).toHaveAttribute("data-collapsed", "false")

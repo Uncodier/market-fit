@@ -29,7 +29,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
-import { Star } from "@/app/components/ui/icons"
+import { Star, type LucideIcon } from "@/app/components/ui/icons"
 import {
   isPinnedShortcutKey,
   type ShortcutRecord,
@@ -66,7 +66,6 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
   const navSearchParams = useMemo(() => new URLSearchParams(searchParams.toString()), [searchParams])
 
   const containerRef = useRef<HTMLDivElement>(null)
-  const slots = useShortcutSlotCount(containerRef)
 
   const { user, isLoading: isAuthLoading } = useAuth()
   const { currentSite, isLoading: isSiteLoading } = useSite()
@@ -76,6 +75,8 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
     : null
   const screenAccess = useOptionalScreenAccess()
   const [shortcuts, setShortcuts] = useState<ShortcutRecord[]>([])
+  const hasPinnedOverview = shortcuts.some((entry) => entry.pinned && entry.id === "reportOverview")
+  const slots = useShortcutSlotCount(containerRef, hasPinnedOverview ? 38 : 22, isCollapsed)
   const [loadedScope, setLoadedScope] = useState<string | null>(null)
   const isLoaded = shortcutScope !== null && loadedScope === shortcutScope
   // Tracks observed/submitted content, not confirmed DB durability: storage logs
@@ -396,7 +397,7 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
     const id = entry.id
 
     let item: AreaNavItem | undefined
-    let icon: React.ComponentType<any> | null = Star
+    let icon: LucideIcon | null = Star
     let linkHref = ""
     let title = ""
     let visual: ModuleVariant | undefined
@@ -442,31 +443,31 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
     )
   }
 
-  if (!isLoaded || visibleShortcuts.length === 0) return null
-
   return (
-    <div ref={containerRef} className="flex min-h-0 w-full flex-1 flex-col space-y-1">
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragEnd={handleDragEnd}
-      >
-        <SortableContext
-          items={visibleShortcuts.map((entry) => entry.id)}
-          strategy={verticalListSortingStrategy}
+    <div ref={containerRef} className="flex min-h-0 w-full flex-col space-y-1">
+      {isLoaded && visibleShortcuts.length > 0 && (
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
         >
-          <ShortcutDropSections
-            pinnedShortcuts={userPinnedShortcuts}
-            pinnedOverview={pinnedOverview}
-            recentShortcuts={visibleRecentShortcuts}
-            isOverPinned={isOverPinned}
-            isOverRecent={isOverRecent}
-            setPinnedDropRef={setPinnedDropRef}
-            setRecentDropRef={setRecentDropRef}
-            renderShortcut={renderShortcut}
-          />
-        </SortableContext>
-      </DndContext>
+          <SortableContext
+            items={visibleShortcuts.map((entry) => entry.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <ShortcutDropSections
+              pinnedShortcuts={userPinnedShortcuts}
+              pinnedOverview={pinnedOverview}
+              recentShortcuts={visibleRecentShortcuts}
+              isOverPinned={isOverPinned}
+              isOverRecent={isOverRecent}
+              setPinnedDropRef={setPinnedDropRef}
+              setRecentDropRef={setRecentDropRef}
+              renderShortcut={renderShortcut}
+            />
+          </SortableContext>
+        </DndContext>
+      )}
     </div>
   )
 }

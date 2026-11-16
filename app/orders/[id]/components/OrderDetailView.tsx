@@ -29,6 +29,7 @@ import {
   SectionCardTitle,
 } from "@/app/components/ui/section-card"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
+import { ToolbarActionGroup, ToolbarActionGroups } from "@/app/components/ui/toolbar-action-groups"
 import {
   Table,
   TableBody,
@@ -153,9 +154,29 @@ export function OrderDetailView(props: OrderDetailViewProps) {
                 <TabsTrigger value="details">{t("orders.detail.tabs.details") || "Details"}</TabsTrigger>
                 <TabsTrigger value="shipments">{t("orders.detail.tabs.shipments") || "Shipments"}</TabsTrigger>
               </TabsList>
-              <div className="flex items-center gap-1">
-                {!external && order.status !== "cancelled" && Number(order.sales?.amount_due) > 0 && (
-                  <>
+              <ToolbarActionGroups>
+                <ToolbarActionGroup label="Document actions">
+                  {order.status !== "cancelled" && (
+                    <>
+                      <Button variant="ghost" size="sm" onClick={props.onSend} disabled={sending} className="flex items-center gap-1">
+                        <Mail className="h-4 w-4" />
+                        {lastEmailedAt
+                          ? t("orders.detail.resendEmail") || "Resend"
+                          : t("orders.detail.sendEmail") || "Email"}
+                      </Button>
+                    </>
+                  )}
+                  <Button variant="ghost" size="sm" onClick={props.onCopyClientLink} disabled={sending} className="flex items-center gap-1">
+                    <Link className="h-4 w-4" />
+                    {t("orders.detail.clientLink") || "Client Link"}
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={props.onPrint} disabled={!providerAccepted(order.metadata)} className="flex items-center gap-1">
+                    <Printer className="h-4 w-4" />
+                    {t("common.print") || "Print"}
+                  </Button>
+                </ToolbarActionGroup>
+                <ToolbarActionGroup label="Accounting actions">
+                  {!external && order.status !== "cancelled" && Number(order.sales?.amount_due) > 0 && (
                     <Button
                       variant="ghost"
                       size="sm"
@@ -166,30 +187,9 @@ export function OrderDetailView(props: OrderDetailViewProps) {
                       <CreditCard className="h-4 w-4" />
                       {t("orders.detail.payOnline") || "Pay Online"}
                     </Button>
-                    <div className="mx-1 h-6 w-px bg-border" />
-                  </>
-                )}
-                {order.status !== "cancelled" && (
-                  <>
-                    <Button variant="ghost" size="sm" onClick={props.onSend} disabled={sending} className="flex items-center gap-1">
-                      <Mail className="h-4 w-4" />
-                      {lastEmailedAt
-                        ? t("orders.detail.resendEmail") || "Resend"
-                        : t("orders.detail.sendEmail") || "Email"}
-                    </Button>
-                    <div className="mx-1 h-6 w-px bg-border" />
-                  </>
-                )}
-                <Button variant="ghost" size="sm" onClick={props.onCopyClientLink} disabled={sending} className="flex items-center gap-1">
-                  <Link className="h-4 w-4" />
-                  {t("orders.detail.clientLink") || "Client Link"}
-                </Button>
-                <div className="mx-1 h-6 w-px bg-border" />
-                <Button variant="ghost" size="sm" onClick={props.onPrint} disabled={!providerAccepted(order.metadata)} className="flex items-center gap-1">
-                  <Printer className="h-4 w-4" />
-                  {t("common.print") || "Print"}
-                </Button>
-              </div>
+                  )}
+                </ToolbarActionGroup>
+              </ToolbarActionGroups>
             </div>
             <div className="flex flex-shrink-0 items-center justify-end">
               {external ? <MarketplaceOrderControls order={order} /> : <OrderStatusBar

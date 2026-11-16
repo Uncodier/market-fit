@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react"
 import type { Editor } from "@tiptap/react"
 import { Button } from "@/app/components/ui/button"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
 import {
   AlignCenter,
   AlignJustify,
@@ -84,7 +85,7 @@ export function RecordToolbar({
   const hasVisibleTools = Boolean(diagramControls || (showFormatting && formattingExpanded))
 
   return (
-    <div className="flex h-[71px] items-center gap-1 overflow-x-auto border-b bg-background py-2 pl-5 pr-4">
+    <div data-toolbar-icon-actions className="flex h-[71px] items-center gap-1 overflow-x-auto border-b bg-background py-2 pl-5 pr-4">
       <Button
         variant="secondary"
         onClick={onSave}
@@ -129,25 +130,33 @@ export function RecordToolbar({
               </FormatButton>
 
               <DropdownMenu onOpenChange={setIsHeadingDropdownOpen}>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className={editor.isActive("heading") ? "bg-muted" : ""}
-                    aria-label="Text style"
-                  >
-                    {editor.isActive("heading", { level: 1 }) ? (
-                      <span className="inline-flex h-4 w-4 items-center justify-center font-bold">H1</span>
-                    ) : editor.isActive("heading", { level: 2 }) ? (
-                      <span className="inline-flex h-4 w-4 items-center justify-center font-bold">H2</span>
-                    ) : editor.isActive("heading", { level: 3 }) ? (
-                      <span className="inline-flex h-4 w-4 items-center justify-center font-bold">H3</span>
-                    ) : (
-                      <ParagraphIcon className="h-4 w-4" />
-                    )}
-                    <ChevronDown className="ml-1 h-3 w-3" />
-                  </Button>
-                </DropdownMenuTrigger>
+                <TooltipProvider delayDuration={200}>
+                  <Tooltip>
+                    <DropdownMenuTrigger asChild>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className={editor.isActive("heading") ? "bg-muted" : ""}
+                          aria-label="Text style"
+                          data-toolbar-icon-action="off"
+                        >
+                          {editor.isActive("heading", { level: 1 }) ? (
+                            <span className="inline-flex h-4 w-4 items-center justify-center font-bold">H1</span>
+                          ) : editor.isActive("heading", { level: 2 }) ? (
+                            <span className="inline-flex h-4 w-4 items-center justify-center font-bold">H2</span>
+                          ) : editor.isActive("heading", { level: 3 }) ? (
+                            <span className="inline-flex h-4 w-4 items-center justify-center font-bold">H3</span>
+                          ) : (
+                            <ParagraphIcon className="h-4 w-4" />
+                          )}
+                          <ChevronDown className="ml-1 h-3 w-3" />
+                        </Button>
+                      </TooltipTrigger>
+                    </DropdownMenuTrigger>
+                    <TooltipContent side="bottom">Text style</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
                 <DropdownMenuContent align="start">
                   <DropdownMenuItem onClick={() => editor.chain().focus().setParagraph().run()}>
                     <ParagraphIcon className="mr-2 h-4 w-4" />

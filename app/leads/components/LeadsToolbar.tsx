@@ -24,7 +24,7 @@ export function LeadsToolbar({
   const { t } = useLocalization()
 
   return (
-    <div className="ml-auto flex min-w-0 flex-1 items-center justify-end gap-2 md:flex-none md:shrink-0">
+    <div data-toolbar-icon-actions className="ml-auto flex min-w-0 flex-1 items-center justify-end gap-2 md:flex-none md:shrink-0">
       <LeadsTransferActions segments={segments} onImportLeads={onImportLeads} onExportLeads={onExportLeads} />
       <div className="mx-1 hidden h-6 w-px bg-border md:block" />
       <div className="flex min-w-0 flex-1 items-center gap-2 md:flex-none">

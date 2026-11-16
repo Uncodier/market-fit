@@ -14,9 +14,10 @@ import {
   updatePurchase,
 } from "@/app/purchases/actions"
 import { Purchase } from "@/app/types"
-import { Button } from "@/app/components/ui/button"
+import { ToolbarIconButton } from "@/app/components/ui/toolbar-icon-button"
+import { ToolbarActionGroups, ToolbarActionGroup } from "@/app/components/ui/toolbar-action-groups"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { CreditCard, Package, Trash2, BookOpen, Pencil, Send, Link, Printer } from "@/app/components/ui/icons"
+import { CreditCard, Package, Trash2, BookOpen, Undo, Pencil, Send, Link, Printer } from "@/app/components/ui/icons"
 import {
   ensureBillPublicAccessToken,
   sendVendorBill,
@@ -225,151 +226,140 @@ export default function BillDetailPage(props: { params: Promise<{ id: string }> 
       <StickyHeader>
         <div className="flex flex-col w-full">
           <div className="px-4 md:px-16 flex items-center justify-between h-[50px]">
-            <div className="flex items-center gap-1">
-              {purchase && purchase.amountDue > 0 && purchase.status !== "cancelled" && (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="sm"
+            <ToolbarActionGroups>
+              <ToolbarActionGroup label="Bill editing">
+                <ToolbarIconButton
+                  variant="ghost"
+                  label={t("common.edit") || "Edit"}
+                  onClick={() => setEditOpen(true)}
+                  disabled={busy || readOnly}
+                  className="flex items-center gap-1"
+                >
+                  <Pencil className="h-4 w-4" />
+                </ToolbarIconButton>
+
+              </ToolbarActionGroup>
+              <ToolbarActionGroup label="Bill delivery">
+
+                <ToolbarIconButton
+                  variant="ghost"
+                  label={t("common.print") || "Print"}
+                  onClick={handlePrint}
+                  disabled={busy || readOnly}
+                  className="flex items-center gap-1"
+                >
+                  <Printer className="h-4 w-4" />
+                </ToolbarIconButton>
+
+                {purchase && purchase.status !== "cancelled" && (
+                  <>
+                    <ToolbarIconButton
+                      variant="ghost"
+                      label={purchase.lastEmailedAt
+                        ? t("bills.detail.resendEmail") || "Resend"
+                        : t("bills.detail.sendEmail") || "Send"}
+                      onClick={handleSend}
+                      disabled={busy || sending || readOnly}
+                      className="flex items-center gap-1"
+                    >
+                      <Send className="h-4 w-4" />
+                    </ToolbarIconButton>
+                  </>
+                )}
+                {purchase && (
+                  <>
+                    <ToolbarIconButton
+                      variant="ghost"
+                      label={t("bills.detail.vendorLink") || "Vendor Link"}
+                      onClick={handleCopyVendorLink}
+                      disabled={busy || sending || readOnly}
+                      className="flex items-center gap-1"
+                    >
+                      <Link className="h-4 w-4" />
+                    </ToolbarIconButton>
+                  </>
+                )}
+
+              </ToolbarActionGroup>
+              <ToolbarActionGroup label="Inventory receipt">
+                {purchase && (!purchase.stockReceived || pendingReceipt) && (
+                  <>
+                    <ToolbarIconButton
+                      variant="ghost"
+                      label={pendingReceipt ? "Retry saved receipt" : t("bills.action.receive") || "Receive stock"}
+                      onClick={() => setReceiveOpen(true)}
+                      disabled={busy || readOnly}
+                      className="flex items-center gap-1"
+                    >
+                      <Package className="h-4 w-4" />
+                    </ToolbarIconButton>
+                  </>
+                )}
+
+              </ToolbarActionGroup>
+              <ToolbarActionGroup label="Bill accounting">
+                {purchase && purchase.amountDue > 0 && purchase.status !== "cancelled" && (
+                  <ToolbarIconButton
+                    label={t("bills.action.pay") || "Register payment"}
                     onClick={() => setPaymentOpen(true)}
                     disabled={busy || readOnly}
-                    className="flex items-center gap-1 text-green-600 hover:bg-green-50 hover:text-green-700"
+                    className="text-green-600 hover:bg-green-50 hover:text-green-700"
                   >
                     <CreditCard className="h-4 w-4" />
-                    {t("bills.action.pay") || "Register payment"}
-                  </Button>
-                  <div className="w-px h-6 bg-border mx-1" />
-                </>
-              )}
+                  </ToolbarIconButton>
+                )}
+                {purchase && (
+                  purchase.accountingState !== "posted" ? (
+                    <ToolbarIconButton
+                      variant="ghost"
+                      label={t("bills.action.publish") || "Publish"}
+                      onClick={onPublish}
+                      disabled={busy || readOnly}
+                      className="flex items-center gap-1 text-primary hover:bg-primary/10"
+                    >
+                      <BookOpen className="h-4 w-4" />
+                    </ToolbarIconButton>
+                  ) : (
+                    <ToolbarIconButton
+                      variant="ghost"
+                      label={t("bills.action.unpublish") || "Unpublish"}
+                      onClick={onUnpublish}
+                      disabled={busy || readOnly}
+                      className="flex items-center gap-1 text-orange-600 hover:bg-orange-50"
+                    >
+                      <Undo className="h-4 w-4" />
+                    </ToolbarIconButton>
+                  )
+                )}
 
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setEditOpen(true)}
-                disabled={busy || readOnly}
-                className="flex items-center gap-1"
-              >
-                <Pencil className="h-4 w-4" />
-                {t("common.edit") || "Edit"}
-              </Button>
-
-              <div className="w-px h-6 bg-border mx-1" />
-
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handlePrint}
-                disabled={busy || readOnly}
-                className="flex items-center gap-1"
-              >
-                <Printer className="h-4 w-4" />
-                {t("common.print") || "Print"}
-              </Button>
-
-              <div className="w-px h-6 bg-border mx-1" />
-
-              {purchase && purchase.status !== "cancelled" && (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleSend}
-                    disabled={busy || sending || readOnly}
-                    className="flex items-center gap-1"
-                  >
-                    <Send className="h-4 w-4" />
-                    {purchase.lastEmailedAt
-                      ? t("bills.detail.resendEmail") || "Resend"
-                      : t("bills.detail.sendEmail") || "Send"}
-                  </Button>
-                  <div className="w-px h-6 bg-border mx-1" />
-                </>
-              )}
-              {purchase && (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleCopyVendorLink}
-                    disabled={busy || sending || readOnly}
-                    className="flex items-center gap-1"
-                  >
-                    <Link className="h-4 w-4" />
-                    {t("bills.detail.vendorLink") || "Vendor Link"}
-                  </Button>
-                  <div className="w-px h-6 bg-border mx-1" />
-                </>
-              )}
-
-              {purchase && (!purchase.stockReceived || pendingReceipt) && (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setReceiveOpen(true)}
-                    disabled={busy || readOnly}
-                    className="flex items-center gap-1"
-                  >
-                    <Package className="h-4 w-4" />
-                    {pendingReceipt ? "Retry saved receipt" : t("bills.action.receive") || "Receive stock"}
-                  </Button>
-                  <div className="w-px h-6 bg-border mx-1" />
-                </>
-              )}
-
-              {purchase && (
-                purchase.accountingState !== "posted" ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={onPublish}
-                    disabled={busy || readOnly}
-                    className="flex items-center gap-1 text-primary hover:bg-primary/10"
-                  >
-                    <BookOpen className="h-4 w-4 mr-1" />
-                    {t("bills.action.publish") || "Publish"}
-                  </Button>
-                ) : (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={onUnpublish}
-                    disabled={busy || readOnly}
-                    className="flex items-center gap-1 text-orange-600 hover:bg-orange-50"
-                  >
-                    {t("bills.action.unpublish") || "Unpublish"}
-                  </Button>
-                )
-              )}
-
-              <div className="w-px h-6 bg-border mx-1" />
-
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={busy || readOnly}
-                    className="flex items-center gap-1 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    {t("common.delete") || "Delete"}
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>{t("bills.confirmDelete") || "Delete this bill?"}</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      {t("bills.confirmDeleteDesc") || "This will remove the bill and its journal entry."}
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>{t("common.cancel") || "Cancel"}</AlertDialogCancel>
-                    <AlertDialogAction className="!bg-destructive hover:!bg-destructive/90 !text-destructive-foreground" onClick={onDelete}>{t("common.delete") || "Delete"}</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
+              </ToolbarActionGroup>
+              <ToolbarActionGroup label="Bill deletion">
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <ToolbarIconButton
+                      variant="ghost"
+                      label={t("common.delete") || "Delete"}
+                      disabled={busy || readOnly}
+                      className="flex items-center gap-1 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </ToolbarIconButton>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>{t("bills.confirmDelete") || "Delete this bill?"}</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {t("bills.confirmDeleteDesc") || "This will remove the bill and its journal entry."}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>{t("common.cancel") || "Cancel"}</AlertDialogCancel>
+                      <AlertDialogAction className="!bg-destructive hover:!bg-destructive/90 !text-destructive-foreground" onClick={onDelete}>{t("common.delete") || "Delete"}</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </ToolbarActionGroup>
+            </ToolbarActionGroups>
 
             <div className="flex items-center justify-end">
               {purchase && (

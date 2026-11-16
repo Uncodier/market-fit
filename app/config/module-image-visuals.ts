@@ -4,6 +4,8 @@ import { isSharedModuleImageKey } from "./shared-module-images"
 
 /** Short object noun so the model is not literal with screen names like "leads". */
 export const MODULE_IMAGE_HINTS: Record<string, string> = {
+  appsLauncher: "application grid",
+  notifications: "notification bell",
   campaigns: "target",
   segments: "audience tags",
   promotions: "coupon",
@@ -164,6 +166,10 @@ const COMPACT_FULL_SIZE_COMPOSITION =
   "Use the Apple iOS Calendar, Notes, Contacts, and Reminders icons as references for visual polish, spacing discipline, and clarity rather than copying their symbols or outer app tiles: one recognizable object, full-size at 88 to 92 percent of the canvas, optically centered, evenly balanced, with a narrow consistent safe margin and softly rounded geometry; no app tile, iOS-style squircle, rounded-square container, badge, frame, floor, scenery, or secondary icon"
 
 const MODULE_IMAGE_CLARIFIERS: Partial<Record<string, string>> = {
+  appsLauncher:
+    "Show one compact application launcher symbol made of four substantial softly rounded squares in a precise two-by-two grid, with even gaps and a crisp unified silhouette; no phone, screen, text, letters, logos, tiny symbols, or extra objects",
+  notifications:
+    "Show one unmistakable notification bell with a broad rounded dome, gently flared rim and one large clapper, centered and optically balanced; no numeric badge, text, letters, alarm clock, ribbons, sound waves, or extra objects",
   profile:
     "Show one simple personal profile silhouette with a large rounded head and broad shoulders, representing a single user account; no facial features, full body, avatar group, ID card, text, letters, numbers, or extra objects",
   modifierGroups:

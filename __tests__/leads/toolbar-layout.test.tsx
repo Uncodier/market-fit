@@ -60,8 +60,9 @@ describe("Leads toolbar mobile layout", () => {
 
     const importAction = screen.getByTitle("Import")
     const exportAction = screen.getByTitle("Export")
-    expect(importAction.parentElement).toHaveClass("hidden", "md:flex", "shrink-0")
-    expect(importAction.parentElement).toContainElement(exportAction)
+    const transferActions = importAction.closest(".md\\:flex.hidden")
+    expect(transferActions).toHaveClass("hidden", "md:flex", "shrink-0")
+    expect(transferActions).toContainElement(exportAction)
   })
 
   it("allows long sort labels to shrink without shrinking the icons or view buttons", () => {

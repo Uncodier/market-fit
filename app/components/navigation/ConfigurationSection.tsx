@@ -7,6 +7,7 @@ import { useTheme } from "@/app/context/ThemeContext"
 import { BusinessOpenToggle } from "@/app/components/settings/BusinessOpenToggle"
 import { MenuItem } from "./MenuItem"
 import { ModuleImage } from "./ModuleImage"
+import { SIDEBAR_ICON_CLASS, SIDEBAR_TILE_CLASS } from "./sidebar-metrics"
 import {
   Tooltip,
   TooltipContent,
@@ -182,23 +183,23 @@ export function ConfigurationSection({
     <button
       type="button"
       className={cn(
-        "group flex items-center rounded-md font-inter transition-colors duration-200",
+        "group flex shrink-0 items-center rounded-xl font-inter transition-colors duration-200",
         isGeneralSettingsActive
           ? "bg-primary text-primary-foreground [&_svg]:text-primary-foreground [&_span]:text-primary-foreground"
           : "hover:bg-accent hover:text-accent-foreground text-muted-foreground",
         isCollapsed
-          ? "mx-auto h-[32px] w-[32px] shrink-0 justify-center"
-          : "h-[32px] w-full justify-start text-left text-sm"
+          ? "mx-auto h-10 w-10 justify-center"
+          : "h-10 w-full justify-start text-left text-sm"
       )}
       style={
         !isCollapsed
           ? {
               fontSize: "11.3px",
-              paddingLeft: 9.7,
-              paddingRight: 9.7,
-              paddingTop: 6.5,
-              paddingBottom: 6.5,
-              gap: 9.7,
+              paddingLeft: 4,
+              paddingRight: 8,
+              paddingTop: 4,
+              paddingBottom: 4,
+              gap: 12,
             }
           : undefined
       }
@@ -212,7 +213,7 @@ export function ConfigurationSection({
       <div
         className={cn(
           "flex flex-shrink-0 items-center justify-center",
-          isCollapsed ? "h-full w-full" : "h-[24px] w-[24px] safari-icon-fix"
+          SIDEBAR_ICON_CLASS
         )}
       >
         <ModuleImage
@@ -220,7 +221,7 @@ export function ConfigurationSection({
           itemKey="settingsGeneral"
           title={settingsTitle}
           className={cn(
-            "h-6 w-6 rounded-[7px] border border-black/10 shadow-sm dark:border-white/10",
+            SIDEBAR_TILE_CLASS,
             isGeneralSettingsActive && "ring-1 ring-white/40",
           )}
         />
@@ -265,11 +266,11 @@ export function ConfigurationSection({
       <div className={cn("space-y-1", className)} onMouseDown={(e) => e.preventDefault()}>
         <div
           className={cn(
-            "relative p-1",
+            "relative px-1",
             shouldShowSettingsChildren 
               ? "overflow-visible rounded-[14px] border dark:border-white/10 border-black/5 bg-black/[0.02] dark:bg-white/[0.02] pr-2 pb-2.5"
               : "border border-transparent",
-            isCollapsed ? "w-[42px] mx-auto flex flex-col items-center" : "w-full"
+            isCollapsed ? "w-14 mx-auto flex flex-col items-center" : "w-full"
           )}
         >
           {isCollapsed ? (

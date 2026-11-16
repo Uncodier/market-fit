@@ -162,6 +162,7 @@ export function ChatHeader({
   return (
     <div
       data-toolbar-font
+      data-toolbar-icon-actions
       className="border-b dark:border-white/5 border-black/5 flex-none h-[71px] flex items-center z-[50] bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80 py-2 fixed top-[var(--topbar-height,64px)] right-0 transition-all duration-300 ease-in-out pr-4" 
       style={{ 
         backdropFilter: 'blur(10px)',
@@ -172,7 +173,7 @@ export function ChatHeader({
       {/* Back Button for Mobile */}
       {onBack && (
         <div className="md:hidden absolute left-0 top-0 h-full flex items-center pl-2 z-[1000]">
-          <Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8">
+          <Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8" aria-label="Back">
             <ChevronLeft className="h-5 w-5" />
           </Button>
         </div>

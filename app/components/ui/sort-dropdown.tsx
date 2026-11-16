@@ -27,7 +27,7 @@ export function SortDropdown<SortValue extends string>({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="secondary" size="sm" className={cn("w-full md:w-auto h-10 md:h-9 gap-2 rounded-md md:rounded-full px-4 justify-between md:justify-center", className)} title={title}>
+        <Button data-toolbar-icon-action="off" variant="secondary" size="sm" className={cn("w-full md:w-auto h-10 md:h-9 gap-2 rounded-md md:rounded-full px-4 justify-between md:justify-center", className)} title={title}>
           <div className="flex min-w-0 items-center gap-2">
             <ListOrdered className="h-4 w-4 shrink-0" />
             <span className="truncate font-normal">

@@ -19,6 +19,7 @@ import { buildPublicQuotePath } from "../public-token"
 import { authorizeDynamicQuote, retryDynamicQuoteItem } from "../dynamic-quote-actions"
 import { updateQuotationItem, updateQuotationNotes } from "../actions"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
+import { ToolbarActionGroups, ToolbarActionGroup } from "@/app/components/ui/toolbar-action-groups"
 import { Button } from "@/app/components/ui/button"
 import { toast } from "sonner"
 import { Skeleton } from "@/app/components/ui/skeleton"
@@ -311,115 +312,116 @@ function ScopedQuotationDetail({ siteId, id }: { siteId: string; id: string }) {
       <StickyHeader>
         <div className="flex flex-col w-full">
           <div className="flex items-center justify-between h-[50px]">
-            <div className="flex items-center gap-1">
-              {awaitingAuthorization && (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleAuthorize}
-                    disabled={updating || hasProcessing}
-                    className="flex items-center gap-1"
-                  >
-                    <CheckCircle2 className="h-4 w-4" />
-                    {t("quotations.dynamicQuote.authorize") || "Authorize"}
-                  </Button>
-                  <div className="w-px h-6 bg-border mx-1" />
-                </>
-              )}
-
-              {quotation.status === "draft" && (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setIsEditOpen(true)}
-                    disabled={updating}
-                    className="flex items-center gap-1"
-                  >
-                    <Pencil className="h-4 w-4" />
-                    {t("common.edit") || "Edit"}
-                  </Button>
-                  <div className="w-px h-6 bg-border mx-1" />
-                </>
-              )}
-
-              {(quotation.status === "draft" || quotation.status === "sent") && (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleSend}
-                    disabled={updating || awaitingAuthorization || hasProcessing}
-                    className="flex items-center gap-1"
-                  >
-                    <Send className="h-4 w-4" />
-                    {quotation.status === "sent"
-                      ? t("quotations.detail.resendEmail") || "Resend"
-                      : t("quotations.detail.sendEmail") || "Send"}
-                  </Button>
-                  <div className="w-px h-6 bg-border mx-1" />
-                </>
-              )}
-
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleCopyClientLink}
-                className="flex items-center gap-1"
-              >
-                <Link className="h-4 w-4" />
-                {t("quotations.detail.clientLink") || "Client Link"}
-              </Button>
-
-              <div className="w-px h-6 bg-border mx-1" />
-
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handlePrint}
-                className="flex items-center gap-1"
-              >
-                <Printer className="h-4 w-4" />
-                {t("common.print") || "Print"}
-              </Button>
-
-              <div className="w-px h-6 bg-border mx-1" />
-
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={updating}
-                    className="flex items-center gap-1 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    {t("common.delete") || "Delete"}
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>
-                      {t("quotations.detail.deleteTitle") || "Delete Quotation"}
-                    </AlertDialogTitle>
-                    <AlertDialogDescription>
-                      {t("quotations.detail.deleteConfirm") ||
-                        "Are you sure you want to delete this quotation? This action cannot be undone."}
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>{t("common.cancel") || "Cancel"}</AlertDialogCancel>
-                    <AlertDialogAction
-                      className="!bg-destructive hover:!bg-destructive/90 !text-destructive-foreground"
-                      onClick={handleDelete}
+            <ToolbarActionGroups>
+              <ToolbarActionGroup label="Quotation preparation">
+                {awaitingAuthorization && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleAuthorize}
+                      disabled={updating || hasProcessing}
+                      className="flex items-center gap-1"
                     >
+                      <CheckCircle2 className="h-4 w-4" />
+                      {t("quotations.dynamicQuote.authorize") || "Authorize"}
+                    </Button>
+                  </>
+                )}
+
+                {quotation.status === "draft" && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsEditOpen(true)}
+                      disabled={updating}
+                      className="flex items-center gap-1"
+                    >
+                      <Pencil className="h-4 w-4" />
+                      {t("common.edit") || "Edit"}
+                    </Button>
+                  </>
+                )}
+
+              </ToolbarActionGroup>
+              <ToolbarActionGroup label="Quotation delivery">
+                {(quotation.status === "draft" || quotation.status === "sent") && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleSend}
+                      disabled={updating || awaitingAuthorization || hasProcessing}
+                      className="flex items-center gap-1"
+                    >
+                      <Send className="h-4 w-4" />
+                      {quotation.status === "sent"
+                        ? t("quotations.detail.resendEmail") || "Resend"
+                        : t("quotations.detail.sendEmail") || "Send"}
+                    </Button>
+                  </>
+                )}
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCopyClientLink}
+                  className="flex items-center gap-1"
+                >
+                  <Link className="h-4 w-4" />
+                  {t("quotations.detail.clientLink") || "Client Link"}
+                </Button>
+
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handlePrint}
+                  className="flex items-center gap-1"
+                >
+                  <Printer className="h-4 w-4" />
+                  {t("common.print") || "Print"}
+                </Button>
+
+              </ToolbarActionGroup>
+              <ToolbarActionGroup label="Quotation deletion">
+
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={updating}
+                      className="flex items-center gap-1 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
                       {t("common.delete") || "Delete"}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        {t("quotations.detail.deleteTitle") || "Delete Quotation"}
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        {t("quotations.detail.deleteConfirm") ||
+                          "Are you sure you want to delete this quotation? This action cannot be undone."}
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>{t("common.cancel") || "Cancel"}</AlertDialogCancel>
+                      <AlertDialogAction
+                        className="!bg-destructive hover:!bg-destructive/90 !text-destructive-foreground"
+                        onClick={handleDelete}
+                      >
+                        {t("common.delete") || "Delete"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </ToolbarActionGroup>
+            </ToolbarActionGroups>
 
             <div className="flex items-center justify-end">
               <QuotationStatusBar

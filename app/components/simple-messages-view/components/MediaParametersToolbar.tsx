@@ -74,7 +74,7 @@ export const MediaParametersToolbar: React.FC<MediaParametersToolbarProps> = ({
   )
 
   return (
-    <div className="flex items-center gap-2 flex-wrap">
+    <div data-toolbar-icon-actions className="flex items-center gap-2 flex-wrap">
       {selectedActivity === 'prompt' && (
         <>
           {renderExpectedResultsSelector(textParameters?.expectedResults, (val) => onTextParameterChange?.('expectedResults', val))}

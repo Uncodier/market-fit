@@ -53,7 +53,7 @@ export function ProcurementToolbar({ search, onSearch, placeholder, status, onSt
       {onSearch && <FilterSection desktopOnly><SearchInput aria-label={searchLabel} placeholder={searchLabel} value={search ?? ''}
         onChange={event => onSearch(event.target.value)} containerClassName="w-56 lg:w-64" /></FilterSection>}
     </FilterContainer></MobileFiltersDrawer></div>
-    <div data-toolbar-actions className="ml-auto flex shrink-0 items-center gap-2">
+    <div data-toolbar-actions data-toolbar-icon-actions className="ml-auto flex shrink-0 items-center gap-2">
       {actions && <div data-secondary-actions className="flex items-center gap-1">{actions}</div>}
       {viewSelector && <div data-view-selector className="flex items-center border-l pl-2">{viewSelector}</div>}
     </div>

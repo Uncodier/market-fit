@@ -15,6 +15,7 @@ import { useTheme } from "@/app/context/ThemeContext"
 import { ModuleVariant } from "@/app/config/module-visuals"
 import type { WorkspaceArea } from "@/app/config/navigation-areas"
 import { ModuleImage } from "./ModuleImage"
+import { SIDEBAR_ICON_CLASS, SIDEBAR_ICON_SIZE, SIDEBAR_ROW_HEIGHT, SIDEBAR_TILE_CLASS } from "./sidebar-metrics"
 
 // Wrapper component for emoji icons with grayscale filter that adapts to theme
 interface EmojiIconProps {
@@ -38,7 +39,7 @@ export function EmojiIcon({
   const { isDarkMode } = useTheme()
   const section = tone === "section"
 
-  const emojiSize = isCollapsed ? 'text-sm' : 'text-sm'
+  const emojiSize = "text-xl"
 
   const collapsedInactive = isDarkMode
     ? section
@@ -78,7 +79,7 @@ export function EmojiIcon({
       <span
         className={cn(
           "inline-flex items-center justify-center rounded-md border flex-shrink-0",
-          "w-[22px] h-[22px]",
+          SIDEBAR_ICON_CLASS,
           isActive ? collapsedActive : collapsedInactive,
           className
         )}
@@ -95,7 +96,7 @@ export function EmojiIcon({
         "inline-flex items-center justify-center",
         "rounded-md",
         "border",
-        "w-[24px] h-[24px]",
+        SIDEBAR_ICON_CLASS,
         "flex-shrink-0",
         isActive ? expandedActive : expandedInactive,
         className
@@ -184,10 +185,10 @@ export function MenuItem({
     <>
       <div className={cn(
         "flex items-center justify-center flex-shrink-0",
-        isCollapsed ? "w-full h-full" : "w-[24px] h-[24px] safari-icon-fix"
+        SIDEBAR_ICON_CLASS
       )}>
         {customIcon ? customIcon : avatarUrl ? (
-          <MenuAvatar className="h-7 w-7">
+          <MenuAvatar className={SIDEBAR_ICON_CLASS}>
             <MenuAvatarImage src={avatarUrl} alt={title} />
             <MenuAvatarFallback>
               {title.split(' ').map(word => word[0]).join('').toUpperCase()}
@@ -201,14 +202,14 @@ export function MenuItem({
             itemKey={moduleImage.itemKey}
             title={title}
             className={cn(
-              "h-6 w-6 rounded-[7px] border border-black/10 shadow-sm dark:border-white/10",
+              SIDEBAR_TILE_CLASS,
               isActive && "ring-1 ring-white/40",
             )}
           />
         ) : Icon && (
           <AnimatedIcon 
             icon={Icon} 
-            size={16.2} 
+            size={22}
             strokeWidth={2} 
             color={isActive && visual ? visual.ink : undefined} 
           />
@@ -264,10 +265,10 @@ export function MenuItem({
         "sidebar-menu-item-link flex items-center text-sm transition-colors duration-200 relative group font-inter",
         isCollapsed
           ? isActive
-            ? cn("font-inter justify-center mx-auto h-[32px] w-[32px]", avatarUrl ? "rounded-full" : "rounded-md")
-            : cn("justify-center mx-auto h-[32px] w-[32px]", avatarUrl ? "rounded-full" : "rounded-md")
+             ? cn("font-inter justify-center mx-auto h-10 w-10 shrink-0", avatarUrl ? "rounded-full" : "rounded-xl")
+             : cn("justify-center mx-auto h-10 w-10 shrink-0", avatarUrl ? "rounded-full" : "rounded-xl")
           : cn(
-              "min-w-0 rounded-md justify-start h-[32px] w-full",
+              "min-w-0 rounded-xl justify-start h-10 w-full shrink-0",
               children ? "overflow-visible" : "overflow-hidden"
             ),
         isActive
@@ -279,11 +280,12 @@ export function MenuItem({
             : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
       )}
       style={{ 
-        paddingLeft: isCollapsed ? '0px' : '9.7px', 
-        paddingRight: isCollapsed ? '0px' : '9.7px', 
-        paddingTop: isCollapsed ? '0px' : '6.5px', 
-        paddingBottom: isCollapsed ? '0px' : '6.5px',
-        gap: isCollapsed ? '0px' : '9.7px',
+        height: SIDEBAR_ROW_HEIGHT,
+        paddingLeft: isCollapsed ? 0 : 4,
+        paddingRight: isCollapsed ? 0 : 8,
+        paddingTop: (SIDEBAR_ROW_HEIGHT - SIDEBAR_ICON_SIZE) / 2,
+        paddingBottom: (SIDEBAR_ROW_HEIGHT - SIDEBAR_ICON_SIZE) / 2,
+        gap: isCollapsed ? 0 : 12,
         fontSize: '11.3px',
         ...(isActive && visual ? {
           background: `color-mix(in srgb, ${visual.accent} 12%, transparent)`,

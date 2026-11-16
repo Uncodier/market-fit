@@ -10,6 +10,7 @@ import { useOptionalPermissions } from "@/app/context/PermissionContext"
 import { inferButtonCommand, getNodeText } from "@/lib/permissions/button-heuristic"
 import { notifyPermissionDenied } from "@/lib/permissions/notify"
 import { PERMISSION_DENIED_TITLE } from "@/lib/permissions/types"
+import { AutomaticToolbarTooltip, splitToolbarLayoutClasses, toolbarActionChildren, toolbarActionLabel, useAutomaticToolbarHost } from "./automatic-toolbar-presentation"
 
 const buttonVariants = cva(
   "font-inter inline-flex items-center justify-center whitespace-nowrap rounded-full select-none text-sm font-medium transition-all active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
@@ -93,10 +94,27 @@ export interface ButtonProps
   asChild?: boolean
   tint?: "default" | "destructive" | "whatsapp"
   adornment?: React.ReactNode
+  "data-toolbar-icon-action"?: "off"
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, tint, children, onClick, adornment, ...props }, ref) => {
+    const toolbar = useAutomaticToolbarHost()
+    const toolbarLabel = toolbarActionLabel(children, props["aria-label"], props.title)
+    const automatic = toolbar.active && Boolean(toolbarLabel)
+    const presentedChildren = automatic ? toolbarActionChildren(children, toolbarLabel, asChild) : children
+    const presentedSize = automatic ? "icon" : size
+    const tooltipEnabled = automatic && !toolbar.existingTooltip
+    const toolbarLayout = splitToolbarLayoutClasses(className)
+    const presentedClassName = automatic
+      ? cn(tooltipEnabled ? toolbarLayout.inner : className, "!h-10 !w-10 !min-w-0 !max-w-10 !p-0 !gap-0 aspect-square shrink-0")
+      : className
+    const accessibleProps = automatic ? { "aria-label": toolbarLabel } : {}
+    const withTooltip = (content: React.ReactNode) => (
+      <AutomaticToolbarTooltip enabled={tooltipEnabled} label={toolbarLabel} disabled={props.disabled} className={toolbarLayout.outer}>
+        {content}
+      </AutomaticToolbarTooltip>
+    )
     const isPrimary = variant === undefined || variant === "default"
     const wellTintClass = tint === "destructive" ? "btn-tint-red" : tint === "whatsapp" ? "btn-tint-whatsapp" : undefined
     const setGlassNode = useBtnGlassMotion(isPrimary)
@@ -116,17 +134,18 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         : null
 
     const isCircular =
-      size === "icon" ||
+      presentedSize === "icon" ||
       (className?.includes("aspect-square") && !className?.match(/(?:sm|md|lg|xl|2xl):!?aspect-auto/))
     const innerCircularClass = isCircular ? "btn-primary-circular" : undefined
 
     const assignRef = React.useCallback(
       (node: HTMLButtonElement | null) => {
+        toolbar.host.current = node
         setGlassNode(node)
         if (typeof ref === "function") ref(node)
         else if (ref) ref.current = node
       },
-      [setGlassNode, ref]
+      [setGlassNode, ref, toolbar.host]
     )
 
     const style = withSafariRgbVars(props.style)
@@ -146,31 +165,33 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       : { onClick }
 
     if (asChild && !isPrimary) {
-      return (
+      return withTooltip(
         <Slot
-          className={cn(buttonVariants({ variant, size }), gatedClassName, className)}
+          className={cn(buttonVariants({ variant, size: presentedSize }), gatedClassName, presentedClassName)}
           ref={assignRef}
           {...props}
+          {...accessibleProps}
           {...gatedHandlers}
           style={style}
         >
-          {children}
+          {presentedChildren}
         </Slot>
       )
     }
 
     if (asChild) {
-      const { outer, inner } = splitOuterClasses(className)
-      return (
+      const { outer, inner } = splitOuterClasses(presentedClassName)
+      return withTooltip(
         <span className={cn("btn-primary-well", wellTintClass, outer)} style={pickCssVars(style)}>
           <Slot
-            className={cn(buttonVariants({ variant, size }), gatedClassName, innerCircularClass, inner)}
+            className={cn(buttonVariants({ variant, size: presentedSize }), gatedClassName, innerCircularClass, inner)}
             ref={assignRef}
             {...props}
+            {...accessibleProps}
             {...gatedHandlers}
             style={style}
           >
-            <Slottable>{children}</Slottable>
+            <Slottable>{presentedChildren}</Slottable>
             <span className="btn-glass-surface absolute inset-0 overflow-hidden pointer-events-none" style={{ borderRadius: "inherit" }}>
               <span className="btn-top-highlight" aria-hidden="true" />
               <span className="btn-glass-cursor" aria-hidden="true" />
@@ -183,31 +204,33 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     }
 
     if (!isPrimary) {
-      return (
+      return withTooltip(
         <button
-          className={cn(buttonVariants({ variant, size }), gatedClassName, className)}
+          className={cn(buttonVariants({ variant, size: presentedSize }), gatedClassName, presentedClassName)}
           ref={assignRef}
           {...props}
+          {...accessibleProps}
           {...gatedHandlers}
           style={style}
         >
-          {children}
+          {presentedChildren}
           {adornment}
         </button>
       )
     }
 
-    const { outer, inner } = splitOuterClasses(className)
-    return (
+    const { outer, inner } = splitOuterClasses(presentedClassName)
+    return withTooltip(
       <span className={cn("btn-primary-well", wellTintClass, outer)} style={pickCssVars(style)}>
         <button
-          className={cn(buttonVariants({ variant, size }), gatedClassName, innerCircularClass, inner)}
+          className={cn(buttonVariants({ variant, size: presentedSize }), gatedClassName, innerCircularClass, inner)}
           ref={assignRef}
           {...props}
+          {...accessibleProps}
           {...gatedHandlers}
           style={style}
         >
-          {children}
+          {presentedChildren}
           <span className="btn-glass-surface absolute inset-0 overflow-hidden pointer-events-none" style={{ borderRadius: "inherit" }}>
             <span className="btn-top-highlight" aria-hidden="true" />
             <span className="btn-glass-cursor" aria-hidden="true" />

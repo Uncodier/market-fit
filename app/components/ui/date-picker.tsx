@@ -158,6 +158,7 @@ export function DatePicker({
 
   const triggerButton = (
     <Button
+      data-toolbar-icon-action="off"
       id={id}
       aria-describedby={ariaDescribedBy}
       type="button" variant={mode === 'range' ? "secondary" : "outline"}

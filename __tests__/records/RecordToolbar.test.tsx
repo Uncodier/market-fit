@@ -21,7 +21,7 @@ describe("RecordToolbar", () => {
     render(<RecordToolbar {...baseProps} />)
     expect(screen.getByRole("button", { name: "Delete record" })).toBeVisible()
     expect(screen.queryByTestId("record-toolbar-tools-spacer")).not.toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "Hide right panel" })).toHaveClass("ml-auto")
+    expect(screen.getByRole("button", { name: "Hide right panel" }).closest("[data-automatic-toolbar-tooltip]")).toHaveClass("ml-auto")
   })
 
   it("keeps the action spacer while contextual tools are visible", () => {

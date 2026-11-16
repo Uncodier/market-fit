@@ -220,15 +220,15 @@ export function Sidebar({
         </div>
 
         {/* Mobile scrolls the entire sidebar so footer items remain reachable on short viewports. */}
-        <div className="flex-1 shrink-0 overflow-visible md:min-h-0 md:shrink md:overflow-y-auto md:overflow-x-hidden">
-          <div style={{ paddingTop: "21.6px", paddingBottom: "21.6px" }}>
+        <div data-sidebar-shortcut-viewport className="flex-1 shrink-0 overflow-visible md:min-h-0 md:shrink md:overflow-y-auto md:overflow-x-hidden">
+          <div data-sidebar-shortcut-content style={{ paddingTop: "21.6px", paddingBottom: "21.6px" }}>
             <div
               className={cn(
                 "flex flex-col space-y-1",
                 renderCollapsed ? "px-0 items-center w-full" : "px-3"
               )}
             >
-              <div className={cn("flex flex-col space-y-1 w-full", renderCollapsed ? "w-[42px] mx-auto items-center" : "px-1")}>
+              <div className={cn("flex flex-col space-y-1 w-full", renderCollapsed ? "w-14 mx-auto items-center" : "px-1")}>
                 <Suspense fallback={<div className="min-h-[64px]" aria-hidden />}>
                   <RobotsNavItems
                     isCollapsed={renderCollapsed}
@@ -236,13 +236,6 @@ export function Sidebar({
                   />
                   <DynamicShortcuts isCollapsed={renderCollapsed} />
                 </Suspense>
-              </div>
-              <div style={{ marginTop: "14px" }} className="w-full">
-                {/* 
-                <Suspense fallback={<div className="min-h-[48px]" aria-hidden />}>
-                  <NavigationAreaGroups renderCollapsed={renderCollapsed} />
-                </Suspense>
-                */}
               </div>
             </div>
           </div>
@@ -288,11 +281,12 @@ export function Sidebar({
               */}
             </div>
             
-            <div className={cn("relative", renderCollapsed ? "w-[42px] mx-auto flex flex-col items-center" : "w-full px-1")}>
+            <div className={cn("relative", renderCollapsed ? "w-14 mx-auto flex flex-col items-center" : "w-full px-1")}>
               <MenuItem
                 id="tour-apps-nav"
                 href="/navigation"
                 icon={LayoutGrid}
+                moduleImage={{ area: "applications", itemKey: "appsLauncher" }}
                 title={t("layout.sidebar.apps") === "layout.sidebar.apps" ? "Apps" : t("layout.sidebar.apps")}
                 shortcut="A"
                 isActive={pathname.startsWith("/navigation") || isAppsLauncherOpen}
@@ -313,10 +307,11 @@ export function Sidebar({
               onExpandedChange={setSettingsMenuExpanded}
             />
 
-            <div className={cn("relative", renderCollapsed ? "w-[42px] mx-auto flex flex-col items-center" : "w-full px-1")}>
+            <div className={cn("relative", renderCollapsed ? "w-14 mx-auto flex flex-col items-center" : "w-full px-1")}>
               <MenuItem
                 href="/notifications"
                 icon={Bell}
+                moduleImage={{ area: "settings", itemKey: "notifications" }}
                 title={t("layout.sidebar.notifications") || "Notifications"}
                 isActive={pathname.startsWith("/notifications")}
                 isCollapsed={renderCollapsed}
@@ -333,7 +328,7 @@ export function Sidebar({
                 renderCollapsed ? "px-0 items-center w-full" : "px-3"
               )}
             >
-              <div className={cn("relative", renderCollapsed ? "w-[42px] mx-auto flex flex-col items-center" : "w-full px-1")}>
+              <div className={cn("relative", renderCollapsed ? "w-14 mx-auto flex flex-col items-center" : "w-full px-1")}>
                 <MenuItem
                   href={profileMainItem.href}
                   icon={profileMainItem.icon}
@@ -351,10 +346,7 @@ export function Sidebar({
                   }
                   isActive={pathname.startsWith("/profile")}
                   isCollapsed={renderCollapsed}
-                  className={cn(
-                    "profile-parent-item",
-                    !renderCollapsed && "![padding-top:25.2px] ![padding-bottom:25.2px]"
-                  )}
+                  className="profile-parent-item"
                   onClick={(e) => handleProfileNavigation(e, profileMainItem.href)}
                 />
               </div>

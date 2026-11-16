@@ -50,7 +50,7 @@ export function ProcurementListLoading({ columns = 4, minWidth, children }: {
 export function DetailToolbarSkeleton() {
   return <StickyHeader><div aria-hidden="true" className="flex w-full min-w-0 flex-wrap items-center justify-between gap-3">
     <div className="flex min-w-0 max-w-full gap-2 overflow-hidden">
-      {[0, 1, 2, 3].map(index => <Skeleton key={index} className="h-8 w-20 shrink-0 rounded-full motion-reduce:animate-none" />)}
+      {[0, 1, 2, 3].map(index => <Skeleton key={index} className="h-10 w-10 shrink-0 rounded-full motion-reduce:animate-none" />)}
     </div>
     <Skeleton className="h-7 w-28 rounded-full motion-reduce:animate-none" />
   </div></StickyHeader>

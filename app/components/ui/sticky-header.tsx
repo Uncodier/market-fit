@@ -55,6 +55,7 @@ export function StickyHeader({
   return (
     <div
       data-toolbar-font
+      data-toolbar-icon-actions
       className={cn(
         "flex shrink-0 items-center p-0",
         "bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80",

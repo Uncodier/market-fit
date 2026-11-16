@@ -27,7 +27,7 @@ export function DocumentToolbar({ tabs, value, onChange, search, onSearch, actio
       </TabsList></Tabs>
       {workspace ? <SearchInput placeholder={t('procurement.partners.commerce.search')} value={search} onChange={event => onSearch(event.target.value)} />
         : <AccountSearch placeholder={t('procurement.partners.commerce.search')} value={search} onChange={event => onSearch(event.target.value)} />}
-    </div><div data-secondary-actions className="ml-auto flex shrink-0 items-center gap-1">{actions}</div>
+    </div><div data-secondary-actions data-toolbar-icon-actions className="ml-auto flex shrink-0 items-center gap-1">{actions}</div>
   </div>
   return workspace ? <StickyHeader>{content}</StickyHeader> : <div>{content}</div>
 }

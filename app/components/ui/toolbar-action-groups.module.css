@@ -1,0 +1,10 @@
+.groups > [data-toolbar-action-group]:not(:has(button, a[href], [role="button"])) {
+  display: none;
+}
+
+/* Conditional actions must not leave empty groups or orphaned separators. */
+.groups > [data-toolbar-action-group]:has(button, a[href], [role="button"]) ~ [data-toolbar-action-group]:has(button, a[href], [role="button"]) {
+  border-inline-start: 1px solid hsl(var(--border));
+  margin-inline-start: 0.75rem;
+  padding-inline-start: 0.75rem;
+}

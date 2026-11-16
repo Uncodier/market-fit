@@ -5,17 +5,20 @@ import {
 } from "@/app/components/settings/social-section-config"
 
 describe("social settings platform options", () => {
-  it.each(["facebook", "threads", "twitter", "x", "youtube"])(
+  it.each(["twitter", "x"])(
     "temporarily hides %s from new account options",
     (value) => {
       expect(NEW_ACCOUNT_SOCIAL_PLATFORMS.some((platform) => platform.value === value)).toBe(false)
     },
   )
 
-  it("keeps the remaining networks available in their original order", () => {
+  it("makes all eight managed networks available in their original order", () => {
     expect(NEW_ACCOUNT_SOCIAL_PLATFORMS.map((platform) => platform.value)).toEqual([
+      "facebook",
       "instagram",
+      "threads",
       "linkedin",
+      "youtube",
       "tiktok",
       "pinterest",
       "bluesky",
@@ -30,10 +33,21 @@ describe("social settings platform options", () => {
     },
   )
 
-  it("allows Instagram for new account connections", () => {
-    expect(
-      NEW_ACCOUNT_SOCIAL_PLATFORMS.map(({ value }) => value)
-    ).toContain("instagram")
+  it.each(["threads", "linkedin", "youtube", "instagram", "facebook", "tiktok", "pinterest"])(
+    "allows selecting and connecting %s via OAuth",
+    (value) => {
+      expect(NEW_ACCOUNT_SOCIAL_PLATFORMS).toEqual(
+        expect.arrayContaining([expect.objectContaining({ value })]),
+      )
+      expect(isOAuthConnectablePlatform(value)).toBe(true)
+    },
+  )
+
+  it("allows Bluesky while preserving its dedicated app-password connection flow", () => {
+    expect(NEW_ACCOUNT_SOCIAL_PLATFORMS).toEqual(
+      expect.arrayContaining([expect.objectContaining({ value: "bluesky", label: "Bluesky" })]),
+    )
+    expect(isOAuthConnectablePlatform("bluesky")).toBe(false)
   })
 
   it("keeps Instagram metadata for existing accounts", () => {

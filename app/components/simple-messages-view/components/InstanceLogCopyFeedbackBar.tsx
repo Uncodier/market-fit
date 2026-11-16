@@ -9,6 +9,7 @@ import { copyToClipboard } from '@/app/utils/clipboard'
 import { useSite } from '@/app/context/SiteContext'
 import { syncAiFeedbackRecord } from '@/app/records/response-record-actions'
 import { SaveResponseAsRecordDialog } from './SaveResponseAsRecordDialog'
+import { ToolbarIconButton } from '@/app/components/ui/toolbar-icon-button'
 
 export type LogFeedbackRating = 'good' | 'bad' | 'problematic'
 
@@ -153,7 +154,8 @@ export function InstanceLogCopyFeedbackBar({
       role="toolbar"
       aria-label="Copy and rate this response"
     >
-      <button
+      <ToolbarIconButton
+        label={copied ? 'Copied' : 'Copy to clipboard'}
         type="button"
         onClick={handleCopy}
         className={cn(
@@ -161,15 +163,15 @@ export function InstanceLogCopyFeedbackBar({
           copied &&
             'bg-green-500/10 text-green-600 ring-1 ring-green-500/25 hover:bg-green-500/15 dark:text-green-500'
         )}
-        title={copied ? 'Copied' : 'Copy'}
         aria-label={copied ? 'Copied' : 'Copy to clipboard'}
       >
         {copied ? <Check className={iconSize} /> : <Copy className={iconSize} />}
-      </button>
+      </ToolbarIconButton>
 
       <div className="h-3 w-px shrink-0 bg-border/80 dark:bg-border" aria-hidden />
 
-      <button
+      <ToolbarIconButton
+        label="Good response"
         type="button"
         disabled={saving}
         onClick={e => {
@@ -177,12 +179,12 @@ export function InstanceLogCopyFeedbackBar({
           void persistFeedback('good')
         }}
         className={iconButtonClass(active === 'good')}
-        title="Good response"
         aria-label="Mark as good"
       >
         <ThumbsUp className={iconSize} />
-      </button>
-      <button
+      </ToolbarIconButton>
+      <ToolbarIconButton
+        label="Bad response"
         type="button"
         disabled={saving}
         onClick={e => {
@@ -190,12 +192,12 @@ export function InstanceLogCopyFeedbackBar({
           void persistFeedback('bad')
         }}
         className={iconButtonClass(active === 'bad')}
-        title="Bad response"
         aria-label="Mark as bad"
       >
         <ThumbsDown className={iconSize} />
-      </button>
-      <button
+      </ToolbarIconButton>
+      <ToolbarIconButton
+        label="Problematic response"
         type="button"
         disabled={saving}
         onClick={e => {
@@ -203,30 +205,28 @@ export function InstanceLogCopyFeedbackBar({
           void persistFeedback('problematic')
         }}
         className={iconButtonClass(active === 'problematic')}
-        title="Problematic response"
         aria-label="Mark as problematic"
       >
         <AlertTriangle className={iconSize} />
-      </button>
+      </ToolbarIconButton>
       {enableRecordActions && (
         <>
           <div className="h-3 w-px shrink-0 bg-border/80 dark:bg-border" aria-hidden />
-          <button
+          <ToolbarIconButton
+            label="Save as record"
             type="button"
             onClick={(event) => {
               event.stopPropagation()
               setRecordDialogOpen(true)
             }}
             className={cn(
-              'inline-flex w-fit min-w-0 shrink-0 items-center justify-center gap-1.5 rounded-full border border-border/90 bg-background px-3.5 py-1.5 text-xs font-medium text-foreground shadow-sm',
+              'shrink-0 rounded-full border border-border/90 bg-background text-foreground shadow-sm',
               'transition-colors hover:bg-muted/40 dark:border-border dark:bg-card/80'
             )}
-            title="Save as record"
             aria-label="Save as record"
           >
             <Save className="h-3.5 w-3.5 shrink-0 text-foreground/85" />
-            Save as record
-          </button>
+          </ToolbarIconButton>
           <SaveResponseAsRecordDialog
             open={recordDialogOpen}
             onOpenChange={setRecordDialogOpen}
