@@ -24,7 +24,7 @@ export function getRealisticModuleImagePrompt(
       : `Volumetric 3D isometric object of a ${subject}, highly recognizable, completely textless, no words, letters, numbers, logos, or typography, with clean surfaces`,
     clarifier,
     frontal
-      ? "Strict frontal orthographic view, straight on at eye level, no isometric angle, no three-quarter view, no tilt or rotation. Perfectly aligned grid with parallel edges. Depth through shading only, not visible side faces"
+      ? "Strict frontal orthographic view, straight on at eye level, no isometric angle, no three-quarter view, no tilt or rotation. Centered upright emblem. Depth through shading only, not visible side faces"
       : "Lifelike standalone object floating in mid-air, gentle three-quarter isometric perspective, identifying face clearly visible",
     "Optically centered, filling 88 to 92 percent of the canvas with consistent safe margins and the entire silhouette visible; no app tile, squircle, container, badge, frame, pedestal, floor, scenery, or secondary icon",
     "ZERO contact shadows, NO drop shadow on the floor, no cast shadow on the background, no ground plane",

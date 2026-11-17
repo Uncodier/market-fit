@@ -8,6 +8,6 @@ it.each(["appsLauncher", "notifications"] as const)("uses the fixed shared AI pr
   expect(prompt).toBe(getModuleImagePrompt(area, key, "Translated title"))
   expect(prompt).toContain(key === "appsLauncher" ? "Front-facing 3D" : "Volumetric 3D isometric")
   expect(prompt).toContain("physically based materials (PBR)")
-  expect(prompt).toContain(key === "appsLauncher" ? "two-by-two grid" : "large clapper")
+  expect(prompt).toContain(key === "appsLauncher" ? "triangular crossed-stick symbol" : "large clapper")
   expect(prompt).toContain("strong legibility at small UI sizes")
 })

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react"
+import { act, fireEvent, render, screen } from "@testing-library/react"
 import { usePathname, useSearchParams } from "next/navigation"
 import { Bell } from "@/app/components/ui/icons"
 import { MenuItem } from "@/app/components/navigation/MenuItem"
@@ -129,6 +129,42 @@ it("spaces the overview and other pinned icons inside their separator group", ()
     setRecentDropRef={jest.fn()} renderShortcut={(entry) => <div key={entry.id}>{entry.id}</div>} />)
   expect(screen.getByText("reportOverview").parentElement)
     .toHaveClass("flex", "flex-col", "space-y-1")
+})
+
+describe("Sidebar tooltip transitions", () => {
+  beforeEach(() => jest.useFakeTimers())
+  afterEach(() => {
+    act(() => jest.runOnlyPendingTimers())
+    jest.useRealTimers()
+  })
+
+  it("does not carry expanded hover or focus into collapsed mode", () => {
+    const props = { href: "/catalog", title: "Catalog" }
+    const { container, rerender } = render(<MenuItem {...props} isCollapsed={false} />)
+    const trigger = container.querySelector("[data-toolbar-tooltip-trigger]")!
+    fireEvent.pointerMove(trigger, { pointerType: "mouse" })
+    fireEvent.focus(trigger)
+    act(() => jest.advanceTimersByTime(150))
+    rerender(<MenuItem {...props} isCollapsed />)
+    act(() => jest.advanceTimersByTime(150))
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument()
+    fireEvent.pointerMove(trigger, { pointerType: "mouse" })
+    act(() => jest.advanceTimersByTime(150))
+    expect(screen.getByRole("tooltip")).toHaveTextContent("Catalog")
+  })
+
+  it("closes a previous tooltip when changing modes and allows fresh focus", () => {
+    const props = { href: "/catalog", title: "Catalog" }
+    const { container, rerender } = render(<MenuItem {...props} isCollapsed />)
+    fireEvent.focus(container.querySelector("[data-toolbar-tooltip-trigger]")!)
+    expect(screen.getByRole("tooltip")).toHaveTextContent("Catalog")
+    rerender(<MenuItem {...props} isCollapsed={false} />)
+    rerender(<MenuItem {...props} isCollapsed />)
+    act(() => jest.advanceTimersByTime(150))
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument()
+    fireEvent.focus(container.querySelector("[data-toolbar-tooltip-trigger]")!)
+    expect(screen.getByRole("tooltip")).toHaveTextContent("Catalog")
+  })
 })
 
 describe("Settings selection indicator", () => {

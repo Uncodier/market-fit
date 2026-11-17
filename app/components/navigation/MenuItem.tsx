@@ -163,7 +163,13 @@ export function MenuItem({
   onClick
 }: MenuItemProps) {
   const linkRef = useRef<HTMLAnchorElement>(null);
-  const [tooltipOpen, setTooltipOpen] = useState(false)
+  const [tooltipState, setTooltipState] = useState({ collapsed: isCollapsed, open: false })
+  if (tooltipState.collapsed !== isCollapsed) {
+    setTooltipState({ collapsed: isCollapsed, open: false })
+  }
+  const setTooltipOpen = (open: boolean) => {
+    setTooltipState({ collapsed: isCollapsed, open: Boolean(isCollapsed && open) })
+  }
 
   const shortcutHint = shortcut ? (
     <kbd
@@ -297,6 +303,12 @@ export function MenuItem({
         } : {})
       }}
       onClick={onClick}
+      onFocus={(event) => {
+        if (event.target === event.currentTarget && event.currentTarget.matches(":focus-visible")) {
+          setTooltipOpen(true)
+        }
+      }}
+      onBlur={() => setTooltipOpen(false)}
     >
       {isActive && (
             <span
@@ -310,8 +322,16 @@ export function MenuItem({
             />
       )}
           <TooltipProvider delayDuration={100}>
-            <Tooltip open={Boolean(isCollapsed && tooltipOpen)} onOpenChange={setTooltipOpen}>
-              <TooltipTrigger asChild>
+            <Tooltip open={Boolean(isCollapsed && tooltipState.collapsed === isCollapsed && tooltipState.open)} onOpenChange={setTooltipOpen}>
+              <TooltipTrigger
+                asChild
+                onPointerMove={(event) => {
+                  if (!isCollapsed) event.preventDefault()
+                }}
+                onFocus={(event) => {
+                  if (!isCollapsed) event.preventDefault()
+                }}
+              >
                 <div
                   className={cn("w-full h-full min-w-0 flex items-center p-0 m-0", isCollapsed ? "justify-center" : "justify-start")}
                   style={{ gap: "inherit" }}

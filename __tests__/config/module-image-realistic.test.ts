@@ -12,7 +12,7 @@ describe("selected realistic navigation refresh", () => {
     ["notifications", "golden yellow", "pastel sky-blue"],
   ])("combines realistic rendering with UI clarity for %s", (key, color, background) => {
     const prompt = getModuleImagePrompt("buying", key, "Ignored title")
-    expect(prompt).toContain(key === "appsLauncher" ? "Front-facing 3D application grid" : "Volumetric 3D isometric")
+    expect(prompt).toContain(key === "appsLauncher" ? "Front-facing 3D App Store symbol" : "Volumetric 3D isometric")
     expect(prompt).toContain("Show one")
     expect(prompt).toContain("completely textless")
     expect(prompt).toContain("physically based materials (PBR)")
@@ -29,6 +29,9 @@ describe("selected realistic navigation refresh", () => {
       expect(prompt).toContain("no isometric angle")
       expect(prompt).toContain("not visible side faces")
       expect(prompt).not.toContain("gentle three-quarter isometric perspective")
+      expect(prompt).toContain("exactly three thick rounded bars")
+      expect(prompt).toContain("no grid, squares")
+      expect(prompt).not.toContain("two-by-two")
     } else {
       expect(prompt).not.toContain("Front-facing")
       expect(prompt).not.toContain("no isometric angle")

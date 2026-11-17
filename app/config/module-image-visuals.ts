@@ -5,7 +5,7 @@ import { getRealisticModuleImagePrompt } from "./module-image-realistic"
 
 /** Short object noun so the model is not literal with screen names like "leads". */
 export const MODULE_IMAGE_HINTS: Record<string, string> = {
-  appsLauncher: "application grid",
+  appsLauncher: "App Store symbol",
   notifications: "notification bell",
   campaigns: "target",
   segments: "audience tags",
@@ -168,7 +168,7 @@ const COMPACT_FULL_SIZE_COMPOSITION =
 
 const MODULE_IMAGE_CLARIFIERS: Partial<Record<string, string>> = {
   appsLauncher:
-    "Show one compact application launcher symbol made of four substantial softly rounded squares in a precise two-by-two grid, with even gaps and a crisp unified silhouette; no phone, screen, text, letters, logos, tiny symbols, or extra objects",
+    "Show one App Store-style emblem made of exactly three thick rounded bars: two diagonal bars crossing near the top and one horizontal crossbar, forming the recognizable triangular crossed-stick symbol; no grid, squares, phone, screen, written text, or extra objects",
   notifications:
     "Show one unmistakable notification bell with a broad rounded dome, gently flared rim and one large clapper, centered and optically balanced; no numeric badge, text, letters, alarm clock, ribbons, sound waves, or extra objects",
   profile:
