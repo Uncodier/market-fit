@@ -337,6 +337,7 @@ export function ConfigurationSection({
                       <MenuItem
                         href="#"
                         icon={isDarkMode ? Moon : Sun}
+                        moduleImage={{ area: "settings", itemKey: "theme" }}
                         title={
                           isDarkMode
                             ? t("layout.sidebar.darkMode") || "Dark Mode"

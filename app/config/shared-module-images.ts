@@ -3,6 +3,8 @@ export const SHARED_MODULE_IMAGE_AREAS = {
   appsLauncher: "applications",
   notifications: "settings",
   profile: "settings",
+  businessOpen: "settings",
+  theme: "settings",
   suppliers: "buying",
   accountsPayable: "buying",
   purchaseRequests: "buying",

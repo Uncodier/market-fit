@@ -1,4 +1,4 @@
-export type SiteRefreshOptions = { recoverMissingSite?: boolean };
+export type SiteRefreshOptions = { recoverMissingSite?: boolean; recoverMissingList?: boolean };
 
 /** Explicit recovery may hydrate a missing POS context, never interrupt a live site. */
 export function canRecoverMissingPosSite(options: SiteRefreshOptions | undefined, currentSiteId: string | undefined, pathname: string): boolean {

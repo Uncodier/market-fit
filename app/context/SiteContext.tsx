@@ -435,7 +435,9 @@ export function SiteProvider({ children }: SiteProviderProps) {
   const loadSitesWithPrevention = async (options?: SiteRefreshOptions) => {
     const recovering = canRecoverMissingPosSite(options, currentSite?.id,
       typeof window === "undefined" ? "" : window.location.pathname)
-    if (currentSite && !recovering && (shouldPreventRefresh() || isOnProtectedPage())) {
+    const recoveringList = options?.recoverMissingList === true && currentSite &&
+      sites.length === 0 && isInitialized && !isLoading
+    if (currentSite && !recovering && !recoveringList && (shouldPreventRefresh() || isOnProtectedPage())) {
       return
     }
     return loadSites()

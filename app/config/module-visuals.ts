@@ -63,6 +63,7 @@ import {
   Wallet,
   Bell,
   LayoutGrid,
+  Sun,
   type LucideIcon,
 } from "@/app/components/ui/icons"
 
@@ -80,6 +81,8 @@ export const AREA_ICON: Record<WorkspaceArea, LucideIcon> = {
 
 export const NAV_ITEM_ICON: Record<string, LucideIcon> = {
   appsLauncher: LayoutGrid,
+  businessOpen: Store,
+  theme: Sun,
   notifications: Bell,
     suppliers: Building,
     purchaseRequests: ClipboardList,

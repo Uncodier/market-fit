@@ -6,6 +6,8 @@ import { getRealisticModuleImagePrompt } from "./module-image-realistic"
 /** Short object noun so the model is not literal with screen names like "leads". */
 export const MODULE_IMAGE_HINTS: Record<string, string> = {
   appsLauncher: "App Store symbol",
+  businessOpen: "open storefront",
+  theme: "sun moon emblem",
   notifications: "notification bell",
   campaigns: "target",
   segments: "audience tags",
@@ -167,6 +169,10 @@ const COMPACT_FULL_SIZE_COMPOSITION =
   "Use the Apple iOS Calendar, Notes, Contacts, and Reminders icons as references for visual polish, spacing discipline, and clarity rather than copying their symbols or outer app tiles: one recognizable object, full-size at 88 to 92 percent of the canvas, optically centered, evenly balanced, with a narrow consistent safe margin and softly rounded geometry; no app tile, iOS-style squircle, rounded-square container, badge, frame, floor, scenery, or secondary icon"
 
 const MODULE_IMAGE_CLARIFIERS: Partial<Record<string, string>> = {
+  businessOpen:
+    "Show one compact welcoming storefront with a broad striped awning and an open doorway, instantly recognizable as a shop; no signs, text, letters, products, people, street, or extra objects",
+  theme:
+    "Show one unified day-and-night emblem: a large crescent moon embracing a small sun disc with a few broad rounded rays; no face, stars, clouds, text, switch, panel, or extra objects",
   appsLauncher:
     "Show one App Store-style emblem made of exactly three thick rounded bars: two diagonal bars crossing near the top and one horizontal crossbar, forming the recognizable triangular crossed-stick symbol; no grid, squares, phone, screen, written text, or extra objects",
   notifications:

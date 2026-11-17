@@ -66,6 +66,7 @@ export function BusinessOpenToggle({ isCollapsed }: BusinessOpenToggleProps) {
       <MenuItem
         href="#"
         icon={Store}
+        moduleImage={{ area: "settings", itemKey: "businessOpen" }}
         title={title}
         isActive={false}
         isCollapsed={isCollapsed}

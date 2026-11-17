@@ -18,6 +18,7 @@ import { useRouter } from "next/navigation"
 import { navigateOrAssign } from "@/lib/navigation/stale-router"
 import { useEffect, useState } from "react"
 import { Site } from "@/app/context/SiteContext"
+import { useSiteListRecovery } from "./use-site-list-recovery"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Button } from "../ui/button"
 import { useLocalization } from "@/app/context/LocalizationContext"
@@ -33,12 +34,17 @@ interface SiteSelectorProps {
 }
 
 export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
-  const { sites, currentSite, setCurrentSite, isLoading, refreshSites } = useSite()
+  const { sites, currentSite, setCurrentSite, isLoading, refreshSites, error } = useSite()
   const { user } = useAuth()
   const router = useRouter()
   const { t } = useLocalization()
   const [isMounted, setIsMounted] = useState(false)
   const [filter, setFilter] = useState<'all' | 'owned' | 'shared' | 'demo'>('all')
+  const missingList = !!currentSite && sites.length === 0
+  const recovery = useSiteListRecovery(
+    missingList && !isLoading && user?.id ? JSON.stringify([user.id, currentSite.id]) : null,
+    () => refreshSites({ recoverMissingList: true }),
+  )
   
   // Get current user ID from auth session
   const currentUserId = user?.id
@@ -89,7 +95,7 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
   // Contenido principal cuando está montado
   const MainContent = () => {
     // Si no hay sitio actual o está en estado de carga, mostrar skeleton
-    if (!currentSite || currentSite.id === "default" || isLoading || sites.length === 0) {
+    if (!currentSite || currentSite.id === "default" || isLoading) {
       return <SkeletonContent />
     }
 
@@ -122,7 +128,7 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
 
   // Empty list inside the workspace wrapper is a load/session error.
   // Bounce to /projects is handled by SiteContext; do not offer create-site here.
-  if (!isMounted || sites.length === 0) {
+  if (!isMounted || (sites.length === 0 && !currentSite)) {
     return (
       <div className={cn(
         "relative flex justify-center",
@@ -154,13 +160,15 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
         "relative",
         !isCollapsed && "w-[232px]"
       )}>
-        <DropdownMenu>
+        <DropdownMenu onOpenChange={open => { if (open && missingList) recovery.retry() }}>
           {isCollapsed ? (
             <TooltipProvider delayDuration={100}>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <DropdownMenuTrigger asChild>
-                    <div
+                    <button
+                      type="button"
+                      aria-label={currentSite?.name}
                       className={cn(
                         "flex items-center rounded-md px-3 py-2 text-sm transition-colors relative group cursor-pointer",
                         "justify-center h-[45px]",
@@ -168,7 +176,7 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
                       )}
                     >
                       {!isMounted ? <SkeletonContent /> : <MainContent />}
-                    </div>
+                    </button>
                   </DropdownMenuTrigger>
                 </TooltipTrigger>
                 <TooltipContent
@@ -190,7 +198,9 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
             </TooltipProvider>
           ) : (
             <DropdownMenuTrigger asChild>
-              <div
+              <button
+                type="button"
+                aria-label={currentSite?.name}
                 className={cn(
                   "flex items-center rounded-md px-3 py-2 text-sm transition-colors relative group cursor-pointer",
                   "border dark:border-white/5 border-black/5 hover:dark:border-white/5 border-black/5/80 hover:bg-accent w-full",
@@ -198,10 +208,10 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
                 )}
               >
                 {!isMounted ? <SkeletonContent /> : <MainContent />}
-              </div>
+              </button>
             </DropdownMenuTrigger>
           )}
-          {isMounted && !isLoading && sites.length > 0 && (
+          {isMounted && !isLoading && (sites.length > 0 || currentSite) && (
             <DropdownMenuContent 
               align={isCollapsed ? "start" : "center"}
               sideOffset={5}
@@ -235,7 +245,20 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
               
               <DropdownMenuSeparator />
               
-              {filteredSites.length === 0 ? (
+              {missingList ? (
+                <div className="space-y-2 px-2 py-3 text-sm">
+                  <p role="status" className="text-muted-foreground">
+                    {error ? "The project list could not be loaded. Your current project is still selected."
+                      : "The project list is not available yet. Your current project is still selected."}
+                  </p>
+                  <Button variant="outline" size="sm" disabled={recovery.isRefreshing} onClick={recovery.retry}>
+                    {recovery.isRefreshing ? "Loading projects…" : "Retry project list"}
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => navigateOrAssign(router, "/projects")}>
+                    Choose project
+                  </Button>
+                </div>
+              ) : filteredSites.length === 0 ? (
                 <div className="px-2 py-3 text-center text-sm text-muted-foreground">
                   {filter === 'shared' ? (
                     <div className="flex flex-col items-center gap-2">

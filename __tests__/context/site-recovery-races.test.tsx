@@ -1,4 +1,4 @@
-import { act, renderHook, waitFor } from "@testing-library/react"
+import { act, fireEvent, renderHook, screen, waitFor } from "@testing-library/react"
 import { StrictMode, type ReactNode } from "react"
 import { SiteProvider, useSite } from "@/app/context/SiteContext"
 import { SiteSelector } from "@/app/components/navigation/SiteSelector"
@@ -50,6 +50,7 @@ function mount(strict = false) {
     ? ({ children }) => <StrictMode>{wrapper({ children })}</StrictMode> : wrapper })
 }
 beforeEach(() => {
+  window.history.replaceState({}, "", "/")
   jest.clearAllMocks()
   mockSettings.mockReset().mockResolvedValue({ data: { about: "Hydrated settings" }, error: null })
   mockClient.auth.getSession.mockReset().mockResolvedValue({ data: { session: mockSession } })
@@ -58,6 +59,54 @@ beforeEach(() => {
   sessionStorage.clear()
   localStorage.setItem("currentSiteId", first.id)
   cacheSiteSelection("owner", first)
+})
+
+it("shows the cached project and recovers its list on POS without rehydrating settings", async () => {
+  jest.useFakeTimers()
+  window.history.replaceState({}, "", "/pos")
+  sessionStorage.setItem("preventAutoRefresh", "true")
+  try {
+    jest.mocked(fetchAccessibleSitesClient).mockReturnValueOnce(new Promise(() => {}))
+    const { result } = mount()
+    await act(async () => { await Promise.resolve() })
+    expect(result.current.sites).toEqual([])
+    expect(screen.getByRole("button", { name: "First" })).toBeInTheDocument()
+    expect(result.current.isLoading).toBe(false)
+    await act(async () => jest.advanceTimersByTime(SITE_HYDRATION_TIMEOUT_MS))
+    expect(screen.getByRole("button", { name: "First" })).toBeInTheDocument()
+    await act(async () => jest.advanceTimersByTime(5_000))
+    expect(fetchAccessibleSitesClient).toHaveBeenCalledTimes(2)
+    expect(result.current.sites).toHaveLength(2)
+    expect(result.current.currentSite?.id).toBe(first.id)
+    expect(result.current.isLoading).toBe(false)
+    expect(mockSettings).toHaveBeenCalledTimes(1)
+    await act(async () => jest.advanceTimersByTime(120_000))
+    expect(fetchAccessibleSitesClient).toHaveBeenCalledTimes(2)
+  } finally {
+    window.history.replaceState({}, "", "/")
+    jest.useRealTimers()
+  }
+})
+
+it("does not bypass POS refresh prevention once the list has loaded", async () => {
+  window.history.replaceState({}, "", "/pos")
+  sessionStorage.setItem("preventAutoRefresh", "true")
+  const { result } = mount()
+  await waitFor(() => expect(result.current.isLoading).toBe(false))
+  await act(async () => { await result.current.refreshSites({ recoverMissingList: true }) })
+  expect(fetchAccessibleSitesClient).toHaveBeenCalledTimes(1)
+  window.history.replaceState({}, "", "/")
+})
+
+it("offers recovery instead of an empty-project message when opening a cached selector", async () => {
+  jest.mocked(fetchAccessibleSitesClient).mockReturnValueOnce(new Promise(() => {}))
+  const { result } = mount()
+  await waitFor(() => expect(result.current.isLoading).toBe(false))
+  fireEvent.keyDown(screen.getByRole("button", { name: "First" }), { key: "Enter" })
+  expect(await screen.findByText(/project list is not available yet/i)).toBeInTheDocument()
+  expect(screen.queryByText("layout.sidebar.noProjectsFound")).not.toBeInTheDocument()
+  expect(screen.getByRole("button", { name: "Choose project" })).toBeInTheDocument()
+  expect(mockSettings).toHaveBeenCalledTimes(1)
 })
 
 it("prefers the newer auth event over a pending session read, including shared sites", async () => {

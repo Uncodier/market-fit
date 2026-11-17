@@ -17,6 +17,14 @@ independently of pending settings; they do not re-enter hydration deduplication.
 The sidebar never selects the first workspace automatically: a missing or revoked
 selection requires an explicit choice in `/projects`.
 
+The site selector renders the recovered active identity even while the list is
+empty. Its menu distinguishes an unavailable list from zero matching projects and
+offers retry/picker navigation. Missing-list recovery retries after 15, 30 and 60
+seconds (three automatic attempts), on reconnection, and on explicit menu opening
+or retry. It stops when the list arrives or the actor/site scope disappears.
+Only an initialized, non-loading selection with an empty list may bypass refresh
+prevention for this recovery; same-site settings and POS state remain mounted.
+
 Successful settings hydration releases the workspace loading gate even while the
 list is pending. List failures and deadlines preserve the hydrated selection;
 successful removal, repeated authentication denial, sign-out and identity changes

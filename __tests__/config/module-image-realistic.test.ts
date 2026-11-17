@@ -10,6 +10,8 @@ describe("selected realistic navigation refresh", () => {
     ["procurementTenders", "warm red", "pastel mint"],
     ["profile", "turquoise", "pastel coral"],
     ["notifications", "golden yellow", "pastel sky-blue"],
+    ["businessOpen", "emerald green", "pastel peach"],
+    ["theme", "violet", "pastel sky-blue"],
   ])("combines realistic rendering with UI clarity for %s", (key, color, background) => {
     const prompt = getModuleImagePrompt("buying", key, "Ignored title")
     expect(prompt).toContain(key === "appsLauncher" ? "Front-facing 3D App Store symbol" : "Volumetric 3D isometric")
