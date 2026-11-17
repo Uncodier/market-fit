@@ -28,6 +28,34 @@ lists or search. A `401`/`403` from the backend remains an access error, not an
 empty list. The saved-list sidebar itself reads from Supabase under the user's
 session.
 
+Finder saved-list names are sent as top-level `name`, not `campaign_name`.
+Lists without a segment are still site-owned. The forward migration
+`20261117120000_finder_saved_list_site_read.sql` makes authenticated SELECT
+depend on the list's own site and licensed membership instead of segment links,
+while preserving existing write and location guards. It was applied to Makinari
+(`rnjgeloamtszdjplmqxy`) on November 17, 2026. That site-only policy did not
+respect `restrict_to_assigned_only`; use the forward ownership correction
+`20261117203000_finder_list_ownership.sql` as well, not the site-read migration
+alone. The ownership correction was applied at 20:19:58 UTC that day and verified
+to deny foreign/unknown creators while accepting self-attributed access. The web
+name-field and button-label fixes still require deployment.
+The migration does not backfill names or start pending enrichment jobs.
+
+Finder ownership follows Robots: assigned-only members read only rows whose
+`user_id` matches their authenticated identity; site owners/co-owners and
+unrestricted licensed members retain existing site access. Historical lists have
+no verified creator and remain unattributed, therefore hidden from assigned-only
+members. Never infer their owner from a reused query, linked segment or site owner.
+The API `createQuery` change must be deployed to set the verified actor on new
+rows and scope deduplication by that actor. A database migration alone cannot
+make the old service-role creation handler attribute its caller.
+
+Saved-list snapshots are invalidated on authenticated identity changes and
+refreshed on focus, reconnect and every 30 seconds while enabled. RLS remains the
+authority for ownership; the browser does not replace it with a user-ID filter.
+ICP load/delete proxies check user-scoped list visibility before forwarding, and
+rename checks a returned row so an RLS-hidden update cannot report success.
+
 Finder autocomplete must use the account-scoped Forager endpoint with the
 server-only `FORAGER_ACCOUNT_ID` and `FORAGER_API_KEY` in the API repository.
 The public organization lookup can return empty results for company names even

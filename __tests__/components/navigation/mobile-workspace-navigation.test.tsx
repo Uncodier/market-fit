@@ -198,7 +198,8 @@ test("does not record modules during scope hydration", () => {
   mockLoading = true
   setRoute("/catalog")
   const view = render(<MobileWorkspaceNavigation />)
-  expect(screen.getAllByRole("link")).toHaveLength(2)
+  expect(screen.getAllByRole("link")).toHaveLength(5)
+  expect(screen.queryByRole("link", { name: "Catalog" })).not.toBeInTheDocument()
   mockLoading = false
   view.rerender(<MobileWorkspaceNavigation />)
   expect(screen.getByRole("link", { name: "Catalog" })).toBeInTheDocument()
@@ -249,6 +250,43 @@ test("uses defaults for the automatically inserted Overview and filters denied d
   expect(screen.getByRole("link", { name: "Conversations" })).toBeInTheDocument()
   expect(screen.getAllByRole("link").map((link) => link.getAttribute("href"))).toContain("/control-center")
   expect(screen.queryByRole("link", { name: "Customers" })).not.toBeInTheDocument()
+  expect(screen.getAllByRole("link")).toHaveLength(5)
+})
+
+test.each([
+  { entries: [] },
+  { entries: [{ id: "deals", pinned: false }] },
+  { entries: [{ id: "controlCenter", pinned: false }, { id: "deals", pinned: false }] },
+  { entries: [{ id: "chat", pinned: false }, { id: "chat", pinned: false }] },
+  { entries: [{ id: "unknown-module", pinned: false }] },
+])("fills empty or partial cached history with unique mobile defaults: $entries", async ({ entries }) => {
+  jest.mocked(loadShortcuts).mockResolvedValue(entries)
+  await act(async () => { render(<MobileWorkspaceNavigation />) })
+  const links = screen.getAllByRole("link")
+  expect(links).toHaveLength(5)
+  expect(new Set(links.map((link) => link.getAttribute("href"))).size).toBe(5)
+  expect(screen.getByRole("link", { name: "Conversations" })).toBeInTheDocument()
+  if (entries.some((entry) => entry.id === "deals")) {
+    expect(links[entries[0].id === "deals" ? 0 : 1]).toHaveAttribute("href", "/deals")
+  }
+})
+
+test("replaces denied cached and default apps with permitted modules", async () => {
+  mockBlocked = ["chat", "leads", "controlCenter", "deals"]
+  jest.mocked(loadShortcuts).mockResolvedValue([{ id: "deals", pinned: false }])
+  await act(async () => { render(<MobileWorkspaceNavigation />) })
+  const links = screen.getAllByRole("link")
+  expect(links).toHaveLength(5)
+  for (const href of ["/chat", "/leads", "/control-center", "/deals"]) {
+    expect(links.map((link) => link.getAttribute("href"))).not.toContain(href)
+  }
+})
+
+test("keeps all five links when shortcut storage fails", async () => {
+  jest.mocked(loadShortcuts).mockRejectedValue(new Error("Storage unavailable"))
+  await act(async () => { render(<MobileWorkspaceNavigation />) })
+  expect(screen.getAllByRole("link")).toHaveLength(5)
+  expect(screen.getByRole("link", { name: "Conversations" })).toBeInTheDocument()
 })
 
 test("ignores old-site reads and foreign events while accepting current sidebar updates", async () => {

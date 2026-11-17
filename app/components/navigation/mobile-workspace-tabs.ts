@@ -42,6 +42,27 @@ export function defaultMobileWorkspaceTabs(): MobileWorkspaceTab[] {
   })
 }
 
+/** Fill the three module slots without changing cached history or bypassing access. */
+export function completeMobileWorkspaceTabs(
+  tabs: MobileWorkspaceTab[],
+  canAccess: (key: string) => boolean,
+): MobileWorkspaceTab[] {
+  const candidates = [
+    ...tabs,
+    ...defaultMobileWorkspaceTabs(),
+    ...items.filter((item) => !item.hidden).map((item) => ({
+      key: item.key, item, href: buildNavItemHref(item),
+    })),
+  ]
+  const visible: MobileWorkspaceTab[] = []
+  for (const tab of candidates) {
+    if (!canAccess(tab.key) || visible.some((existing) => existing.key === tab.key)) continue
+    visible.push(tab)
+    if (visible.length === 3) break
+  }
+  return visible
+}
+
 export function resolveMobileWorkspaceTab(
   pathname: string,
   search: string,

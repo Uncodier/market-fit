@@ -56,6 +56,10 @@ export function usePeopleLeadActions(dependencies: Dependencies & { createQuery:
 
   // Confirm add to leads with selected segment
   const handleConfirmAddToLeads = async () => {
+    if (!currentSite?.id) {
+      toast.error('Site ID is required')
+      return
+    }
     try {
       setAddingToLeads(true)
       const payload = buildFinderPayload(currentPage) as any
@@ -66,7 +70,7 @@ export function usePeopleLeadActions(dependencies: Dependencies & { createQuery:
         payload.segment_id = selectedSegmentId
       }
       if (icpName && icpName.trim().length > 0) {
-        payload.campaign_name = icpName.trim()
+        payload.name = icpName.trim()
       }
       // Add total_targets with current search results total
       payload.total_targets = totalResults

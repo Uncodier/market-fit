@@ -16,11 +16,13 @@ import {
 } from "@/app/components/ui/alert-dialog"
 import {
   CreditCard,
+  CheckCircle2,
   Link,
   Pencil,
   Printer,
   Send,
   Trash2,
+  XCircle,
 } from "@/app/components/ui/icons"
 import { Sale } from "@/app/types"
 import { StatusBar } from "../../components/StatusBar"
@@ -124,6 +126,7 @@ export function SaleDetailHeader({
                     onClick={onPublish}
                     className="flex items-center gap-1 text-primary hover:bg-primary/10"
                   >
+                    <CheckCircle2 className="h-4 w-4" />
                     {t("common.publish") || "Publish"}
                   </Button>
                 ) : (
@@ -133,6 +136,7 @@ export function SaleDetailHeader({
                     onClick={onUnpublish}
                     className="flex items-center gap-1 text-orange-600 hover:bg-orange-50"
                   >
+                    <XCircle className="h-4 w-4" />
                     {t("common.cancel") || "Cancel"}
                   </Button>
                 ))}

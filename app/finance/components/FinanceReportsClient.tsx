@@ -11,7 +11,7 @@ import { StickyHeader } from '@/app/components/ui/sticky-header'
 import { Skeleton } from '@/app/components/ui/skeleton'
 import { SyncJournalEntriesDialog } from '@/app/accounting/components/SyncJournalEntriesDialog'
 import { CalendarDateRangePicker } from '@/app/components/ui/date-range-picker'
-import { TrendingUp, Building, ListOrdered, Download } from '@/app/components/ui/icons'
+import { TrendingUp, Building, ListOrdered, Download, RotateCw } from '@/app/components/ui/icons'
 import { reportCurrency } from '../report-currency'
 import { downloadFinanceReport, financeReportCsv } from '../report-export'
 import type { FinanceReportTab } from '../report-types'
@@ -82,7 +82,9 @@ function SiteFinanceReports({ siteId, defaultCurrency }: { siteId?: string; defa
             </TabsList>
           </div>
           <div className="ml-auto flex flex-wrap items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={report.refresh} disabled={!siteId || !currency}>Refresh</Button>
+            <Button variant="ghost" size="sm" onClick={report.refresh} disabled={!siteId || !currency}>
+              <RotateCw className="h-4 w-4" />Refresh
+            </Button>
             <Button variant="ghost" size="sm" className="flex items-center gap-1" onClick={exportReport}
               aria-label="Export report" disabled={!report.data}>
               <Download className="h-4 w-4" /><span className="hidden sm:inline">Export</span>

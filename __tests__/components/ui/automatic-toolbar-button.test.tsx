@@ -175,6 +175,18 @@ describe("automatic shared toolbar Button", () => {
     expect(React.isValidElement(toolbarActionChildren("Unusual action", "Unusual action", false))).toBe(true)
   })
 
+  it("preserves a filter-count adornment alongside the icon-only action", () => {
+    render(scope(<Button variant="ghost" aria-label="Clear (3)"
+      adornment={<span data-testid="filter-count">3</span>}>
+      <Pencil />Clear
+    </Button>))
+    const button = screen.getByRole("button", { name: "Clear (3)" })
+    expect(button.querySelector("svg")).toBeInTheDocument()
+    expect(button).not.toHaveTextContent("Clear")
+    expect(screen.getByTestId("filter-count")).toBeVisible()
+    expect(button).toContainElement(screen.getByTestId("filter-count"))
+  })
+
   it("settles under strict mode without a DOM-detection render loop", async () => {
     await act(async () => {
       render(<React.StrictMode>{scope(<Button>New record</Button>)}</React.StrictMode>)

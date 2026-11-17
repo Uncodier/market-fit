@@ -157,6 +157,7 @@ export default function LeadsPage() {
 
                       {(filters.status.length > 0 || filters.segments.length > 0 || filters.origin.length > 0) && (
                         <Button variant="ghost" size="sm" onClick={handleClearFilters} className="w-full md:w-auto h-10 md:h-9 rounded-md md:rounded-full">
+                          <XCircle className="h-4 w-4" />
                           <span className="ml-2">{t('leads.filters.clear') || 'Clear filters'}</span>
                         </Button>
                       )}

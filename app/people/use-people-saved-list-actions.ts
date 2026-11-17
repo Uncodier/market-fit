@@ -136,6 +136,8 @@ export function usePeopleSavedListActions(dependencies: Dependencies) {
         .update({ name: editingIcpName.trim() })
         .eq('id', editingIcp.id)
         .eq('site_id', editingSiteId)
+        .select('id')
+        .single()
 
       if (updateError) throw updateError
 

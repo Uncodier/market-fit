@@ -2,8 +2,10 @@
 
 import { GET, POST, DELETE } from '@/app/api/finder/[...path]/route'
 import { requireSiteAccess } from '@/lib/auth/api-site-access'
+import { userCanOnSite } from '@/lib/permissions/site-access'
 
 jest.mock('@/lib/auth/api-site-access', () => ({ requireSiteAccess: jest.fn() }))
+jest.mock('@/lib/permissions/site-access', () => ({ userCanOnSite: jest.fn() }))
 jest.mock('next/server', () => ({ NextResponse: {
   json: (body: unknown, init: ResponseInit) => Response.json(body, init),
 } }))
@@ -13,6 +15,9 @@ const icpId = '00000000-0000-4000-8000-000000000002'
 const apiOrigin = 'http://localhost:3001'
 const appOrigin = 'http://localhost:3000'
 const auth = { getSession: jest.fn() }
+const maybeSingle = jest.fn()
+const listQuery = { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), maybeSingle }
+const from = jest.fn(() => listQuery)
 const originalApiUrl = process.env.API_SERVER_URL
 const originalPublicApiUrl = process.env.NEXT_PUBLIC_API_SERVER_URL
 
@@ -32,7 +37,9 @@ beforeEach(() => {
   jest.clearAllMocks()
   process.env.API_SERVER_URL = apiOrigin
   delete process.env.NEXT_PUBLIC_API_SERVER_URL
-  ;(requireSiteAccess as jest.Mock).mockResolvedValue({ userId: 'user-1', supabase: { auth } })
+  ;(requireSiteAccess as jest.Mock).mockResolvedValue({ userId: 'user-1', supabase: { auth, from } })
+  maybeSingle.mockResolvedValue({ data: { id: icpId }, error: null })
+  ;(userCanOnSite as jest.Mock).mockResolvedValue(true)
   auth.getSession.mockResolvedValue({ data: { session: { user: { id: 'user-1' }, access_token: 'current-user-token' } }, error: null })
   ;(fetch as jest.Mock).mockReset().mockImplementation(async () =>
     Response.json({ success: true, data: { role_query: { query: { role_title: 'Founder' } } } }))
@@ -82,6 +89,31 @@ it('deletes a saved list without leaking backend credentials or user cookies', a
   expect((fetch as jest.Mock).mock.calls[0][1].headers).toEqual({
     Authorization: 'Bearer current-user-token', Accept: 'application/json',
   })
+})
+
+it.each(['GET', 'DELETE'])('never forwards an RLS-hidden list for %s', async method => {
+  maybeSingle.mockResolvedValue({ data: null, error: null })
+  const handler = method === 'GET' ? GET : DELETE
+  const response = await handler(request(`icp?icp_id=${icpId}&site_id=${siteId}`, method), context('icp'))
+  expect(response.status).toBe(404)
+  expect(listQuery.eq).toHaveBeenCalledWith('id', icpId)
+  expect(listQuery.eq).toHaveBeenCalledWith('site_id', siteId)
+  expect(fetch).not.toHaveBeenCalled()
+})
+
+it('fails closed on a list access lookup failure', async () => {
+  maybeSingle.mockResolvedValue({ data: null, error: { message: 'private database detail' } })
+  const response = await GET(request(`icp?icp_id=${icpId}&site_id=${siteId}`), context('icp'))
+  expect(response.status).toBe(503)
+  expect(await response.text()).not.toContain('private database detail')
+  expect(fetch).not.toHaveBeenCalled()
+})
+
+it('does not forward deletion when the actor lacks delete permission', async () => {
+  ;(userCanOnSite as jest.Mock).mockResolvedValue(false)
+  const response = await DELETE(request(`icp?icp_id=${icpId}&site_id=${siteId}`, 'DELETE'), context('icp'))
+  expect(response.status).toBe(403)
+  expect(fetch).not.toHaveBeenCalled()
 })
 
 it('rejects unrecognized routes, methods, malformed IDs and cross-site origins', async () => {

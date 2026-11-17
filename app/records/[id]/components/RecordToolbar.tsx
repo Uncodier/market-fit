@@ -22,6 +22,7 @@ import {
   PanelRightOpen,
   Quote,
   Redo,
+  RotateCw,
   Save,
   Trash2,
   Type as ParagraphIcon,
@@ -106,6 +107,7 @@ export function RecordToolbar({
       )}
       {saveStatus === "conflict" && (
         <Button type="button" variant="outline" size="sm" onClick={onReload}>
+          <RotateCw className="h-4 w-4" />
           Reload
         </Button>
       )}

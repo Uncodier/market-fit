@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import PeopleSearchPage from '@/app/people/page'
 import { apiClient } from '@/app/services/api-client-service'
 import { toast } from 'sonner'
+import { getSegments } from '@/app/segments/actions'
 import { deferred } from './test-helpers'
 
 jest.mock('@/app/services/api-client-service', () => ({ apiClient: { post: jest.fn(), get: jest.fn() } }))
@@ -30,6 +31,54 @@ afterEach(() => {
   cleanup()
   jest.useRealTimers()
   jest.restoreAllMocks()
+})
+
+it('keeps descriptive Finder toolbar actions text-only when idle', () => {
+  render(<PeopleSearchPage />)
+  const enrich = screen.getByRole('button', { name: 'Enrich 0 Leads' })
+  const prospect = screen.getByRole('button', { name: 'Enrich & prospect selected' })
+  expect(enrich).toHaveTextContent('Enrich 0 Leads')
+  expect(prospect).toHaveTextContent('Enrich & prospect selected')
+  for (const button of [enrich, prospect]) {
+    expect(button).toHaveClass('gap-2', 'px-4')
+    expect(button.querySelector('svg')).not.toBeInTheDocument()
+  }
+})
+
+it('sends the saved-list name using the backend name field without requiring a segment', async () => {
+  ;(getSegments as jest.Mock).mockResolvedValue({ segments: [] })
+  ;(apiClient.post as jest.Mock)
+    .mockResolvedValueOnce({ success: true, data: { search_results: [], total_search_results: 5 } })
+    .mockResolvedValueOnce({ success: true, data: { total_persons: 5 } })
+    .mockResolvedValueOnce({ success: true, data: { icp_mining: { id: 'saved-list-id' } } })
+  render(<PeopleSearchPage />)
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Search' })) })
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Enrich 5 Leads' })) })
+  fireEvent.change(screen.getByPlaceholderText('e.g. Summer 2026 Outreach'), { target: { value: '  My prospects  ' } })
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Enrich & Start Campaign' })) })
+  const [endpoint, payload, options] = (apiClient.post as jest.Mock).mock.calls[2]
+  expect(endpoint).toBe('/api/finder/person_role_search/createQuery')
+  expect(payload).toEqual(expect.objectContaining({ name: 'My prospects', site_id: 'site-a', total_targets: 5 }))
+  expect(payload).not.toHaveProperty('campaign_name')
+  expect(payload).not.toHaveProperty('segment_id')
+  expect(options).toEqual({ includeAuth: true })
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+})
+
+it('keeps the named list form open and reports a failed save', async () => {
+  ;(getSegments as jest.Mock).mockResolvedValue({ segments: [] })
+  ;(apiClient.post as jest.Mock)
+    .mockResolvedValueOnce({ success: true, data: { search_results: [], total_search_results: 5 } })
+    .mockResolvedValueOnce({ success: true, data: { total_persons: 5 } })
+    .mockResolvedValueOnce({ success: false, error: { message: 'Could not save list' } })
+  render(<PeopleSearchPage />)
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Search' })) })
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Enrich 5 Leads' })) })
+  fireEvent.change(screen.getByPlaceholderText('e.g. Summer 2026 Outreach'), { target: { value: 'My prospects' } })
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Enrich & Start Campaign' })) })
+  expect(toast.error).toHaveBeenCalledWith('Could not save list')
+  expect(toast.success).not.toHaveBeenCalled()
+  expect(screen.getByPlaceholderText('e.g. Summer 2026 Outreach')).toHaveValue('My prospects')
 })
 
 it('disables the actual page Search button until both requests settle and allows another search', async () => {

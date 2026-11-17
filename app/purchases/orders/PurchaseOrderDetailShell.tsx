@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { Badge } from '@/app/components/ui/badge'
 import { Button } from '@/app/components/ui/button'
-import { ChevronLeft, Printer, RotateCcw } from '@/app/components/ui/icons'
+import { ChevronLeft, Printer, RotateCcw, FileText } from '@/app/components/ui/icons'
 import { StickyHeader } from '@/app/components/ui/sticky-header'
 import { ToolbarActionGroup, ToolbarActionGroups } from '@/app/components/ui/toolbar-action-groups'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs'
@@ -40,7 +40,7 @@ export function PurchaseOrderDetailShell({ order, buyAgainHref, children, notice
             <ToolbarActionGroups>
               <ToolbarActionGroup label="Navigation actions">
                 <Button asChild variant="ghost" size="sm"><Link href="/purchases/orders"><ChevronLeft className="mr-1 h-4 w-4" />{t('buyer.orders.detail.backToOrders') || 'Back to orders'}</Link></Button>
-                {order && relatedQuotationHref && <Button asChild variant="ghost" size="sm"><Link href={relatedQuotationHref}>View awarded quotation</Link></Button>}
+                {order && relatedQuotationHref && <Button asChild variant="ghost" size="sm"><Link href={relatedQuotationHref}><FileText className="mr-1 h-4 w-4" />View awarded quotation</Link></Button>}
               </ToolbarActionGroup>
               <ToolbarActionGroup label="Document actions">
                 {order && <Button variant="ghost" size="sm" onClick={() => window.print()} className="flex items-center gap-1"><Printer className="h-4 w-4" />{t('common.print') || 'Print'}</Button>}

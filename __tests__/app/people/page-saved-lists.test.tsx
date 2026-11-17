@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import PeopleSearchPage from '@/app/people/page'
 import { createClient } from '@/lib/supabase/client'
 import { apiClient } from '@/app/services/api-client-service'
@@ -35,7 +35,10 @@ beforeEach(() => {
   mockSiteId = 'site-a'
   jest.clearAllMocks()
   order.mockReset()
-  ;(createClient as jest.Mock).mockReturnValue({ from })
+  ;(createClient as jest.Mock).mockReturnValue({ from, auth: {
+    getSession: jest.fn().mockResolvedValue({ data: { session: { user: { id: 'actor-a' } } }, error: null }),
+    onAuthStateChange: jest.fn(() => ({ data: { subscription: { unsubscribe: jest.fn() } } })),
+  } })
   order.mockResolvedValue({ data: [pendingList], error: null })
   jest.spyOn(console, 'log').mockImplementation(() => {})
   jest.spyOn(console, 'error').mockImplementation(() => {})
@@ -55,7 +58,7 @@ it('shows a pending unnamed list using a flat site-scoped ICP query', async () =
   expect(screen.getByRole('heading', { name: 'Pending' })).toBeInTheDocument()
   expect(from).toHaveBeenCalledWith('icp_mining')
   expect(from).not.toHaveBeenCalledWith('segments')
-  expect(eq).toHaveBeenCalledWith('site_id', 'site-a')
+  await waitFor(() => expect(eq).toHaveBeenCalledWith('site_id', 'site-a'))
   expect(select.mock.calls[0][0]).not.toContain('role_query_segments')
   expect(order).toHaveBeenCalledWith('created_at', { ascending: false })
 })
@@ -99,7 +102,7 @@ it('never shows another site’s lists or a late response from a previous site',
 
   const { rerender } = render(<PeopleSearchPage />)
   fireEvent.mouseDown(screen.getByRole('tab', { name: 'Saved lists' }))
-  expect(eq).toHaveBeenCalledWith('site_id', 'site-a')
+  await waitFor(() => expect(eq).toHaveBeenCalledWith('site_id', 'site-a'))
 
   mockSiteId = 'site-b'
   rerender(<PeopleSearchPage />)

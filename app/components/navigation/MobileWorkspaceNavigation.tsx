@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils"
 import { hasId } from "@/lib/navigation/breadcrumb-engine"
 import { NavigationLink } from "./NavigationLink"
 import {
+  completeMobileWorkspaceTabs,
   resolveMobileWorkspaceTab,
 } from "./mobile-workspace-tabs"
 import { useMobileWorkspaceTabs } from "./use-mobile-workspace-tabs"
@@ -34,7 +35,7 @@ export function MobileWorkspaceNavigation() {
   const ready = !siteLoading && !authLoading
   const tabs = useMobileWorkspaceTabs(ready ? user?.id : undefined, ready ? currentSite?.id : undefined, allowedActive)
 
-  const visibleTabs = tabs.filter((tab) => !access || access.canAccessNavKey(tab.key))
+  const visibleTabs = completeMobileWorkspaceTabs(tabs, (key) => !access || access.canAccessNavKey(key))
   const isRobots = pathname === "/robots" || pathname.startsWith("/robots/")
   const isAgent = isRobots && !["imprenta", "workflow"].includes(searchParams.get("mode") ?? "")
   const agentParams = new URLSearchParams(isRobots ? searchParams.toString() : "")

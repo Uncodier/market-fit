@@ -9,7 +9,7 @@ import { getExpenseById, deleteExpense } from "@/app/transactions/actions"
 import { Button } from "@/app/components/ui/button"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { ToolbarActionGroups, ToolbarActionGroup } from "@/app/components/ui/toolbar-action-groups"
-import { Pencil, Trash2 } from "@/app/components/ui/icons"
+import { Pencil, Trash2, CheckCircle2, XCircle } from "@/app/components/ui/icons"
 import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogCancel, AlertDialogAction, AlertDialogTrigger } from "@/app/components/ui/alert-dialog"
 import { CreateExpenseDialog } from "../components/CreateExpenseDialog"
 import { ExpenseDocument } from "../components/ExpenseDocument"
@@ -204,6 +204,7 @@ export default function ExpenseDetailPage(props: { params: Promise<{ id: string 
                       onClick={handlePublish}
                       className="flex items-center gap-1 text-primary hover:bg-primary/10"
                     >
+                      <CheckCircle2 className="h-4 w-4" />
                       {t('common.publish') || "Publish"}
                     </Button>
                   ) : (
@@ -213,6 +214,7 @@ export default function ExpenseDetailPage(props: { params: Promise<{ id: string 
                       onClick={handleUnpublish}
                       className="flex items-center gap-1 text-orange-600 hover:bg-orange-50"
                     >
+                      <XCircle className="h-4 w-4" />
                       {t('common.cancel') || "Cancel"}
                     </Button>
                   )

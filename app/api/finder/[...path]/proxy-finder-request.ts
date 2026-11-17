@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { requireSiteAccess } from '@/lib/auth/api-site-access'
+import { userCanOnSite } from '@/lib/permissions/site-access'
 import { decodeRequestBody, readLimitedRequestBody, RequestBodyTooLargeError } from '@/lib/http/read-limited-request-body'
 
 const uuid = z.string().uuid()
@@ -87,6 +88,16 @@ export async function proxyFinderRequest(request: Request, path: string[]): Prom
 
   const access = await requireSiteAccess(request, siteId!)
   if (access.error) return access.error
+  if (route === 'icp') {
+    const listId = query.get('icp_id')!
+    const { data: list, error: listError } = await access.supabase
+      .from('icp_mining').select('id').eq('id', listId).eq('site_id', siteId!).maybeSingle()
+    if (listError) return error('Could not verify saved list access', 503)
+    if (!list) return error('Saved list not found', 404)
+    if (request.method === 'DELETE' && !await userCanOnSite(access.supabase, siteId!, 'delete')) {
+      return error('You cannot delete this saved list', 403)
+    }
+  }
   const { data: { session }, error: sessionError } = await access.supabase.auth.getSession()
   if (sessionError || !session?.access_token || session.user?.id !== access.userId) {
     return error('Please sign in again to use Find People.', 401)

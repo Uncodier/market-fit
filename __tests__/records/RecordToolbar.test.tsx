@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react"
+import { fireEvent, render, screen } from "@testing-library/react"
 import { RecordToolbar } from "@/app/records/[id]/components/RecordToolbar"
 
 const baseProps = {
@@ -17,6 +17,17 @@ const baseProps = {
 }
 
 describe("RecordToolbar", () => {
+  it("shows a reload icon and preserves its handler when saving conflicts", () => {
+    const onReload = jest.fn()
+    render(<RecordToolbar {...baseProps} saveStatus="conflict" onReload={onReload} />)
+    const button = screen.getByRole("button", { name: "Reload" })
+    expect(button.querySelector("svg path")).toBeInTheDocument()
+    expect(button.querySelectorAll("svg circle")).toHaveLength(0)
+    expect(button).not.toHaveTextContent("Reload")
+    fireEvent.click(button)
+    expect(onReload).toHaveBeenCalledTimes(1)
+  })
+
   it("keeps delete on the left when no contextual tools are visible", () => {
     render(<RecordToolbar {...baseProps} />)
     expect(screen.getByRole("button", { name: "Delete record" })).toBeVisible()

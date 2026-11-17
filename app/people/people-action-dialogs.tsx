@@ -110,7 +110,7 @@ export function PeopleActionDialogs({ workspace }: { workspace: PeopleWorkspace 
               </SelectContent>
             </Select>
             <div className="pt-2">
-              <p className="text-xs text-muted-foreground mb-1">Campaign (Optional)</p>
+              <p className="text-xs text-muted-foreground mb-1">Saved list name (Optional)</p>
               <Input
                 placeholder="e.g. Summer 2026 Outreach"
                 value={icpName}
