@@ -101,7 +101,9 @@ share the same artwork; a personal avatar still takes precedence in the sidebar.
 The fixed prompt never includes the account name or email.
 
 The 2026-11-16 navigation prompt refresh is limited to Apps, Procurement
-Settings, Procurement Approvals, Procurement Rules, and Procurement Tenders.
+Settings, Procurement Approvals, Procurement Rules, Procurement Tenders,
+Profile, and Notifications. Apps uses a strict frontal orthographic composition
+with no visible side faces; the other refreshed icons retain isometric views.
 `app/config/module-image-realistic.ts` combines their existing recognizable
 object constraints with isometric PBR materials, textless surfaces, floating
 shadow-free compositions, and fixed contrasting pastel backgrounds. Other
