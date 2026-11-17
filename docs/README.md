@@ -15,6 +15,8 @@ Use the guides below before relying on older implementation notes.
 
 - [Instance asset loading](INSTANCE_ASSET_LOADING.md) — grouped RLS reads, identity-bound cache invalidation, auxiliary freshness, unknown counts and rollout limits.
 
+- [Imprenta responsiveness](IMPRENTA_PERFORMANCE.md) — isolated card rendering, canvas-only read profiles, deferred panels and graph/log loading boundaries; production profiling remains separate.
+
 - [14035 integration readiness](MERGE_14035_READINESS.md) — route inventory,
   commercial proxy checks, merge preparation and outstanding release gates.
 

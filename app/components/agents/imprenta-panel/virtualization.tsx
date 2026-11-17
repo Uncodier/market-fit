@@ -71,7 +71,7 @@ export function useImprentaVirtualization({
       panelGridCacheRef,
       canvasNodes,
       stablePositions,
-      nodeHeightsRef.current,
+      nodeHeightsSnapshot,
       IMPRENTA_NODE_W,
       IMPRENTA_ROW_H
     )
@@ -80,7 +80,7 @@ export function useImprentaVirtualization({
     candidates.forEach((id) => {
       const p = stablePositions[id]
       if (!p) return
-      const h = nodeHeightsRef.current[id] || IMPRENTA_ROW_H
+      const h = nodeHeightsSnapshot[id] || IMPRENTA_ROW_H
       const bbox: GraphBBox = {
         minX: p.x,
         minY: p.y,
@@ -90,7 +90,7 @@ export function useImprentaVirtualization({
       if (bboxIntersects(bbox, vw)) out.add(id)
     })
     return out
-  }, [canvasNodes, viewportInfo, stablePositions, layoutEpoch])
+  }, [canvasNodes, viewportInfo, stablePositions, nodeHeightsSnapshot])
 
   useEffect(() => {
     const debounceId: ReturnType<typeof setTimeout> | null = null

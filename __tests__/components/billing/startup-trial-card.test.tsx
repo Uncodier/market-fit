@@ -120,9 +120,34 @@ it.each(["collaborator", "marketing"])("shows active read-only countdown to %s u
   permission(role, false)
   await mount(active)
   expect(screen.getByLabelText("Trial time remaining")).toHaveTextContent("15d 0h 0m remaining")
-  expect(screen.getByText("Trial credits remaining: 50 of 50")).toBeVisible()
+  expect(screen.getByRole("progressbar", { name: "Trial credits remaining" })).toHaveAttribute("aria-valuetext", "50 of 50 credits remaining")
   expect(screen.queryByRole("button", { name: /Start 15-day/ })).not.toBeInTheDocument()
   expect(refreshSiteBilling).toHaveBeenCalledWith(siteId)
+})
+
+it.each([0, 27.612, 50])("shows the exact %s credit balance with an accessible remaining-credit meter", async credits => {
+  await mount({ ...active, credits_remaining: credits })
+  expect(screen.getByText("Active", { exact: true })).toBeVisible()
+  expect(screen.getByText(String(credits), { exact: true })).toBeVisible()
+  const meter = screen.getByRole("progressbar", { name: "Trial credits remaining" })
+  expect(meter).toHaveAttribute("aria-valuenow", String(credits / 50 * 100))
+  expect(meter).toHaveAttribute("aria-valuetext", `${credits} of 50 credits remaining`)
+  expect(screen.getByText("of 50 credits")).toBeVisible()
+  expect(document.querySelector("time")).toHaveAttribute("datetime", active.ends_at)
+  expect(document.querySelector("time")).toHaveTextContent("Nov 3, 2026")
+  expect(screen.queryByText(/Your 15 days start only/)).not.toBeInTheDocument()
+  expect(screen.getByRole("link", { name: "View paid Startup (Foundry) plans" })).toHaveAttribute("href", "#subscription-plan")
+})
+
+it("does not present an active badge or a running countdown while confirming expiration", async () => {
+  jest.useFakeTimers().setSystemTime(new Date(now))
+  await mount({ ...active, server_now: "2026-11-03T11:59:59.000Z" })
+  fetchMock.mockReturnValueOnce(new Promise<never>(() => {}))
+  await act(async () => { await jest.advanceTimersByTimeAsync(1000) })
+  expect(screen.getByText("Confirming status")).toBeVisible()
+  expect(screen.getByText("Trial time has ended. Confirming current status…")).toBeVisible()
+  expect(screen.queryByText("Active", { exact: true })).not.toBeInTheDocument()
+  expect(screen.queryByLabelText("Trial time remaining")).not.toBeInTheDocument()
 })
 
 it("re-reads and refreshes billing at expiration without activation or Stripe navigation", async () => {

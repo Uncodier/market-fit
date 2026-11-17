@@ -15,6 +15,9 @@ const CHUNK_SIZE = 4
 const NODE_QUERY_CHUNK_SIZE = 100
 const NODE_PAGE_SIZE = 1000
 
+/** Canvas headers only need node/workflow counters; the browser modal needs everything. */
+export type InstanceBrowserReadProfile = "full" | "canvas"
+
 function chunkValues<T>(values: T[], size: number) {
   const chunks: T[][] = []
   for (let index = 0; index < values.length; index += size) {
@@ -31,6 +34,7 @@ async function fetchInstanceNodeRows(instanceIds: string[], signal: AbortSignal)
     const rows: InstanceNodeRow[] = []
 
     for (let offset = 0; ; offset += NODE_PAGE_SIZE) {
+      if (signal.aborted) throw new Error("Instance node read aborted")
       const { data, error } = await supabase
         .from("instance_nodes")
         .select("instance_id, type")
@@ -39,7 +43,7 @@ async function fetchInstanceNodeRows(instanceIds: string[], signal: AbortSignal)
         .range(offset, offset + NODE_PAGE_SIZE - 1)
         .abortSignal(signal)
 
-      if (error) throw error
+      if (error || signal.aborted) throw error || new Error("Instance node read aborted")
 
       const page = (data || []) as InstanceNodeRow[]
       rows.push(...page)
@@ -52,10 +56,20 @@ async function fetchInstanceNodeRows(instanceIds: string[], signal: AbortSignal)
   return results.flat()
 }
 
-export function useInstanceBrowserData(isOpen: boolean, instances: Array<{ id: string }>, siteId?: string) {
+export function useInstanceBrowserData(
+  isOpen: boolean,
+  instances: Array<{ id: string }>,
+  siteId?: string,
+  profile: InstanceBrowserReadProfile = "full",
+) {
   const idsKey = JSON.stringify([...new Set(instances.map(instance => instance.id))].sort())
-  const { summaries, isLoading: isLoadingAssets, error: assetsError, retry: retryAssets } = useInstanceAssetSummaries(siteId, instances.map(instance => instance.id), isOpen)
-  const [snapshot, setSnapshot] = useState<{ siteId?: string; stats: Record<string, InstanceStats>; messages: Record<string, InstanceMessages> }>({ stats: {}, messages: {} })
+  const readDetails = profile === "full"
+  const enabled = isOpen && Boolean(siteId)
+  const { summaries, isLoading: isLoadingAssets, error: assetsError, retry: retryAssets } = useInstanceAssetSummaries(siteId, instances.map(instance => instance.id), enabled && readDetails)
+  const [snapshot, setSnapshot] = useState<{
+    siteId?: string; profile?: InstanceBrowserReadProfile
+    stats: Record<string, InstanceStats>; messages: Record<string, InstanceMessages>
+  }>({ stats: {}, messages: {} })
   const [isLoadingStats, setIsLoadingStats] = useState(false)
   const [isLoadingMessages, setIsLoadingMessages] = useState(false)
   const [dataError, setDataError] = useState<string | null>(null)
@@ -73,7 +87,7 @@ export function useInstanceBrowserData(isOpen: boolean, instances: Array<{ id: s
       if (running || lifecycle.signal.aborted) return
       running = true
       setIsLoadingStats(true)
-      setIsLoadingMessages(true)
+      setIsLoadingMessages(readDetails)
       setDataError(null)
       const request = new AbortController()
       const abort = () => request.abort()
@@ -81,7 +95,10 @@ export function useInstanceBrowserData(isOpen: boolean, instances: Array<{ id: s
       const timeout = setTimeout(abort, 30_000)
       const current = () => !lifecycle.signal.aborted && !request.signal.aborted
       const update = (apply: (previous: typeof snapshot) => typeof snapshot) => {
-        if (current()) setSnapshot(previous => apply(previous.siteId === siteId ? previous : { siteId, stats: {}, messages: {} }))
+        if (current()) setSnapshot(previous => current()
+          ? apply(previous.siteId === siteId && previous.profile === profile
+            ? previous : { siteId, profile, stats: {}, messages: {} })
+          : previous)
       }
       const stats = async () => {
         try {
@@ -90,13 +107,14 @@ export function useInstanceBrowserData(isOpen: boolean, instances: Array<{ id: s
           update(previous => ({ ...previous, stats: Object.fromEntries(instanceIds.map(id => [id, {
             ...previous.stats[id], ...counts[id], recentAssets: [], avatarUrl: null,
           }])) }))
+          if (!readDetails) return
           for (let offset = 0; offset < instanceIds.length; offset += CHUNK_SIZE) {
             if (!current()) return
             const results = await Promise.all(instanceIds.slice(offset, offset + CHUNK_SIZE).map(async id => {
               const result = await supabase.from("requirement_status").select("id", { count: "exact", head: true })
                 .eq("instance_id", id).eq("site_id", siteId).abortSignal(request.signal)
               if (result.error || request.signal.aborted) throw new Error("Instance counts unavailable")
-              return { id, count: result.count || 0 }
+              return { id, count: result.count ?? undefined }
             }))
             update(previous => ({ ...previous, stats: { ...previous.stats,
               ...Object.fromEntries(results.map(result => [result.id, { ...previous.stats[result.id], requirements: result.count }])) } }))
@@ -104,7 +122,7 @@ export function useInstanceBrowserData(isOpen: boolean, instances: Array<{ id: s
         } catch {
           if (!lifecycle.signal.aborted) {
             setDataError("Instance details unavailable")
-            setSnapshot(previous => ({ ...previous, stats: {} }))
+            setSnapshot(previous => lifecycle.signal.aborted ? previous : { ...previous, stats: {} })
           }
         } finally { if (!lifecycle.signal.aborted) setIsLoadingStats(false) }
       }
@@ -125,11 +143,11 @@ export function useInstanceBrowserData(isOpen: boolean, instances: Array<{ id: s
         } catch {
           if (!lifecycle.signal.aborted) {
             setDataError("Instance details unavailable")
-            setSnapshot(previous => ({ ...previous, messages: {} }))
+            setSnapshot(previous => lifecycle.signal.aborted ? previous : { ...previous, messages: {} })
           }
         } finally { if (!lifecycle.signal.aborted) setIsLoadingMessages(false) }
       }
-      try { await Promise.all([stats(), messages()]) }
+      try { await Promise.all([stats(), ...(readDetails ? [messages()] : [])]) }
       finally {
         clearTimeout(timeout)
         lifecycle.signal.removeEventListener("abort", abort)
@@ -144,18 +162,18 @@ export function useInstanceBrowserData(isOpen: boolean, instances: Array<{ id: s
     const interval = setInterval(refresh, 5_000)
     document.addEventListener("visibilitychange", refresh)
     return () => { lifecycle.abort(); clearInterval(interval); document.removeEventListener("visibilitychange", refresh) }
-  }, [isOpen, idsKey, siteId, revision])
+  }, [isOpen, idsKey, siteId, revision, profile, readDetails])
 
   const instanceStats = useMemo(() => {
-    if (!isOpen || snapshot.siteId !== siteId) return {}
+    if (!enabled || snapshot.siteId !== siteId || snapshot.profile !== profile) return {}
     const ids: string[] = JSON.parse(idsKey)
     return Object.fromEntries(ids.filter(id => snapshot.stats[id]).map(id => [id, snapshot.stats[id]]))
-  }, [snapshot, siteId, isOpen, idsKey])
+  }, [snapshot, siteId, enabled, idsKey, profile])
   const instanceMessages = useMemo(() => {
-    if (!isOpen || snapshot.siteId !== siteId) return {}
+    if (!enabled || !readDetails || snapshot.siteId !== siteId || snapshot.profile !== profile) return {}
     const ids: string[] = JSON.parse(idsKey)
     return Object.fromEntries(ids.filter(id => snapshot.messages[id]).map(id => [id, snapshot.messages[id]]))
-  }, [snapshot, siteId, isOpen, idsKey])
+  }, [snapshot, siteId, enabled, idsKey, profile, readDetails])
 
   const mergedStats = useMemo(() => {
     const next = { ...instanceStats }
@@ -165,5 +183,11 @@ export function useInstanceBrowserData(isOpen: boolean, instances: Array<{ id: s
     }
     return next
   }, [instanceStats, summaries])
-  return { instanceMessages, instanceStats: mergedStats, isLoadingStats: isLoadingStats || isLoadingAssets, isLoadingMessages, assetsError, retryAssets, dataError, retryData }
+  return {
+    instanceMessages, instanceStats: mergedStats,
+    isLoadingStats: enabled && (isLoadingStats || isLoadingAssets),
+    isLoadingMessages: enabled && readDetails && isLoadingMessages,
+    assetsError: enabled && readDetails ? assetsError : null, retryAssets,
+    dataError: enabled ? dataError : null, retryData,
+  }
 }

@@ -230,8 +230,8 @@ export function useRobotsController() {
     }
   }, [activeRobotInstance]);
 
-  const shouldFetchStats = viewMode === "imprenta" || viewMode === "workflow"
-  const { instanceStats } = useInstanceBrowserData(shouldFetchStats, tabInstances, currentSite?.id)
+  const shouldFetchStats = isCanvasMode
+  const { instanceStats } = useInstanceBrowserData(shouldFetchStats, tabInstances, currentSite?.id, "canvas")
   
   // Clean up title on unmount
   useEffect(() => {

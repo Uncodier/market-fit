@@ -22,8 +22,8 @@ function renderCard(record = node) {
   const props = {
     node: record, pos: { x: 100, y: 100 }, hasResult: true,
     actionRunning: false, hasCnt: false, hasAud: false, needAudience: false,
-    draggingNodeId: null, registerNodeRef: jest.fn(), nodes: [record], dummyNodes: [],
-    contexts: [], logs: [], supabase: {}, generatingNodeIds: new Set(), currentSite: null,
+    isDragging: false, isGenerating: false, hasRealChildren: false,
+    registerNodeRef: jest.fn(), nodes: [], contexts: [], logs: [], supabase: {}, currentSite: null,
     textParams: {}, imageParams: {}, videoParams: {}, audioParams: {}, renderMediaWithZoom,
     actions: {
       getParentNode: jest.fn(), isImprentaWorkflowActionNode: () => true,

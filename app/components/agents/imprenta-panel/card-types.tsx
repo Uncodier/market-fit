@@ -6,13 +6,15 @@ import type { useImprentaMedia } from "./media"
 type State = ReturnType<typeof useImprentaPanelState>
 
 export type ImprentaNodeCardProps = Pick<State,
-  "nodes" | "dummyNodes" | "contexts" | "logs" | "supabase" |
-  "generatingNodeIds" | "currentSite" | "textParams" | "imageParams" |
+  "nodes" | "contexts" | "logs" | "supabase" |
+  "currentSite" | "textParams" | "imageParams" |
   "videoParams" | "audioParams"
 > & {
   node: InstanceNode
   pos: { x: number; y: number }
-  draggingNodeId: string | null
+  isDragging: boolean
+  isGenerating: boolean
+  hasRealChildren: boolean
   hasResult: boolean
   actionRunning: boolean
   hasCnt: boolean
@@ -20,5 +22,5 @@ export type ImprentaNodeCardProps = Pick<State,
   needAudience: boolean
   registerNodeRef: (id: string, el: HTMLDivElement | null) => void
   renderMediaWithZoom: ReturnType<typeof useImprentaMedia>["renderMediaWithZoom"]
-  actions: ReturnType<typeof useImprentaLayoutEffects>["actionsRef"]["current"]
+  actions: ReturnType<typeof useImprentaLayoutEffects>["actions"]
 }

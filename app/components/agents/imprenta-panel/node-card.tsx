@@ -1,4 +1,4 @@
-import { useState, memo } from "react"
+import { useState, useCallback, memo } from "react"
 
 import { imprentaNodeMediaAspectCss } from "@/app/lib/imprenta-media-aspect"
 import { cn } from "@/lib/utils"
@@ -20,7 +20,9 @@ import { ImprentaCardActions } from './card-actions'
 export const ImprentaNodeCardInner = memo(function ImprentaNodeCardInner({
   node,
   pos,
-  draggingNodeId,
+  isDragging,
+  isGenerating,
+  hasRealChildren,
   hasResult,
   actionRunning,
   hasCnt,
@@ -28,11 +30,9 @@ export const ImprentaNodeCardInner = memo(function ImprentaNodeCardInner({
   needAudience,
   registerNodeRef,
   nodes,
-  dummyNodes,
   contexts,
   logs,
   supabase,
-  generatingNodeIds,
   currentSite,
   textParams,
   imageParams,
@@ -42,7 +42,9 @@ export const ImprentaNodeCardInner = memo(function ImprentaNodeCardInner({
   actions,
 }: ImprentaNodeCardProps) {
   const [isTestDialogOpen, setIsTestDialogOpen] = useState(false)
-  const mediaAspect = imprentaNodeMediaAspectCss(node, actions.getParentNode(node))
+  const parentNode = nodes.find(parent => parent.id === node.parent_node_id)
+  const mediaAspect = imprentaNodeMediaAspectCss(node, parentNode)
+  const registerRef = useCallback((el: HTMLDivElement | null) => registerNodeRef(node.id, el), [node.id, registerNodeRef])
   const isVisualMediaCard = isImprentaVisualMediaResultCard(node)
   const renderResultMedia = (url: string, type: "image" | "video", key: React.Key) =>
     renderMediaWithZoom(url, type, key, mediaAspect, isVisualMediaCard)
@@ -52,11 +54,11 @@ export const ImprentaNodeCardInner = memo(function ImprentaNodeCardInner({
   return (
     <div
       key={node.id}
-      ref={(el) => registerNodeRef(node.id, el)}
+      ref={registerRef}
       data-node-id={node.id}
       className={cn(
         "absolute cursor-grab active:cursor-grabbing",
-        draggingNodeId ? "select-none" : ""
+        isDragging ? "select-none" : ""
       )}
       style={{
         transform: `translate3d(${pos.x}px, ${pos.y}px, 0)`,
@@ -231,11 +233,11 @@ export const ImprentaNodeCardInner = memo(function ImprentaNodeCardInner({
               )}
             </div>
 
-            <ImprentaCardEditor actions={actions} node={node} hasResult={hasResult} nodes={nodes} generatingNodeIds={generatingNodeIds} supabase={supabase} currentSite={currentSite} textParams={textParams} imageParams={imageParams} videoParams={videoParams} audioParams={audioParams} />
+            <ImprentaCardEditor actions={actions} node={node} hasResult={hasResult} hasRealChildren={hasRealChildren} isGenerating={isGenerating} supabase={supabase} currentSite={currentSite} textParams={textParams} imageParams={imageParams} videoParams={videoParams} audioParams={audioParams} />
 
-            <ImprentaCardResult hasResult={hasResult} isVisualMediaCard={isVisualMediaCard} nodes={nodes} dummyNodes={dummyNodes} actions={actions} node={node} logs={logs} currentSite={currentSite} renderResultMedia={renderResultMedia} mediaAspect={mediaAspect} />
+            <ImprentaCardResult hasResult={hasResult} isVisualMediaCard={isVisualMediaCard} nodes={nodes} actions={actions} node={node} logs={logs} currentSite={currentSite} renderResultMedia={renderResultMedia} mediaAspect={mediaAspect} />
 
-            <ImprentaCardActions isVisualMediaCard={isVisualMediaCard} actions={actions} node={node} hasResult={hasResult} resultBtnVariant={resultBtnVariant} resultBtnClass={resultBtnClass} contexts={contexts} resultIconClass={resultIconClass} needAudience={needAudience} setIsTestDialogOpen={setIsTestDialogOpen} />
+            <ImprentaCardActions isVisualMediaCard={isVisualMediaCard} actions={actions} node={node} parentNode={parentNode} hasResult={hasResult} resultBtnVariant={resultBtnVariant} resultBtnClass={resultBtnClass} contexts={contexts} resultIconClass={resultIconClass} needAudience={needAudience} setIsTestDialogOpen={setIsTestDialogOpen} />
           </div>
         </CardContent>
       </Card>

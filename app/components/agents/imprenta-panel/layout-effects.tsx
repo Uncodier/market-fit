@@ -1,4 +1,4 @@
-import { useEffect, useRef, useMemo, useCallback } from "react"
+import { useEffect, useLayoutEffect, useRef, useMemo, useCallback } from "react"
 import { InstanceNode } from "@/app/types/instance-nodes"
 import { positionsNearlyEqual, isImprentaWorkflowActionNode } from './node-helpers'
 import type { useImprentaPanelState } from './state'
@@ -9,7 +9,7 @@ import type { useImprentaConnections } from './connections'
 import type { useImprentaExecution } from './execution'
 import type { useImprentaVirtualization } from './virtualization'
 
-type ImprentaLayoutEffectsOptions = Pick<ReturnType<typeof useImprentaPanelState>, "setPositions" | "nodes" | "dummyNodes" | "draggingNodeRef" | "nodeHeightsRef" | "positions" | "persistenceBarrier" | "setNodes" | "setZoomedMedia"> & Pick<ReturnType<typeof useImprentaLayout>, "getLayoutPositions" | "ROW_H" | "NODE_W"> & Pick<ReturnType<typeof useImprentaDragging>, "handleNodeMouseDown"> & Pick<ReturnType<typeof useImprentaNodeActions>, "handleDeleteNode" | "handleDuplicateNode" | "handleCreateActionFromContext"> & Pick<ReturnType<typeof useImprentaConnections>, "handleConnectionDrop" | "handleConnectionStart"> & Pick<ReturnType<typeof useImprentaExecution>, "handleExecuteNode"> & Pick<ReturnType<typeof useImprentaVirtualization>, "handleImprentaNodeHover">
+type ImprentaLayoutEffectsOptions = Pick<ReturnType<typeof useImprentaPanelState>, "setPositions" | "nodes" | "dummyNodes" | "draggingNodeRef" | "nodeHeightsRef" | "positions" | "persistenceBarrier" | "setNodes" | "setZoomedMedia"> & Pick<ReturnType<typeof useImprentaLayout>, "getLayoutPositions" | "ROW_H" | "NODE_W"> & Pick<ReturnType<typeof useImprentaDragging>, "handleNodeMouseDown"> & Pick<ReturnType<typeof useImprentaNodeActions>, "handleDeleteNode" | "handleDuplicateNode" | "handleCreateActionFromContext"> & Pick<ReturnType<typeof useImprentaConnections>, "handleConnectionDrop" | "handleConnectionStart"> & Pick<ReturnType<typeof useImprentaExecution>, "handleExecuteNode"> & Pick<ReturnType<typeof useImprentaVirtualization>, "handleImprentaNodeHover" | "nodeHeightsSnapshot">
 
 export function useImprentaLayoutEffects({
   setPositions,
@@ -18,6 +18,7 @@ export function useImprentaLayoutEffects({
   draggingNodeRef,
   getLayoutPositions,
   nodeHeightsRef,
+  nodeHeightsSnapshot,
   positions,
   ROW_H,
   NODE_W,
@@ -36,9 +37,9 @@ export function useImprentaLayoutEffects({
   useEffect(() => {
     setPositions(prev => {
       const allNodes = [...nodes, ...dummyNodes]
-      const nodeIds = new Set(allNodes.map(n => n.id))
+      const nodeIndex = new Map(allNodes.map(n => [n.id, n]))
       const cleaned = Object.fromEntries(
-        Object.entries(prev).filter(([id]) => nodeIds.has(id))
+        Object.entries(prev).filter(([id]) => nodeIndex.has(id))
       )
 
       let updatedWithDb = false;
@@ -56,7 +57,7 @@ export function useImprentaLayoutEffects({
           // Backend often persists a copy of the parent's settings on new children; that puts
           // ui_position on the child equal to the parent and overwrites the dummy handoff layout.
           if (n.parent_node_id) {
-            const parentNode = allNodes.find(p => p.id === n.parent_node_id)
+            const parentNode = nodeIndex.get(n.parent_node_id)
             const parentDb = parentNode && (parentNode.settings)?.ui_position
             const parentClean = cleaned[n.parent_node_id]
             const overlapsParent =
@@ -85,9 +86,9 @@ export function useImprentaLayoutEffects({
       if (hasMissing || hasStale || updatedWithDb) {
         return getLayoutPositions(allNodes, cleaned, nodeHeightsRef.current)
       }
-      return cleaned
+      return prev
     })
-  }, [nodes, dummyNodes])
+  }, [nodes, dummyNodes, draggingNodeRef, getLayoutPositions, nodeHeightsRef, setPositions])
 
   const maxBounds = useMemo(() => {
     let minX = Infinity
@@ -100,7 +101,7 @@ export function useImprentaLayoutEffects({
       if (typeof pos.x !== 'number' || typeof pos.y !== 'number' || isNaN(pos.x) || isNaN(pos.y)) return
 
       hasNodes = true
-      const nh = (nodeHeightsRef.current[id] || ROW_H)
+      const nh = (nodeHeightsSnapshot[id] || ROW_H)
       minX = Math.min(minX, pos.x)
       minY = Math.min(minY, pos.y)
       maxX = Math.max(maxX, pos.x + NODE_W)
@@ -117,7 +118,7 @@ export function useImprentaLayoutEffects({
       offsetX: minX - 50,
       offsetY: minY - 50,
     }
-  }, [positions])
+  }, [positions, nodeHeightsSnapshot, NODE_W, ROW_H])
 
   const trackNodeSave = useCallback(
     <T = { error: unknown },>(nodeId: string, operation: PromiseLike<T>, category?: string) =>
@@ -125,7 +126,8 @@ export function useImprentaLayoutEffects({
     [persistenceBarrier]
   )
 
-  const actionsRef = useRef({
+  const nodeIndex = useMemo(() => new Map(nodes.map(node => [node.id, node])), [nodes])
+  const latestActions = {
     handleNodeMouseDown,
     handleDeleteNode,
     handleDuplicateNode,
@@ -138,26 +140,30 @@ export function useImprentaLayoutEffects({
     handleImprentaNodeHover,
     isImprentaWorkflowActionNode,
     handleCreateActionFromContext,
-    getParentNode: (node: InstanceNode) => node.parent_node_id ? nodes.find(n => n.id === node.parent_node_id) : undefined
+    getParentNode: (node: InstanceNode) => node.parent_node_id ? nodeIndex.get(node.parent_node_id) : undefined
+  }
+
+  const latest = useRef(latestActions)
+  useLayoutEffect(() => {
+    latest.current = latestActions
   })
 
-  useEffect(() => {
-    actionsRef.current = {
-      handleNodeMouseDown,
-      handleDeleteNode,
-      handleDuplicateNode,
-      handleConnectionDrop,
-      handleConnectionStart,
-      handleExecuteNode,
-      trackNodeSave,
-      setNodes,
-      setZoomedMedia,
-      handleImprentaNodeHover,
-      isImprentaWorkflowActionNode,
-      handleCreateActionFromContext,
-      getParentNode: (node: InstanceNode) => node.parent_node_id ? nodes.find(n => n.id === node.parent_node_id) : undefined
-    }
-  })
+  // Stable dispatchers keep memoized cards isolated without capturing old state.
+  const actions = useMemo<typeof latestActions>(() => ({
+    handleNodeMouseDown: (...args) => latest.current.handleNodeMouseDown(...args),
+    handleDeleteNode: (...args) => latest.current.handleDeleteNode(...args),
+    handleDuplicateNode: (...args) => latest.current.handleDuplicateNode(...args),
+    handleConnectionDrop: (...args) => latest.current.handleConnectionDrop(...args),
+    handleConnectionStart: (...args) => latest.current.handleConnectionStart(...args),
+    handleExecuteNode: (...args) => latest.current.handleExecuteNode(...args),
+    trackNodeSave: (nodeId, operation, category) => latest.current.trackNodeSave(nodeId, operation, category),
+    setNodes: (...args) => latest.current.setNodes(...args),
+    setZoomedMedia: (...args) => latest.current.setZoomedMedia(...args),
+    handleImprentaNodeHover: (...args) => latest.current.handleImprentaNodeHover(...args),
+    isImprentaWorkflowActionNode,
+    handleCreateActionFromContext: (...args) => latest.current.handleCreateActionFromContext(...args),
+    getParentNode: (...args) => latest.current.getParentNode(...args),
+  }), [])
 
-  return { maxBounds, trackNodeSave, actionsRef }
+  return { maxBounds, trackNodeSave, actions }
 }

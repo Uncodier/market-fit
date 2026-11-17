@@ -38,6 +38,10 @@ beforeEach(() => {
   jest.mocked(useSelfService).mockReturnValue(state as unknown as ReturnType<typeof useSelfService>)
   jest.mocked(useRouter).mockReturnValue({ push } as unknown as ReturnType<typeof useRouter>)
   jest.mocked(getSelfServiceModifierOptions).mockResolvedValue({ data: [] })
+  jest.mocked(Html5Qrcode).mockImplementation(() => ({
+    start: jest.fn().mockResolvedValue(undefined), isScanning: true,
+    stop: jest.fn().mockResolvedValue(undefined), clear: jest.fn(),
+  }) as unknown as Html5Qrcode)
 })
 
 it("rejects raw user UUIDs and accepts only signed buyer syntax", () => {
@@ -70,10 +74,82 @@ it("keeps the pasted-code fallback available when camera permission is denied", 
     start: jest.fn().mockRejectedValue(new Error("Permission denied")), isScanning: false, clear,
   }) as unknown as Html5Qrcode)
   render(<BuyerIdentityScan open onOpenChange={jest.fn()} />)
-  fireEvent.click(screen.getByRole("button", { name: "Use camera" }))
   await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Camera unavailable"))
   expect(screen.getByLabelText("Paste or type buyer code")).toBeEnabled()
   expect(screen.getByRole("button", { name: "Use camera" })).toBeEnabled()
+})
+
+it("starts the camera on every opening and stops on close without a stop button", async () => {
+  const start = jest.fn().mockResolvedValue(undefined)
+  const stop = jest.fn().mockResolvedValue(undefined)
+  jest.mocked(Html5Qrcode).mockImplementation(() => ({
+    start, stop, isScanning: true, clear: jest.fn(),
+  }) as unknown as Html5Qrcode)
+  const close = jest.fn()
+  const { rerender } = render(<BuyerIdentityScan open={false} onOpenChange={close} />)
+  await act(async () => {})
+  expect(start).not.toHaveBeenCalled()
+  rerender(<BuyerIdentityScan open onOpenChange={close} />)
+  await waitFor(() => expect(start).toHaveBeenCalledTimes(1))
+  expect(screen.queryByRole("button", { name: "Stop camera" })).not.toBeInTheDocument()
+  expect(screen.queryByRole("button", { name: "Use camera" })).not.toBeInTheDocument()
+  rerender(<BuyerIdentityScan open={false} onOpenChange={close} />)
+  await waitFor(() => expect(stop).toHaveBeenCalledTimes(1))
+  rerender(<BuyerIdentityScan open onOpenChange={close} />)
+  await waitFor(() => expect(start).toHaveBeenCalledTimes(2))
+  rerender(<BuyerIdentityScan open={false} onOpenChange={close} />)
+  await waitFor(() => expect(stop).toHaveBeenCalledTimes(2))
+})
+
+it("contains QR controls in a padded scrolling body and keeps actions in the dialog footer", () => {
+  render(<BuyerIdentityScan open onOpenChange={jest.fn()} />)
+  const dialog = screen.getByRole("dialog", { name: "Scan buyer QR" })
+  const camera = screen.getByRole("region", { name: "Buyer QR camera" })
+  const input = screen.getByLabelText("Paste or type buyer code")
+  const body = dialog.querySelector('[data-slot="dialog-body"]')
+  expect(body).toHaveClass("px-6", "py-4", "overflow-y-auto")
+  expect(body).toContainElement(camera)
+  expect(body).toContainElement(input)
+  expect(input).toHaveAttribute("autocapitalize", "none")
+  const footer = dialog.querySelector('[data-slot="dialog-footer"]')
+  const submit = screen.getByRole("button", { name: "Verify buyer code" })
+  expect(footer).toContainElement(submit)
+  expect(footer).toContainElement(screen.getByRole("button", { name: "Continue anonymously" }))
+  expect(submit).not.toHaveClass("w-full")
+  expect(submit).toBeDisabled()
+  expect(submit.closest("form")).toHaveAttribute("data-slot", "dialog-form")
+})
+
+it("stops the camera and clears the code when continuing anonymously", async () => {
+  const stop = jest.fn().mockResolvedValue(undefined)
+  const clear = jest.fn()
+  jest.mocked(Html5Qrcode).mockImplementation(() => ({
+    start: jest.fn().mockResolvedValue(undefined), isScanning: true, stop, clear,
+  }) as unknown as Html5Qrcode)
+  const close = jest.fn()
+  render(<BuyerIdentityScan open onOpenChange={close} />)
+  fireEvent.change(screen.getByLabelText("Paste or type buyer code"), { target: { value: "mf:buyer:payload.signature" } })
+  await waitFor(() => expect(Html5Qrcode).toHaveBeenCalled())
+  expect(screen.getByRole("region", { name: "Buyer QR camera" })).toBeVisible()
+  fireEvent.click(screen.getByRole("button", { name: "Continue anonymously" }))
+  expect(close).toHaveBeenCalledWith(false)
+  await waitFor(() => expect(stop).toHaveBeenCalled())
+  expect(clear).toHaveBeenCalled()
+  expect(screen.getByLabelText("Paste or type buyer code")).toHaveValue("")
+  expect(identity).not.toHaveBeenCalled()
+})
+
+it("does not attach a late verification after continuing anonymously", async () => {
+  let resolve!: (value: Response) => void
+  const fetch = jest.spyOn(global, "fetch").mockImplementation(() => new Promise<Response>((done) => { resolve = done }))
+  render(<BuyerIdentityScan open onOpenChange={jest.fn()} />)
+  fireEvent.change(screen.getByLabelText("Paste or type buyer code"), { target: { value: "mf:buyer:payload.signature" } })
+  fireEvent.click(screen.getByRole("button", { name: "Verify buyer code" }))
+  expect(screen.getByRole("button", { name: "Verifying…" })).toBeDisabled()
+  fireEvent.click(screen.getByRole("button", { name: "Continue anonymously" }))
+  await act(async () => { resolve({ ok: true, json: async () => ({ name: "Alex" }) } as Response) })
+  expect(identity).not.toHaveBeenCalled()
+  fetch.mockRestore()
 })
 
 it("shows the confirmation number and public token QR with phone card-pay instructions", async () => {

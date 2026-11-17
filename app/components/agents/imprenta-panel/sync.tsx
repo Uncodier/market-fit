@@ -3,13 +3,15 @@ import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
 import type { InstanceNode } from '@/app/types/instance-nodes'
 
 type NodePayload = RealtimePostgresChangesPayload<InstanceNode> & { old: Partial<InstanceNode> & { id: string } }
-import { useEffect, useLayoutEffect } from "react"
+import { useCallback, useEffect, useLayoutEffect, useRef } from "react"
 import { resolveImprentaSync } from "@/app/lib/imprenta-instance-sync"
+import { fetchContextsForNodes } from '@/app/hooks/imprenta-data-fetchers'
 import { WF_LOAD_NODE_TYPES } from "@/app/components/workflows/types"
 import { normalizeImprentaNodeForResultMediaType } from './result-helpers'
 import type { useImprentaPanelState } from './state'
+import { affectsImprentaContexts, createCoalescedReconciliation, hasRecoverableImprentaExecution } from './recovery-polling'
 
-type ImprentaSynchronizationOptions = Pick<ReturnType<typeof useImprentaPanelState>, "imprentaData" | "imprentaSyncedInstanceRef" | "imprentaRequestedInstanceRef" | "deletedNodeIdsRef" | "setInitialPrompt" | "setDummyNodes" | "setPositions" | "setGeneratingNodeIds" | "setSelectedContextId" | "hoverStore" | "setZoomedMedia" | "setTempConnection" | "setNodes" | "setContexts" | "nodesRef" | "supabase" | "nodeHeightsRef" | "refreshImprentaData"> & { activeInstanceId?: string }
+type ImprentaSynchronizationOptions = Pick<ReturnType<typeof useImprentaPanelState>, "imprentaData" | "imprentaSyncedInstanceRef" | "imprentaRequestedInstanceRef" | "deletedNodeIdsRef" | "setInitialPrompt" | "setDummyNodes" | "setPositions" | "setGeneratingNodeIds" | "setSelectedContextId" | "hoverStore" | "setZoomedMedia" | "setTempConnection" | "setNodes" | "setContexts" | "nodesRef" | "supabase" | "nodeHeightsRef" | "refreshImprentaData"> & Partial<Pick<ReturnType<typeof useImprentaPanelState>, "generatingNodeIds">> & { activeInstanceId?: string }
 
 export function useImprentaSynchronization({
   imprentaData,
@@ -31,7 +33,15 @@ export function useImprentaSynchronization({
   nodeHeightsRef,
   refreshImprentaData,
   activeInstanceId,
+  generatingNodeIds,
 }: ImprentaSynchronizationOptions) {
+  const reconciliationRef = useRef<((includeLogs: boolean) => Promise<void>) | null>(null)
+  const retryImprentaData = useCallback(() => reconciliationRef.current?.(true) ?? Promise.resolve(), [])
+  const generatingNodeIdsRef = useRef(generatingNodeIds)
+  useLayoutEffect(() => {
+    generatingNodeIdsRef.current = generatingNodeIds
+  }, [generatingNodeIds])
+
   useLayoutEffect(() => {
     const res = resolveImprentaSync(
       activeInstanceId,
@@ -65,10 +75,28 @@ export function useImprentaSynchronization({
 
     // Subscribe to realtime updates for nodes
     let cancelled = false
+    const isCurrent = () => !cancelled && imprentaRequestedInstanceRef.current === activeInstanceId
     let nodeBatchBuffer: NodePayload[] = []
     let nodeBatchTimeout: NodeJS.Timeout | null = null
+    let contextTimeout: NodeJS.Timeout | null = null
+    const reconcileContexts = createCoalescedReconciliation(async () => {
+      const currentNodes = nodesRef.current
+        .filter(node => node.instance_id === activeInstanceId && !node.id.startsWith('dummy-'))
+        .map(node => node.id)
+      if (currentNodes.length === 0) return
+      const data = await fetchContextsForNodes(currentNodes)
+      if (isCurrent()) setContexts(previous => isCurrent() ? data as ImprentaContext[] : previous)
+    }, isCurrent, error => console.error('Failed to reconcile Imprenta contexts', error))
+    const scheduleContexts = () => {
+      if (contextTimeout) clearTimeout(contextTimeout)
+      contextTimeout = setTimeout(() => {
+        contextTimeout = null
+        void reconcileContexts(false)
+      }, 500)
+    }
 
     const handleNodePayload = (payload: NodePayload) => {
+      if (!isCurrent()) return
       if (payload.eventType === 'INSERT') {
         const incoming = payload.new as InstanceNode
         if (deletedNodeIdsRef.current.has(incoming.id)) return
@@ -86,6 +114,9 @@ export function useImprentaSynchronization({
           if (prev.some(n => n.id === incoming.id)) return prev;
           return [...prev, normalized];
         })
+        // Context events can arrive before the buffered node becomes known.
+        // Recover its relations after insertion instead of polling idle drafts.
+        scheduleContexts()
         setDummyNodes(prev => {
           // Find dummies for the same parent
           const dummiesForParent = prev.filter(d => d.parent_node_id === incoming.parent_node_id);
@@ -186,6 +217,7 @@ export function useImprentaSynchronization({
         table: 'instance_nodes',
         filter: `instance_id=eq.${activeInstanceId}`
       }, (payload: NodePayload) => {
+        if (!isCurrent()) return
         // Skip workflow nodes arriving via realtime
         const type = ("type" in payload.new ? payload.new.type : undefined) || payload.old?.type
         if (type && (WF_LOAD_NODE_TYPES as readonly string[]).includes(type)) return
@@ -205,42 +237,32 @@ export function useImprentaSynchronization({
       .subscribe()
 
     // Subscribe to realtime updates for contexts
-    let contextTimeout: NodeJS.Timeout | null = null
     const contextSubscription = supabase
       .channel(`instance_node_contexts_${activeInstanceId}`)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'instance_node_contexts'
-      }, () => {
-        if (contextTimeout) clearTimeout(contextTimeout)
-        contextTimeout = setTimeout(async () => {
-          // Refetch contexts on any change
-          const currentNodes = nodesRef.current.map(n => n.id)
-          if (currentNodes.length > 0) {
-            const { data } = await supabase.from('instance_node_contexts').select('*').in('target_node_id', currentNodes)
-            if (data) setContexts(data)
-          }
-        }, 500)
+      }, (payload: RealtimePostgresChangesPayload<ImprentaContext>) => {
+        if (!isCurrent() || !affectsImprentaContexts(payload, nodesRef.current, activeInstanceId)) return
+        scheduleContexts()
       })
       .subscribe()
 
     let visibilityTimeout: NodeJS.Timeout | null = null
-    const reconcileFromServer = async (includeLogs: boolean) => {
-      try {
-        const data = await refreshImprentaData({ includeLogs })
-        if (!data || cancelled || imprentaRequestedInstanceRef.current !== activeInstanceId) return
-        setNodes(data.nodes.filter(n => !deletedNodeIdsRef.current.has(n.id)))
-        setContexts(data.contexts as ImprentaContext[])
-      } catch (error) {
-        if (!cancelled) console.error("Failed to reconcile Imprenta data", error)
-      }
-    }
+    const reconcileFromServer = createCoalescedReconciliation(async includeLogs => {
+      const data = await refreshImprentaData({ includeLogs })
+      if (!data || !isCurrent()) return
+      setNodes(previous => isCurrent() ? data.nodes.filter(n => !deletedNodeIdsRef.current.has(n.id)) : previous)
+      setContexts(previous => isCurrent() ? data.contexts as ImprentaContext[] : previous)
+    }, isCurrent, error => console.error('Failed to reconcile Imprenta data', error))
+    reconciliationRef.current = reconcileFromServer
 
     const handleVisibility = () => {
-      if (document.visibilityState === 'visible') {
+      if (isCurrent() && document.visibilityState === 'visible') {
         if (visibilityTimeout) clearTimeout(visibilityTimeout)
         visibilityTimeout = setTimeout(() => {
+          visibilityTimeout = null
           void reconcileFromServer(true)
         }, 1000)
       }
@@ -250,16 +272,15 @@ export function useImprentaSynchronization({
 
     // Fallback reconcile while nodes are in-flight (covers missed Realtime events)
     const reconcileInterval = setInterval(() => {
-      const hasInFlight = nodesRef.current.some((n) =>
-        ['running', 'pending', 'starting'].includes(n.status)
-      )
-      if (hasInFlight && document.visibilityState === 'visible') {
+      if (document.visibilityState === 'visible'
+        && hasRecoverableImprentaExecution(nodesRef.current, activeInstanceId, generatingNodeIdsRef.current)) {
         void reconcileFromServer(false)
       }
     }, 15000)
 
     return () => {
       cancelled = true
+      if (reconciliationRef.current === reconcileFromServer) reconciliationRef.current = null
       if (visibilityTimeout) clearTimeout(visibilityTimeout)
       clearInterval(reconcileInterval)
       document.removeEventListener('visibilitychange', handleVisibility)
@@ -270,5 +291,5 @@ export function useImprentaSynchronization({
     }
   }, [activeInstanceId, supabase, refreshImprentaData])
 
-  return {}
+  return { retryImprentaData }
 }

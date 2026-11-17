@@ -2,13 +2,14 @@ import { ImprentaLazyPreviewVideo, ImprentaLazyCardImage } from "@/app/component
 import { cn } from "@/lib/utils"
 import { Play, ZoomIn } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
+import { useCallback } from "react"
 
 import type { useImprentaPanelState } from './state'
 
 type ImprentaMediaOptions = Pick<ReturnType<typeof useImprentaPanelState>, "setZoomedMedia">
 
 export function useImprentaMedia({ setZoomedMedia }: ImprentaMediaOptions) {
-  const renderMediaWithZoom = (
+  const renderMediaWithZoom = useCallback((
     url: string,
     type: 'image' | 'video',
     key: React.Key,
@@ -62,7 +63,7 @@ export function useImprentaMedia({ setZoomedMedia }: ImprentaMediaOptions) {
         </div>
       )}
     </div>
-  )
+  ), [setZoomedMedia])
 
   return { renderMediaWithZoom }
 }

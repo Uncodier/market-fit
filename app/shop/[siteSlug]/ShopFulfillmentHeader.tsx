@@ -97,23 +97,25 @@ export function ShopFulfillmentHeader({
   setScheduledFor,
   tone = "default",
   centerAction,
+  showSingleOption = false,
 }: {
   allowedOptions: CheckoutFulfillmentMethod[]
   fulfillment: CheckoutFulfillmentMethod
   setFulfillment: (value: CheckoutFulfillmentMethod) => void
-  orderTiming: OrderTiming
-  setOrderTiming: (value: OrderTiming) => void
-  scheduledFor: Date | null
-  setScheduledFor: (value: Date | null) => void
+  orderTiming?: OrderTiming
+  setOrderTiming?: (value: OrderTiming) => void
+  scheduledFor?: Date | null
+  setScheduledFor?: (value: Date | null) => void
   tone?: Tone
   centerAction?: ReactNode
+  showSingleOption?: boolean
 }) {
   const { t, locale } = useLocalization()
   const dateLocale = getDateFnsLocale(locale)
 
   const fulfillmentOptions = allowedOptions.filter((opt) => PHYSICAL_OPTIONS.includes(opt))
-  const showFulfillment = fulfillmentOptions.length > 1
-  const showScheduling = fulfillmentOptions.length > 0
+  const showFulfillment = fulfillmentOptions.length > (showSingleOption ? 0 : 1)
+  const showScheduling = fulfillmentOptions.length > 0 && !!setOrderTiming && !!setScheduledFor
 
   if (!showFulfillment && !showScheduling) return null
 
@@ -153,8 +155,8 @@ export function ShopFulfillmentHeader({
   const clearSchedule = (e: MouseEvent | KeyboardEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    setOrderTiming("now")
-    setScheduledFor(null)
+    setOrderTiming?.("now")
+    setScheduledFor?.(null)
   }
 
   const scheduleButton = showScheduling ? (
@@ -162,8 +164,8 @@ export function ShopFulfillmentHeader({
       <DatePicker
         date={scheduledFor || undefined}
         setDate={(date: Date) => {
-          setScheduledFor(date)
-          setOrderTiming("scheduled")
+          setScheduledFor?.(date)
+          setOrderTiming?.("scheduled")
         }}
         showTimePicker
         timeFormat="12h"

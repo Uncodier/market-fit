@@ -20,7 +20,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
   const measurement = useImprentaMeasurement({ ...state, ...layout })
   const virtualization = useImprentaVirtualization({ ...state, ...measurement })
 
-  useImprentaSynchronization({ ...scope, ...state })
+  const synchronization = useImprentaSynchronization({ ...scope, ...state })
 
   const execution = useImprentaExecution({ ...state, ...measurement })
   const nodeActions = useImprentaNodeActions({ ...scope, ...state })
@@ -50,6 +50,7 @@ export function ImprentaPanel({ activeInstanceId }: { activeInstanceId?: string 
       {...connections}
       {...media}
       {...layoutEffects}
+      {...synchronization}
     />
   )
 }

@@ -5,6 +5,7 @@ import { Slot, Slottable } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
+import { isDialogCancelLabel } from "./dialog-cancel-presentation"
 import { useBtnGlassMotion } from "./use-btn-glass-motion"
 import { useOptionalPermissions } from "@/app/context/PermissionContext"
 import { inferButtonCommand, getNodeText } from "@/lib/permissions/button-heuristic"
@@ -109,7 +110,11 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const presentedClassName = automatic
       ? cn(tooltipEnabled ? toolbarLayout.inner : className, "!h-10 !w-10 !min-w-0 !max-w-10 !p-0 !gap-0 aspect-square shrink-0")
       : className
-    const accessibleProps = automatic ? { "aria-label": toolbarLabel } : {}
+    const dialogCancel = isDialogCancelLabel(children, props["aria-label"]) || undefined
+    const accessibleProps = {
+      ...(automatic ? { "aria-label": toolbarLabel } : {}),
+      "data-dialog-cancel": dialogCancel,
+    }
     const withTooltip = (content: React.ReactNode) => (
       <AutomaticToolbarTooltip enabled={tooltipEnabled} label={toolbarLabel} disabled={props.disabled} className={toolbarLayout.outer}>
         {content}
@@ -182,7 +187,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     if (asChild) {
       const { outer, inner } = splitOuterClasses(presentedClassName)
       return withTooltip(
-        <span className={cn("btn-primary-well", wellTintClass, outer)} style={pickCssVars(style)}>
+        <span data-dialog-cancel={dialogCancel} className={cn("btn-primary-well", wellTintClass, outer)} style={pickCssVars(style)}>
           <Slot
             className={cn(buttonVariants({ variant, size: presentedSize }), gatedClassName, innerCircularClass, inner)}
             ref={assignRef}
@@ -221,7 +226,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
     const { outer, inner } = splitOuterClasses(presentedClassName)
     return withTooltip(
-      <span className={cn("btn-primary-well", wellTintClass, outer)} style={pickCssVars(style)}>
+      <span data-dialog-cancel={dialogCancel} className={cn("btn-primary-well", wellTintClass, outer)} style={pickCssVars(style)}>
         <button
           className={cn(buttonVariants({ variant, size: presentedSize }), gatedClassName, innerCircularClass, inner)}
           ref={assignRef}

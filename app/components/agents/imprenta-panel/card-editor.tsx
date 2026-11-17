@@ -13,24 +13,21 @@ export function ImprentaCardEditor({
   actions,
   node,
   hasResult,
-  nodes,
-  generatingNodeIds,
+  hasRealChildren,
+  isGenerating,
   supabase,
   currentSite,
   textParams,
   imageParams,
   videoParams,
   audioParams,
-}: Pick<ImprentaNodeCardProps, "actions" | "node" | "hasResult" | "nodes" | "generatingNodeIds" | "supabase" | "currentSite" | "textParams" | "imageParams" | "videoParams" | "audioParams">) {
+}: Pick<ImprentaNodeCardProps, "actions" | "node" | "hasResult" | "hasRealChildren" | "isGenerating" | "supabase" | "currentSite" | "textParams" | "imageParams" | "videoParams" | "audioParams">) {
   return <>{actions.isImprentaWorkflowActionNode(node) &&
     !hasResult &&
     !isImprentaUploadedNode(node) &&
     (() => {
-      const hasRealChildren = nodes.some(
-        (ch) => ch.parent_node_id === node.id && !String(ch.id).startsWith("dummy-")
-      )
       const outputTypeLocked =
-        hasRealChildren || node.status !== "pending" || generatingNodeIds.has(node.id)
+        hasRealChildren || node.status !== "pending" || isGenerating
       const lockedTitle = outputTypeLocked
         ? "Output type is locked. Duplicate this node to change it."
         : "Card mode"

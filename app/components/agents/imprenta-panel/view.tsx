@@ -19,6 +19,8 @@ import { imprentaNodeHasResult } from './result-helpers'
 import { ImprentaDummyCardInner } from './dummy-card'
 import { ImprentaLiteGraphNode } from './lite-node'
 import { ImprentaNodeCardInner } from './node-card'
+import { useImprentaCardData } from './card-data'
+import { ImprentaDataNotice } from './data-notice'
 import type { useImprentaPanelState } from './state'
 import type { useImprentaLayoutEffects } from './layout-effects'
 import type { useImprentaMeasurement } from './measurement'
@@ -28,8 +30,9 @@ import type { useImprentaDragging } from './drag'
 import type { useImprentaNodeActions } from './node-actions'
 import type { useImprentaConnections } from './connections'
 import type { useImprentaMedia } from './media'
+import type { useImprentaSynchronization } from './sync'
 
-type ImprentaPanelViewOptions = Pick<ReturnType<typeof useImprentaPanelState>, "sidebarWidth" | "isImprentaLoading" | "setSelectedContextId" | "fileInputRef" | "handleFileChange" | "nodes" | "viewportStore" | "dragStore" | "hoverStore" | "thumbCache" | "tempConnection" | "draggingNodeId" | "connectionStore" | "dummyNodes" | "nodeHeightsRef" | "setPositions" | "setNodes" | "supabase" | "isUploadingAsset" | "setSelectedContextAnchor" | "contexts" | "nodesRef" | "positions" | "selectedContextId" | "selectedContextAnchor" | "generatingNodeIds" | "viewportInfo" | "logs" | "currentSite" | "textParams" | "imageParams" | "videoParams" | "audioParams" | "zoomedMedia" | "setZoomedMedia"> & Pick<ReturnType<typeof useImprentaLayoutEffects>, "maxBounds" | "actionsRef"> & Pick<ReturnType<typeof useImprentaMeasurement>, "canvasNodes" | "isDarkMode" | "registerNodeRef"> & Pick<ReturnType<typeof useImprentaVirtualization>, "stablePositions" | "nodeHeightsSnapshot" | "parentEdgeStroke" | "parentEdgeHoverStroke" | "isLargeGraph" | "mountedNodeIds" | "canvasGetImages" | "canvasGetVideos" | "visibleNodeIds" | "resolveNodePosition" | "nodesById" | "slicedRenderNodes" | "resolvedPositions" | "showFullNodeDetail" | "handleImprentaNodeHover" | "actionNodeIds" | "loadingRouteEdges"> & Pick<ReturnType<typeof useImprentaLayout>, "NODE_W" | "ROW_H" | "getLayoutPositions"> & Pick<ReturnType<typeof useImprentaDragging>, "handleCanvasNodePointerDown" | "handleNodeMouseDown"> & Pick<ReturnType<typeof useImprentaNodeActions>, "handleCreateChild"> & Pick<ReturnType<typeof useImprentaConnections>, "handleConnectionCancel" | "handleUpdateContextType" | "handleDeleteContext"> & Pick<ReturnType<typeof useImprentaMedia>, "renderMediaWithZoom"> & { activeInstanceId?: string }
+type ImprentaPanelViewOptions = Pick<ReturnType<typeof useImprentaPanelState>, "sidebarWidth" | "isImprentaLoading" | "setSelectedContextId" | "fileInputRef" | "handleFileChange" | "nodes" | "viewportStore" | "dragStore" | "hoverStore" | "thumbCache" | "tempConnection" | "draggingNodeId" | "connectionStore" | "dummyNodes" | "nodeHeightsRef" | "setPositions" | "setNodes" | "supabase" | "isUploadingAsset" | "setSelectedContextAnchor" | "contexts" | "nodesRef" | "positions" | "selectedContextId" | "selectedContextAnchor" | "generatingNodeIds" | "viewportInfo" | "logs" | "currentSite" | "textParams" | "imageParams" | "videoParams" | "audioParams" | "zoomedMedia" | "setZoomedMedia"> & Pick<ReturnType<typeof useImprentaLayoutEffects>, "maxBounds" | "actions"> & Pick<ReturnType<typeof useImprentaMeasurement>, "canvasNodes" | "isDarkMode" | "registerNodeRef"> & Pick<ReturnType<typeof useImprentaVirtualization>, "stablePositions" | "nodeHeightsSnapshot" | "parentEdgeStroke" | "parentEdgeHoverStroke" | "isLargeGraph" | "mountedNodeIds" | "canvasGetImages" | "canvasGetVideos" | "visibleNodeIds" | "resolveNodePosition" | "nodesById" | "slicedRenderNodes" | "resolvedPositions" | "showFullNodeDetail" | "handleImprentaNodeHover" | "actionNodeIds" | "loadingRouteEdges"> & Pick<ReturnType<typeof useImprentaLayout>, "NODE_W" | "ROW_H" | "getLayoutPositions"> & Pick<ReturnType<typeof useImprentaDragging>, "handleCanvasNodePointerDown" | "handleNodeMouseDown"> & Pick<ReturnType<typeof useImprentaNodeActions>, "handleCreateChild"> & Pick<ReturnType<typeof useImprentaConnections>, "handleConnectionCancel" | "handleUpdateContextType" | "handleDeleteContext"> & Pick<ReturnType<typeof useImprentaMedia>, "renderMediaWithZoom"> & { activeInstanceId?: string }
 
 export function ImprentaPanelView({
   sidebarWidth, isImprentaLoading, setSelectedContextId,
@@ -53,9 +56,10 @@ export function ImprentaPanelView({
   handleImprentaNodeHover, actionNodeIds, logs,
   currentSite, textParams, imageParams,
   videoParams, audioParams, renderMediaWithZoom,
-  actionsRef, loadingRouteEdges, zoomedMedia,
-  setZoomedMedia, activeInstanceId,
-}: ImprentaPanelViewOptions) {
+  actions, loadingRouteEdges, zoomedMedia,
+  setZoomedMedia, activeInstanceId, graphError, logsError, retryImprentaData,
+}: ImprentaPanelViewOptions & Pick<ReturnType<typeof useImprentaPanelState>, "graphError" | "logsError"> & ReturnType<typeof useImprentaSynchronization>) {
+  const getCardData = useImprentaCardData(nodes, dummyNodes, contexts, logs)
   return (
     <div
       className="h-full min-h-0 flex flex-col transition-[margin-left,width] duration-300 ease-out relative"
@@ -260,9 +264,9 @@ export function ImprentaPanelView({
                 {/* Context edges: single SVG for all paths; labels/UI stay in per-context overlays. */}
                 <ImprentaContextEdges
                   contexts={contexts}
-                  nodesRef={nodesRef}
+                  nodes={canvasNodes}
                   positions={positions}
-                  nodeHeightsRef={nodeHeightsRef}
+                  nodeHeights={nodeHeightsSnapshot}
                   selectedContextId={selectedContextId}
                   onSelectContext={(id, anchor) => {
                     setSelectedContextId(id)
@@ -275,9 +279,9 @@ export function ImprentaPanelView({
                   if (!positions[ctx.context_node_id] || !positions[ctx.target_node_id]) return null
                   const start = resolveNodePosition(ctx.context_node_id)
                   const end = resolveNodePosition(ctx.target_node_id)
-                  const startCy = (nodeHeightsRef.current[ctx.context_node_id] || ROW_H) / 2
+                  const startCy = (nodeHeightsSnapshot[ctx.context_node_id] || ROW_H) / 2
                   const targetNodeForCtx = nodesById.get(ctx.target_node_id)
-                  const endH = nodeHeightsRef.current[ctx.target_node_id] || ROW_H
+                  const endH = nodeHeightsSnapshot[ctx.target_node_id] || ROW_H
                   const endCy = getPublishContextAnchorY(targetNodeForCtx?.type, ctx.type, endH)
                   const startX = start.x + NODE_W
                   const startY = start.y + startCy
@@ -399,7 +403,8 @@ export function ImprentaPanelView({
                         key={node.id}
                         node={node}
                         pos={pos}
-                        draggingNodeId={draggingNodeId}
+                        isDragging={draggingNodeId === node.id}
+                        isGenerating={generatingNodeIds.has(node.id)}
                         hasResult={hasResult}
                         actionRunning={actionNodeIds.has(node.id)}
                         hasCnt={
@@ -418,19 +423,15 @@ export function ImprentaPanelView({
                             : false
                         }
                         registerNodeRef={registerNodeRef}
-                        nodes={nodes}
-                        dummyNodes={dummyNodes}
-                        contexts={contexts}
-                        logs={logs}
+                        {...getCardData(node)}
                         supabase={supabase}
-                        generatingNodeIds={generatingNodeIds}
                         currentSite={currentSite}
                         textParams={textParams}
                         imageParams={imageParams}
                         videoParams={videoParams}
                         audioParams={audioParams}
                         renderMediaWithZoom={renderMediaWithZoom}
-                        actions={actionsRef.current}
+                        actions={actions}
                       />
                     )
                   })}
@@ -448,6 +449,7 @@ export function ImprentaPanelView({
           </div>
         )}
       </div>
+      <ImprentaDataNotice key={activeInstanceId} graphError={graphError} logsError={logsError} onRetry={retryImprentaData} />
       {zoomedMedia && typeof document !== 'undefined' && createPortal(
         <div
           className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
@@ -462,7 +464,7 @@ export function ImprentaPanelView({
             >
               <X className="w-6 h-6" />
             </Button>
-            {zoomedMedia.type === 'image' && <img src={zoomedMedia.url} className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl" />}
+            {zoomedMedia.type === 'image' && <img src={zoomedMedia.url} alt="Generated media preview" className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl" />}
             {zoomedMedia.type === 'video' && <video src={zoomedMedia.url} controls autoPlay className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl" />}
           </div>
         </div>,

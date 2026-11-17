@@ -2,8 +2,8 @@
 
 import { useDeferredValue, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Button } from "@/app/components/ui/button"
-import { Input } from "@/app/components/ui/input"
+import { MapPin } from "@/app/components/ui/icons"
+import { cartLineExtendedTotal } from "@/app/commerce/cart-modifiers"
 import { isItemCompatibleWithFulfillment } from "@/app/commerce/delivery-options"
 import { isSelfServiceItem } from "@/app/commerce/self-service-options"
 import type { CheckoutCartSuccess } from "@/app/commerce/checkout-client"
@@ -13,6 +13,9 @@ import type { ShopCategoryOffset } from "../shop-catalog-shared"
 import { requiresVariantSelection } from "@/app/catalog/product-details"
 import { useShopCatalog } from "../useShopCatalog"
 import { ShopCatalogMain } from "../ShopCatalogMain"
+import { ShopHeroTrust } from "../ShopHeroTrust"
+import { ShopFulfillmentHeader } from "../ShopFulfillmentHeader"
+import { ShopMobileCartCta, ShopSiteFooter } from "../ShopSiteFooter"
 import { SelfServiceHeader } from "./SelfServiceHeader"
 import { SelfServiceCart } from "./SelfServiceCart"
 import { SelfServiceConfirmation } from "./SelfServiceConfirmation"
@@ -31,6 +34,16 @@ export function SelfServiceShopClient({ initialCatalog, initialCount, initialCat
   const router = useRouter()
   const catalog = useShopCatalog(context.site.id, initialCatalog, initialCount, query, initialCategoryOffsets, context.location.id)
   const owned = useMemo(() => new Map<string, boolean>(), [])
+  const cartCount = cart.reduce((sum, line) => sum + line.cartQty, 0)
+  const subtotal = cart.reduce((sum, line) => sum + cartLineExtendedTotal(line), 0)
+  // A shared kiosk must not send customers to external hero destinations.
+  const heroSite = useMemo(() => {
+    const shop = context.site.settings?.shop
+    return { ...context.site, settings: { ...context.site.settings, shop: {
+      ...shop,
+      ...(shop?.hero_cta_destination_type === "url" ? { hero_cta_destination_type: "scroll" } : {}),
+    } } }
+  }, [context.site])
   const coupons = useMemo(() => Array.from(new Map([...generalPromos, ...Object.values(categoryPromosByName).flat()]
     .map((promo) => [promo.id, promo])).values()), [generalPromos, categoryPromosByName])
   const items = useMemo(() => catalog.catalogItems.filter((item) =>
@@ -47,13 +60,15 @@ export function SelfServiceShopClient({ initialCatalog, initialCount, initialCat
   }, [])
 
   if (order) return <SelfServiceConfirmation order={order} onStartNew={() => { startNewOrder(); setOrder(null); setSearch("") }} />
-  return <div className="flex min-h-screen flex-col bg-white text-gray-900">
-    <SelfServiceHeader onOpenCart={() => setCartOpen(true)} />
-    <div className="mx-auto flex w-full max-w-7xl flex-wrap gap-3 px-4 py-5 md:px-8">
-      <Input aria-label="Search menu" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search menu…" className="min-w-44 flex-1" />
-      <div role="group" aria-label="Fulfillment method" className="flex gap-2">
-        {context.fulfillmentOptions.map((option) => <Button key={option} type="button" variant={fulfillment === option ? "default" : "outline"} aria-pressed={fulfillment === option} onClick={() => setFulfillment(option)}>{option === "dine_in" ? "Dine in" : "Pickup"}</Button>)}
+  return <div className="flex min-h-screen flex-col bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100">
+    <SelfServiceHeader onOpenCart={() => setCartOpen(true)} searchQuery={search} onSearchChange={setSearch} />
+    <ShopHeroTrust site={heroSite} searchQuery={query} />
+    <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-3 px-4 pt-5 md:px-8">
+      <div className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
+        <MapPin className="h-4 w-4 shrink-0" />
+        <span className="truncate">{context.location.name} · Self-service</span>
       </div>
+      <ShopFulfillmentHeader allowedOptions={context.fulfillmentOptions} fulfillment={fulfillment} setFulfillment={setFulfillment} showSingleOption />
     </div>
     {!query.trim() && <SelfServiceCoupons promos={coupons} locationId={context.location.id} />}
     <ShopCatalogMain siteSlug={context.location.id} siteId={context.site.id} categories={catalog.categoryOffsets.map((entry) => entry.name)}
@@ -67,7 +82,8 @@ export function SelfServiceShopClient({ initialCatalog, initialCount, initialCat
         if (requiresVariantSelection(item) || item._shop?.hasRequiredModifiers) router.push(`/shop/${context.location.id}/${item.id}`)
         else { addItem(item); setCartOpen(true) }
       }} promoBadgesByItemId={promoBadgesByItemId} />
-    {cart.length > 0 && <Button type="button" className="sticky bottom-4 mx-4 mb-4 md:hidden" onClick={() => setCartOpen(true)}>View order · {cart.reduce((sum, line) => sum + line.cartQty, 0)} items</Button>}
+    <ShopSiteFooter siteName={context.site.name} />
+    {cart.length > 0 && !cartOpen && <ShopMobileCartCta cartCount={cartCount} subtotal={subtotal} currency={cart[0]?.currency} onOpen={() => setCartOpen(true)} />}
     <SelfServiceCart key={orderVersion} open={cartOpen} onOpenChange={setCartOpen} onSuccess={setOrder} />
   </div>
 }

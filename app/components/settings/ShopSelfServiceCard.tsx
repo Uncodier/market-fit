@@ -22,7 +22,7 @@ export function ShopSelfServiceCard({ form, savingCard, handleSave }: Pick<Retur
         </SectionCardTitle>
         <p className="text-sm text-muted-foreground">
           Choose fulfillment for location QR ordering. Orders reach the kitchen only after full payment.
-          Share each location&apos;s link and QR code in Company settings.
+          Share each location&apos;s link and QR code using the Location Kiosks card above.
         </p>
       </SectionCardHeader>
       <SectionCardContent className="space-y-4">

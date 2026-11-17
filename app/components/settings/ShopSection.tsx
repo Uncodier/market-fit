@@ -14,6 +14,7 @@ import { ShopTrustCard } from "./ShopTrustCard"
 import { ShopPayoutsCard } from "./ShopPayoutsCard"
 import { ShopPaymentsCard } from "./ShopPaymentsCard"
 import { ShopSelfServiceCard } from "./ShopSelfServiceCard"
+import { ShopKioskShareCard } from "./ShopKioskShareCard"
 interface ShopSectionProps {
   active: boolean
   onSave?: (data: SiteFormValues) => void
@@ -79,6 +80,8 @@ export function ShopSection(props: ShopSectionProps) {
           </div>
         </div>
       </div>
+
+      <ShopKioskShareCard key={props.siteId} siteId={props.siteId} />
 
       {/* Hero Section */}
       <ShopHeroCard {...model} />

@@ -3,7 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/app/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogFooter, DialogForm } from "@/app/components/ui/dialog"
 import { resolveAppApiUrl } from "@/app/commerce/app-api-url"
 import { useSelfService } from "./SelfServiceProvider"
 
@@ -17,11 +17,19 @@ export function BuyerIdentityScan({ open, onOpenChange }: { open: boolean; onOpe
   const [code, setCode] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
-  const [camera, setCamera] = useState(false)
+  const [camera, setCamera] = useState(open)
+  const [previousOpen, setPreviousOpen] = useState(open)
   const id = `buyer-qr-${useId().replace(/[^a-zA-Z0-9]/g, "")}`
   const submitRef = useRef<(code: string) => Promise<void>>(async () => {})
   const inFlight = useRef(false)
   const generation = useRef(0)
+
+  // Reset the camera preference for each opening, including parent-driven opens.
+  if (previousOpen !== open) {
+    setPreviousOpen(open)
+    setCamera(open)
+    setError("")
+  }
 
   useEffect(() => {
     generation.current += 1
@@ -85,21 +93,42 @@ export function BuyerIdentityScan({ open, onOpenChange }: { open: boolean; onOpe
     return () => { cancelled = true; void stop() }
   }, [open, camera, id])
 
-  return <Dialog open={open} onOpenChange={(value) => { setCamera(false); setError(""); if (!value) setCode(""); onOpenChange(value) }}>
-    <DialogContent>
+  function handleOpenChange(value: boolean) {
+    setCamera(false)
+    setError("")
+    if (!value) {
+      generation.current += 1
+      setCode("")
+    }
+    onOpenChange(value)
+  }
+
+  return <Dialog open={open} onOpenChange={handleOpenChange}>
+    <DialogContent size="md">
       <DialogHeader><DialogTitle>Scan buyer QR</DialogTitle>
         <DialogDescription>Optional: link this order to your account using its signed buyer QR. You can also continue anonymously.</DialogDescription>
       </DialogHeader>
-      <Button type="button" variant="outline" disabled={loading} onClick={() => { setError(""); setCamera(!camera) }}>
-        {camera ? "Stop camera" : "Use camera"}
-      </Button>
-      {camera && <div id={id} aria-label="Buyer QR camera" className="min-h-64 overflow-hidden rounded-lg" />}
-      <form onSubmit={(event) => { event.preventDefault(); void submit(code) }} className="space-y-3">
-        <label htmlFor={`${id}-code`} className="text-sm font-medium">Paste or type buyer code</label>
-        <Input id={`${id}-code`} value={code} onChange={(event) => setCode(event.target.value)} autoComplete="off" maxLength={1024} placeholder="mf:buyer:…" disabled={loading} />
-        {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
-        <Button type="submit" disabled={loading || !code.trim()} className="w-full">{loading ? "Verifying…" : "Verify buyer code"}</Button>
-      </form>
+      <DialogForm onSubmit={(event) => { event.preventDefault(); void submit(code) }}>
+        <DialogBody className="space-y-5">
+          <div className="space-y-3">
+            {!camera && <Button type="button" variant="outline" className="w-full"
+              disabled={loading} onClick={() => { setError(""); setCamera(true) }}>
+              Use camera
+            </Button>}
+            {camera && <div id={id} role="region" aria-label="Buyer QR camera" className="min-h-64 w-full overflow-hidden rounded-xl border bg-muted/30" />}
+          </div>
+          <div className="space-y-2">
+            <label htmlFor={`${id}-code`} className="block text-sm font-medium">Paste or type buyer code</label>
+            <Input id={`${id}-code`} value={code} onChange={(event) => setCode(event.target.value)} autoComplete="off" autoCapitalize="none" spellCheck={false}
+              maxLength={1024} placeholder="mf:buyer:…" disabled={loading} aria-invalid={!!error} aria-describedby={error ? `${id}-error` : undefined} />
+          </div>
+          {error && <p id={`${id}-error`} role="alert" className="text-sm text-destructive">{error}</p>}
+        </DialogBody>
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>Continue anonymously</Button>
+          <Button type="submit" disabled={loading || !code.trim()} className="!min-w-0">{loading ? "Verifying…" : "Verify buyer code"}</Button>
+        </DialogFooter>
+      </DialogForm>
     </DialogContent>
   </Dialog>
 }

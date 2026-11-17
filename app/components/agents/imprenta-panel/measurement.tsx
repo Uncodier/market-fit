@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useCallback } from "react"
+import { useEffect, useLayoutEffect, useMemo, useCallback, useRef } from "react"
 import { useTheme } from "@/app/context/ThemeContext"
 
 import type { useImprentaPanelState } from './state'
@@ -20,6 +20,8 @@ export function useImprentaMeasurement({
   positionsRef,
   positions,
 }: ImprentaMeasurementOptions) {
+  const layoutRef = useRef(getLayoutPositions)
+  useLayoutEffect(() => { layoutRef.current = getLayoutPositions }, [getLayoutPositions])
   const registerNodeRef = useCallback((nodeId: string, el: HTMLDivElement | null, observeForLayout = true) => {
     if (el) {
       nodeElementsRef.current[nodeId] = el
@@ -35,7 +37,7 @@ export function useImprentaMeasurement({
         delete nodeElementsRef.current[nodeId]
       }
     }
-  }, [])
+  }, [nodeElementsRef, resizeObserverRef])
 
   useEffect(() => {
     const ro = new ResizeObserver((entries) => {
@@ -57,12 +59,15 @@ export function useImprentaMeasurement({
           resizeObserverRafRef.current = null
           setLayoutEpoch((e) => e + 1)
           setPositions((prev) =>
-            getLayoutPositions(nodesRef.current, prev, nodeHeightsRef.current)
+            layoutRef.current(nodesRef.current, prev, nodeHeightsRef.current)
           )
         })
       }
     })
     resizeObserverRef.current = ro
+    for (const element of Object.values(nodeElementsRef.current)) {
+      if (element.dataset.imprentaLite !== "1") ro.observe(element)
+    }
     return () => {
       if (resizeObserverRafRef.current != null) {
         cancelAnimationFrame(resizeObserverRafRef.current)
@@ -70,13 +75,14 @@ export function useImprentaMeasurement({
       }
       ro.disconnect()
     }
-  }, [])
+  }, [nodeElementsRef, nodeHeightsRef, nodesRef, resizeObserverRafRef, resizeObserverRef, setLayoutEpoch, setPositions])
 
   const canvasNodes = useMemo(() => [...nodes, ...dummyNodes], [nodes, dummyNodes])
 
-  positionsRef.current = positions;
-
-  nodesRef.current = canvasNodes;
+  useLayoutEffect(() => {
+    positionsRef.current = positions
+    nodesRef.current = canvasNodes
+  }, [positionsRef, positions, nodesRef, canvasNodes])
 
   const { isDarkMode } = useTheme()
 

@@ -1,9 +1,10 @@
-import { memo, useMemo, useEffect, useState, type MutableRefObject } from "react"
+import { memo, useMemo, useEffect, useState } from "react"
 import { InstanceNode } from "@/app/types/instance-nodes"
 import { getPublishContextAnchorY } from "./imprenta-publish-context"
 import { WorldSpaceSvg } from "./imprenta-world-svg"
 import type { ImprentaHoverStore } from "@/app/lib/imprenta-hover-store"
 import type { WorldPoint } from "@/app/lib/imprenta-world-svg"
+import type { ImprentaContext } from "./imprenta-panel/data-types"
 
 const ROW_H = 300
 const NODE_W = 480
@@ -12,7 +13,7 @@ function collectNodeAndAncestorIds(startId: string, nodes: InstanceNode[]) {
   const chain = new Set<string>()
   const byId = new Map(nodes.map(n => [n.id, n]))
   let curr = startId
-  while (curr) {
+  while (curr && !chain.has(curr)) {
     chain.add(curr)
     const n = byId.get(curr)
     if (!n || !n.parent_node_id) break
@@ -31,10 +32,10 @@ type ContextEdgeGeom = {
 }
 
 type ImprentaContextEdgesProps = {
-  contexts: any[]
-  nodesRef: MutableRefObject<InstanceNode[]>
+  contexts: ImprentaContext[]
+  nodes: InstanceNode[]
   positions: Record<string, { x: number; y: number }>
-  nodeHeightsRef: MutableRefObject<Record<string, number>>
+  nodeHeights: Record<string, number>
   selectedContextId: string | null
   onSelectContext: (id: string | null, anchor?: { x: number; y: number }) => void
   hoverStore: ImprentaHoverStore
@@ -42,9 +43,9 @@ type ImprentaContextEdgesProps = {
 
 export const ImprentaContextEdges = memo(function ImprentaContextEdges({
   contexts,
-  nodesRef,
+  nodes,
   positions,
-  nodeHeightsRef,
+  nodeHeights,
   selectedContextId,
   onSelectContext,
   hoverStore,
@@ -57,21 +58,19 @@ export const ImprentaContextEdges = memo(function ImprentaContextEdges({
 
   const imprentaHoverChainIds = useMemo(() => {
     if (!hoveredNodeId) return null
-    return collectNodeAndAncestorIds(hoveredNodeId, nodesRef.current)
-  }, [hoveredNodeId, nodesRef])
-
-  const resolveNodePosition = (nodeId: string) => positions[nodeId]
+    return collectNodeAndAncestorIds(hoveredNodeId, nodes)
+  }, [hoveredNodeId, nodes])
 
   const edges = useMemo(() => {
     const out: ContextEdgeGeom[] = []
     const chain = imprentaHoverChainIds
     for (const ctx of contexts) {
       if (!positions[ctx.context_node_id] || !positions[ctx.target_node_id]) continue
-      const start = resolveNodePosition(ctx.context_node_id)
-      const end = resolveNodePosition(ctx.target_node_id)
-      const startCy = (nodeHeightsRef.current[ctx.context_node_id] || ROW_H) / 2
-      const targetNodeForCtx = nodesRef.current.find((n) => n.id === ctx.target_node_id)
-      const endH = nodeHeightsRef.current[ctx.target_node_id] || ROW_H
+      const start = positions[ctx.context_node_id]
+      const end = positions[ctx.target_node_id]
+      const startCy = (nodeHeights[ctx.context_node_id] || ROW_H) / 2
+      const targetNodeForCtx = nodes.find((n) => n.id === ctx.target_node_id)
+      const endH = nodeHeights[ctx.target_node_id] || ROW_H
       const endCy = getPublishContextAnchorY(targetNodeForCtx?.type, ctx.type, endH)
       const startX = start.x + NODE_W
       const startY = start.y + startCy
@@ -96,8 +95,8 @@ export const ImprentaContextEdges = memo(function ImprentaContextEdges({
     positions,
     selectedContextId,
     imprentaHoverChainIds,
-    nodeHeightsRef,
-    nodesRef,
+    nodeHeights,
+    nodes,
   ])
 
   const points = useMemo(() => {

@@ -26,6 +26,38 @@ function node(id: string, overrides: Partial<InstanceNode> = {}): InstanceNode {
 }
 
 describe("ImprentaContextEdges", () => {
+  it("moves visible and clickable endpoints when a stationary node changes height", () => {
+    const nodesRef = { current: [node("a"), node("b")] }
+    const nodeHeightsRef = { current: { a: 300, b: 300 } }
+    const props = {
+      contexts: [{ id: "ctx", context_node_id: "a", target_node_id: "b", type: "reference" }],
+      nodes: nodesRef.current, nodeHeights: { ...nodeHeightsRef.current }, positions: { a: { x: 100, y: 100 }, b: { x: 700, y: 100 } },
+      selectedContextId: null, onSelectContext: jest.fn(), hoverStore: createImprentaHoverStore(),
+    }
+    const view = render(<ImprentaContextEdges {...props} />)
+    expect(view.container.querySelector("path")?.getAttribute("d")).toContain("M 580 250")
+    nodeHeightsRef.current.a = 1800
+    view.rerender(<ImprentaContextEdges {...props} nodeHeights={{ ...nodeHeightsRef.current }} />)
+    for (const path of view.container.querySelectorAll("path")) {
+      expect(path.getAttribute("d")).toContain("M 580 1000")
+    }
+  })
+
+  it("updates publish anchors when the target type changes without moving", () => {
+    const source = node("a")
+    const target = node("b")
+    const props = {
+      nodes: [source, target], nodeHeights: { a: 300, b: 300 },
+      contexts: [{ id: "ctx", context_node_id: "a", target_node_id: "b", type: "content" }],
+      positions: { a: { x: 100, y: 100 }, b: { x: 700, y: 100 } },
+      selectedContextId: null, onSelectContext: jest.fn(), hoverStore: createImprentaHoverStore(),
+    }
+    const view = render(<ImprentaContextEdges {...props} />)
+    expect(view.container.querySelector("path")?.getAttribute("d")).toContain("700 250")
+    view.rerender(<ImprentaContextEdges {...props} nodes={[source, { ...target, type: "publish" }]} />)
+    expect(view.container.querySelector("path")?.getAttribute("d")).toContain("700 160")
+  })
+
   it("renders a full-screen SVG with overflow visible", () => {
     const nodes = [node("a"), node("b")]
     const nodesRef: RefObject<InstanceNode[]> = { current: nodes }
@@ -41,9 +73,9 @@ describe("ImprentaContextEdges", () => {
             type: "reference",
           },
         ]}
-        nodesRef={nodesRef}
+        nodes={nodesRef.current}
         positions={{ a: { x: 0, y: 0 }, b: { x: 600, y: 40 } }}
-        nodeHeightsRef={heightsRef}
+        nodeHeights={heightsRef.current}
         selectedContextId={null}
         onSelectContext={() => {}}
         hoverStore={createImprentaHoverStore()}
@@ -71,9 +103,9 @@ describe("ImprentaContextEdges", () => {
           target_node_id: "b",
           type: "reference",
         }]}
-        nodesRef={nodesRef}
+        nodes={nodesRef.current}
         positions={{ a: { x: 0, y: 0 }, b: { x: 600, y: 40 } }}
-        nodeHeightsRef={heightsRef}
+        nodeHeights={heightsRef.current}
         selectedContextId={null}
         onSelectContext={onSelectContext}
         hoverStore={createImprentaHoverStore()}

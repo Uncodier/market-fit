@@ -5,8 +5,10 @@ import { copyToClipboard } from "@/app/utils/clipboard"
 import { toast } from "sonner"
 
 import type { ImprentaNodeCardProps } from './card-types'
+import type { InstanceNode } from '@/app/types/instance-nodes'
 
-export function ImprentaCardActions({ isVisualMediaCard, actions, node, hasResult, resultBtnVariant, resultBtnClass, contexts, resultIconClass, needAudience, setIsTestDialogOpen }: Pick<ImprentaNodeCardProps, "actions" | "node" | "hasResult" | "contexts" | "needAudience"> & {
+export function ImprentaCardActions({ isVisualMediaCard, actions, node, parentNode, hasResult, resultBtnVariant, resultBtnClass, contexts, resultIconClass, needAudience, setIsTestDialogOpen }: Pick<ImprentaNodeCardProps, "actions" | "node" | "hasResult" | "contexts" | "needAudience"> & {
+  parentNode?: InstanceNode
   isVisualMediaCard: boolean
   resultBtnVariant: "ghost" | "outline"
   resultBtnClass: string
@@ -25,7 +27,6 @@ export function ImprentaCardActions({ isVisualMediaCard, actions, node, hasResul
       />
     )}
     {(() => {
-      const parentNode = actions.getParentNode(node);
       return hasResult ? (
         <div className={cn("flex gap-2 w-full", isVisualMediaCard && "relative px-3 pb-3")}>
           <Button

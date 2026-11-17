@@ -20,9 +20,10 @@ jest.mock("@/app/hooks/useImprentaData", () => ({ useImprentaData: jest.fn() }))
 jest.mock("@/app/assets/actions", () => ({ uploadAssetFile: jest.fn() }))
 jest.mock("@/lib/supabase/client", () => ({ createClient: jest.fn() }))
 jest.mock("@/app/components/agents/imprenta-panel/view", () => ({
-  ImprentaPanelView: ({ nodes, handleFileChange }: Pick<ReturnType<typeof useImprentaPanelState>, "nodes" | "handleFileChange">) => (
+  ImprentaPanelView: ({ nodes, handleFileChange, retryImprentaData }: Pick<ReturnType<typeof useImprentaPanelState>, "nodes" | "handleFileChange"> & { retryImprentaData: () => Promise<void> }) => (
     <div>
       <input type="file" aria-label="Upload file" onChange={handleFileChange} />
+      <button onClick={() => void retryImprentaData()}>Retry canvas</button>
       {nodes.map(node => <span key={node.id}>{node.prompt.text}</span>)}
     </div>
   ),
@@ -73,6 +74,17 @@ it("mounts the real canvas controller and keeps a confirmed upload visible", asy
   await waitFor(() => expect(screen.getByText("Photo.png")).toBeInTheDocument())
   expect(cacheUploadedNode).toHaveBeenCalledWith(uploaded)
   expect(screen.getByText("Existing prompt")).toBeInTheDocument()
+})
+
+it("wires retry to reconcile the mounted canvas, not just its data cache", async () => {
+  const updated = { ...cachedNode, prompt: { text: "Refreshed prompt" } }
+  refreshImprentaData.mockResolvedValueOnce({ nodes: [updated], contexts: [], logs: [] })
+  render(<ImprentaPanel activeInstanceId="instance-a" />)
+  expect(screen.getByText("Existing prompt")).toBeInTheDocument()
+  fireEvent.click(screen.getByRole("button", { name: "Retry canvas" }))
+  await waitFor(() => expect(screen.getByText("Refreshed prompt")).toBeInTheDocument())
+  expect(screen.queryByText("Existing prompt")).not.toBeInTheDocument()
+  expect(refreshImprentaData).toHaveBeenCalledWith({ includeLogs: true })
 })
 
 it("does not add a pending upload to another canvas after navigation", async () => {

@@ -1,3 +1,5 @@
+"use client"
+
 import { Tabs } from "@/app/components/ui/tabs"
 import { useState } from 'react'
 
@@ -5,15 +7,22 @@ import { Globe, ExternalLink, RotateCw, Monitor, Laptop, Tablet, Smartphone, Dow
 
 import { ResponsiveTabsList } from "@/app/components/ui/responsive-tabs-list"
 
-import { SimpleMessagesView } from "@/app/components/simple-messages-view"
-
 import { BrowserSkeleton } from "@/app/components/skeletons/browser-skeleton"
+import { MessagesSkeleton } from "@/app/components/skeletons/messages-skeleton"
+import { WorkflowSkeleton } from "@/app/components/skeletons/workflow-skeleton"
 
 import dynamic from "next/dynamic"
-import { WorkflowPanel } from '@/app/components/workflows/workflow-panel'
 
 import { cn } from "@/lib/utils"
 import { cloudRevisionFormat } from '@/lib/cloud-file-url'
+const SimpleMessagesView = dynamic(
+  () => import("@/app/components/simple-messages-view").then((m) => m.SimpleMessagesView),
+  { ssr: false, loading: () => <MessagesSkeleton showComposerSkeleton={false} hasTopHeaderSpace={false} className="h-full absolute inset-0" /> }
+)
+const WorkflowPanel = dynamic(
+  () => import("@/app/components/workflows/workflow-panel").then((m) => m.WorkflowPanel),
+  { ssr: false, loading: () => <WorkflowSkeleton /> }
+)
 const ZipViewer = dynamic(
   () => import("@/app/components/simple-messages-view/components/ZipViewer").then((m) => m.ZipViewer),
   { ssr: false }

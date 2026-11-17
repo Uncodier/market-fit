@@ -1,4 +1,5 @@
 import { InstanceNode } from "@/app/types/instance-nodes"
+import { useCallback } from "react"
 import { IMPRENTA_NODE_W, IMPRENTA_ROW_H } from './preview-helpers'
 import type { useImprentaPanelState } from './state'
 
@@ -19,7 +20,7 @@ export function useImprentaLayout({ sidebarWidth, nodeHeightsRef, contexts }: Im
 
   const PAD_Y = 100 + 188 - HEADER_STACK_PX
 
-  const getLayoutPositions = (
+  const getLayoutPositions = useCallback((
     currentNodes: InstanceNode[],
     currentPositions: Record<string, { x: number; y: number }>,
     heights: Record<string, number> = nodeHeightsRef.current
@@ -342,8 +343,17 @@ export function useImprentaLayout({ sidebarWidth, nodeHeightsRef, contexts }: Im
       }
     }
 
-    return pos
-  }
+    let changed = Object.keys(pos).length !== Object.keys(currentPositions).length
+    for (const [id, position] of Object.entries(pos)) {
+      const previous = currentPositions[id]
+      if (previous && previous.x === position.x && previous.y === position.y) {
+        pos[id] = previous
+      } else {
+        changed = true
+      }
+    }
+    return changed ? pos : currentPositions
+  }, [contexts, nodeHeightsRef, PAD_X, PAD_Y, NODE_W, ROW_H])
 
   return { NODE_W, H_GAP, V_GAP, ROW_H, PAD_X, HEADER_STACK_PX, PAD_Y, getLayoutPositions }
 }

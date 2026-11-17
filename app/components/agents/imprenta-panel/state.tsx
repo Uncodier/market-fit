@@ -29,7 +29,10 @@ export function useImprentaPanelState({ activeInstanceId }: ImprentaPanelStateOp
 
   const supabase = createClient()
 
-  const { imprentaData, isLoading: isImprentaLoading, refreshImprentaData, cacheUploadedNode, logs: dataLogs } = useImprentaData(
+  const {
+    imprentaData, isLoading: isImprentaLoading, refreshImprentaData, cacheUploadedNode, logs: dataLogs,
+    isGraphReady, graphError, isLogsReady, isLogsLoading, logsError, ensureImprentaLogs,
+  } = useImprentaData(
     activeInstanceId,
     currentSite?.id
   )
@@ -72,7 +75,8 @@ export function useImprentaPanelState({ activeInstanceId }: ImprentaPanelStateOp
 
   const [viewportInfo, setViewportInfo] = useState<ZoomableViewportInfo | null>(null)
 
-  const viewportStoreRef = useRef<ViewportStore | null>(null)
+  const viewportStore = useMemo(() => createViewportStore(), [])
+  const viewportStoreRef = useRef<ViewportStore | null>(viewportStore)
 
   const { isUploadingAsset, handleFileChange } = useImprentaUpload({
     instanceId: activeInstanceId,
@@ -85,12 +89,6 @@ export function useImprentaPanelState({ activeInstanceId }: ImprentaPanelStateOp
       setNodes(prev => prev.some(n => n.id === node.id) ? prev : [...prev, node])
     },
   })
-
-  if (viewportStoreRef.current == null) {
-    viewportStoreRef.current = createViewportStore()
-  }
-
-  const viewportStore = viewportStoreRef.current
 
   const thumbCache = useMemo(() => getImprentaThumbCache(), [])
 
@@ -144,12 +142,19 @@ export function useImprentaPanelState({ activeInstanceId }: ImprentaPanelStateOp
 
   return {
     currentSite,
+    activeInstanceId,
     isLayoutCollapsed,
     isMobile,
     sidebarWidth,
     supabase,
     imprentaData,
     isImprentaLoading,
+    isGraphReady,
+    graphError,
+    isLogsReady,
+    isLogsLoading,
+    logsError,
+    ensureImprentaLogs,
     refreshImprentaData,
     cacheUploadedNode,
     logs,

@@ -10,7 +10,7 @@ import { MemoMarkdown } from './markdown'
 import type { ImprentaNodeCardProps } from './card-types'
 import { ImprentaUploadedFile } from '@/app/components/agents/imprenta-uploaded-file'
 
-export function ImprentaCardResult({ hasResult, isVisualMediaCard, nodes, dummyNodes, actions, node, logs, currentSite, renderResultMedia, mediaAspect }: Pick<ImprentaNodeCardProps, "hasResult" | "nodes" | "dummyNodes" | "actions" | "node" | "logs" | "currentSite"> & {
+export function ImprentaCardResult({ hasResult, isVisualMediaCard, nodes, actions, node, logs, currentSite, renderResultMedia, mediaAspect }: Pick<ImprentaNodeCardProps, "hasResult" | "nodes" | "actions" | "node" | "logs" | "currentSite"> & {
   isVisualMediaCard: boolean
   renderResultMedia: (url: string, type: "image" | "video", key: React.Key) => React.ReactNode
   mediaAspect: string
@@ -27,8 +27,12 @@ export function ImprentaCardResult({ hasResult, isVisualMediaCard, nodes, dummyN
       return (
         <div className={isVisualMediaCard ? "relative" : "flex flex-col gap-2"}>
           {(() => {
-            const allNodes = [...nodes, ...dummyNodes]
-            const parentNode = actions.getParentNode(node);
+            const allNodes = nodes
+            const parentNode = nodes.find(parent => parent.id === node.parent_node_id)
+            const mediaType = inferImprentaResultMediaType(node, allNodes)
+            if (!currentSite?.id || !(isValidPublishAudienceSource(node)
+              || isDescendantOfAudienceNode(node, allNodes)
+              || mediaType === "audience")) return null
             const rawAudienceLeads = (() => {
               let raw = (node.result)?.audience_leads || (node.result)?.example_leads;
               if (!raw && typeof node.result === 'object') {
@@ -128,8 +132,6 @@ export function ImprentaCardResult({ hasResult, isVisualMediaCard, nodes, dummyN
                 ? String(embeddedLeads[0].audience_id)
                 : "")
 
-            const mediaType = inferImprentaResultMediaType(node, allNodes);
-
             const showLeadsCarousel =
               !!currentSite?.id &&
               (isValidPublishAudienceSource(node) ||
@@ -192,8 +194,8 @@ export function ImprentaCardResult({ hasResult, isVisualMediaCard, nodes, dummyN
             <AudioPlayer key={extractUrl((node.result).audio.url)} src={extractUrl((node.result).audio.url)} className="w-full" />
           )}
           {(() => {
-            const allNodes = [...nodes, ...dummyNodes]
-            const parentNode = actions.getParentNode(node);
+            const allNodes = nodes
+            const parentNode = nodes.find(parent => parent.id === node.parent_node_id)
             const isAudienceNode = node.type === "generate-audience" || inferImprentaResultMediaType(node, allNodes) === "audience" || (parentNode && parentNode.type === "generate-audience");
 
             const hasAnyTextOrNoMedia = ((node.result).text || (!(node.result).outputs && !(node.result).media && !(node.result).images && !(node.result).image && !(node.result).video && !(node.result).audio && !(node.result).text));

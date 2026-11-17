@@ -4,17 +4,44 @@ import { toast } from "sonner"
 import { validatePublishNodeInputs } from "@/app/components/agents/imprenta-publish-context"
 import { buildPublishRouting, getTestRecipient } from "@/app/components/agents/imprenta-publish-routing"
 import { executeImprentaNode } from "@/app/components/agents/imprenta-execution-client"
+import { useLayoutEffect, useMemo, useRef } from "react"
 
 import type { useImprentaPanelState } from './state'
 import type { useImprentaMeasurement } from './measurement'
 
-type ImprentaExecutionOptions = Pick<ReturnType<typeof useImprentaPanelState>, "persistenceBarrier" | "nodesRef" | "videoParams" | "supabase" | "setNodes" | "contexts" | "logs" | "setDummyNodes" | "currentSite"> & Pick<ReturnType<typeof useImprentaMeasurement>, "canvasNodes">
+type ImprentaExecutionOptions = Pick<ReturnType<typeof useImprentaPanelState>, "persistenceBarrier" | "nodesRef" | "videoParams" | "supabase" | "setNodes" | "contexts" | "setDummyNodes" | "currentSite" | "activeInstanceId" | "isGraphReady" | "ensureImprentaLogs"> & Pick<ReturnType<typeof useImprentaMeasurement>, "canvasNodes">
 
-export function useImprentaExecution({ persistenceBarrier, nodesRef, videoParams, supabase, setNodes, contexts, canvasNodes, logs, setDummyNodes, currentSite }: ImprentaExecutionOptions) {
+export function useImprentaExecution({ persistenceBarrier, nodesRef, videoParams, supabase, setNodes, contexts, canvasNodes, setDummyNodes, currentSite, activeInstanceId, isGraphReady, ensureImprentaLogs }: ImprentaExecutionOptions) {
+  const siteId = currentSite?.id
+  const scope = useMemo(() => ({ instanceId: activeInstanceId, siteId }), [activeInstanceId, siteId])
+  const activeScope = useRef<object | null>(scope)
+  const executions = useRef(new Map<string, object>())
+  const latest = useRef({ isGraphReady, contexts, canvasNodes })
+  useLayoutEffect(() => {
+    latest.current = { isGraphReady, contexts, canvasNodes }
+  }, [isGraphReady, contexts, canvasNodes])
+  useLayoutEffect(() => {
+    activeScope.current = scope
+    return () => { activeScope.current = null }
+  }, [scope])
+
   const handleExecuteNode = async (node: InstanceNode, testDestinations?: Record<string, string>) => {
+    const isCurrent = () => activeScope.current === scope
+      && node.instance_id === activeInstanceId && node.site_id === currentSite?.id
+    const requireCurrentGraph = (refreshNode = true) => {
+      if (!isCurrent() || !latest.current.isGraphReady) {
+        throw new Error("Load the current canvas and its connections before executing")
+      }
+      const currentNode = nodesRef.current.find(candidate => candidate.id === node.id)
+      if (!currentNode || currentNode.instance_id !== activeInstanceId || currentNode.site_id !== siteId) {
+        throw new Error("This node is no longer available in the current canvas")
+      }
+      if (refreshNode) node = currentNode
+    }
     try {
+      requireCurrentGraph()
       await persistenceBarrier.wait(node.id)
-      node = nodesRef.current.find((candidate) => candidate.id === node.id) ?? node
+      requireCurrentGraph()
       if (node.type === "generate-video") {
         const currentParameters = (node.settings)?.parameters || videoParams
         const normalizedParameters = normalizeVideoParametersForExecution(currentParameters)
@@ -33,6 +60,7 @@ export function useImprentaExecution({ persistenceBarrier, nodesRef, videoParams
             "settings"
           )
           await persistenceBarrier.wait(node.id)
+          requireCurrentGraph()
           setNodes((previous) => previous.map((candidate) =>
             candidate.id === node.id ? { ...candidate, settings } : candidate))
           node = { ...node, settings }
@@ -40,21 +68,37 @@ export function useImprentaExecution({ persistenceBarrier, nodesRef, videoParams
       }
     } catch (error) {
       console.error("Failed to save node before execution:", error)
-      toast.error("Save the latest node changes before executing")
+      toast.error("Load the current canvas and save the latest changes before executing")
       return
     }
 
     if (node.type === "publish") {
-      if (!testDestinations) {
-        const err = validatePublishNodeInputs(node, contexts, canvasNodes, logs)
-        if (err) {
-          toast.error(err)
-          return
+      try {
+        // Display logs can be stale or server-limited. Test publishes also need
+        // a fresh, complete read; neither path may substitute an empty array.
+        const currentLogs = await ensureImprentaLogs()
+        await persistenceBarrier.wait(node.id)
+        requireCurrentGraph()
+        if (!testDestinations) {
+          const err = validatePublishNodeInputs(node, latest.current.contexts, latest.current.canvasNodes, currentLogs)
+          if (err) {
+            toast.error(err)
+            return
+          }
         }
+      } catch (error) {
+        console.error("Failed to load required publish data:", error)
+        toast.error("Load the current canvas logs and connections before publishing")
+        return
       }
     }
-    toast.info("Executing node...")
+    const attempt = {}
+    let admitted = false
+    const ownsExecution = () => executions.current.get(node.id) === attempt
+    const canUpdateUI = () => isCurrent() && ownsExecution()
     try {
+      const { getSystemPromptForActivity } = await import('@/app/components/simple-messages-view/utils')
+      requireCurrentGraph(false)
       // Create a dummy placeholder child node visually
       const expectedAmount = Number((node.settings)?.parameters?.expectedResults) || 1;
       const currentMediaType = (node.settings)?.media_type || (node.type === 'prompt' ? 'text' : node.type.replace('generate-', ''));
@@ -77,17 +121,6 @@ export function useImprentaExecution({ persistenceBarrier, nodesRef, videoParams
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       } as InstanceNode));
-
-      setDummyNodes(prev => [...prev, ...newDummies])
-
-      // 1. Set the current node to running to show visual feedback immediately
-      setNodes(prev => prev.map(n => n.id === node.id ? { ...n, status: 'running' } : n));
-      await supabase
-        .from('instance_nodes')
-        .update({ status: 'running' })
-        .eq('id', node.id)
-
-      const { getSystemPromptForActivity } = await import('@/app/components/simple-messages-view/utils')
 
       // Prepare context string with media parameters
       const contextObj: Record<string, unknown> & { parameters: InstanceNode["settings"] } = {
@@ -174,28 +207,61 @@ export function useImprentaExecution({ persistenceBarrier, nodesRef, videoParams
         ...(toolOverrides ? { tool_overrides: toolOverrides } : {})
       }
 
-      // Route through the web contract proxy so persisted UI state is authoritative.
-      const res = await executeImprentaNode(requestPayload)
+      executions.current.set(node.id, attempt)
+      admitted = true
+      toast.info("Executing node...")
+      setDummyNodes(prev => isCurrent() ? [...prev, ...newDummies] : prev)
+      setNodes(prev => isCurrent()
+        ? prev.map(n => n.id === node.id ? { ...n, status: 'running' } : n) : prev)
 
-      const response = res as typeof res & { message?: string }
+      // After admission, navigation only retires UI updates, not the durable
+      // handoff. Capture the written version for conditional rejection cleanup.
+      const { data: running, error: runningError } = await supabase
+        .from('instance_nodes')
+        .update({ status: 'running', updated_at: new Date().toISOString() })
+        .eq('id', node.id)
+        .select('updated_at')
+        .single()
+
+      // Route through the web contract proxy so persisted UI state is authoritative.
+      const response = await executeImprentaNode(requestPayload)
 
       if (!response.success) {
         console.error('API Error Response:', response.error);
 
-        // Revert node status on failure
-        setNodes(prev => prev.map(n => n.id === node.id ? { ...n, status: 'failed' } : n));
-        await supabase
-          .from('instance_nodes')
-          .update({ status: 'failed' })
-          .eq('id', node.id)
+        // The client wraps the proxy body in error.details. Transport/gateway
+        // failures are uncertain, and a conflict may belong to another run.
+        const details = response.error?.details as { execution_started?: boolean } | undefined
+        const rejected = details?.execution_started !== true && response.status !== 409 && (
+          details?.execution_started === false || [400, 401, 402, 403, 404, 413, 422, 429].includes(response.status ?? 0)
+        )
+        if (rejected && ownsExecution() && !runningError && running?.updated_at) {
+          const { data: failed, error } = await supabase
+            .from('instance_nodes')
+            .update({ status: 'failed' })
+            .eq('id', node.id)
+            .eq('status', 'running')
+            .eq('updated_at', running.updated_at)
+            .select('id')
+            .maybeSingle()
+          if (!error && failed && canUpdateUI()) {
+            setNodes(prev => isCurrent() ? prev.map(n => n.id === node.id && n.status === 'running'
+              && (n.updated_at === node.updated_at || n.updated_at === running.updated_at)
+              ? { ...n, status: 'failed' } : n) : prev)
+          }
+        }
 
-        throw new Error(`Failed to start execution: ${response.error?.message || 'Unknown error'}`);
+        throw new Error(rejected
+          ? `Failed to start execution: ${response.error?.message || 'Unknown error'}`
+          : 'Execution could not be confirmed. Check its status before trying again.');
       }
 
-      toast.success("Execution started asynchronously")
+      if (canUpdateUI()) toast.success("Execution started asynchronously")
     } catch (e) {
       console.error(e)
-      toast.error(e instanceof Error ? e.message : "Failed to execute node")
+      if (isCurrent() && (!admitted || ownsExecution())) toast.error(e instanceof Error ? e.message : "Failed to execute node")
+    } finally {
+      if (ownsExecution()) executions.current.delete(node.id)
     }
   }
 

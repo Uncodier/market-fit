@@ -6,6 +6,7 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { X } from "@/app/components/ui/icons"
 import { buttonVariants } from "@/app/components/ui/button"
 import { cn } from "@/lib/utils"
+import { DialogHasCloseContext } from "./dialog-cancel-presentation"
 import { normalizeLocale, readStoredLocale, subscribeLocale, type SupportedLocale } from '@/app/context/locale-preferences'
 import { localeMessages } from '@/app/context/locale-catalog'
 import {
@@ -132,7 +133,9 @@ const DialogContent = React.forwardRef<
           }}
           {...props}
         >
-          {children}
+          <DialogHasCloseContext.Provider value={showClose}>
+            {children}
+          </DialogHasCloseContext.Provider>
           {showClose ? (
             <DialogPrimitive.Close
               data-slot="dialog-close"
@@ -188,6 +191,7 @@ const DialogFooter = ({
     data-slot="dialog-footer"
     className={cn(
       "flex min-w-0 shrink-0 flex-col-reverse gap-2 border-t bg-background px-6 py-4 sm:flex-row sm:flex-wrap sm:justify-end [&_button]:h-auto [&_button]:min-w-0 [&_button]:whitespace-normal [&_button]:break-words [&_button]:text-center [&>.btn-primary-well]:min-w-0 [&>.btn-primary-well]:max-w-full",
+      React.useContext(DialogHasCloseContext) && "max-sm:[&_[data-dialog-cancel=true]]:!hidden",
       className
     )}
     {...props}

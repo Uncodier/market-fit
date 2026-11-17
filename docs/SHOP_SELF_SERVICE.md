@@ -21,6 +21,15 @@ preview settings keep their current origin.
 
 ## Catalog and shared-device identity
 
+The kiosk shares Shop's floating commerce header, logo, responsive search,
+cart control, configured hero/trust content, fulfillment segments, footer and
+mobile cart action. The location remains fixed and visible; QR identification
+and starting a new order replace account navigation. Fulfillment segments show
+only the configured pickup/dine-in choices, including a sole available choice,
+without scheduling. External hero links fall back to browsing the menu. Coupon
+actions retain their location-specific flow rather than applying to the normal
+Shop cart. Starting a new order also clears the menu search.
+
 The menu reuses Shop products, variants, modifiers, promotions, and category
 navigation. Only active, publicly listed physical products compatible with the
 selected fulfillment and location can be ordered. Recurring products,
