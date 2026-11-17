@@ -88,6 +88,32 @@ Document the exact deployment command only after the repository has a canonical,
 checked-in workflow. Until then, do not copy ad hoc dashboard or CLI commands
 into automation.
 
+## Record diagram save ambiguity
+
+`20261117223000_record_diagram_trash_guard_ambiguity.sql` corrects the
+`guard_trashed_record_diagram_write()` trigger function. Its old `source_id`
+variable conflicts with `records.source_id`, causing canvas saves to fail with
+`column reference "source_id" is ambiguous`. The correction uses distinct
+variable names and qualified columns, preserving trash locks, read-only guards,
+existing triggers and execution restrictions. No saved content is rewritten.
+
+Applied with explicit approval to Makinari (`rnjgeloamtszdjplmqxy`) on November
+17, 2026 at **22:51:18 UTC**, using ignored credentials from the canonical
+`makinari-db-scheme` repository over TLS. Independent verification at **22:51:20
+UTC** confirmed one exact-source history entry, the exact corrected body, unchanged
+owner/ACL/security configuration and all three enabled triggers. No business DML
+or unrelated migration was executed. Canonical and web migration copies match.
+See the canonical repository's
+`supabase/validation/20261117_record_diagram_trash_guard_ambiguity.md` for evidence
+and remaining browser-validation limits.
+
+Regression coverage reproduces the error and verifies the repair, active writes,
+trash denial, restoration and restricted execution in disposable PostgreSQL:
+
+```bash
+npm test -- --runInBand __tests__/records/record-diagram-trash-guard-postgres.test.ts __tests__/records/record-diagram-migrations.test.ts
+```
+
 ## Sale order attribution recovery
 
 `20260917220000_sale_order_attribution.sql` backfills the creator before creating
