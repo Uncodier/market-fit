@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { requireAccountingAccess } from "@/app/accounting/access"
-import { updateSubscriptionAmount, updateSubscriptionEndDate } from "@/app/subscriptions/update-details"
+import { updateSubscriptionAmount, updateSubscriptionCurrency, updateSubscriptionEndDate } from "@/app/subscriptions/update-details"
 
 jest.mock("next/cache", () => ({ revalidatePath: jest.fn() }))
 jest.mock("@/app/accounting/access", () => ({ requireAccountingAccess: jest.fn() }))
@@ -28,6 +28,31 @@ function setup(start_date = "2026-10-20T00:00:00Z") {
 
 describe("subscription amount and end date updates", () => {
   beforeEach(() => jest.resetAllMocks())
+
+  it("normalizes currency and only changes the authorized subscription", async () => {
+    const { read, write, from } = setup()
+    await updateSubscriptionCurrency(siteId, subscriptionId, " mxn ")
+    expect(requireAccountingAccess).toHaveBeenCalledWith(siteId, "update")
+    expect(from.mock.calls).toEqual([["subscriptions"], ["subscriptions"]])
+    expect(write.update).toHaveBeenCalledWith({ currency: "MXN", updated_at: expect.any(String) })
+    for (const query of [read, write]) {
+      expect(query.eq).toHaveBeenCalledWith("site_id", siteId)
+      expect(query.eq).toHaveBeenCalledWith("id", subscriptionId)
+    }
+    expect(write.eq).toHaveBeenCalledWith("updated_at", version)
+  })
+
+  it.each(["", "ZZZ", "US", "USD; DROP TABLE", null, 123])("rejects invalid currency %s", async (value) => {
+    expect(await updateSubscriptionCurrency(siteId, subscriptionId, value as string)).toEqual({ error: "Select a valid currency" })
+    expect(requireAccountingAccess).not.toHaveBeenCalled()
+  })
+
+  it("denies unauthorized currency edits", async () => {
+    const { from } = setup()
+    jest.mocked(requireAccountingAccess).mockRejectedValueOnce(new Error("denied"))
+    expect(await updateSubscriptionCurrency(siteId, subscriptionId, "USD")).toHaveProperty("error")
+    expect(from).not.toHaveBeenCalled()
+  })
 
   it.each([0, 0.01, 125.5, 999999999999])("saves the recurring amount %s without changing invoices or other fields", async (amount) => {
     const { read, write, from, saved } = setup()

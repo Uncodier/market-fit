@@ -27,7 +27,8 @@ import { SubscriptionIdentityHeader } from "../components/SubscriptionIdentityHe
 import { SubscriptionInvoicesTable } from "../components/SubscriptionInvoicesTable"
 import { SubscriptionPaymentsTable } from "../components/SubscriptionPaymentsTable"
 import { SubscriptionStatusBar } from "../components/SubscriptionStatusBar"
-import { updateSubscriptionAmount, updateSubscriptionEndDate } from "../update-details"
+import { updateSubscriptionAmount, updateSubscriptionCurrency, updateSubscriptionEndDate } from "../update-details"
+import { getSubscriptionCurrency } from "../currency"
 
 // Translate known application errors at the display boundary; preserve provider details.
 const ERROR_KEYS: Record<string, string> = {
@@ -163,6 +164,14 @@ export default function SubscriptionDetailPage(props: {
     toast.success(t("operations.subscriptions.amountSaved"))
   }
 
+  const handleCurrencyChange = async (value: string) => {
+    if (!currentSite?.id || !subscription) throw new Error(t("operations.subscriptions.notFound"))
+    const result = await updateSubscriptionCurrency(currentSite.id, subscription.id, value)
+    if (result.error || !result.data) throw new Error(errorLabel(result.error || "Unable to save subscription details"))
+    setSubscription((current) => current ? { ...current, ...result.data } : current)
+    toast.success("Subscription currency saved")
+  }
+
   if (loading) {
     return (
       <div className="flex-1 p-4 lg:p-8">
@@ -190,7 +199,7 @@ export default function SubscriptionDetailPage(props: {
     )
   }
 
-  const currency = subscription.catalog_item?.currency || invoices[0]?.currency || "USD"
+  const currency = getSubscriptionCurrency(subscription)
 
   return (
     <div className="flex-1 p-0">
@@ -255,6 +264,7 @@ export default function SubscriptionDetailPage(props: {
                   onUpdateNextBillingDate={(value) => handleDateChange("next_billing_date", value)}
                   onUpdateDueDate={(value) => handleDateChange("due_date", value)}
                   onUpdateAmount={handleAmountChange}
+                  onUpdateCurrency={handleCurrencyChange}
                   onUpdateEndDate={(value) => handleDateChange("end_date", value)}
                 />
               </div>

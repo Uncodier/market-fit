@@ -2,7 +2,7 @@ import React from "react"
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import SubscriptionDetailPage from "@/app/subscriptions/[id]/page"
 import { getSubscriptionDetail, type SubscriptionDetail } from "@/app/subscriptions/actions"
-import { updateSubscriptionAmount, updateSubscriptionEndDate } from "@/app/subscriptions/update-details"
+import { updateSubscriptionAmount, updateSubscriptionCurrency, updateSubscriptionEndDate } from "@/app/subscriptions/update-details"
 import { toast } from "sonner"
 import { localeMessages } from "@/app/context/locale-catalog"
 
@@ -17,7 +17,7 @@ jest.mock("@/app/context/PermissionContext", () => ({ useOptionalPermissions: ()
 jest.mock("@/app/context/LocalizationContext", () => ({ useLocalization: () => ({ locale: mockLocale, t: mockTranslators[mockLocale] }) }))
 jest.mock("@/app/hooks/use-mobile-view", () => ({ useIsMobile: () => false }))
 jest.mock("@/app/subscriptions/actions", () => ({ getSubscriptionDetail: jest.fn(), updateSubscriptionStatus: jest.fn(), updateSubscriptionDueDate: jest.fn(), updateSubscriptionNextBillingDate: jest.fn() }))
-jest.mock("@/app/subscriptions/update-details", () => ({ updateSubscriptionAmount: jest.fn(), updateSubscriptionEndDate: jest.fn() }))
+jest.mock("@/app/subscriptions/update-details", () => ({ updateSubscriptionAmount: jest.fn(), updateSubscriptionCurrency: jest.fn(), updateSubscriptionEndDate: jest.fn() }))
 jest.mock("sonner", () => ({ toast: { success: jest.fn(), error: jest.fn() } }))
 jest.mock("@/app/components/ui/sticky-header", () => ({ StickyHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div> }))
 jest.mock("@/app/components/ui/responsive-tabs-list", () => ({ ResponsiveTabsList: () => null }))
@@ -25,7 +25,7 @@ jest.mock("@/app/subscriptions/components/SubscriptionStatusBar", () => ({ Subsc
 jest.mock("@/app/subscriptions/components/SubscriptionInvoicesTable", () => ({ SubscriptionInvoicesTable: () => <div>Existing invoice: $125.00</div> }))
 jest.mock("@/app/subscriptions/components/SubscriptionPaymentsTable", () => ({ SubscriptionPaymentsTable: () => null }))
 jest.mock("@/app/subscriptions/components/SubscriptionIdentityHeader", () => ({
-  SubscriptionIdentityHeader: ({ subscription }: { subscription: SubscriptionDetail }) => <div data-testid="subscription-header">{subscription.amount} per cycle</div>,
+  SubscriptionIdentityHeader: ({ subscription, currency }: { subscription: SubscriptionDetail; currency: string }) => <div data-testid="subscription-header">{subscription.amount} per cycle {currency}</div>,
 }))
 jest.mock("@/app/subscriptions/components/CreateSubscriptionInvoiceDialog", () => ({
   CreateSubscriptionInvoiceDialog: ({ defaultAmount }: { defaultAmount: number }) => <div data-testid="invoice-default">{defaultAmount}</div>,
@@ -67,6 +67,28 @@ it("persists Amount and updates header, recurring value, and manual invoice defa
   expect(screen.getAllByText("$250.00")).toHaveLength(1)
   expect(screen.getByText("Existing invoice: $125.00")).toBeInTheDocument()
   expect(toast.success).toHaveBeenCalledWith("Subscription amount saved")
+})
+
+it("persists currency and refreshes recurring display without changing invoice history", async () => {
+  // jsdom does not implement the scrolling API used by the real Radix select.
+  const scroll = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollIntoView")
+  Object.defineProperty(HTMLElement.prototype, "scrollIntoView", { configurable: true, value: jest.fn() })
+  try {
+    jest.mocked(updateSubscriptionCurrency).mockResolvedValueOnce({ data: { amount: 125, currency: "MXN", end_date: subscription.end_date, updated_at: "2026-10-16T12:00:00Z" } })
+    const header = await open()
+    fireEvent.click(screen.getByText("USD"))
+    fireEvent.keyDown(screen.getByRole("combobox", { name: "Currency" }), { key: "Enter" })
+    fireEvent.click(await screen.findByRole("option", { name: "Mexican Peso (MXN)" }))
+    expect(updateSubscriptionCurrency).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole("button", { name: "Save currency" }))
+    await waitFor(() => expect(header).toHaveTextContent("125 per cycle MXN"))
+    expect(updateSubscriptionCurrency).toHaveBeenCalledWith(subscription.site_id, subscription.id, "MXN")
+    expect(screen.getByText("MX$125.00")).toBeInTheDocument()
+    expect(screen.getByText("Existing invoice: $125.00")).toBeInTheDocument()
+  } finally {
+    if (scroll) Object.defineProperty(HTMLElement.prototype, "scrollIntoView", scroll)
+    else Reflect.deleteProperty(HTMLElement.prototype, "scrollIntoView")
+  }
 })
 
 it("persists clearing End date and leaves Amount unchanged", async () => {

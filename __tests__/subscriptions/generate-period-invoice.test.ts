@@ -313,6 +313,12 @@ describe("subscription period invoice generation", () => {
     expect(write.insert).not.toHaveBeenCalled()
   })
 
+  it("uses the subscription currency instead of the plan for new period invoices", async () => {
+    const { write } = setup({ currency: "MXN" })
+    await generateSubscriptionPeriodInvoice(input)
+    expect(write.insert).toHaveBeenCalledWith(expect.objectContaining({ currency: "MXN", amount: 125.50 }))
+  })
+
   it("reports unconfirmed inserts without exposing database details", async () => {
     const { write } = setup()
     write.single.mockResolvedValueOnce({ data: null, error: { message: "Private details" } })

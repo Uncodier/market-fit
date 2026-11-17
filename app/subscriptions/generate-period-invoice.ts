@@ -6,6 +6,7 @@ import { z } from "zod"
 import { requireAccountingAccess } from "@/app/accounting/access"
 import { getSubscriptionInvoiceDueDate, isDateOnly } from "@/lib/finance/due-date"
 import { getSubscriptionBillingDate, getSubscriptionInvoicePeriod } from "./billing-period"
+import { getSubscriptionCurrency } from "./currency"
 
 const inputSchema = z.object({
   siteId: z.string().uuid(),
@@ -78,7 +79,7 @@ export async function generateSubscriptionPeriodInvoice(input: z.input<typeof in
       return { error: "The subscription must have a valid billing amount greater than zero" }
     }
     const catalogItem = Array.isArray(subscription.catalog_item) ? subscription.catalog_item[0] : subscription.catalog_item
-    const currency = catalogItem?.currency || "USD"
+    const currency = getSubscriptionCurrency({ ...subscription, catalog_item: catalogItem })
     if (!/^[A-Z]{3}$/.test(currency)) return { error: "The subscription plan has an invalid currency" }
     const planName = catalogItem?.name || "Subscription"
     const dueDate = getSubscriptionInvoiceDueDate(subscription.due_date, subscription.next_billing_date, billingDate)

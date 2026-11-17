@@ -33,6 +33,14 @@ function setup(nextBillingDate: string | null = "2026-09-30T23:00:00-05:00") {
 describe("manual subscription invoice period metadata", () => {
   beforeEach(() => jest.resetAllMocks())
 
+  it("uses the stored subscription currency for manual invoices", async () => {
+    const { read, write } = setup()
+    const current = (await read.maybeSingle()).data
+    read.maybeSingle.mockResolvedValueOnce({ data: { ...current, currency: "MXN" } as typeof current, error: null })
+    await createSubscriptionInvoice(input)
+    expect(write.insert).toHaveBeenCalledWith(expect.objectContaining({ currency: "MXN", amount: 125 }))
+  })
+
   it.each([undefined, "2026-10-01"])("preserves the verified canonical timestamp for the current period (%s)", async (billingDate) => {
     const { write, read } = setup()
     expect(await createSubscriptionInvoice({ ...input, billingDate })).toEqual({ data: { id: "manual-invoice" } })

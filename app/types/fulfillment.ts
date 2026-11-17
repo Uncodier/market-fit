@@ -13,6 +13,7 @@ export interface Subscription {
   next_billing_date?: string;
   due_date?: string | null;
   amount: number;
+  currency?: string | null;
   created_at: string;
   updated_at: string;
   catalog_item?: Partial<CatalogItem>;

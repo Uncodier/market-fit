@@ -26,7 +26,7 @@ function setup(overrides: Partial<SubscriptionDetail> = {}) {
   const onUpdateAmount = jest.fn().mockResolvedValue(undefined)
   const onUpdateEndDate = jest.fn().mockResolvedValue(undefined)
   const props = { subscription: { ...subscription, ...overrides }, currency: "USD", invoices: [],
-    onUpdateAmount, onUpdateEndDate, onUpdateNextBillingDate: jest.fn(), onUpdateDueDate: jest.fn() }
+    onUpdateAmount, onUpdateEndDate, onUpdateCurrency: jest.fn().mockResolvedValue(undefined), onUpdateNextBillingDate: jest.fn(), onUpdateDueDate: jest.fn() }
   return { ...render(<SubscriptionAboutPanel {...props} />), props, onUpdateAmount, onUpdateEndDate }
 }
 
@@ -42,6 +42,35 @@ describe("inline subscription amount and end date", () => {
     jest.mocked(useOptionalPermissions).mockReturnValue(null)
   })
   afterEach(() => jest.restoreAllMocks())
+
+  it("opens the currency editor with future-only scope and saves only on confirmation", async () => {
+    const { props } = setup()
+    fireEvent.click(screen.getByText("USD"))
+    expect(screen.getByRole("combobox", { name: "Currency" })).toBeInTheDocument()
+    expect(screen.getByText(/Existing invoices are unchanged. The recurring amount is not converted/)).toBeInTheDocument()
+    expect(props.onUpdateCurrency).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole("button", { name: "Save currency" }))
+    await waitFor(() => expect(props.onUpdateCurrency).toHaveBeenCalledWith("USD"))
+  })
+
+  it("cancels currency editing without saving", () => {
+    const { props } = setup()
+    fireEvent.click(screen.getByText("USD"))
+    fireEvent.click(screen.getByRole("button", { name: "Cancel currency edit" }))
+    expect(screen.queryByRole("combobox", { name: "Currency" })).not.toBeInTheDocument()
+    expect(props.onUpdateCurrency).not.toHaveBeenCalled()
+  })
+
+  it("keeps invoice totals in their original currencies", () => {
+    const { props, rerender } = setup()
+    const invoice = { id: "invoice", title: "Invoice", invoiceNumber: null, status: "pending" as const, saleDate: "2026-10-01", payments: [] }
+    rerender(<SubscriptionAboutPanel {...props} currency="EUR" invoices={[
+      { ...invoice, amount: 100, amountDue: 50, currency: "USD" },
+      { ...invoice, id: "other", amount: 200, amountDue: 200, currency: "MXN" },
+    ]} />)
+    expect(screen.getByText("$100.00 · MX$200.00 · 2 invoices")).toBeInTheDocument()
+    expect(screen.getByText("$50.00 · MX$200.00")).toBeInTheDocument()
+  })
 
   it("edits the existing recurring row without a duplicate field or helper copy", () => {
     const { onUpdateAmount } = setup()
@@ -171,5 +200,7 @@ describe("inline subscription amount and end date", () => {
     fireEvent.click(screen.getByText("Dec 20, 2026"))
     expect(screen.queryByLabelText("Recurring")).not.toBeInTheDocument()
     expect(screen.queryByLabelText("End date")).not.toBeInTheDocument()
+    fireEvent.click(screen.getByText("USD"))
+    expect(screen.queryByRole("combobox", { name: "Currency" })).not.toBeInTheDocument()
   })
 })

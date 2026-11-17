@@ -101,7 +101,7 @@ export function PurchasedSubscriptionsList({ subscriptions, onUpdate, demo = fal
                     )) : <span className="text-sm text-muted-foreground">—</span>}
                   </div>
                 </TableCell>
-                <TableCell className="py-3.5"><MoneyCell amountLabel={formatCurrency(Number(sub.amount) || 0, sub.catalog_item?.currency || "USD")} cancelled={sub.status === "cancelled" || sub.status === "expired"} /></TableCell>
+                <TableCell className="py-3.5"><MoneyCell amountLabel={formatCurrency(Number(sub.amount) || 0, sub.currency || sub.catalog_item?.currency || "USD")} cancelled={sub.status === "cancelled" || sub.status === "expired"} /></TableCell>
                 <TableCell className="py-3.5 text-right">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" aria-label={`Actions for ${plan}`}><MoreHorizontal size={16} /></Button></DropdownMenuTrigger>

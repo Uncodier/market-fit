@@ -19,6 +19,7 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { useOptionalPermissions } from "@/app/context/PermissionContext"
 import { cn } from "@/lib/utils"
 import { formatCurrency } from "@/app/lib/formatters"
+import { getSubscriptionCurrency } from "../currency"
 import { invoiceBalances, type SubscriptionListItem } from "../invoice-summary"
 import { RegisterSubscriptionPaymentDialog } from "./RegisterSubscriptionPaymentDialog"
 import { GeneratePeriodInvoiceDialog } from "./GeneratePeriodInvoiceDialog"
@@ -59,7 +60,11 @@ export function SubscriptionsList({ subscriptions, siteId, onUpdate }: Subscript
   const [subscriptionToDelete, setSubscriptionToDelete] = useState<Subscription | null>(null)
   const [subscriptionToPay, setSubscriptionToPay] = useState<SubscriptionListItem | null>(null)
   const [subscriptionToInvoice, setSubscriptionToInvoice] = useState<SubscriptionListItem | null>(null)
-  const pageTotal = subscriptions.reduce((sum, sub) => sum + (Number(sub.amount) || 0), 0)
+  const pageTotals = new Map<string, number>()
+  for (const sub of subscriptions) {
+    const currency = getSubscriptionCurrency(sub)
+    pageTotals.set(currency, (pageTotals.get(currency) || 0) + (Number(sub.amount) || 0))
+  }
   const pendingInvoices = subscriptions.flatMap((sub) => sub.pendingInvoices || [])
 
   const handleStatusChange = async (id: string, status: Subscription["status"]) => {
@@ -168,7 +173,7 @@ export function SubscriptionsList({ subscriptions, siteId, onUpdate }: Subscript
                 </TableCell>
                 <TableCell className="py-3.5">
                   <MoneyCell
-                    amountLabel={formatCurrency(amount)}
+                    amountLabel={formatCurrency(amount, getSubscriptionCurrency(sub))}
                     dueLabel={sub.status === "paused" ? t("subscriptions.status.paused") || "Paused" : null}
                     paidLabel={
                       sub.status === "active"
@@ -261,7 +266,7 @@ export function SubscriptionsList({ subscriptions, siteId, onUpdate }: Subscript
               ))}
             </TableCell>
             <TableCell className="py-3">
-              <MoneyCell amountLabel={formatCurrency(pageTotal)} />
+              {Array.from(pageTotals, ([currency, amount]) => <MoneyCell key={currency} amountLabel={formatCurrency(amount, currency)} />)}
             </TableCell>
             <TableCell />
           </tr>
@@ -298,7 +303,7 @@ export function SubscriptionsList({ subscriptions, siteId, onUpdate }: Subscript
         <GeneratePeriodInvoiceDialog
           key={`${siteId}:${subscriptionToInvoice.id}`}
           subscription={{ ...subscriptionToInvoice, site_id: siteId }}
-          currency={subscriptionToInvoice.catalog_item?.currency || "USD"}
+          currency={getSubscriptionCurrency(subscriptionToInvoice)}
           open
           onOpenChange={(open) => { if (!open) setSubscriptionToInvoice(null) }}
           onSuccess={onUpdate}

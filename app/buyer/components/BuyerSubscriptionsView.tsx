@@ -186,7 +186,7 @@ export function BuyerSubscriptionsView({
                       </div>
                       <div className="flex flex-col items-end">
                         <span className="text-[15px] font-semibold tabular-nums tracking-tight">
-                          {formatCurrency(Number(sub.amount) || 0, sub.catalog_item?.currency || 'USD')}
+                          {formatCurrency(Number(sub.amount) || 0, sub.currency || sub.catalog_item?.currency || 'USD')}
                         </span>
                         <span className="text-[11px] text-muted-foreground">/mo</span>
                       </div>

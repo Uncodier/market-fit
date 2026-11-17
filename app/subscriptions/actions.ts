@@ -7,6 +7,7 @@ import { getSubscriptionInvoiceDueDate, isDateOnly, normalizeDueDate } from "@/l
 import { requireAccountingAccess } from "@/app/accounting/access";
 import { isOutstandingInvoice, type SubscriptionListItem } from "./invoice-summary";
 import { getSubscriptionInvoicePeriod } from "./billing-period";
+import { getSubscriptionCurrency, getSubscriptionCurrencyError } from "./currency";
 
 export interface SubscriptionInvoice {
   id: string;
@@ -208,7 +209,7 @@ export async function createSubscriptionInvoice(input: {
       .from("subscriptions")
       .select(`
         *,
-        catalog_item:catalog_items(name, kind)
+        catalog_item:catalog_items(name, kind, currency)
       `)
       .eq("site_id", input.siteId)
       .eq("id", input.subscriptionId)
@@ -225,6 +226,8 @@ export async function createSubscriptionInvoice(input: {
       ? subscription.catalog_item[0]
       : subscription.catalog_item;
     const planName = catalogItem?.name || "Subscription";
+    const currency = getSubscriptionCurrency({ ...subscription, catalog_item: catalogItem });
+    if (getSubscriptionCurrencyError(currency)) return { error: "Select a valid currency" };
 
     const { data: invoice, error: insertError } = await supabase
       .from("sales")
@@ -235,6 +238,7 @@ export async function createSubscriptionInvoice(input: {
         product_details: period,
         amount: input.amount,
         amount_due: input.amount,
+        currency,
         status: "pending",
         lead_id: subscription.lead_id,
         buyer_user_id: subscription.buyer_user_id || null,

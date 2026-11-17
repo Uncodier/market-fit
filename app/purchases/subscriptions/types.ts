@@ -4,6 +4,7 @@ export interface PurchasedSubscription {
   catalog_item_id: string
   status: string
   amount: number
+  currency?: string | null
   start_date?: string | null
   end_date?: string | null
   next_billing_date?: string | null

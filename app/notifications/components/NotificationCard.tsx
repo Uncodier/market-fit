@@ -1,220 +1,120 @@
+"use client"
+
+import { useId, useState } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/app/components/ui/card"
 import { Badge } from "@/app/components/ui/badge"
 import { Button } from "@/app/components/ui/button"
-import { Check, Trash2, MessageSquare, ChevronRight, ClipboardList } from "@/app/components/ui/icons"
+import { Bell, Check, Trash2, MessageSquare, ClipboardList, Loader2 } from "@/app/components/ui/icons"
+import { cn } from "@/lib/utils"
 import { Notification } from "../types"
-import { useRouter } from "next/navigation"
 
 interface NotificationCardProps {
   notification: Notification
-  onMarkAsRead: (id: string) => void
-  onDelete: (id: string) => void
+  onMarkAsRead: (id: string) => void | Promise<void>
+  onDelete: (id: string) => void | Promise<void>
+  disabled?: boolean
 }
 
-export function NotificationCard({ notification, onMarkAsRead, onDelete }: NotificationCardProps) {
+const typeStyles: Record<string, string> = {
+  info: "bg-blue-500/10 text-blue-700 dark:text-blue-300",
+  success: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+  warning: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
+  error: "bg-red-500/10 text-red-700 dark:text-red-300",
+}
+
+export function NotificationCard({ notification, onMarkAsRead, onDelete, disabled }: NotificationCardProps) {
   const router = useRouter()
-  
-  const getTypeStyles = (type: string) => {
-    const lowerType = type.toLowerCase()
-    switch (lowerType) {
-      case "info":
-        return "border-l-blue-500"
-      case "success":
-        return "border-l-green-500"
-      case "warning":
-        return "border-l-yellow-500"
-      case "error":
-        return "border-l-red-500"
-      default:
-        return "border-l-gray-500"
+  const messageId = useId()
+  const titleId = useId()
+  const [expanded, setExpanded] = useState(false)
+  const [pending, setPending] = useState<"read" | "delete" | null>(null)
+  const isLong = notification.message.length > 240
+  const preview = isLong ? `${notification.message.slice(0, 240).trimEnd()}…` : notification.message
+  const date = new Date(notification.created_at)
+  const validDate = !Number.isNaN(date.getTime())
+  const isConversation = notification.related_entity_type === "conversation" && notification.related_entity_id
+  const isTask = notification.related_entity_type === "task" && notification.related_entity_id
+
+  const runAction = async (action: "read" | "delete") => {
+    if (pending || disabled) return
+    setPending(action)
+    try {
+      await (action === "read" ? onMarkAsRead(notification.id) : onDelete(notification.id))
+    } finally {
+      setPending(null)
     }
   }
 
-  const getBadgeStyles = (type: string) => {
-    const lowerType = type.toLowerCase()
-    switch (lowerType) {
-      case "info":
-        return "bg-blue-100 text-blue-800"
-      case "success":
-        return "bg-green-100 text-green-800"
-      case "warning":
-        return "bg-yellow-100 text-yellow-800"
-      case "error":
-        return "bg-red-100 text-red-800"
-      default:
-        return "bg-gray-100 text-gray-800"
-    }
-  }
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return new Intl.DateTimeFormat('en-US', { 
-      day: '2-digit', 
-      month: '2-digit', 
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    }).format(date)
-  }
-
-  // Check if this notification is for a conversation
-  const isConversationNotification = notification.related_entity_type === "conversation" && notification.related_entity_id
-
-  // Check if this notification is for a task
-  const isTaskNotification = notification.related_entity_type === "task" && notification.related_entity_id
-
-  // Handle navigation to chat
-  const handleNavigateToChat = () => {
-    if (isConversationNotification && notification.related_entity_id) {
-      // Mark as read if not already read
-      if (!notification.is_read) {
-        onMarkAsRead(notification.id)
-      }
-      
-      // Use default agent ID and name for navigation (following the leads pattern)
-      const agentId = "478d3106-7391-4d9a-a5c1-8466202b45a9" // Default agent ID
-      const agentName = "Agent"
-      const conversationId = notification.related_entity_id
-      
-      const url = `/chat?conversationId=${conversationId}&agentId=${agentId}&agentName=${encodeURIComponent(agentName)}`
-      router.push(url)
-    }
-  }
-
-  // Handle navigation to task
-  const handleNavigateToTask = () => {
-    if (isTaskNotification && notification.related_entity_id) {
-      // Mark as read if not already read
-      if (!notification.is_read) {
-        onMarkAsRead(notification.id)
-      }
-      
-      const url = `/control-center/${notification.related_entity_id}`
-      router.push(url)
-    }
-  }
-
-  // Handle card click, but prevent if clicking on buttons
-  const handleCardClick = (e: React.MouseEvent) => {
-    // Don't navigate if clicking on buttons
-    if ((e.target as HTMLElement).closest('button')) {
-      return
-    }
-    
-    if (isConversationNotification) {
-      handleNavigateToChat()
-    } else if (isTaskNotification) {
-      handleNavigateToTask()
+  const openRelatedItem = () => {
+    if (!notification.is_read) void runAction("read")
+    if (isConversation) {
+      const query = new URLSearchParams({
+        conversationId: notification.related_entity_id!,
+        agentId: "478d3106-7391-4d9a-a5c1-8466202b45a9",
+        agentName: "Agent",
+      })
+      router.push(`/chat?${query}`)
+    } else if (isTask) {
+      router.push(`/control-center/${encodeURIComponent(notification.related_entity_id!)}`)
     }
   }
 
   return (
-    <Card 
-      className={`group w-full border border-border overflow-hidden transition-all duration-200 ${
-        notification.is_read 
-          ? 'hover:bg-muted/30' 
-          : 'shadow-sm hover:shadow-md'
-      } ${
-        (isConversationNotification || isTaskNotification) ? 'cursor-pointer hover:bg-muted/50' : ''
-      }`}
-      onClick={handleCardClick}
-    >
-      <CardContent className="p-0">
-        <div className={`flex items-center justify-between gap-6 p-6 ${
-          !notification.is_read ? 'border-l-4 border-l-primary bg-primary/5' : ''
-        }`}>
-          <div className="flex-1 min-w-0 space-y-2">
-            {/* Header with badges, timestamp and title */}
-            <div className="flex items-center gap-3 min-w-0">
-              <Badge 
-                variant="outline" 
-                className={`${getBadgeStyles(notification.type)} text-xs font-medium px-2.5 py-0.5 flex-shrink-0`}
-              >
-                {notification.type.charAt(0).toUpperCase() + notification.type.slice(1)}
-              </Badge>
-              {!notification.is_read && (
-                <div className="h-2 w-2 rounded-full bg-primary animate-pulse flex-shrink-0"></div>
-              )}
-              <span className="text-xs text-muted-foreground/60 font-medium tabular-nums flex-shrink-0">
-                {formatDate(notification.created_at)}
-              </span>
-              <h3 className={`text-base leading-snug truncate ${
-                notification.is_read 
-                  ? 'text-foreground/90 font-medium' 
-                  : 'text-foreground font-semibold'
-              }`}>
-                {notification.title}
-              </h3>
+    <article aria-labelledby={titleId}>
+      <Card className={cn("relative overflow-hidden rounded-xl border bg-background shadow-none transition-colors hover:border-muted-foreground/30", !notification.is_read && "border-blue-500/25 before:absolute before:inset-y-4 before:left-0 before:w-0.5 before:rounded-full before:bg-blue-500")}>
+        <CardContent className="p-4 sm:p-5">
+          <div className="flex items-start gap-3 sm:gap-4">
+            <div aria-hidden={true} className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", typeStyles[notification.type.toLowerCase()] || "bg-muted text-muted-foreground")}>
+              {isConversation ? <MessageSquare className="h-5 w-5" /> : isTask ? <ClipboardList className="h-5 w-5" /> : <Bell className="h-5 w-5" />}
             </div>
-            
-            {/* Message */}
-            <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">
-              {notification.message}
-            </p>
+            <div className="min-w-0 flex-1">
+          <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs">
+            <Badge variant="secondary" className={cn("border-0 px-2 py-0.5 font-medium capitalize", typeStyles[notification.type.toLowerCase()])}>
+              {notification.type}
+            </Badge>
+            <span className={cn("inline-flex items-center gap-1.5", notification.is_read ? "text-muted-foreground" : "font-medium text-blue-700 dark:text-blue-300")}>
+              {!notification.is_read && <span aria-hidden={true} className="h-1.5 w-1.5 rounded-full bg-blue-500" />}
+              {notification.is_read ? "Read" : "Unread"}
+            </span>
+            <time dateTime={validDate ? date.toISOString() : undefined} title={validDate ? date.toLocaleString("en-US") : undefined} className="text-muted-foreground sm:ml-auto">
+              {validDate ? new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" }).format(date) : "Date unavailable"}
+            </time>
           </div>
-          
-          {/* Actions column - always centered vertically */}
-          <div className="flex items-center gap-3 flex-shrink-0">
-            {isConversationNotification && (
-              <div 
-                className="flex items-center gap-2 text-xs font-medium bg-muted text-muted-foreground px-3 py-2 rounded-lg cursor-pointer hover:bg-accent hover:text-accent-foreground transition-colors duration-200 shadow-sm border border-border/50"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  handleNavigateToChat()
-                }}
-              >
-                <MessageSquare className="h-3.5 w-3.5" />
-                <span>Go to chat</span>
-                <ChevronRight className="h-3.5 w-3.5" />
-              </div>
+          <h3 id={titleId} className="break-words text-base font-semibold leading-snug text-foreground">
+            {notification.title}
+          </h3>
+          <p id={messageId} className="mt-2 max-w-prose whitespace-pre-wrap break-words text-sm leading-6 text-muted-foreground [overflow-wrap:anywhere]">
+            {expanded ? notification.message : preview}
+          </p>
+            </div>
+          </div>
+          <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border/60 pt-3" data-toolbar-icon-actions="off">
+            {isLong && (
+              <Button variant="ghost" size="sm" className="min-h-10" aria-expanded={expanded} aria-controls={messageId} onClick={() => setExpanded(!expanded)}>
+                {expanded ? "Show less" : "Read more"}
+              </Button>
             )}
-            
-            {isTaskNotification && (
-              <div 
-                className="flex items-center gap-2 text-xs font-medium bg-muted text-muted-foreground px-3 py-2 rounded-lg cursor-pointer hover:bg-accent hover:text-accent-foreground transition-colors duration-200 shadow-sm border border-border/50"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  handleNavigateToTask()
-                }}
-              >
-                <ClipboardList className="h-3.5 w-3.5" />
-                <span>Go to task</span>
-                <ChevronRight className="h-3.5 w-3.5" />
-              </div>
+            {(isConversation || isTask) && (
+              <Button variant="outline" size="sm" className="min-h-10 gap-2" onClick={openRelatedItem} disabled={disabled || !!pending}>
+                {isConversation ? <MessageSquare className="h-4 w-4" aria-hidden={true} /> : <ClipboardList className="h-4 w-4" aria-hidden={true} />}
+                {isConversation ? "Go to chat" : "Go to task"}
+              </Button>
             )}
-            
-            {/* Action buttons */}
-            <div className="opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center gap-1">
+            <div className="ml-auto flex items-center gap-1">
               {!notification.is_read && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onMarkAsRead(notification.id)
-                  }}
-                  title="Mark as read"
-                  className="h-9 w-9 rounded-lg hover:bg-accent hover:text-accent-foreground transition-colors"
-                >
-                  <Check className="h-4 w-4" />
+                <Button variant="secondary" size="sm" className="min-h-10 gap-2" onClick={() => void runAction("read")} disabled={disabled || !!pending}>
+                  {pending === "read" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden={true} /> : <Check className="h-4 w-4" aria-hidden={true} />}
+                  {pending === "read" ? "Marking as read…" : "Mark as read"}
                 </Button>
               )}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onDelete(notification.id)
-                }}
-                title="Delete notification"
-                className="h-9 w-9 rounded-lg hover:bg-destructive/10 hover:text-destructive transition-colors"
-              >
-                <Trash2 className="h-4 w-4" />
+              <Button variant="ghost" size="icon" aria-label="Delete notification" title="Delete notification" className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive" onClick={() => void runAction("delete")} disabled={disabled || !!pending}>
+                {pending === "delete" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden={true} /> : <Trash2 className="h-4 w-4" aria-hidden={true} />}
               </Button>
             </div>
           </div>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </article>
   )
 }

@@ -22,6 +22,9 @@ import type { SubscriptionDetail, SubscriptionInvoice } from "../actions"
 import { SubscriptionDateRow } from "./SubscriptionDateRow"
 import { getSubscriptionBillingDate } from "../billing-period"
 import { getSubscriptionAmountError, getSubscriptionEndDateError } from "../detail-validation"
+import { getSubscriptionCurrencyError } from "../currency"
+import { COMMON_CURRENCIES } from "@/app/lib/currencies"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 
 function formatDate(value?: string | null) {
   if (!value) return ""
@@ -36,6 +39,7 @@ export function SubscriptionAboutPanel({
   onUpdateNextBillingDate,
   onUpdateDueDate,
   onUpdateAmount,
+  onUpdateCurrency,
   onUpdateEndDate,
 }: {
   subscription: SubscriptionDetail
@@ -44,6 +48,7 @@ export function SubscriptionAboutPanel({
   onUpdateNextBillingDate: (value: string) => Promise<void>
   onUpdateDueDate: (value: string) => Promise<void>
   onUpdateAmount: (value: number) => Promise<void>
+  onUpdateCurrency?: (value: string) => Promise<void>
   onUpdateEndDate: (value: string) => Promise<void>
 }) {
   const permissions = useOptionalPermissions()
@@ -53,13 +58,16 @@ export function SubscriptionAboutPanel({
   const billingDate = new Date(subscription.next_billing_date || "")
   const billingDateValue = Number.isNaN(billingDate.getTime()) ? null : billingDate.toISOString().slice(0, 10)
   const customerName = subscription.lead?.name || ""
-  const totals = invoices.reduce(
-    (summary, invoice) => ({
-      billed: summary.billed + invoice.amount,
-      outstanding: summary.outstanding + invoice.amountDue,
-    }),
-    { billed: 0, outstanding: 0 }
-  )
+  const totals = new Map<string, { billed: number; outstanding: number }>()
+  for (const invoice of invoices) {
+    const total = totals.get(invoice.currency) || { billed: 0, outstanding: 0 }
+    totals.set(invoice.currency, { billed: total.billed + invoice.amount, outstanding: total.outstanding + invoice.amountDue })
+  }
+  const totalLabel = (field: "billed" | "outstanding") => totals.size
+    ? Array.from(totals, ([code, total]) => formatCurrency(total[field], code)).join(" · ")
+    : formatCurrency(0, currency)
+  const currencies = COMMON_CURRENCIES.some(({ code }) => code === currency)
+    ? COMMON_CURRENCIES : [...COMMON_CURRENCIES, { code: currency, label: currency }]
 
   return (
     <div className="w-full min-w-0">
@@ -104,14 +112,38 @@ export function SubscriptionAboutPanel({
             />
             <PropertyRow
               icon={<DollarSign />}
+              label="Currency"
+              value={currency}
+              editValue={currency}
+              onCommit={onUpdateCurrency}
+              readOnly={readOnly}
+              validate={getSubscriptionCurrencyError}
+              editorLayout="stacked"
+              saveOnEnter={false}
+              renderEditor={(draft, setDraft) => (
+                <div className="space-y-2">
+                  <Select value={draft} onValueChange={setDraft}>
+                    <SelectTrigger aria-label="Currency" className="h-8 w-full"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {currencies.map(({ code, label }) => <SelectItem key={code} value={code}>{label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">Applies to new invoices only. Existing invoices are unchanged. The recurring amount is not converted.</p>
+                </div>
+              )}
+            />
+            <PropertyRow
+              icon={<DollarSign />}
               label="Invoiced"
-              value={`${formatCurrency(totals.billed, currency)} · ${invoices.length} ${invoices.length === 1 ? "invoice" : "invoices"}`}
+              value={`${totalLabel("billed")} · ${invoices.length} ${invoices.length === 1 ? "invoice" : "invoices"}`}
+              multiline
               readOnly
             />
             <PropertyRow
               icon={<DollarSign />}
               label="Outstanding"
-              value={formatCurrency(totals.outstanding, currency)}
+              value={totalLabel("outstanding")}
+              multiline
               readOnly
             />
             <PropertyRow
