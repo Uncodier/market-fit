@@ -261,6 +261,9 @@ APPSUMO_REDIRECT_URI=
 # Upstash Redis request admission and short-lived caches. REDIS_URL includes
 # credentials, for example rediss://default:TOKEN@INSTANCE.upstash.io:6379.
 REDIS_URL=
+# Site selector metadata uses this same Redis transport opportunistically (60s TTL).
+# Redis outages fall back to the database; auth and location verification never do.
+# Cache keys include the Supabase URL and VERCEL_ENV/NODE_ENV plus the actor hash.
 # Keep false during rollout. Set true in production after Redis availability
 # monitoring is in place to fail closed on protected high-cost routes.
 REDIS_REQUIRED=false

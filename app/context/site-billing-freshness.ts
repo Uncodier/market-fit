@@ -25,7 +25,9 @@ export function mergeLoadedSiteBilling(previous: Site[], incoming: Site[], start
     const current = existing.get(site.id)
     if (!current?.billing) return site
     if ((billingRevisions.get(current.billing) ?? 0) > startedAt) return preserveHydratedBilling(current, site)
-    // A newer failed read preserves balances, but must still disable financial controls.
+    // Selector rows also use unavailable for billing that was not loaded. Preserve
+    // known balances until the independent active-site RLS read completes, without
+    // treating that hint (or a failed full read) as fresh financial authorization.
     return site.billing_read_status === 'unavailable' ? { ...site, billing: current.billing } : site
   })
 }

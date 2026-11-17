@@ -5,6 +5,10 @@ import { buildArchivePreview } from '@/app/components/simple-messages-view/compo
 
 jest.mock('@/app/context/ThemeContext', () => ({ useTheme: () => ({ isDarkMode: false }) }))
 jest.mock('monaco-editor', () => ({}), { virtual: true })
+jest.mock('@/app/components/simple-messages-view/components/ArchiveMarkdownPreview', () => ({
+  ArchiveMarkdownPreview: () => null,
+  isPreviewableMarkdown: (path: string) => /\.md$/i.test(path),
+}))
 jest.mock('@monaco-editor/react', () => ({
   __esModule: true,
   loader: { config: jest.fn(), init: jest.fn().mockResolvedValue(undefined) },
@@ -67,8 +71,23 @@ it('preserves inline animations but removes external scripts, embeds, base URLs 
   expect(result).not.toContain('<base')
   expect(result).not.toContain('evil.example.test')
   expect(result).toContain("script-src 'unsafe-inline'")
-  expect(result).toContain("connect-src 'none'")
+  expect(result).toContain('connect-src https://db.makinari.com/storage/v1/object/public/')
   expect(result).toContain("form-action 'none'")
   expect(result).toContain('<h1>Safe content</h1>')
   expect(source).toContain('<script>')
+})
+
+it('allows public Makinari media without granting same-origin, API or external-script access', () => {
+  const source = buildArchivePreview('<audio src="https://db.makinari.com/storage/v1/object/public/assets/voice.mp3"></audio>')
+  const document = new DOMParser().parseFromString(source, 'text/html')
+  const policy = document.querySelector('meta[http-equiv="Content-Security-Policy"]')!.getAttribute('content')!
+  for (const directive of ['connect-src', 'media-src', 'img-src']) {
+    expect(policy.split(';').find(part => part.trim().startsWith(directive)))
+      .toContain('https://db.makinari.com/storage/v1/object/public/')
+  }
+  expect(policy).not.toContain("'self'")
+  expect(policy).not.toContain('https://*.')
+  expect(policy).toContain("script-src 'unsafe-inline';")
+  expect(policy).toContain("frame-src 'none'")
+  expect(policy).toContain("object-src 'none'")
 })

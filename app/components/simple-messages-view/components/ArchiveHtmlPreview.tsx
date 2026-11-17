@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo } from 'react'
+import { archivePreviewPolicy } from './archive-preview-policy'
 
 export function isPreviewableHtml(path: string): boolean {
   return /\.html?$/i.test(path)
@@ -12,7 +13,7 @@ export function buildArchivePreview(content: string): string {
   document.querySelectorAll('base, meta[http-equiv], script[src], iframe, object, embed').forEach(node => node.remove())
   const policy = document.createElement('meta')
   policy.httpEquiv = 'Content-Security-Policy'
-  policy.content = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; media-src data: blob:; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
+  policy.content = archivePreviewPolicy()
   document.head.prepend(policy)
   const referrer = document.createElement('meta')
   referrer.name = 'referrer'

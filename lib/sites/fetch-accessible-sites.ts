@@ -18,6 +18,8 @@ export type FetchAccessibleSitesResult = {
   error: PostgrestErrorSnapshot | null
   aborted: boolean
   unauthorized: boolean
+  authoritative?: boolean
+  revalidateAfterMs?: number
 }
 
 function sitesResult(
@@ -27,6 +29,7 @@ function sitesResult(
     error: null,
     aborted: false,
     unauthorized: false,
+    authoritative: true,
     ...partial,
   }
 }
@@ -42,7 +45,9 @@ function invalidSitesResult() {
 
 export async function fetchAccessibleSitesClient(
   client: SitesClient,
-  detailId?: string | null
+  _detailId?: string | null,
+  signal?: AbortSignal,
+  fresh = false,
 ): Promise<FetchAccessibleSitesResult> {
   if (client?._isDemo) {
     if (typeof client.rpc !== "function") {
@@ -64,9 +69,12 @@ export async function fetchAccessibleSitesClient(
   }
 
   try {
-    const url = detailId ? `/api/sites?detail=${detailId}` : "/api/sites"
-    const response = await fetch(url, { credentials: "include" })
-    const payload = await response.json().catch(() => ({} as { error?: unknown; sites?: unknown; detail?: unknown }))
+    const response = await fetch(`/api/sites?view=selector${fresh ? "&fresh=1" : ""}`, { credentials: "include", signal })
+    const payload = await response.json().catch(error => {
+      if (signal?.aborted || isAbortError(error)) throw error
+      return {}
+    })
+    if (signal?.aborted) return sitesResult({ sites: [], aborted: true })
     if (!response.ok) {
       return sitesResult({
         sites: [],
@@ -79,13 +87,16 @@ export async function fetchAccessibleSitesClient(
     if (!payload || !isSiteList(payload.sites)) return invalidSitesResult()
     return sitesResult({
       sites: payload.sites,
+      authoritative: payload.authoritative !== false,
+      revalidateAfterMs: typeof payload.revalidateAfterMs === 'number' && Number.isFinite(payload.revalidateAfterMs)
+        ? Math.max(0, Math.min(60_000, payload.revalidateAfterMs)) : 0,
       detail: payload.detail
     })
   } catch (error) {
     return sitesResult({
       sites: [],
       error: snapshotPostgrestError(error),
-      aborted: isAbortError(error),
+      aborted: signal?.aborted || isAbortError(error),
     })
   }
 }

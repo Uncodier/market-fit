@@ -30,9 +30,13 @@ export type LoadSitesDeps = {
   reload: () => void
   isCurrent?: () => boolean
   sessionUserId?: string | null
+  signal?: AbortSignal
+  fresh?: boolean
 }
 
-export async function loadAccessibleSites(deps: LoadSitesDeps) {
+export async function loadAccessibleSites(deps: LoadSitesDeps): Promise<{
+  site?: Site; authoritative: boolean; selectionMissing: boolean; revalidateAfterMs: number
+} | undefined> {
   const billingRevision = captureBillingRevision()
   const {
     supabase,
@@ -49,8 +53,9 @@ export async function loadAccessibleSites(deps: LoadSitesDeps) {
     setSites,
     setCurrentSite,
     selectSite,
-    isCurrent = () => true,
+    isCurrent: ownsRequest = () => true,
   } = deps
+    const isCurrent = () => !deps.signal?.aborted && ownsRequest()
     if (!isMounted || !supabase || !isCurrent()) {
       return
     }
@@ -86,7 +91,7 @@ export async function loadAccessibleSites(deps: LoadSitesDeps) {
     let keepLoading = false
 
     try {
-      const savedSiteId = background ? currentSite?.id : getLocalStorage("currentSiteId")
+      const savedSiteId = currentSite?.id ?? getLocalStorage("currentSiteId")
 
       const {
         sites: accessibleSites,
@@ -94,7 +99,9 @@ export async function loadAccessibleSites(deps: LoadSitesDeps) {
         error: sitesError,
         aborted,
         unauthorized,
-      } = await fetchAccessibleSitesClient(supabase, savedSiteId)
+        authoritative = true,
+        revalidateAfterMs = 0,
+      } = await fetchAccessibleSitesClient(supabase, savedSiteId, deps.signal, deps.fresh)
 
       if (!isCurrent() || aborted) {
         return
@@ -114,7 +121,7 @@ export async function loadAccessibleSites(deps: LoadSitesDeps) {
           // Retry this list operation, not the deduplicated outer hydration.
           // Keep the same generation/deadline while settings load independently.
           await new Promise(resolve => setTimeout(resolve, 400))
-          if (isCurrent()) await loadAccessibleSites(deps)
+          if (isCurrent()) return await loadAccessibleSites(deps)
           return
         }
 
@@ -218,10 +225,10 @@ export async function loadAccessibleSites(deps: LoadSitesDeps) {
         new Map(sitesWithData.map((site: any) => [site.id, site])).values()
       );
 
-      const selectedId = background ? currentSite?.id : getLocalStorage("currentSiteId")
+      const selectedId = currentSite?.id ?? getLocalStorage("currentSiteId")
       const selected = (uniqueSites as Site[]).find(site => site.id === selectedId)
       if (selected) cacheSiteSelection(userId, selected)
-      else if (selectedId) {
+      else if (selectedId && authoritative) {
         clearSiteSelectionCache()
         setIsLoading(false)
         // Another tab may have selected a different site in the meantime.
@@ -231,6 +238,10 @@ export async function loadAccessibleSites(deps: LoadSitesDeps) {
             clearCurrentSiteCookie()
           }
         } catch { /* Selection invalidation in memory is still authoritative. */ }
+      }
+      // A cached selector is a hint, not evidence that the active scope was revoked.
+      if (!authoritative && currentSite && !uniqueSites.some(site => site.id === currentSite.id)) {
+        uniqueSites.push(currentSite)
       }
       
       setSites(previous => isCurrent()
@@ -242,16 +253,18 @@ export async function loadAccessibleSites(deps: LoadSitesDeps) {
         if (!isCurrent() || !previous) return previous
         const loaded = (uniqueSites as Site[]).find(site => site.id === previous.id)
         // A successful authorized list no longer containing this site revokes selection.
-        if (!loaded) return null
+        if (!loaded) return authoritative ? null : previous
         const merged = mergeLoadedSiteBilling([previous], [loaded], billingRevision)[0]
         return { ...previous, ...merged, settings: previous.settings }
       })
-      setSitesLoaded(true)
+      // Without an active identity, a cache miss must not enable the empty-list
+      // redirect before the authoritative revalidation can restore the saved ID.
+      setSitesLoaded(authoritative || Boolean(currentSite))
       
       // Si hay sitios, intentamos restaurar el sitio guardado (no auto-seleccionar el primero)
       if (sitesWithData.length > 0) {
         const preferredSiteId = resolvePreferredSiteId({
-          savedSiteId: background ? currentSite?.id : getLocalStorage("currentSiteId"),
+          savedSiteId: currentSite?.id ?? getLocalStorage("currentSiteId"),
           demoSiteId: getDemoSiteId(),
         })
         const savedSite = preferredSiteId
@@ -278,6 +291,8 @@ export async function loadAccessibleSites(deps: LoadSitesDeps) {
       if (isCurrent() && !isInitialized) {
         setIsInitialized(true)
       }
+      return { site: (uniqueSites as Site[]).find(site => site.id === selectedId), authoritative,
+        selectionMissing: Boolean(selectedId && !selected), revalidateAfterMs }
     } catch (err) {
       if (!isCurrent()) return
       console.error("Error loading sites:", err instanceof Error ? err.message : String(err))

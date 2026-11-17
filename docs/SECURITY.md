@@ -88,6 +88,16 @@ work. See [Stripe setup](STRIPE_SETUP.md).
 
 ## Outbound requests and file proxies
 
+Robots HTML previews retain an opaque `sandbox="allow-scripts"` frame: no
+same-origin access, forms, popups or external scripts. Their additional CSP
+allows images, media and Web Audio fetches only from public Storage object paths
+on `db.makinari.com` and the configured HTTPS Supabase project. It does not allow
+REST/Auth APIs, private or signed Storage routes, arbitrary subdomains or local
+development backends. These are already-public objects, not a new private-file
+authorization mechanism. The parent page CSP and Storage CORS still apply;
+playback requires a user gesture. Keep both positive media checks and negative
+network/isolation checks when changing this policy.
+
 - Use an explicit hostname allowlist and HTTPS.
 - Reject credentials embedded in URLs, unexpected ports, private/link-local IP
   ranges, DNS rebinding targets, and unsafe redirects.

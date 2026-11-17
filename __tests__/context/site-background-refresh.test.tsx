@@ -385,6 +385,7 @@ it("does not restore sites or loading after signout while a refresh is pending",
   await waitFor(() => expect(fetchAccessibleSitesClient).toHaveBeenCalledTimes(2))
   act(() => mockAuth("SIGNED_OUT", null))
   await act(async () => { pending.resolve(response()); await refresh })
+  expect(jest.mocked(fetchAccessibleSitesClient).mock.calls[1][2]?.aborted).toBe(true)
   expect(result.current.currentSite).toBeNull()
   expect(result.current.sites).toEqual([])
   expect(result.current.isLoading).toBe(false)

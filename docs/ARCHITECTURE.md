@@ -4,6 +4,54 @@
 
 ### Selected workspace recovery
 
+Workspace clients request `/api/sites?view=selector`, not the legacy enriched
+response. The selector path does not query billing or tracking/details. Auth and
+the existing unrestricted-location gate are freshly verified once per request;
+only then may a server-only client read the actor's own/licensed-member list.
+The redundant ownership lookup is removed. Ordered, count-checked pagination and
+bounded ID batches reject failures or incomplete results rather than publishing a
+partial list as a revocation. Ordinary Auth outages return 503, not logout/401.
+
+The existing `REDIS_URL` transport caches only basic selector metadata for 60
+seconds, scoped by Supabase environment and authenticated actor. Redis commands
+have a 250 ms budget; missing/broken Redis falls back to the database. In-process
+pending requests for the same scope are coalesced, with independent result copies.
+There is no cached role, billing, settings, credential or mutation authorization.
+Hits are marked `authoritative: false`; `fresh=1` bypasses the cache for current
+membership reconciliation. A cache miss reads the complete list before writing.
+Membership/site changes may remain visible as presentation hints until fresh
+revalidation (at most the 60-second Redis entry lifetime for cache-only callers).
+No cross-service invalidation or instant revocation of cached labels is claimed.
+
+The browser publishes a cache hit immediately. Versioned Redis entries retain
+their original timestamp and return the remaining freshness budget; a hit does
+not extend that budget or trigger a DB query. One `fresh=1` read runs at expiry,
+unless a newer load, selection or auth change cancels it. Missing selected IDs,
+explicit refreshes, and local site/settings mutations revalidate immediately.
+Cached absence never revokes the active selection. Retiring a generation aborts selector HTTP and releases pending
+load deduplication; settings responses still use guarded publication. Active-site
+billing is loaded separately under user-scoped RLS, including explicit site
+switches, without gating POS. That read retains its own eight-second transport
+deadline and cannot publish into a retired user/site selection. Financial data is
+not fabricated from the metadata cache; unavailable markers remain explicit.
+
+Billing reads use latest-started ordering per site, rechecked inside deferred React
+setters. A newer failed read also retires older results. Weak request tokens avoid
+retaining a permanent per-site registry. An empty RLS read does not prove absence:
+the reader calls the read-only `/api/billing/presence?site_id=...` endpoint, which
+validates UUID input and current membership/location access before a minimal
+service-role existence read. Only a confirmed missing row publishes `missing`
+and exposes the existing billing setup action; hidden rows, errors and denials
+remain unavailable. No credits are granted by this read. The presence endpoint
+has a six-second response deadline within the client's eight-second read budget.
+
+The route has an 8-second response deadline; cache-fill database transport has a
+5-second deadline and is independent of any single coalesced caller disconnect.
+`Cache-Control: private, no-store` prevents shared HTTP caching. `Server-Timing`
+reports location/list/total timings, and `X-Sites-Cache` reports hit/miss without
+logging tokens or customer payloads. The legacy enriched endpoint remains for
+compatibility and is not stored in Redis.
+
 The browser keeps a 24-hour, actor-bound identity hint in `mf_site_selection_v1`,
 matched against `currentSiteId`. It excludes settings, credentials, billing and
 roles. After resolving local session identity, `SiteProvider` can restore this
@@ -42,6 +90,10 @@ Regression coverage: `__tests__/context/site-selection-cache.test.ts`,
 `__tests__/context/site-background-refresh.test.tsx` and
 `__tests__/pos/pos-page-access.test.tsx`. Race and real-sidebar integration cases
 are in `__tests__/context/site-recovery-races.test.tsx` (including StrictMode).
+Selector API/cache/transport regressions are in `__tests__/api/sites-selector.test.ts`,
+`__tests__/lib/sites/selector-cache.test.ts`, `__tests__/lib/sites/list-accessible-sites.test.ts`
+and `__tests__/context/site-selector-lifecycle.test.tsx`. These are offline tests,
+not evidence of deployed Redis configuration or measured production latency.
 
 Makinari is a Next.js 16 App Router application using React 19 and TypeScript.
 The same repository contains the authenticated workspace, public storefront and

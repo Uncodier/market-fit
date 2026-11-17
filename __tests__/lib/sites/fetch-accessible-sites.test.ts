@@ -38,6 +38,7 @@ describe("fetchAccessibleSitesClient", () => {
       error: null,
       aborted: false,
       unauthorized: false,
+      authoritative: true,
     })
   })
 
@@ -50,7 +51,8 @@ describe("fetchAccessibleSitesClient", () => {
     const rpc = jest.fn()
     const result = await fetchAccessibleSitesClient({ rpc })
     expect(rpc).not.toHaveBeenCalled()
-    expect(global.fetch).toHaveBeenCalledWith("/api/sites", { credentials: "include" })
+    expect(global.fetch).toHaveBeenCalledWith("/api/sites?view=selector", { credentials: "include", signal: undefined })
+    expect(result.authoritative).toBe(true)
     expect(result.sites).toEqual([{ id: "site-1" }])
     expect(result.error).toBeNull()
     expect(result.unauthorized).toBe(false)
@@ -70,7 +72,7 @@ describe("fetchAccessibleSitesClient", () => {
     expect(result.error?.message).toBe("Not authenticated")
   })
 
-  it("passes detail parameter when provided and extracts it from payload", async () => {
+  it("ignores the legacy detail parameter while preserving legacy response compatibility", async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ success: true, sites: [{ id: "site-1" }], detail: { id: "site-1", logo_url: "a" } }),
@@ -78,7 +80,7 @@ describe("fetchAccessibleSitesClient", () => {
 
     const rpc = jest.fn()
     const result = await fetchAccessibleSitesClient({ rpc }, "site-1")
-    expect(global.fetch).toHaveBeenCalledWith("/api/sites?detail=site-1", { credentials: "include" })
+    expect(global.fetch).toHaveBeenCalledWith("/api/sites?view=selector", { credentials: "include", signal: undefined })
     expect(result.detail).toEqual({ id: "site-1", logo_url: "a" })
   })
 
@@ -88,5 +90,35 @@ describe("fetchAccessibleSitesClient", () => {
     const result = await fetchAccessibleSitesClient({ _isDemo: true, rpc })
     expect(result.aborted).toBe(true)
     expect(result.error?.message).toBe("The user aborted a request.")
+  })
+
+  it("passes cancellation to HTTP and reports abort even during JSON consumption", async () => {
+    const controller = new AbortController()
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => {
+      controller.abort()
+      throw new DOMException("Aborted", "AbortError")
+    } })
+    const result = await fetchAccessibleSitesClient({}, null, controller.signal)
+    expect(global.fetch).toHaveBeenCalledWith("/api/sites?view=selector", {
+      credentials: "include", signal: controller.signal,
+    })
+    expect(result.aborted).toBe(true)
+    expect(result.unauthorized).toBe(false)
+  })
+
+  it("keeps cache authority explicit and supports one fresh selector read", async () => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: true,
+      json: async () => ({ sites: [], authoritative: false }) })
+    expect((await fetchAccessibleSitesClient({})).authoritative).toBe(false)
+    await fetchAccessibleSitesClient({}, null, undefined, true)
+    expect(global.fetch).toHaveBeenLastCalledWith("/api/sites?view=selector&fresh=1", {
+      credentials: "include", signal: undefined,
+    })
+  })
+
+  it.each([[35_000, 35_000], [90_000, 60_000], [-1, 0], [null, 0]])('bounds the cache freshness hint %s', async (hint, expected) => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: true,
+      json: async () => ({ sites: [], authoritative: false, revalidateAfterMs: hint }) })
+    expect((await fetchAccessibleSitesClient({})).revalidateAfterMs).toBe(expected)
   })
 })

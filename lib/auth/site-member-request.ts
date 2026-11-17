@@ -7,12 +7,15 @@ import { isAdminScreenRole } from "@/lib/auth/screen-access"
 import { z } from "zod"
 import { locationGuardedServiceFetch } from "@/lib/supabase/service-location-guard"
 
-export async function createUserSupabase() {
+export async function createUserSupabase(signal?: AbortSignal) {
   const cookieStore = await cookies()
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      ...(signal ? { global: { fetch: (input: RequestInfo | URL, init?: RequestInit) => fetch(input, {
+        ...init, signal: init?.signal ? AbortSignal.any([signal, init.signal]) : signal,
+      }) } } : {}),
       cookies: {
         getAll() {
           return cookieStore.getAll()

@@ -331,7 +331,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
       currentSite,
       setCurrentSite,
       setSites,
-      loadSites,
+      loadSites: () => loadSites(true),
       setError,
       shouldPreventRefresh,
       isOnProtectedPage,
@@ -346,7 +346,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
     setSites,
     setError,
     setIsLoading,
-    loadSites,
+    loadSites: () => loadSites(true),
     updateSettings: handleUpdateSettings,
     selectSite: handleSetCurrentSite,
     shouldPreventRefresh,
@@ -375,7 +375,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
       
       if (result.success) {
         // Refresh site data to get the updated billing info
-        await loadSites();
+        await loadSites(true);
         toast.success("Billing information updated successfully");
       } else {
         toast.error(result.error || "Failed to update billing information");
@@ -418,7 +418,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
       }
       
       // Refresh site data to get the updated credits
-      await loadSites();
+      await loadSites(true);
       toast.success(`Successfully purchased ${amount} credits`);
       
       return { success: true };
@@ -440,7 +440,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
     if (currentSite && !recovering && !recoveringList && (shouldPreventRefresh() || isOnProtectedPage())) {
       return
     }
-    return loadSites()
+    return loadSites(true)
   }
 
   // ✅ NEW EFFECT: Sync logos in background
