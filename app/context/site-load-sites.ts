@@ -9,6 +9,8 @@ import { isDemoModeActive, getDemoSiteId, resolvePreferredSiteId } from "@/lib/d
 import { unauthorizedSitesLoadAction } from "@/lib/auth/workspace-site-redirect"
 import { fetchAccessibleSitesClient } from "@/lib/sites/fetch-accessible-sites"
 import { postgrestErrorMessage } from "@/lib/supabase/postgrest-error"
+import { cacheSiteSelection, clearSiteSelectionCache } from "./site-selection-cache"
+import { clearCurrentSiteCookie } from "@/lib/auth/current-site-cookie"
 
 export type LoadSitesDeps = {
   supabase: any
@@ -27,6 +29,7 @@ export type LoadSitesDeps = {
   selectSite: (site: Site) => Promise<void>
   reload: () => void
   isCurrent?: () => boolean
+  sessionUserId?: string | null
 }
 
 export async function loadAccessibleSites(deps: LoadSitesDeps) {
@@ -46,7 +49,6 @@ export async function loadAccessibleSites(deps: LoadSitesDeps) {
     setSites,
     setCurrentSite,
     selectSite,
-    reload,
     isCurrent = () => true,
   } = deps
     if (!isMounted || !supabase || !isCurrent()) {
@@ -65,15 +67,17 @@ export async function loadAccessibleSites(deps: LoadSitesDeps) {
     // ✅ MARK that we attempted to load sites (kept for diagnostics)
     setSitesLoadAttempted(true)
     
-    let userId: string | null = null
+    let userId: string | null = deps.sessionUserId ?? null
 
-    // Read the local session for demo site ownership only.
+    // Read local identity for cache scoping and demo ownership, never authorization.
     // Do not call auth.getUser() here: it always hits the Auth API from the
     // browser, and a Failed to fetch (blocked, aborted, offline) was treated
     // as logout and surfaced as a Next.js Console TypeError overlay.
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      userId = session?.user?.id ?? null
+      if (deps.sessionUserId === undefined) {
+        const { data: { session } } = await supabase.auth.getSession()
+        userId = session?.user?.id ?? null
+      }
     } catch {
       userId = null
     }
@@ -107,14 +111,20 @@ export async function loadAccessibleSites(deps: LoadSitesDeps) {
         if (action === "retry") {
           unauthorizedRetryRef.current += 1
           keepLoading = true
-          setTimeout(() => {
-            if (isCurrent()) void reload()
-          }, 400)
+          // Retry this list operation, not the deduplicated outer hydration.
+          // Keep the same generation/deadline while settings load independently.
+          await new Promise(resolve => setTimeout(resolve, 400))
+          if (isCurrent()) await loadAccessibleSites(deps)
           return
         }
 
         unauthorizedRetryRef.current = 0
-        // Keep previous sites. Do not paint an empty create-site state.
+        // A completed authentication denial cannot continue using a cached scope.
+        clearSiteSelectionCache()
+        setCurrentSite(null)
+        setSites([])
+        setError(new Error("Site access could not be authenticated. Please sign in again."))
+        setIsLoading(false)
         if (!isInitialized) {
           setIsInitialized(true)
         }
@@ -127,7 +137,6 @@ export async function loadAccessibleSites(deps: LoadSitesDeps) {
         }
 
         setHasValidSession(false)
-        keepLoading = true
         return
       }
 
@@ -208,6 +217,21 @@ export async function loadAccessibleSites(deps: LoadSitesDeps) {
       const uniqueSites = Array.from(
         new Map(sitesWithData.map((site: any) => [site.id, site])).values()
       );
+
+      const selectedId = background ? currentSite?.id : getLocalStorage("currentSiteId")
+      const selected = (uniqueSites as Site[]).find(site => site.id === selectedId)
+      if (selected) cacheSiteSelection(userId, selected)
+      else if (selectedId) {
+        clearSiteSelectionCache()
+        setIsLoading(false)
+        // Another tab may have selected a different site in the meantime.
+        try {
+          if (localStorage.getItem("currentSiteId") === selectedId) {
+            localStorage.removeItem("currentSiteId")
+            clearCurrentSiteCookie()
+          }
+        } catch { /* Selection invalidation in memory is still authoritative. */ }
+      }
       
       setSites(previous => isCurrent()
         ? mergeLoadedSiteBilling(previous, uniqueSites as Site[], billingRevision)

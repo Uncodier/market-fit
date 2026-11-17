@@ -1,7 +1,9 @@
 "use client"
 
-import React, { useState, useEffect, useRef, useCallback, useLayoutEffect } from "react"
-import { TabsList, TabsTrigger } from "@/app/components/ui/tabs"
+import React, { useMemo } from "react"
+import { cn } from "@/lib/utils"
+import { useResponsiveTabsFit } from "./use-responsive-tabs-fit"
+import { TabsList, TabsTrigger, tabsListClassName, tabsTriggerClassName } from "@/app/components/ui/tabs"
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/app/components/ui/dropdown-menu"
 import { MoreHorizontal } from "@/app/components/ui/icons"
 
@@ -38,126 +40,36 @@ export function ResponsiveTabsList({
   triggerClassName,
   onPreferredWidthChange,
 }: ResponsiveTabsListProps) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const hiddenContainerRef = useRef<HTMLDivElement>(null)
-  
-  const [maxVisibleTabs, setMaxVisibleTabs] = useState(tabs.length)
-  const [tabWidths, setTabWidths] = useState<number[]>([])
-
-  // 1. Measure all tabs once on mount or when tabs change
-  useLayoutEffect(() => {
-    if (hiddenContainerRef.current) {
-      // Need a tiny delay sometimes to ensure fonts/styles have loaded
-      const measure = () => {
-        if (!hiddenContainerRef.current) return
-        const widths = Array.from(hiddenContainerRef.current.children).map(
-          (child) => (child as HTMLElement).getBoundingClientRect().width
-        )
-        // Add a small safety buffer (8px) to each tab width
-        const bufferedWidths = widths.map((width) => Math.ceil(width) + 8)
-        setTabWidths(bufferedWidths)
-
-        const gap = 4
-        const listPadding = 16
-        const preferredWidth =
-          bufferedWidths.reduce((total, width) => total + width, 0) +
-          Math.max(0, bufferedWidths.length - 1) * gap +
-          listPadding
-        onPreferredWidthChange?.(preferredWidth)
-      }
-      
-      measure()
-      // Recalculate slightly later to be safe
-      const timer = setTimeout(measure, 100)
-      return () => clearTimeout(timer)
-    }
-  }, [tabs, onPreferredWidthChange, triggerClassName])
-
-  // 2. Calculate how many tabs fit based on exact pixel widths
-  const calculateMaxVisibleTabs = useCallback(() => {
-    if (!containerRef.current || tabWidths.length === 0) return
-
-    const containerW = containerRef.current.clientWidth
-    if (containerW === 0) return
-
-    const moreButtonWidth = 65 // "..." button width + gap buffer
-    const gap = 4 // gap between tabs
-    const paddingBuffer = 16 // padding of TabsList container itself (8px each side)
-
-    const availableWidth = containerW - paddingBuffer
-
-    let currentWidth = 0
-    let maxTabs = 0
-
-    // Si todo cabe perfectamente sin el botón More, devolvemos length
-    const totalNeededWidth = tabWidths.reduce((acc, w) => acc + w + gap, 0) - gap
-    if (totalNeededWidth <= availableWidth) {
-      setMaxVisibleTabs(tabs.length)
-      return
-    }
-
-    for (let i = 0; i < tabs.length; i++) {
-      const tabW = tabWidths[i]
-      
-      // Si necesitamos cortar, hay que sumar siempre el botón de More
-      const widthNeeded = currentWidth + tabW + gap + moreButtonWidth
-
-      if (widthNeeded <= availableWidth) {
-        currentWidth += tabW + gap
-        maxTabs = i + 1
-      } else {
-        break // Stop fitting tabs
-      }
-    }
-
-    // Always show at least 1 tab to avoid empty states
-    setMaxVisibleTabs(Math.max(1, maxTabs))
-  }, [tabs.length, tabWidths])
-
-  // 3. React to window resize to recalculate the fit
-  useEffect(() => {
-    if (!containerRef.current) return
-
-    let timeoutId: NodeJS.Timeout
-    const observer = new ResizeObserver(() => {
-      clearTimeout(timeoutId)
-      timeoutId = setTimeout(calculateMaxVisibleTabs, 50)
-    })
-
-    observer.observe(containerRef.current)
-    calculateMaxVisibleTabs()
-
-    return () => {
-      observer.disconnect()
-      clearTimeout(timeoutId)
-    }
-  }, [calculateMaxVisibleTabs])
-
-  const needsOverflow = tabs.length > maxVisibleTabs
-  let visibleTabs: TabItem[] = []
-  let hiddenTabs: TabItem[] = []
-
-  if (!needsOverflow) {
-    visibleTabs = tabs
-  } else {
-    const effectiveMax = maxVisibleTabs
-    const activeTabIndex = tabs.findIndex(t => t.value === activeTab)
-
-    if (activeTabIndex === -1 || activeTabIndex < effectiveMax) {
-      visibleTabs = tabs.slice(0, effectiveMax)
-      hiddenTabs = tabs.slice(effectiveMax)
-    } else {
-      // Ensure the active tab is always visible by swapping the last visible tab with the active one
-      visibleTabs = [
-        ...tabs.slice(0, effectiveMax - 1),
-        tabs[activeTabIndex]
-      ]
-      hiddenTabs = [
-        ...tabs.slice(effectiveMax - 1, activeTabIndex),
-        ...tabs.slice(activeTabIndex + 1)
-      ]
-    }
-  }
+  const measurementContent = useMemo(() => [tabs, className, triggerClassName, containerClassName],
+    [tabs, className, triggerClassName, containerClassName])
+  const { containerRef, measurementRef, visibleIndices } = useResponsiveTabsFit(
+    tabs.length, tabs.findIndex(tab => tab.value === activeTab),
+    measurementContent, onPreferredWidthChange,
+  )
+  const indices = visibleIndices ?? tabs.map((_, index) => index)
+  const visibleTabs = indices.map(index => tabs[index]).filter(Boolean)
+  const hiddenTabs = tabs.filter((_, index) => !indices.includes(index))
+  const listClassName = cn("inline-flex min-w-0 max-w-full flex-nowrap justify-start", className)
+  const tabClassName = cn("rounded-[inherit] shrink-0", triggerClassName)
+  const overflowClassName = "inline-flex max-w-full shrink-0 items-center justify-center whitespace-nowrap rounded-[inherit] px-3 py-1.5 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 text-muted-foreground hover:text-foreground"
+  const renderTabContent = (tab: TabItem) => (
+    <span className={`flex min-w-0 max-w-[200px] items-center gap-2 whitespace-nowrap py-0 ${
+      tab.leadingAction || tab.trailingAction ? "px-7" : "px-2"
+    }`}>
+      {tab.icon && (
+        <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center leading-none [&>svg]:block [&>svg]:h-4 [&>svg]:w-4">
+          {tab.icon}
+        </span>
+      )}
+      <span className="truncate">{tab.label}</span>
+    </span>
+  )
+  const renderOverflowContent = (count: number) => (
+    <span className="flex min-w-0 items-center gap-1 overflow-hidden">
+      <MoreHorizontal className="h-4 w-4 shrink-0" />
+      <span className="text-xs" data-overflow-count>{count}</span>
+    </span>
+  )
 
   const renderAction = (
     action: TabAction,
@@ -190,53 +102,33 @@ export function ResponsiveTabsList({
       className={`flex items-center w-full min-w-0 ${containerClassName || ''}`}
       ref={containerRef}
     >
-      {/* Hidden container purely for taking precise width measurements of each tab */}
-      <div 
-        ref={hiddenContainerRef} 
-        className="absolute top-0 left-0 h-0 overflow-hidden opacity-0 pointer-events-none flex gap-1 whitespace-nowrap"
-        aria-hidden="true"
-      >
-        {tabs.map((tab) => (
-          <div 
-            key={tab.value} 
-            className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ${triggerClassName || ''}`}
-          >
-            <span
-              className={`flex items-center gap-2 whitespace-nowrap py-0 ${
-                tab.leadingAction || tab.trailingAction ? "px-7" : "px-2"
-              }`}
-            >
-              {tab.icon && (
-                <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center leading-none [&>svg]:block [&>svg]:h-4 [&>svg]:w-4">
-                  {tab.icon}
-                </span>
-              )}
-              <span>{tab.label}</span>
-            </span>
-          </div>
-        ))}
+      {/* Intrinsic copies share styles without registering hidden tabs in Radix navigation. */}
+      <div className="absolute h-0 w-0 overflow-hidden pointer-events-none" aria-hidden="true" inert>
+        <div
+          ref={measurementRef}
+          className={cn(tabsListClassName, listClassName, "!w-max !max-w-none !justify-start")}
+        >
+          {tabs.map(tab => (
+            <div key={tab.value} data-state={tab.value === activeTab ? "active" : "inactive"}
+              data-tab-measure className={cn(tabsTriggerClassName, tabClassName)}>
+              {renderTabContent(tab)}
+            </div>
+          ))}
+          <button type="button" tabIndex={-1} data-overflow-measure className={overflowClassName}>
+            {renderOverflowContent(tabs.length)}
+          </button>
+        </div>
       </div>
 
-      <TabsList className={`inline-flex max-w-full flex-nowrap justify-start ${className || ''}`}>
+      <TabsList className={cn(listClassName, "overflow-hidden")}>
         {visibleTabs.map((tab) => {
           const hasActions = Boolean(tab.leadingAction || tab.trailingAction)
           const trigger = (
             <TabsTrigger
               value={tab.value}
-              className={`rounded-[inherit] ${triggerClassName || ''}`}
+              className={tabClassName}
             >
-              <span
-                className={`flex max-w-[200px] items-center gap-2 whitespace-nowrap py-0 ${
-                  hasActions ? "px-7" : "px-2"
-                }`}
-              >
-                {tab.icon && (
-                  <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center leading-none [&>svg]:block [&>svg]:h-4 [&>svg]:w-4">
-                    {tab.icon}
-                  </span>
-                )}
-                <span className="truncate">{tab.label}</span>
-              </span>
+              {renderTabContent(tab)}
             </TabsTrigger>
           )
 
@@ -256,18 +148,16 @@ export function ResponsiveTabsList({
           )
         })}
 
-        {needsOverflow && hiddenTabs.length > 0 && (
+        {hiddenTabs.length > 0 && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="inline-flex items-center justify-center whitespace-nowrap rounded-[inherit] px-3 py-1.5 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 text-muted-foreground hover:text-foreground"
+                className={overflowClassName}
                 title="More options"
+                aria-label="More options"
               >
-                <span className="flex items-center gap-1">
-                  <MoreHorizontal className="h-4 w-4" />
-                  <span className="text-xs">{hiddenTabs.length}</span>
-                </span>
+                {renderOverflowContent(hiddenTabs.length)}
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-[180px]">

@@ -107,8 +107,8 @@ const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
     return (
       <div 
         className={cn(
-          "relative transition-[width,height] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
-          isExpanded ? cn(expandedWidthClass, expandedHeightClass) : "w-9 h-9",
+          "relative shrink-0 transition-[width,height] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+          isExpanded ? cn(expandedWidthClass, expandedHeightClass) : "w-10 h-10",
           // Add containerClassName when expanded so any other classes apply
           isExpanded && containerClassName
         )}
@@ -116,7 +116,7 @@ const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
         {/* Collapsed State: Button */}
         <div 
           className={cn(
-            "absolute right-0 top-1/2 -translate-y-1/2 h-9 w-9 transition-[opacity,transform] duration-150 ease-out motion-reduce:transition-none",
+            "absolute right-0 top-1/2 -translate-y-1/2 h-10 w-10 transition-[opacity,transform] duration-150 ease-out motion-reduce:transition-none",
             isExpanded
               ? "opacity-0 scale-90 translate-x-1 pointer-events-none"
               : "opacity-100 scale-100 translate-x-0 delay-150"
@@ -126,7 +126,7 @@ const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
             type="button"
             variant="secondary"
             size="icon"
-            className="h-9 w-9 rounded-full"
+            className="h-10 w-10 rounded-full"
             onClick={() => {
               updateExpanded(true)
               setTimeout(() => {
@@ -187,6 +187,7 @@ const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
               className="absolute inset-y-0 right-1 z-20 my-auto h-7 w-7 text-muted-foreground opacity-100 hover:text-foreground"
               onClick={handleClear}
               aria-label="Clear search"
+              data-toolbar-icon-action="off"
             >
               <X className="h-3 w-3" />
             </Button>

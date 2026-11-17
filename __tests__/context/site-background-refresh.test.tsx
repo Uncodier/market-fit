@@ -4,6 +4,8 @@ import { SiteProvider, useSite } from "@/app/context/SiteContext"
 import type { Site } from "@/app/context/site-types"
 import { fetchAccessibleSitesClient } from "@/lib/sites/fetch-accessible-sites"
 import { SITE_HYDRATION_TIMEOUT_MS } from "@/app/context/site-loading-lifecycle"
+import { cacheSiteSelection, SITE_SELECTION_CACHE_KEY } from "@/app/context/site-selection-cache"
+import { snapshotPostgrestError } from "@/lib/supabase/postgrest-error"
 
 const mockSession = { user: { id: "owner" } }
 let mockAuth: (event: string, session: unknown) => void
@@ -61,6 +63,137 @@ beforeEach(() => {
   localStorage.setItem("currentSiteId", first.id)
   jest.mocked(fetchAccessibleSitesClient).mockResolvedValue(response())
   mockSettings.mockResolvedValue({ data: { about: "Hydrated settings" }, error: null })
+})
+
+it("restores the same actor's selected site while the list is unavailable", async () => {
+  cacheSiteSelection("owner", first)
+  const pending = deferred<ReturnType<typeof response>>()
+  jest.mocked(fetchAccessibleSitesClient).mockReturnValueOnce(pending.promise)
+  const { result } = await hydrated()
+  expect(result.current.currentSite?.id).toBe(first.id)
+  expect(result.current.sites).toEqual([])
+  const previous = result.current.currentSite
+  const consoleError = jest.spyOn(console, "error").mockImplementation(() => {})
+  await act(async () => pending.reject(new Error("Network unavailable")))
+  expect(result.current.currentSite).toBe(previous)
+  expect(result.current.isLoading).toBe(false)
+  expect(result.current.error?.message).toBe("Network unavailable")
+  consoleError.mockRestore()
+})
+
+it("keeps restored settings and selection when the list deadline expires", async () => {
+  cacheSiteSelection("owner", first)
+  jest.useFakeTimers()
+  try {
+    const pending = deferred<ReturnType<typeof response>>()
+    jest.mocked(fetchAccessibleSitesClient).mockReturnValueOnce(pending.promise)
+    const { result } = mount()
+    await act(async () => { await Promise.resolve() })
+    expect(result.current.currentSite?.settings?.about).toBe("Hydrated settings")
+    await act(async () => jest.advanceTimersByTime(SITE_HYDRATION_TIMEOUT_MS))
+    expect(result.current.currentSite?.id).toBe(first.id)
+    expect(result.current.isLoading).toBe(false)
+    await act(async () => pending.resolve(response([])))
+    expect(result.current.currentSite?.id).toBe(first.id)
+  } finally { jest.useRealTimers() }
+})
+
+it("revalidates a cached site without loading its settings twice", async () => {
+  cacheSiteSelection("owner", first)
+  const pending = deferred<ReturnType<typeof response>>()
+  jest.mocked(fetchAccessibleSitesClient).mockReturnValueOnce(pending.promise)
+  const { result } = await hydrated()
+  await act(async () => pending.resolve(response()))
+  expect(result.current.currentSite?.settings?.about).toBe("Hydrated settings")
+  expect(mockSettings).toHaveBeenCalledTimes(1)
+  expect(result.current.isLoading).toBe(false)
+  expect(result.current.sites).toHaveLength(2)
+})
+
+it("clears a restored site and cache after authoritative removal", async () => {
+  cacheSiteSelection("owner", first)
+  const pending = deferred<ReturnType<typeof response>>()
+  jest.mocked(fetchAccessibleSitesClient).mockReturnValueOnce(pending.promise)
+  const { result } = await hydrated()
+  await act(async () => pending.resolve(response([second])))
+  expect(result.current.currentSite).toBeNull()
+  expect(localStorage.getItem(SITE_SELECTION_CACHE_KEY)).toBeNull()
+  expect(localStorage.getItem("currentSiteId")).toBeNull()
+  expect(result.current.isLoading).toBe(false)
+})
+
+it("does not restore another user's cached site when the list fails", async () => {
+  cacheSiteSelection("another-user", first)
+  jest.mocked(fetchAccessibleSitesClient).mockResolvedValueOnce({
+    ...response([]), error: snapshotPostgrestError(new Error("Network unavailable")),
+  })
+  const consoleError = jest.spyOn(console, "error").mockImplementation(() => {})
+  const { result } = mount()
+  await waitFor(() => expect(result.current.isLoading).toBe(false))
+  expect(result.current.currentSite).toBeNull()
+  expect(mockSettings).not.toHaveBeenCalled()
+  consoleError.mockRestore()
+})
+
+it("deduplicates initial auth events while restoring the site", async () => {
+  cacheSiteSelection("owner", first)
+  const pending = deferred<ReturnType<typeof response>>()
+  jest.mocked(fetchAccessibleSitesClient).mockReturnValueOnce(pending.promise)
+  const view = mount()
+  act(() => mockAuth("INITIAL_SESSION", mockSession))
+  await waitFor(() => expect(view.result.current.isLoading).toBe(false))
+  expect(fetchAccessibleSitesClient).toHaveBeenCalledTimes(1)
+  expect(mockSettings).toHaveBeenCalledTimes(1)
+  await act(async () => pending.resolve(response()))
+})
+
+it("does not expose a restored site with unavailable checkout settings", async () => {
+  cacheSiteSelection("owner", first)
+  mockSettings.mockResolvedValue({ data: null, error: { code: "NETWORK", message: "Offline" } })
+  const { result } = mount()
+  await waitFor(() => expect(result.current.isLoading).toBe(false))
+  expect(result.current.currentSite).toBeNull()
+  expect(result.current.error?.message).toContain("settings could not be loaded")
+})
+
+it("cannot resurrect removed cached selection through late settings", async () => {
+  cacheSiteSelection("owner", first)
+  const settings = deferred<{ data: { about: string }; error: null }>()
+  mockSettings.mockReturnValueOnce(settings.promise)
+  jest.mocked(fetchAccessibleSitesClient).mockResolvedValueOnce(response([]))
+  const { result } = mount()
+  await waitFor(() => expect(result.current.isLoading).toBe(false))
+  expect(result.current.currentSite).toBeNull()
+  await act(async () => settings.resolve({ data: { about: "Late" }, error: null }))
+  expect(result.current.currentSite).toBeNull()
+  expect(localStorage.getItem(SITE_SELECTION_CACHE_KEY)).toBeNull()
+})
+
+it("clears cached selection on signout and ignores the pending list", async () => {
+  cacheSiteSelection("owner", first)
+  const pending = deferred<ReturnType<typeof response>>()
+  jest.mocked(fetchAccessibleSitesClient).mockReturnValueOnce(pending.promise)
+  const { result } = await hydrated()
+  act(() => mockAuth("SIGNED_OUT", null))
+  await act(async () => pending.resolve(response()))
+  expect(result.current.currentSite).toBeNull()
+  expect(localStorage.getItem(SITE_SELECTION_CACHE_KEY)).toBeNull()
+})
+
+it("retires cached scope after repeated authentication denial", async () => {
+  cacheSiteSelection("owner", first)
+  jest.useFakeTimers()
+  try {
+    jest.mocked(fetchAccessibleSitesClient).mockResolvedValue({ ...response([]), unauthorized: true })
+    const { result } = mount()
+    await act(async () => { await Promise.resolve() })
+    await act(async () => jest.advanceTimersByTime(400))
+    await act(async () => jest.advanceTimersByTime(400))
+    expect(fetchAccessibleSitesClient).toHaveBeenCalledTimes(3)
+    expect(result.current.currentSite).toBeNull()
+    expect(localStorage.getItem(SITE_SELECTION_CACHE_KEY)).toBeNull()
+    expect(result.current.isLoading).toBe(false)
+  } finally { jest.useRealTimers() }
 })
 
 it.each(['session', 'settings'])('bounds stalled initial %s hydration and ignores late data', async kind => {
@@ -290,10 +423,11 @@ it("does not execute an unauthorized retry after signout", async () => {
     jest.mocked(fetchAccessibleSitesClient).mockResolvedValueOnce({
       ...response([]), unauthorized: true,
     })
-    await act(async () => { await result.current.refreshSites() })
+    let refresh!: Promise<void>
+    await act(async () => { refresh = result.current.refreshSites() })
     expect(result.current.isLoading).toBe(false)
     act(() => mockAuth("SIGNED_OUT", null))
-    await act(async () => { jest.advanceTimersByTime(500) })
+    await act(async () => { jest.advanceTimersByTime(500); await refresh })
     expect(fetchAccessibleSitesClient).toHaveBeenCalledTimes(2)
     expect(result.current.currentSite).toBeNull()
   } finally {

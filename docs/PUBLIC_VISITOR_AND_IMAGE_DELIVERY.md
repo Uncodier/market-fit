@@ -100,6 +100,16 @@ single-user silhouette. The Settings navigation tile and sidebar account entry
 share the same artwork; a personal avatar still takes precedence in the sidebar.
 The fixed prompt never includes the account name or email.
 
+The 2026-11-16 navigation prompt refresh is limited to Apps, Procurement
+Settings, Procurement Approvals, Procurement Rules, and Procurement Tenders.
+`app/config/module-image-realistic.ts` combines their existing recognizable
+object constraints with isometric PBR materials, textless surfaces, floating
+shadow-free compositions, and fixed contrasting pastel backgrounds. Other
+module prompts and approved static assets remain unchanged. The changed prompt
+selects a new backend cache entry through the existing authorized shared route;
+it does not prove that a new image has already been generated. A configured,
+reachable backend and authorized workspace request are still required on a miss.
+
 For all remaining modules, `getModuleImageUrl` preserves the shared icon-set URLs
 from commit `8ce0124f`: the unchanged prompt and 256-by-256 dimensions go directly to the configured API's
 `/api/public/image/prompt/...` endpoint, without `site_id` or credentials. Requests

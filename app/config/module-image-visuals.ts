@@ -1,6 +1,7 @@
 import type { WorkspaceArea } from "./navigation-areas"
 import { MAKINARI_MODULE_IMAGE_OVERRIDES } from "./module-image-overrides"
 import { isSharedModuleImageKey } from "./shared-module-images"
+import { getRealisticModuleImagePrompt } from "./module-image-realistic"
 
 /** Short object noun so the model is not literal with screen names like "leads". */
 export const MODULE_IMAGE_HINTS: Record<string, string> = {
@@ -280,6 +281,8 @@ export function getModuleImagePrompt(
   const imageKey = itemKey === "aiWorkspace" ? "salesHome" : itemKey === "accountsPayable" ? "accountsReceivable" : itemKey
   const subject = screenIconSubject(imageKey, title)
   const clarifier = MODULE_IMAGE_CLARIFIERS[imageKey]
+  const realisticPrompt = getRealisticModuleImagePrompt(itemKey, subject, clarifier)
+  if (realisticPrompt) return realisticPrompt
   const isFullSize = FULL_SIZE_MODULE_IMAGE_KEYS.has(imageKey)
   const isContainerFree = CONTAINER_FREE_MODULE_IMAGE_KEYS.has(imageKey)
   const palette = MODULE_IMAGE_PALETTES[itemKey] ?? MODULE_IMAGE_PALETTES[imageKey]

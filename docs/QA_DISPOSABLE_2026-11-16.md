@@ -37,7 +37,8 @@ failures. Worker SDK handshakes still enforce actual Temporal readiness.
 Reviewed overlay: `scripts/workspace-runtime.cjs` plus new
 `scripts/temporal-readiness.cjs` in the installer repository. No application or
 credential override was copied. Two runtime/readiness suites passed **61 tests**;
-the pre-overlay installer battery passed **200 tests / 11 suites**. The overlay is
+the pre-overlay installer battery passed **200 tests / 11 suites**. The final
+installer battery including the repair passed **203 tests / 12 suites**. The overlay is
 unpublished; this is not an unmodified published-installer acceptance claim.
 Frontend `/auth` and API `/api/status` then returned 200. Installer provisioning
 completed browser installation and verified synthetic identities, membership,
@@ -57,7 +58,7 @@ automatic retries or successful-skip substitutions were used.
 | Procurement (initial) | `procurement-309c20e9` | 0 passed / 9 failed / 0 skipped | Complete full results; export `ok`; portal provisioning prerequisite failed |
 | Project lifecycle | `project-lifecycle-5339ddb5` | 1 passed / 0 failed / 0 skipped | Complete full results; export `ok` |
 | Account lifecycle | `account-lifecycle-be1d56fc` | 3 passed / 0 failed / 0 skipped | Complete full results; export `ok` |
-| Regression | `regression-e595f5b6` | In progress | Not a success claim |
+| Regression | `regression-e595f5b6` | 1 passed / 42 failed / 6 blocked / 1 skipped | All 50 selected cases reported; `complete=false`; export `ok` |
 
 The independent `healthGreen` provenance gate remains false; assertion passes do
 not imply published overlay provenance, deployment or full application health.
@@ -75,9 +76,16 @@ not proof those requests succeeded. Tests were not changed to ignore the error.
 All initial procurement cases failed at the same precondition: the real QA tender
 portal API returned `enabled=false`. The suite expects installer/operator
 provisioning and deliberately never enables shared settings itself. These failures
-do not demonstrate nine broken tender transactions. A separately recorded
-authenticated exact-QA portal setup and retry remains pending until regression
-finishes; the initial failed attempt will remain in the report.
+do not demonstrate nine broken tender transactions. After regression finished,
+the exact-QA setup script refused with `EACCES` while inspecting processes, before
+Auth/API enablement. No successful portal POST or second procurement run occurred.
+The original nine precondition failures remain reported, not overwritten.
+
+Both POS subsystem failures stopped at strict comparison of persisted customer
+selection: the actual identity matches but includes the additional
+`priceListId:null` field. That is an observed serialized-shape/assertion mismatch,
+not proof that customer identity was lost. Later cancel/reload behavior remains
+unverified; tests and application persistence were not modified to hide it.
 
 ## Local checks
 
@@ -95,11 +103,17 @@ finishes; the initial failed attempt will remain in the report.
 
 Private local logs/JSON are under `/tmp/makinari-qa-20261116`. Safe installer
 exports are in the exact QA's private directory; extraction gaps are explicit.
+[Safe exact-run summary projection](../specs/qa-disposable/outcomes-20261116.json)
+retains counts, completeness and extraction status for all eight attempts.
 Raw traces, credentials, account links and provider payloads must not be published.
 Account cleanup requires destruction of the exact environment, not merely project
 archival. No account journal is relabelled complete before verified group absence.
 
-The environment is currently active while regression runs. Finish supported
-attempts within the approved expiry, export safe exact-run evidence, destroy the
-exact QA and independently verify absence. Do not silently extend lifetime or
-replace incomplete/failed evidence with a green summary.
+All eight installer-supported suites were attempted sequentially. Final export
+retains exact outcomes but is partial overall due to smoke/subsystem diagnostic
+source gaps. Exact-QA destruction was requested after export; by **22:25 UTC**
+the installer confirmed deletion. Follow-up installer status returned
+`deleted-confirmed`, `groupExists=false`, `qaReady=false`, and independent
+`az group exists` returned `false`. No resources remain for this QA. No expiry
+extension or replacement was created.
+These results do not certify a green release or fully healthy application.

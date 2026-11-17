@@ -19,9 +19,9 @@ const ACCESS_ERRORS = {
 
 export default function POSPage() {
   const { t } = useLocalization();
-  const { currentSite, refreshSites } = useSite();
+  const { currentSite, refreshSites, isLoading: siteLoading } = useSite();
   const { user, isLoading } = useAuthContext();
-  const access = usePosLocationAccess(currentSite?.id, user?.id, isLoading);
+  const access = usePosLocationAccess(currentSite?.id, user?.id, isLoading || siteLoading);
   const retryAccess = () => {
     // Retrying the permission hook alone cannot restore an unhydrated site.
     // Reload authorized sites; never infer authorization from a stored site ID.

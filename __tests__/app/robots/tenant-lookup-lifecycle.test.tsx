@@ -58,6 +58,52 @@ describe('Robots tenant lookup lifecycle', () => {
   })
 
   it.each([
+    { siteId: 'demo-saas-en-123' },
+    { instanceSiteId: 'demo-saas-en-123' },
+  ])('skips live tenant requests for demo identity: %j', async demoIdentity => {
+    const view = renderHook(useTenantLookup, {
+      initialProps: { ...input, ...demoIdentity, requirementIds: ['req-saas-1'] },
+    })
+    await act(async () => {})
+    expect(view.result.current.url).toBe(databaseFallbackUrl(input.instanceId))
+    expect(view.result.current.isLoading).toBe(false)
+    expect(view.result.current.error).toBeUndefined()
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(consoleError).not.toHaveBeenCalled()
+  })
+
+  it('skips live requests when the demo cookie is active before the site updates', async () => {
+    document.cookie = 'market_fit_demo_site_id=demo-saas-en-123; path=/'
+    try {
+      const view = renderHook(useTenantLookup, { initialProps: input })
+      await act(async () => {})
+      expect(view.result.current.isLoading).toBe(false)
+      expect(view.result.current.url).toBe(databaseFallbackUrl(input.instanceId))
+      expect(fetchMock).not.toHaveBeenCalled()
+      expect(consoleError).not.toHaveBeenCalled()
+    } finally {
+      document.cookie = 'market_fit_demo_site_id=; path=/; max-age=0'
+    }
+  })
+
+  it('cancels a live lookup when switching to demo and resumes after leaving demo', async () => {
+    const pending = deferred<Response>()
+    fetchMock.mockReturnValueOnce(pending.promise).mockResolvedValue(response(tenant('real')))
+    const view = renderHook(useTenantLookup, { initialProps: input })
+    const signal: AbortSignal = fetchMock.mock.calls[0][1].signal
+    view.rerender({ ...input, siteId: 'demo-saas-en-123', requirementIds: ['req-saas-1'] })
+    expect(signal.aborted).toBe(true)
+    expect(view.result.current.isLoading).toBe(false)
+    await act(async () => { pending.resolve(response(tenant('stale'))) })
+    expect(view.result.current.url).toBe(databaseFallbackUrl(input.instanceId))
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    view.rerender(input)
+    await waitFor(() => expect(view.result.current.url).toContain('/database/real?'))
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(consoleError).not.toHaveBeenCalled()
+  })
+
+  it.each([
     ['site', { ...input, siteId: 'site-b' }],
     ['instance', { ...input, instanceId: 'instance-b' }],
     ['requirements', { ...input, requirementIds: ['req-b'] }],
@@ -143,7 +189,7 @@ describe('Robots tenant lookup lifecycle', () => {
     expect(consoleError).toHaveBeenCalledWith(expect.any(String), error)
   })
 
-  it.each([401, 403, 404, 500])('surfaces HTTP %s rather than treating failure as absence', async status => {
+  it.each([400, 401, 403, 404, 500])('surfaces HTTP %s rather than treating failure as absence', async status => {
     fetchMock.mockResolvedValue(response({ error: 'failed' }, status))
     const view = renderHook(useTenantLookup, { initialProps: input })
     await waitFor(() => expect(view.result.current.error).toEqual(new Error(`Tenant lookup failed (HTTP ${status})`)))

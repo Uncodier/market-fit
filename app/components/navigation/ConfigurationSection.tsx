@@ -183,9 +183,11 @@ export function ConfigurationSection({
     <button
       type="button"
       className={cn(
-        "group flex shrink-0 items-center rounded-xl font-inter transition-colors duration-200",
+        "relative group flex shrink-0 items-center rounded-xl font-inter transition-colors duration-300 motion-reduce:transition-none",
         isGeneralSettingsActive
-          ? "bg-primary text-primary-foreground [&_svg]:text-primary-foreground [&_span]:text-primary-foreground"
+          ? isCollapsed
+            ? "text-primary"
+            : "bg-primary text-primary-foreground [&_svg]:text-primary-foreground [&_span]:text-primary-foreground"
           : "hover:bg-accent hover:text-accent-foreground text-muted-foreground",
         isCollapsed
           ? "mx-auto h-10 w-10 justify-center"
@@ -210,6 +212,16 @@ export function ConfigurationSection({
       aria-expanded={shouldShowSettingsChildren}
       aria-label={settingsTitle}
     >
+      {isSettingsSidebarRouteActive && (
+        <span
+          aria-hidden="true"
+          data-sidebar-selection-indicator
+          className={cn(
+            "pointer-events-none absolute -right-3 inset-y-0 w-[3px] rounded-full border-r-[3px] border-primary transition-[opacity,transform] duration-300 ease-in-out motion-reduce:transition-none",
+            isCollapsed ? "scale-y-100 opacity-100" : "scale-y-75 opacity-0"
+          )}
+        />
+      )}
       <div
         className={cn(
           "flex flex-shrink-0 items-center justify-center",
@@ -222,7 +234,7 @@ export function ConfigurationSection({
           title={settingsTitle}
           className={cn(
             SIDEBAR_TILE_CLASS,
-            isGeneralSettingsActive && "ring-1 ring-white/40",
+            isGeneralSettingsActive && !isCollapsed && "ring-1 ring-white/40",
           )}
         />
       </div>
@@ -266,10 +278,13 @@ export function ConfigurationSection({
       <div className={cn("space-y-1", className)} onMouseDown={(e) => e.preventDefault()}>
         <div
           className={cn(
-            "relative px-1",
+            "relative",
             shouldShowSettingsChildren 
-              ? "overflow-visible rounded-[14px] border dark:border-white/10 border-black/5 bg-black/[0.02] dark:bg-white/[0.02] pr-2 pb-2.5"
+              ? "overflow-visible rounded-[14px] border dark:border-white/10 border-black/5 bg-black/[0.02] dark:bg-white/[0.02]"
               : "border border-transparent",
+            isCollapsed
+              ? shouldShowSettingsChildren ? "p-[7px]" : "px-1"
+              : shouldShowSettingsChildren ? "pl-1 pr-2 pt-2" : "px-1",
             isCollapsed ? "w-14 mx-auto flex flex-col items-center" : "w-full"
           )}
         >
@@ -300,8 +315,8 @@ export function ConfigurationSection({
         >
           <div
             className={cn(
-              "flex flex-col space-y-1 pb-2 pt-1",
-              isCollapsed ? "items-center px-0" : "px-1"
+              "flex flex-col space-y-1",
+              isCollapsed ? "items-center px-0 pt-1" : "px-1 py-2 [&>div]:flex [&>div]:min-h-10 [&>div]:items-center"
             )}
           >
             {settingsChildItems.map((item) => {

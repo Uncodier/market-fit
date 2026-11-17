@@ -1,0 +1,237 @@
+{
+  "qaId": "qa-1794712685585-f5501631",
+  "runs": [
+    {
+      "runId": "qa-1794712685585-f5501631-smoke-40aebc9c",
+      "suite": "smoke",
+      "summary": {
+        "runId": "qa-1794712685585-f5501631-smoke-40aebc9c",
+        "suite": "smoke",
+        "state": "finished",
+        "counts": {
+          "passed": 4,
+          "flaky": 0,
+          "failed": 19,
+          "skipped": 0,
+          "blocked": 0
+        },
+        "expectedCount": 23,
+        "selectedCount": 23,
+        "missing": 0,
+        "unexpected": 0,
+        "scope": "full",
+        "complete": true,
+        "healthGreen": false
+      },
+      "extraction": {
+        "status": "partial",
+        "errors": [
+          {
+            "code": "SOURCE_UNAVAILABLE"
+          }
+        ]
+      }
+    },
+    {
+      "runId": "qa-1794712685585-f5501631-buyer-90a36307",
+      "suite": "buyer",
+      "summary": {
+        "runId": "qa-1794712685585-f5501631-buyer-90a36307",
+        "suite": "buyer",
+        "state": "finished",
+        "counts": {
+          "passed": 1,
+          "flaky": 0,
+          "failed": 0,
+          "skipped": 0,
+          "blocked": 0
+        },
+        "expectedCount": 1,
+        "selectedCount": 1,
+        "missing": 0,
+        "unexpected": 0,
+        "scope": "full",
+        "complete": true,
+        "healthGreen": false
+      },
+      "extraction": {
+        "status": "ok",
+        "errors": []
+      }
+    },
+    {
+      "runId": "qa-1794712685585-f5501631-roles-54942df7",
+      "suite": "roles",
+      "summary": {
+        "runId": "qa-1794712685585-f5501631-roles-54942df7",
+        "suite": "roles",
+        "state": "finished",
+        "counts": {
+          "passed": 7,
+          "flaky": 0,
+          "failed": 0,
+          "skipped": 0,
+          "blocked": 0
+        },
+        "expectedCount": 7,
+        "selectedCount": 7,
+        "missing": 0,
+        "unexpected": 0,
+        "scope": "full",
+        "complete": true,
+        "healthGreen": false
+      },
+      "extraction": {
+        "status": "ok",
+        "errors": []
+      }
+    },
+    {
+      "runId": "qa-1794712685585-f5501631-regression-e595f5b6",
+      "suite": "regression",
+      "summary": {
+        "runId": "qa-1794712685585-f5501631-regression-e595f5b6",
+        "suite": "regression",
+        "state": "finished",
+        "counts": {
+          "passed": 1,
+          "flaky": 0,
+          "failed": 42,
+          "skipped": 1,
+          "blocked": 6
+        },
+        "expectedCount": 50,
+        "selectedCount": 50,
+        "missing": 0,
+        "unexpected": 0,
+        "scope": "full",
+        "complete": false,
+        "healthGreen": false
+      },
+      "extraction": {
+        "status": "ok",
+        "errors": []
+      }
+    },
+    {
+      "runId": "qa-1794712685585-f5501631-project-lifecycle-5339ddb5",
+      "suite": "project-lifecycle",
+      "summary": {
+        "runId": "qa-1794712685585-f5501631-project-lifecycle-5339ddb5",
+        "suite": "project-lifecycle",
+        "state": "finished",
+        "counts": {
+          "passed": 1,
+          "flaky": 0,
+          "failed": 0,
+          "skipped": 0,
+          "blocked": 0
+        },
+        "expectedCount": 1,
+        "selectedCount": 1,
+        "missing": 0,
+        "unexpected": 0,
+        "scope": "full",
+        "complete": true,
+        "healthGreen": false
+      },
+      "extraction": {
+        "status": "ok",
+        "errors": []
+      }
+    },
+    {
+      "runId": "qa-1794712685585-f5501631-account-lifecycle-be1d56fc",
+      "suite": "account-lifecycle",
+      "summary": {
+        "runId": "qa-1794712685585-f5501631-account-lifecycle-be1d56fc",
+        "suite": "account-lifecycle",
+        "state": "finished",
+        "counts": {
+          "passed": 3,
+          "flaky": 0,
+          "failed": 0,
+          "skipped": 0,
+          "blocked": 0
+        },
+        "expectedCount": 3,
+        "selectedCount": 3,
+        "missing": 0,
+        "unexpected": 0,
+        "scope": "full",
+        "complete": true,
+        "healthGreen": false
+      },
+      "extraction": {
+        "status": "ok",
+        "errors": []
+      }
+    },
+    {
+      "runId": "qa-1794712685585-f5501631-procurement-309c20e9",
+      "suite": "procurement",
+      "summary": {
+        "runId": "qa-1794712685585-f5501631-procurement-309c20e9",
+        "suite": "procurement",
+        "state": "finished",
+        "counts": {
+          "passed": 0,
+          "flaky": 0,
+          "failed": 9,
+          "skipped": 0,
+          "blocked": 0
+        },
+        "expectedCount": 9,
+        "selectedCount": 9,
+        "missing": 0,
+        "unexpected": 0,
+        "scope": "full",
+        "complete": true,
+        "healthGreen": false
+      },
+      "extraction": {
+        "status": "ok",
+        "errors": []
+      }
+    },
+    {
+      "runId": "qa-1794712685585-f5501631-subsystems-79fe1d59",
+      "suite": "subsystems",
+      "summary": {
+        "runId": "qa-1794712685585-f5501631-subsystems-79fe1d59",
+        "suite": "subsystems",
+        "state": "finished",
+        "counts": {
+          "passed": 1,
+          "flaky": 0,
+          "failed": 2,
+          "skipped": 0,
+          "blocked": 0
+        },
+        "expectedCount": 3,
+        "selectedCount": 3,
+        "missing": 0,
+        "unexpected": 0,
+        "scope": "full",
+        "complete": true,
+        "healthGreen": false
+      },
+      "extraction": {
+        "status": "partial",
+        "errors": [
+          {
+            "code": "SOURCE_UNAVAILABLE"
+          }
+        ]
+      }
+    }
+  ],
+  "extraction": {
+    "status": "partial",
+    "errors": [
+      {
+        "code": "REMOTE_EXTRACTION_FAILED"
+      }
+    ]
+  }
+}

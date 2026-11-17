@@ -34,6 +34,7 @@ type SetCurrentArgs = {
   supabase: any
   setCurrentSite: (site: Site | ((current: Site | null) => Site | null)) => void
   setSites: (updater: (prev: Site[]) => Site[]) => void
+  requireSettings?: boolean
 }
 
 export async function applyCurrentSite({
@@ -42,6 +43,7 @@ export async function applyCurrentSite({
   supabase,
   setCurrentSite,
   setSites,
+  requireSettings = false,
 }: SetCurrentArgs) {
     
     // Skip if we're setting the same site (avoid unnecessary reloads on focus changes)
@@ -80,6 +82,10 @@ export async function applyCurrentSite({
         settingsData = unwrapSettingsRow(settingsResult.data);
         settingsError = settingsResult.error;
         siteDetailData = siteDetailResult.data;
+
+        if (requireSettings && settingsError && settingsError.code !== 'PGRST116') {
+          throw new Error("Selected site settings could not be loaded. Please try again.");
+        }
           
           if (settingsError && settingsError.code !== 'PGRST116') {
             // PGRST116 significa que no se encontraron registros (es normal para un sitio nuevo)
@@ -266,6 +272,7 @@ export async function applyCurrentSite({
         } else {
         }
       } catch (err) {
+        if (requireSettings) throw err;
         console.error(`Error handling settings for site ${site.id}:`, err);
         // Continuamos con el sitio sin settings en caso de error
       }

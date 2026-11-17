@@ -10,7 +10,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "../ui/tooltip"
-import { useRef } from "react"
+import { useRef, useState } from "react"
 import { useTheme } from "@/app/context/ThemeContext"
 import { ModuleVariant } from "@/app/config/module-visuals"
 import type { WorkspaceArea } from "@/app/config/navigation-areas"
@@ -163,6 +163,7 @@ export function MenuItem({
   onClick
 }: MenuItemProps) {
   const linkRef = useRef<HTMLAnchorElement>(null);
+  const [tooltipOpen, setTooltipOpen] = useState(false)
 
   const shortcutHint = shortcut ? (
     <kbd
@@ -203,7 +204,7 @@ export function MenuItem({
             title={title}
             className={cn(
               SIDEBAR_TILE_CLASS,
-              isActive && "ring-1 ring-white/40",
+              isActive && !isCollapsed && "ring-1 ring-white/40",
             )}
           />
         ) : Icon && (
@@ -218,9 +219,10 @@ export function MenuItem({
       
       <div
         className={cn(
-          "flex min-w-0 flex-1 flex-col justify-center overflow-hidden",
-          isCollapsed ? "hidden" : "flex"
+          "flex min-w-0 flex-col justify-center overflow-hidden transition-[opacity,transform,flex-grow] duration-300 ease-in-out motion-reduce:transition-none",
+          isCollapsed ? "w-0 flex-grow-0 -translate-x-2 opacity-0" : "flex-1 translate-x-0 opacity-100"
         )}
+        aria-hidden={isCollapsed}
         style={{ fontSize: "11.3px", lineHeight: 1 }}
       >
         <span
@@ -246,7 +248,7 @@ export function MenuItem({
       </div>
 
       {(shortcutHint || children) && !isCollapsed && (
-        <div className="ml-auto flex shrink-0 items-center gap-2">
+        <div className="ml-auto flex shrink-0 self-center items-center gap-2">
           {children}
           {shortcutHint}
         </div>
@@ -262,7 +264,7 @@ export function MenuItem({
       aria-keyshortcuts={shortcut ? `Meta+${shortcut} Control+${shortcut}` : undefined}
       className={cn(
         className,
-        "sidebar-menu-item-link flex items-center text-sm transition-colors duration-200 relative group font-inter",
+        "sidebar-menu-item-link mx-auto flex items-center text-sm transition-[width,padding,gap,background-color,color,border-radius] duration-300 ease-in-out motion-reduce:transition-none relative group font-inter",
         isCollapsed
           ? isActive
              ? cn("font-inter justify-center mx-auto h-10 w-10 shrink-0", avatarUrl ? "rounded-full" : "rounded-xl")
@@ -274,7 +276,9 @@ export function MenuItem({
         isActive
           ? visual
             ? "font-medium"
-            : "bg-primary text-primary-foreground [&_svg]:text-primary-foreground [&_span]:text-primary-foreground"
+            : isCollapsed
+              ? "text-primary"
+              : "bg-primary text-primary-foreground [&_svg]:text-primary-foreground [&_span]:text-primary-foreground"
           : visual
             ? "text-muted-foreground hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground"
             : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
@@ -288,18 +292,30 @@ export function MenuItem({
         gap: isCollapsed ? 0 : 12,
         fontSize: '11.3px',
         ...(isActive && visual ? {
-          background: `color-mix(in srgb, ${visual.accent} 12%, transparent)`,
+          backgroundColor: isCollapsed ? "transparent" : `color-mix(in srgb, ${visual.accent} 12%, transparent)`,
           color: visual.ink,
         } : {})
       }}
       onClick={onClick}
     >
-      {isCollapsed ? (
-        <>
+      {isActive && (
+            <span
+              aria-hidden="true"
+              data-sidebar-selection-indicator
+              className={cn(
+                "pointer-events-none absolute -right-3 inset-y-0 w-[3px] rounded-full border-r-[3px] border-primary transition-[opacity,transform] duration-300 ease-in-out motion-reduce:transition-none",
+                isCollapsed ? "scale-y-100 opacity-100" : "scale-y-75 opacity-0"
+              )}
+              style={visual ? { borderRightColor: visual.accent } : undefined}
+            />
+      )}
           <TooltipProvider delayDuration={100}>
-            <Tooltip>
+            <Tooltip open={Boolean(isCollapsed && tooltipOpen)} onOpenChange={setTooltipOpen}>
               <TooltipTrigger asChild>
-                <div className="w-full h-full flex items-center justify-center p-0 m-0">{content}</div>
+                <div
+                  className={cn("w-full h-full min-w-0 flex items-center p-0 m-0", isCollapsed ? "justify-center" : "justify-start")}
+                  style={{ gap: "inherit" }}
+                >{content}</div>
               </TooltipTrigger>
               <TooltipContent 
                 side="right" 
@@ -315,13 +331,9 @@ export function MenuItem({
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
-          {children && (
+          {children && isCollapsed && (
             <div className="absolute -top-1.5 -right-2 z-10">{children}</div>
           )}
-        </>
-      ) : (
-        content
-      )}
     </NavigationLink>
   )
 

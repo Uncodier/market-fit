@@ -24,6 +24,14 @@ jest.mock("@/app/pos/PosWorkspace", () => ({ __esModule: true, default: function
 describe("POS guarded workspace mount", () => {
   beforeEach(() => jest.clearAllMocks());
 
+  it("waits for site settings before verifying and mounting a restored workspace", () => {
+    jest.mocked(useSite).mockReturnValueOnce({ currentSite: { id: "site-a" }, isLoading: true } as ReturnType<typeof useSite>);
+    jest.mocked(usePosLocationAccess).mockReturnValue({ status: "checking", lease: null });
+    render(<LocalizedPOS />);
+    expect(usePosLocationAccess).toHaveBeenCalledWith("site-a", "actor-a", true);
+    expect(getPosDb).not.toHaveBeenCalled();
+  });
+
   it.each(["checking", "unavailable", "restricted"] as const)("never mounts private hooks for %s permission", (status) => {
     jest.mocked(usePosLocationAccess).mockReturnValue({ status, lease: null });
     render(<LocalizedPOS />);

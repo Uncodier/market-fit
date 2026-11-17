@@ -20,7 +20,7 @@ describe("module image visuals", () => {
         expect(hint.split(" ").length).toBeLessThanOrEqual(3)
 
         const prompt = getModuleImagePrompt(area, item.key, "Ignored Title")
-        expect(prompt).toContain(`Front-facing 3D ${hint}`)
+        expect(prompt).toContain(prompt.startsWith("Volumetric") ? `Volumetric 3D isometric object of a ${hint}` : `Front-facing 3D ${hint}`)
         expect(prompt).not.toContain("app icon")
         expect(prompt).not.toContain(`${item.key} icon`)
         expect(prompt).not.toMatch(/bullseye target|checkout terminal|discount ticket/)

@@ -209,10 +209,10 @@ export default function SettingsPage() {
   // Only show skeleton when initially loading, not when saving
   if (isLoading) {
     return (
-      <div className="flex-1">
+      <div className="min-w-0 flex-1">
         {activeSegment !== "activities" && <StickyHeader>
-          <div className="flex items-center justify-between px-4 md:px-16 w-full">
-            <Tabs value={activeSegment} className="w-auto flex-1 max-w-full">
+          <div className="flex min-w-0 items-center justify-between px-4 md:px-16 w-full">
+            <Tabs value={activeSegment} className="w-auto min-w-0 flex-1 max-w-full">
               <ResponsiveTabsList
                 tabs={settingsTabs}
                 activeTab={activeSegment}
@@ -246,14 +246,14 @@ export default function SettingsPage() {
   const showSettingsTabBar = activeSegment !== "activities";
 
   return (
-    <div className="flex-1">
+    <div className="min-w-0 flex-1">
       {showSettingsTabBar ? (
         <StickyHeader>
-          <div className="flex items-center justify-between px-4 md:px-16 w-full">
+          <div className="flex min-w-0 items-center justify-between px-4 md:px-16 w-full">
             <Tabs
               value={activeSegment}
               onValueChange={setActiveSegment}
-              className="w-auto flex-1 max-w-full"
+              className="w-auto min-w-0 flex-1 max-w-full"
             >
               <ResponsiveTabsList
                 tabs={settingsTabs}

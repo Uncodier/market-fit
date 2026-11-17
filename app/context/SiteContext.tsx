@@ -110,7 +110,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
   }, [])
   
   const { loadSites, selectSite: handleSetCurrentSite, invalidate } = useSiteLoadingLifecycle({
-    supabaseRef, isMounted, isInitialized, currentSite, unauthorizedRetryRef,
+    supabaseRef, isMounted, isInitialized, currentSite, unauthorizedRetryRef, authUserIdRef,
     setSitesLoaded, setSitesLoadAttempted, setIsLoading, setError,
     setHasValidSession, setIsInitialized, setSites, setCurrentSite,
   })

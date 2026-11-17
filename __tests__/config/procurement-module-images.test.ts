@@ -21,9 +21,10 @@ describe("procurement module images", () => {
       const prompt = getModuleImagePrompt(area, itemKey, "Original title")
 
       expect(MODULE_IMAGE_HINTS[itemKey]).toBe(subject)
-      expect(prompt).toContain(`Front-facing 3D ${subject}`)
+      const refreshed = !["suppliers", "purchaseRequests"].includes(itemKey)
+      expect(prompt).toContain(refreshed ? `Volumetric 3D isometric object of a ${subject}` : `Front-facing 3D ${subject}`)
       expect(prompt).toContain("Show one")
-      expect(prompt).toContain("smooth glossy plastic and frosted glass texture")
+      expect(prompt).toContain(refreshed ? "physically based materials (PBR)" : "smooth glossy plastic and frosted glass texture")
       expect(prompt).toContain("strong legibility at small UI sizes")
       expect(prompt).toMatch(/; no .*objects/)
       expect(prompt).not.toContain("Original title")

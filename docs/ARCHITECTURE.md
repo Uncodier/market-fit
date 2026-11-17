@@ -2,6 +2,39 @@
 
 ## Runtime overview
 
+### Selected workspace recovery
+
+The browser keeps a 24-hour, actor-bound identity hint in `mf_site_selection_v1`,
+matched against `currentSiteId`. It excludes settings, credentials, billing and
+roles. After resolving local session identity, `SiteProvider` can restore this
+hint and hydrate the selected site's settings independently of the full sites
+list. Initial auth-triggered loads share the same pending request.
+
+An auth event takes precedence over an older pending session read. Foreign-actor
+cache hints cannot select a shared workspace via a later successful list. List
+authentication retries run inside the original load generation and deadline,
+independently of pending settings; they do not re-enter hydration deduplication.
+The sidebar never selects the first workspace automatically: a missing or revoked
+selection requires an explicit choice in `/projects`.
+
+Successful settings hydration releases the workspace loading gate even while the
+list is pending. List failures and deadlines preserve the hydrated selection;
+successful removal, repeated authentication denial, sign-out and identity changes
+invalidate it. Late responses cannot republish a retired scope. The list is not
+reported as loaded until it actually succeeds, preventing empty-list redirects
+during recovery. A fresh browser or expired hint still requires the normal list.
+
+This cache is not authorization or complete offline startup. Settings remain a
+network dependency and failed recovery does not supply invented checkout defaults.
+POS waits for settings hydration and retains its independent permission checks,
+local snapshot restrictions and server-side mutation authorization. No payment or
+mutation is automatically retried by site recovery.
+
+Regression coverage: `__tests__/context/site-selection-cache.test.ts`,
+`__tests__/context/site-background-refresh.test.tsx` and
+`__tests__/pos/pos-page-access.test.tsx`. Race and real-sidebar integration cases
+are in `__tests__/context/site-recovery-races.test.tsx` (including StrictMode).
+
 Makinari is a Next.js 16 App Router application using React 19 and TypeScript.
 The same repository contains the authenticated workspace, public storefront and
 document surfaces, route handlers, Server Actions, Supabase migrations, and

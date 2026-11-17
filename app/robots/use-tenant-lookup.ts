@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import { isDemoModeActive, isDemoSiteId } from "@/lib/demo-utils"
 import { databaseFallbackUrl, lookupTenantUrl, tenantLookupIdentity } from "./tenant-lookup"
 
 interface TenantLookupInput {
@@ -21,7 +22,9 @@ export function useTenantLookup(input: TenantLookupInput) {
   const requirementIds = Array.from(new Set(input.requirementIds.filter(
     (id): id is string => Boolean(id),
   ))).sort()
-  const enabled = Boolean(input.siteId && input.instanceId &&
+  // Fictional demo requirements have no tenant in the authenticated API.
+  const demo = isDemoSiteId(input.siteId) || isDemoSiteId(input.instanceSiteId) || isDemoModeActive()
+  const enabled = Boolean(!demo && input.siteId && input.instanceId &&
     (!input.instanceSiteId || input.instanceSiteId === input.siteId))
   const identity = enabled ? tenantLookupIdentity({
     siteId: input.siteId!, instanceId: input.instanceId!, requirementIds,
