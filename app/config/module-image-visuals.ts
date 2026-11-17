@@ -7,6 +7,9 @@ import { getRealisticModuleImagePrompt } from "./module-image-realistic"
 export const MODULE_IMAGE_HINTS: Record<string, string> = {
   appsLauncher: "App Store symbol",
   businessOpen: "open storefront",
+  businessClosed: "closed storefront",
+  themeLight: "sun",
+  themeDark: "crescent moon",
   theme: "sun moon emblem",
   notifications: "notification bell",
   campaigns: "target",
@@ -171,6 +174,12 @@ const COMPACT_FULL_SIZE_COMPOSITION =
 const MODULE_IMAGE_CLARIFIERS: Partial<Record<string, string>> = {
   businessOpen:
     "Show one compact welcoming storefront with a broad striped awning and an open doorway, instantly recognizable as a shop; no signs, text, letters, products, people, street, or extra objects",
+  businessClosed:
+    "Show one compact closed storefront with a broad striped awning and a fully lowered ribbed metal shutter covering its doorway; no open entrance, signs, text, letters, products, people, street, or extra objects",
+  themeLight:
+    "Show one bright solid sun disc with eight broad rounded rays, instantly recognizable as daytime; no moon, face, stars, clouds, text, switch, panel, or extra objects",
+  themeDark:
+    "Show one substantial crescent moon with a smooth curved silhouette, instantly recognizable as nighttime; no sun, face, stars, clouds, text, switch, panel, or extra objects",
   theme:
     "Show one unified day-and-night emblem: a large crescent moon embracing a small sun disc with a few broad rounded rays; no face, stars, clouds, text, switch, panel, or extra objects",
   appsLauncher:

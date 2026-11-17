@@ -64,6 +64,7 @@ import {
   Bell,
   LayoutGrid,
   Sun,
+  Moon,
   type LucideIcon,
 } from "@/app/components/ui/icons"
 
@@ -82,6 +83,9 @@ export const AREA_ICON: Record<WorkspaceArea, LucideIcon> = {
 export const NAV_ITEM_ICON: Record<string, LucideIcon> = {
   appsLauncher: LayoutGrid,
   businessOpen: Store,
+  businessClosed: Store,
+  themeLight: Sun,
+  themeDark: Moon,
   theme: Sun,
   notifications: Bell,
     suppliers: Building,

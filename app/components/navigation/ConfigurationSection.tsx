@@ -7,6 +7,7 @@ import { useTheme } from "@/app/context/ThemeContext"
 import { BusinessOpenToggle } from "@/app/components/settings/BusinessOpenToggle"
 import { MenuItem } from "./MenuItem"
 import { ModuleImage } from "./ModuleImage"
+import { getThemeStateImageKey } from "@/app/config/sidebar-control-images"
 import { SIDEBAR_ICON_CLASS, SIDEBAR_TILE_CLASS } from "./sidebar-metrics"
 import {
   Tooltip,
@@ -337,7 +338,7 @@ export function ConfigurationSection({
                       <MenuItem
                         href="#"
                         icon={isDarkMode ? Moon : Sun}
-                        moduleImage={{ area: "settings", itemKey: "theme" }}
+                        moduleImage={{ area: "settings", itemKey: getThemeStateImageKey(isDarkMode) }}
                         title={
                           isDarkMode
                             ? t("layout.sidebar.darkMode") || "Dark Mode"

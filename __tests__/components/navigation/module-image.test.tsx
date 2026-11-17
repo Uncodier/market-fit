@@ -2,6 +2,14 @@ import { fireEvent, render, screen } from "@testing-library/react"
 import { ModuleImage } from "@/app/components/navigation/ModuleImage"
 
 describe("ModuleImage", () => {
+  it("selects different image URLs when the theme state changes", () => {
+    const { rerender } = render(<ModuleImage key="themeLight" area="settings" itemKey="themeLight" title="Theme" />)
+    expect(screen.getByRole("img", { name: "Theme app icon" })).toHaveAttribute("src", "/api/images/modules/themeLight")
+    fireEvent.error(screen.getByRole("img", { name: "Theme app icon" }))
+    rerender(<ModuleImage key="themeDark" area="settings" itemKey="themeDark" title="Theme" />)
+    expect(screen.getByRole("img", { name: "Theme app icon" })).toHaveAttribute("src", "/api/images/modules/themeDark")
+  })
+
   it("renders the shared Profile artwork and keeps a user icon on delivery failure", () => {
     render(<ModuleImage area="settings" itemKey="profile" title="Profile" />)
     const image = screen.getByRole("img", { name: "Profile app icon" })

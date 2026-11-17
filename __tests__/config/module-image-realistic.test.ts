@@ -11,6 +11,9 @@ describe("selected realistic navigation refresh", () => {
     ["profile", "turquoise", "pastel coral"],
     ["notifications", "golden yellow", "pastel sky-blue"],
     ["businessOpen", "emerald green", "pastel peach"],
+    ["businessClosed", "warm red", "pastel peach"],
+    ["themeLight", "golden yellow", "pastel sky-blue"],
+    ["themeDark", "violet", "pastel lavender-blue"],
     ["theme", "violet", "pastel sky-blue"],
   ])("combines realistic rendering with UI clarity for %s", (key, color, background) => {
     const prompt = getModuleImagePrompt("buying", key, "Ignored title")

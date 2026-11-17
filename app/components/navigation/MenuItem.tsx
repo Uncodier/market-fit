@@ -205,6 +205,7 @@ export function MenuItem({
           <EmojiIcon emoji={emoji} isActive={isActive} isCollapsed={isCollapsed} />
         ) : moduleImage ? (
           <ModuleImage
+            key={moduleImage.itemKey}
             area={moduleImage.area}
             itemKey={moduleImage.itemKey}
             title={title}

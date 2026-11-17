@@ -105,9 +105,10 @@ Settings, Procurement Approvals, Procurement Rules, Procurement Tenders,
 Profile, and Notifications. Apps uses a strict frontal orthographic composition
 with no visible side faces; the other refreshed icons retain isometric views.
 Apps now depicts an App Store-style three-bar emblem rather than a square grid.
-The sidebar's business-open and theme controls also use fixed shared 3D images:
-a green storefront and a violet crescent with a golden sun. Their switches and
-labels retain the live state; changing state does not generate another image.
+The sidebar controls select distinct shared 3D images by live state: an open
+green storefront or closed red storefront with a lowered shutter, and a golden
+sun for light mode or violet crescent for dark mode. Each state has its own fixed
+prompt and URL; switching selects cached artwork rather than a fresh render.
 `app/config/module-image-realistic.ts` combines their existing recognizable
 object constraints with isometric PBR materials, textless surfaces, floating
 shadow-free compositions, and fixed contrasting pastel backgrounds. Other

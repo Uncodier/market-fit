@@ -9,6 +9,7 @@ import { Store } from "@/app/components/ui/icons"
 import { cn } from "@/lib/utils"
 import { isBusinessOpen, withStoreOpenState } from "@/app/commerce/business-hours"
 import { MenuItem } from "@/app/components/navigation/MenuItem"
+import { getBusinessStateImageKey } from "@/app/config/sidebar-control-images"
 
 interface BusinessOpenToggleProps {
   isCollapsed?: boolean
@@ -66,7 +67,7 @@ export function BusinessOpenToggle({ isCollapsed }: BusinessOpenToggleProps) {
       <MenuItem
         href="#"
         icon={Store}
-        moduleImage={{ area: "settings", itemKey: "businessOpen" }}
+        moduleImage={{ area: "settings", itemKey: getBusinessStateImageKey(isOpen) }}
         title={title}
         isActive={false}
         isCollapsed={isCollapsed}
