@@ -39,11 +39,15 @@ export function usePeopleSavedListActions(dependencies: Dependencies) {
     if (isSearchPending()) return
     try {
       const url = `/api/finder/icp?icp_id=${encodeURIComponent(icpId)}${currentSite?.id ? `&site_id=${encodeURIComponent(currentSite.id)}` : ''}`
-      const res = await apiClient.get<{ role_query?: { query?: FinderRequest } }>(url)
+      const res = await apiClient.get<{ icp_mining?: { source?: string }; role_query?: { query?: FinderRequest } }>(url)
       if (!res.success) {
         throw new Error(res.error?.message || 'Failed to load saved list')
       }
       if (isSearchPending()) return
+      if (res.data?.icp_mining?.source === 'selected_people') {
+        toast.info('This list contains selected people queued for enrichment, not search filters.')
+        return
+      }
       const q: FinderRequest = res.data?.role_query?.query || {}
       applySavedFinderFilters(q, dependencies)
       // Set collapsible defaults based on saved filters.

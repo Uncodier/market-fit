@@ -29,11 +29,10 @@ export function PeopleResultsView({ workspace }: { workspace: PeopleWorkspace })
     searchResults,
     totalResults,
     loading,
-    addingToLeads,
     selectedPersonIds,
     isEnriching,
     setIsConfirmModalOpen,
-    handleAddToLeads,
+    selectionLists,
     onPageChange,
     isEmptyView,
   } = workspace
@@ -87,18 +86,24 @@ export function PeopleResultsView({ workspace }: { workspace: PeopleWorkspace })
                   </Button>
                 </div>
                 <div className="flex items-center gap-2" data-toolbar-icon-actions="off">
-                  <Button variant="secondary" className="h-9 gap-2 px-4 !hidden md:!flex" onClick={handleAddToLeads} disabled={totalResults === 0 || loading || addingToLeads}>
-                    {addingToLeads && <Loader className="h-4 w-4" />}
-                    {addingToLeads ? 'Processing...' : `Enrich ${(totalResults || 0).toLocaleString()} Leads`}
+                  <Button variant="secondary" className="h-9 gap-2 px-4 !hidden md:!flex"
+                    onClick={() => selectionLists.open('add')}
+                    disabled={!selectedPersonIds.length || loading || selectionLists.pending || isEnriching}>
+                    Add to list{selectedPersonIds.length > 0 ? ` (${selectedPersonIds.length})` : ''}
+                  </Button>
+                  <Button variant="secondary" className="h-9 gap-2 px-4 !hidden md:!flex"
+                    onClick={() => selectionLists.open('create')}
+                    disabled={!selectedPersonIds.length || loading || selectionLists.pending || isEnriching}>
+                    Create list{selectedPersonIds.length > 0 ? ` (${selectedPersonIds.length})` : ''}
                   </Button>
                   <Button
                     variant="secondary"
                     className="h-9 gap-2 px-4 hidden md:flex"
-                    disabled={selectedPersonIds.length === 0 || isEnriching}
+                    disabled={selectedPersonIds.length === 0 || isEnriching || selectionLists.pending}
                     onClick={() => setIsConfirmModalOpen(true)}
                   >
                     {isEnriching && <Loader className="h-4 w-4" />}
-                    {isEnriching ? 'Saving...' : `Enrich & prospect selected${selectedPersonIds.length > 0 ? ` (${selectedPersonIds.length})` : ''}`}
+                    {isEnriching ? 'Enriching...' : `Enrich selected${selectedPersonIds.length > 0 ? ` (${selectedPersonIds.length})` : ''}`}
                   </Button>
                 </div>
               </div>

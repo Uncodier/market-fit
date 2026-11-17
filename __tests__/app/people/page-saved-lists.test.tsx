@@ -16,7 +16,7 @@ jest.mock('@/app/hooks/use-mobile-view', () => ({ useIsMobile: () => false }))
 jest.mock('@/app/segments/actions', () => ({ getSegments: jest.fn() }))
 jest.mock('@/app/commerce/resolve-relation', () => ({ resolveRelationId: jest.fn() }))
 jest.mock('@/lib/supabase/client', () => ({ createClient: jest.fn() }))
-jest.mock('sonner', () => ({ toast: { error: jest.fn(), success: jest.fn() } }))
+jest.mock('sonner', () => ({ toast: { error: jest.fn(), success: jest.fn(), info: jest.fn() } }))
 
 const pendingList = {
   id: '11111111-1111-4111-8111-111111111111',
@@ -119,6 +119,18 @@ it('only displays the empty state after a successful empty response', async () =
   render(<PeopleSearchPage />)
   fireEvent.mouseDown(screen.getByRole('tab', { name: 'Saved lists' }))
   expect(await screen.findByText('No saved lists yet')).toBeInTheDocument()
+})
+
+it('does not run an unfiltered search when loading a selected-person list', async () => {
+  ;(apiClient.get as jest.Mock).mockResolvedValue({ success: true, data: {
+    icp_mining: { source: 'selected_people' }, role_query: null,
+  } })
+  ;(apiClient.post as jest.Mock).mockClear()
+  render(<PeopleSearchPage />)
+  fireEvent.mouseDown(screen.getByRole('tab', { name: 'Saved lists' }))
+  const selectedList = await screen.findByText('List 11111111…')
+  await act(async () => { fireEvent.click(selectedList) })
+  expect(apiClient.post).not.toHaveBeenCalled()
 })
 
 it('does not report an empty list for a malformed database response', async () => {

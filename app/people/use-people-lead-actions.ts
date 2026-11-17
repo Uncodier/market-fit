@@ -78,7 +78,7 @@ export function usePeopleLeadActions(dependencies: Dependencies & { createQuery:
       if (!res.success) {
         throw new Error(res.error?.message || 'Failed to create query')
       }
-      toast.success('Leads enrichment started successfully. Your campaigns and segments will be updated.')
+      toast.success('List saved. Check Saved lists for enrichment status.')
       setIsSegmentModalOpen(false)
       setIcpName("")
     } catch (e: any) {

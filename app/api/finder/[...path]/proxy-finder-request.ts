@@ -41,10 +41,13 @@ function singleParam(params: URLSearchParams, name: string): string | null {
 export async function proxyFinderRequest(request: Request, path: string[]): Promise<Response> {
   const route = path.join('/')
   const isAutocomplete = path.length === 2 && path[0] === 'autocomplete' && allowedCategories.has(path[1])
+  const isListCreate = route === 'lists'
+  const isListAppend = path.length === 3 && path[0] === 'lists' && path[2] === 'people'
   const validMethod = (route === 'icp' && ['GET', 'DELETE'].includes(request.method)) ||
     (isAutocomplete && request.method === 'GET') ||
-    (['person_role_search', 'person_role_search/totals', 'person_role_search/createQuery'].includes(route) && request.method === 'POST')
+    ((isListCreate || isListAppend || ['person_role_search', 'person_role_search/totals', 'person_role_search/createQuery'].includes(route)) && request.method === 'POST')
   if (!validMethod) return error('Finder endpoint not found', 404)
+  if (isListAppend && !uuid.safeParse(path[1]).success) return error('Invalid saved list ID', 400)
 
   const url = new URL(request.url)
   const origin = request.headers.get('origin')
@@ -64,6 +67,13 @@ export async function proxyFinderRequest(request: Request, path: string[]): Prom
       const input: unknown = JSON.parse(decodeRequestBody(body))
       if (!input || typeof input !== 'object' || Array.isArray(input)) return error('Invalid Finder request', 400)
       siteId = (input as Record<string, unknown>).site_id as string
+      if (isListCreate || isListAppend) {
+        const schema = z.object({ site_id: uuid, request_id: uuid,
+          person_ids: z.array(z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/)).min(1).max(100),
+          ...(isListCreate ? { name: z.string().trim().min(1).max(200) } : {}),
+        }).strict()
+        if (!schema.safeParse(input).success) return error('Invalid selected people request', 400)
+      }
     } catch (cause) {
       return error('Invalid Finder request', cause instanceof RequestBodyTooLargeError ? 413 : 400)
     }
@@ -88,8 +98,8 @@ export async function proxyFinderRequest(request: Request, path: string[]): Prom
 
   const access = await requireSiteAccess(request, siteId!)
   if (access.error) return access.error
-  if (route === 'icp') {
-    const listId = query.get('icp_id')!
+  if (route === 'icp' || isListAppend) {
+    const listId = isListAppend ? path[1] : query.get('icp_id')!
     const { data: list, error: listError } = await access.supabase
       .from('icp_mining').select('id').eq('id', listId).eq('site_id', siteId!).maybeSingle()
     if (listError) return error('Could not verify saved list access', 503)
@@ -97,6 +107,9 @@ export async function proxyFinderRequest(request: Request, path: string[]): Prom
     if (request.method === 'DELETE' && !await userCanOnSite(access.supabase, siteId!, 'delete')) {
       return error('You cannot delete this saved list', 403)
     }
+  }
+  if ((isListCreate || isListAppend) && !await userCanOnSite(access.supabase, siteId!, isListCreate ? 'insert' : 'update')) {
+    return error('You cannot modify this list', 403)
   }
   const { data: { session }, error: sessionError } = await access.supabase.auth.getSession()
   if (sessionError || !session?.access_token || session.user?.id !== access.userId) {

@@ -10,6 +10,7 @@ import { X } from "@/app/components/ui/icons"
 import { Badge } from "@/app/components/ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/app/components/ui/dialog"
 import type { PeopleWorkspace } from "./use-people-workspace"
+import { SelectedListDialog } from './selected-list-dialog'
 
 export function PeopleActionDialogs({ workspace }: { workspace: PeopleWorkspace }) {
   const {
@@ -54,17 +55,18 @@ export function PeopleActionDialogs({ workspace }: { workspace: PeopleWorkspace 
   } = workspace
   return (
 <>
+      <SelectedListDialog actions={workspace.selectionLists} />
       {/* Segment selection modal */}
       <Dialog open={isSegmentModalOpen} onOpenChange={setIsSegmentModalOpen}>
         <DialogContent className="sm:max-w-[480px]">
           <DialogHeader>
-            <DialogTitle>Add to Campaign / Segment</DialogTitle>
-            <DialogDescription>Choose a segment and optional campaign to enrich these leads. This will consume your credits.</DialogDescription>
+            <DialogTitle>Create list</DialogTitle>
+            <DialogDescription>Save this search as a list for enrichment. You can name the list and optionally link a segment. Creating the list uses credits; enrichment results may remain pending.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div className="mb-4 p-4 rounded-lg border bg-muted/50 space-y-2">
               <div className="flex justify-between items-center text-sm font-medium">
-                <span>Total Leads Selected:</span>
+                <span>People matching this search:</span>
                 <span>{totalResults.toLocaleString()}</span>
               </div>
               <div className="flex justify-between items-center text-sm font-medium">
@@ -80,7 +82,7 @@ export function PeopleActionDialogs({ workspace }: { workspace: PeopleWorkspace 
               {!hasEnoughCredits && (
                 <div className="mt-2 space-y-2">
                   <p className="text-xs text-destructive">
-                    You don't have enough credits to execute this enrichment query.
+                    You do not have enough credits for this enrichment query.
                   </p>
                   <Button
                     type="button"
@@ -97,7 +99,7 @@ export function PeopleActionDialogs({ workspace }: { workspace: PeopleWorkspace 
                 </div>
               )}
             </div>
-            <p className="text-xs text-muted-foreground">Segment</p>
+            <p className="text-xs text-muted-foreground">Segment (Optional)</p>
             <Select value={selectedSegmentId} onValueChange={(v) => setSelectedSegmentId(v)}>
               <SelectTrigger className="h-10">
                 <SelectValue placeholder={segmentsLoading ? 'Loading segments…' : 'Select segment'} />
@@ -122,7 +124,7 @@ export function PeopleActionDialogs({ workspace }: { workspace: PeopleWorkspace 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsSegmentModalOpen(false)}>Cancel</Button>
             <Button onClick={handleConfirmAddToLeads} disabled={addingToLeads || segmentsLoading || !hasEnoughCredits}>
-              {addingToLeads ? 'Processing...' : 'Enrich & Start Campaign'}
+              {addingToLeads ? 'Creating list...' : 'Create list'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -270,9 +272,9 @@ export function PeopleActionDialogs({ workspace }: { workspace: PeopleWorkspace 
       <Dialog open={isConfirmModalOpen} onOpenChange={setIsConfirmModalOpen}>
         <DialogContent className="sm:max-w-[480px]">
           <DialogHeader>
-            <DialogTitle>Save to lists, enrich and prospect selected people</DialogTitle>
+            <DialogTitle>Enrich selected people</DialogTitle>
             <DialogDescription>
-              Are you sure you want to save to lists, enrich and prospect {selectedPersonIds.length} {selectedPersonIds.length === 1 ? 'person' : 'people'}? This will call the enrich API for each selected person.
+              Enrich {selectedPersonIds.length} selected {selectedPersonIds.length === 1 ? 'person' : 'people'}? This runs enrichment for each selected person and uses credits. It does not create a saved search list.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -280,7 +282,7 @@ export function PeopleActionDialogs({ workspace }: { workspace: PeopleWorkspace 
               Cancel
             </Button>
             <Button onClick={handleEnrich} disabled={isEnriching}>
-              {isEnriching ? 'Saving...' : 'Save to lists, enrich and prospect'}
+              {isEnriching ? 'Enriching...' : 'Enrich selected'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -337,7 +339,7 @@ export function PeopleActionDialogs({ workspace }: { workspace: PeopleWorkspace 
               Cancel
             </Button>
             <Button onClick={handleEditIcp} disabled={!editingIcpName.trim() || editingIcpSegmentsLoading}>
-              Save
+              Save changes
             </Button>
           </DialogFooter>
         </DialogContent>

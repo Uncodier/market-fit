@@ -116,6 +116,25 @@ it('does not forward deletion when the actor lacks delete permission', async () 
   expect(fetch).not.toHaveBeenCalled()
 })
 
+it('forwards selected list creation and append with operation and ownership checks', async () => {
+  const payload = { site_id: siteId, request_id: icpId, person_ids: ['provider-person-42'] }
+  expect((await POST(request('lists', 'POST', { body: { ...payload, name: 'My list' } }), context('lists'))).status).toBe(200)
+  expect(userCanOnSite).toHaveBeenCalledWith(expect.anything(), siteId, 'insert')
+  expect((await POST(request(`lists/${icpId}/people`, 'POST', { body: payload }), context('lists', icpId, 'people'))).status).toBe(200)
+  expect(userCanOnSite).toHaveBeenCalledWith(expect.anything(), siteId, 'update')
+  expect(listQuery.eq).toHaveBeenCalledWith('id', icpId)
+})
+
+it('rejects forged ownership, invalid selected IDs and hidden append destinations', async () => {
+  const payload = { site_id: siteId, request_id: icpId, person_ids: ['person-42'], name: 'My list' }
+  for (const body of [{ ...payload, user_id: 'forged' }, { ...payload, person_ids: [] }, { ...payload, person_ids: ['https://evil.example'] }]) {
+    expect((await POST(request('lists', 'POST', { body }), context('lists'))).status).toBe(400)
+  }
+  maybeSingle.mockResolvedValue({ data: null, error: null })
+  expect((await POST(request(`lists/${icpId}/people`, 'POST', { body: { site_id: siteId, request_id: icpId, person_ids: ['person-42'] } }), context('lists', icpId, 'people'))).status).toBe(404)
+  expect(fetch).not.toHaveBeenCalled()
+})
+
 it('rejects unrecognized routes, methods, malformed IDs and cross-site origins', async () => {
   expect((await GET(request(`other?site_id=${siteId}`), context('other'))).status).toBe(404)
   expect((await GET(request(`icp?icp_id=bad&site_id=${siteId}`), context('icp'))).status).toBe(400)

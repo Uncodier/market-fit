@@ -90,6 +90,38 @@ Both `package-lock.json` and `yarn.lock` are currently checked in, and no
 npm, but do not update dependencies or regenerate either lockfile until the
 repository owner confirms the package-manager policy.
 
+## Record creator access (applied 2026-11-17)
+
+The forward migration `20261117210000_records_creator_access.sql` fixes empty
+draft creation for assigned-only members. Previously record RLS required the
+actor's UUID inside `relations`, while `/records` creates drafts with `{}` and
+the table had no creator column. Settings screen visibility does not bypass RLS.
+
+New records receive `created_by_user_id` from `auth.uid()` in the database, so
+the existing Server Action and column-level INSERT grants need no changes.
+Creator attribution is immutable; clients cannot forge another creator. Existing
+rows remain unattributed. Restricted members retain exact top-level UUID relation
+assignments, but UUID substrings and JSON keys no longer count as assignments.
+Site permissions, licensing, location and active/trash policies still intersect
+the ownership policies. Service-role producers without an authenticated actor
+must supply a verified creator at insertion if the record should be self-owned;
+never infer one from the site owner. Creator updates are denied even to privileged
+writers.
+
+This migration was applied to Makinari (`rnjgeloamtszdjplmqxy`) with explicit
+approval at **2026-11-17 21:01:37 UTC**, using the canonical schema repository's
+ignored credentials over mandatory TLS. Independent verification confirmed exact
+history, the creator default/trigger, four restrictive policies, allowed empty
+self-attributed records and denied foreign/unknown creators. All 25 historical
+rows and unrelated guards were preserved. No production business DML, application
+deployment or Git commit/push was performed. See the canonical schema repository's
+`supabase/validation/20261117_records_creator_access.md` for transport and test
+limits. Local PostgreSQL validation is not a production browser test:
+
+```bash
+npm test -- --runInBand __tests__/records/creator-access-database.test.ts __tests__/records/record-actions-security.test.ts __tests__/records/record-diagram-migrations.test.ts __tests__/records/trash-database.test.ts
+```
+
 ## Available scripts
 
 The exact script definitions live in `package.json`:

@@ -4,6 +4,9 @@ This directory contains operational documentation for the Makinari application.
 Use the guides below before relying on older implementation notes.
 
 ## Start here
+- [Finder selected-person lists](FINDER_SELECTED_LISTS.md) — add selected people,
+  create a selected-only list, immediate enrichment and coordinated rollout.
+
 - [Disposable QA execution — 2026-11-16](QA_DISPOSABLE_2026-11-16.md) — fresh repaired schema replay, Temporal startup overlay, exact live-suite outcomes and remaining evidence/cleanup gates.
 
 - [Published installer QA retry — 2026-11-14](QA_RETRY_2026-11-14.md) — exact candidate revisions, successful mail compatibility fix, fresh-schema blocker, test results and cleanup.
