@@ -21,7 +21,8 @@ export function ImprentaCardEditor({
   imageParams,
   videoParams,
   audioParams,
-}: Pick<ImprentaNodeCardProps, "actions" | "node" | "hasResult" | "hasRealChildren" | "isGenerating" | "supabase" | "currentSite" | "textParams" | "imageParams" | "videoParams" | "audioParams">) {
+  promptDrafts,
+}: Pick<ImprentaNodeCardProps, "actions" | "node" | "hasResult" | "hasRealChildren" | "isGenerating" | "supabase" | "currentSite" | "textParams" | "imageParams" | "videoParams" | "audioParams" | "promptDrafts">) {
   return <>{actions.isImprentaWorkflowActionNode(node) &&
     !hasResult &&
     !isImprentaUploadedNode(node) &&
@@ -76,23 +77,25 @@ export function ImprentaCardEditor({
     {!hasResult && (
       <>
         <ImprentaAutoResizeTextarea
-          defaultValue={node.prompt?.text || ''}
+          defaultValue={promptDrafts?.get(node.id) ?? node.prompt?.text ?? ''}
+          onInput={(e) => promptDrafts?.set(node.id, e.currentTarget.value)}
           onBlur={async (e) => {
             const newText = e.target.value;
-            if (newText !== node.prompt?.text) {
+            if (newText !== node.prompt?.text || promptDrafts?.get(node.id) !== undefined) {
               actions.setNodes((prev: InstanceNode[]) => prev.map((n: InstanceNode) => n.id === node.id ? { ...n, prompt: { ...n.prompt, text: newText } } : n));
-              const { error } = await actions.trackNodeSave(
-                node.id,
-                supabase
-                  .from('instance_nodes')
-                  .update({ prompt: { ...node.prompt, text: newText } })
-                  .eq('id', node.id),
-                "prompt"
-              );
-
-              if (error) {
-                toast.error("Failed to save node text");
-                console.error(error);
+              try {
+                const { error } = await actions.trackNodeSave(
+                  node.id,
+                  supabase
+                    .from('instance_nodes')
+                    .update({ prompt: { ...node.prompt, text: newText } })
+                    .eq('id', node.id),
+                  "prompt"
+                );
+                if (error) throw error
+                promptDrafts?.saved(node.id, newText)
+              } catch {
+                toast.error("Could not save the prompt. Your draft is kept in this canvas.")
               }
             }
           }}

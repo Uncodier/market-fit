@@ -2,8 +2,8 @@
 
 ## Scope
 
-The canvas keeps its existing cards, drag gestures, level-of-detail thresholds and
-persisted graph format. These changes reduce incidental work; they do not replace
+The canvas keeps its existing card editors, drag gestures and persisted graph
+format. Large graphs use retained previews and one active editor. These changes do not replace
 the backend, change RLS, or establish measured production latency improvements.
 
 ## Large visual canvases
@@ -44,6 +44,53 @@ remains unverified; read-only database aggregates informed the synthetic scale.
 No production node status, relation or position was modified during diagnosis.
 
 ## Rendering
+
+### Retained cards and bounded work
+
+The node canvas caches complete card rasters, not just source thumbnails. A
+32 MiB byte-bounded LRU stores half-octave zoom/DPR buckets; each raster has axis
+and area limits. Position-only movement reuses the bitmap. Content, theme, size,
+LOD or decoded media changes invalidate the corresponding card version.
+Deletion, eviction and unmount release canvas backing stores. This is a sprite
+budget, not a limit for all browser/thumbnail/GPU memory.
+
+Cold raster preparation receives a 3.5 ms soft budget per frame. During a gesture,
+the renderer reuses the nearest cached resolution or a cheap placeholder; it
+refines after settling. Hover-only viewport notifications do not repaint nodes.
+Thumbnail completion invalidates only dependent sprites and repaints only when
+that URL is visible; duplicate blob-ready events do not repeat pixel work.
+Selection composites cached sprites plus a ring rather than rebuilding cards.
+
+The integrated renderer was compared with the immediate painter in isolated
+Chromium/WebKit using 166 synthetic cards. At rich detail, drawing calls dropped
+from about 26,643 per frame to 166; 90 warm pan frames did not create another
+raster. In that WebKit run at 20% zoom, submission p95 was about 9 ms before and
+1 ms after. These numbers exclude application/network/compositor overhead and
+do not establish production FPS.
+
+### Context scene and active editor
+
+Context relations render on viewport-sized static and highlight canvases, not a
+world-sized SVG. Geometry/Path2D is retained across camera changes; hover and
+selection repaint only the highlight layer. Cubic bounds include crossing edges
+whose endpoint nodes are both offscreen. Native hit tests use CSS-pixel tolerance,
+defer to DOM/node controls, and reject pan/drag gestures. Selected relation controls
+remain available for crossing edges and preserve the existing result-lock policy.
+Very long projected curves are subdivided and clipped before native dash drawing,
+bounding work for offscreen dashes that stalled the WebKit test. Offline Chromium/WebKit component tests
+cover a two-million-world-unit crossing from 0.001 to 8x zoom.
+
+For graphs with at least 100 nodes, only the active editor and required drag or
+connection-origin cards mount as HTML. Previews remain on canvas even at editing
+zoom. The active editor is pinned when panning/zooming so it does not lose input
+on culling. Clicking a preview opens it; Find node supplies a searchable keyboard
+path. Closing restores focus to the picker. Connecting to a publish preview opens
+its specific input anchors rather than guessing a destination slot.
+
+Prompt drafts are retained in memory for the current instance, committed on blur
+before editor replacement, and kept for retry after failure. A late successful
+save cannot clear a newer draft. These drafts are not offline persistence and do
+not survive reloads or instance changes. Existing execution save barriers remain.
 
 - Card data is indexed by parent and incoming context. A card receives its ancestor
   chain, incoming relations and child-presence flag rather than the whole graph.
@@ -110,6 +157,6 @@ pan/zoom, node dragging, prompt editing and incoming results on the same graph
 and device. Record long tasks, frame times, React commits, request counts and
 transferred bytes. Use disposable data for any persisted edits or generation.
 
-A compact preview/active-node inspector, saved viewport restoration, alternative
-LOD thresholds, thumbnail-pipeline changes and transactional bulk mutations are
-separate follow-ups, not implemented by this performance pass.
+Saved viewport restoration, workers/WebGL/WebGPU, a global thumbnail memory
+budget, full dirty-region rendering and transactional bulk mutations remain
+follow-ups. No new graphics dependency or backend mock was introduced.

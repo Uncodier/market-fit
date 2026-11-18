@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/app/components/ui/card"
 import { Badge } from "@/app/components/ui/badge"
 import { Button } from "@/app/components/ui/button"
-import { Bell, Check, Trash2, MessageSquare, ClipboardList, Loader2 } from "@/app/components/ui/icons"
+import { Bell, Check, Trash2, MessageSquare, ClipboardList, Loader2, ArrowRight } from "@/app/components/ui/icons"
 import { cn } from "@/lib/utils"
+import { getNotificationTarget } from "@/lib/notifications/related-entity-route"
 import { Notification } from "../types"
 
 interface NotificationCardProps {
@@ -35,6 +36,7 @@ export function NotificationCard({ notification, onMarkAsRead, onDelete, disable
   const validDate = !Number.isNaN(date.getTime())
   const isConversation = notification.related_entity_type === "conversation" && notification.related_entity_id
   const isTask = notification.related_entity_type === "task" && notification.related_entity_id
+  const target = getNotificationTarget(notification)
 
   const runAction = async (action: "read" | "delete") => {
     if (pending || disabled) return
@@ -47,17 +49,9 @@ export function NotificationCard({ notification, onMarkAsRead, onDelete, disable
   }
 
   const openRelatedItem = () => {
+    if (!target || pending || disabled) return
     if (!notification.is_read) void runAction("read")
-    if (isConversation) {
-      const query = new URLSearchParams({
-        conversationId: notification.related_entity_id!,
-        agentId: "478d3106-7391-4d9a-a5c1-8466202b45a9",
-        agentName: "Agent",
-      })
-      router.push(`/chat?${query}`)
-    } else if (isTask) {
-      router.push(`/control-center/${encodeURIComponent(notification.related_entity_id!)}`)
-    }
+    router.push(target.href)
   }
 
   return (
@@ -95,10 +89,10 @@ export function NotificationCard({ notification, onMarkAsRead, onDelete, disable
                 {expanded ? "Show less" : "Read more"}
               </Button>
             )}
-            {(isConversation || isTask) && (
+            {target && (
               <Button variant="outline" size="sm" className="min-h-10 gap-2" onClick={openRelatedItem} disabled={disabled || !!pending}>
-                {isConversation ? <MessageSquare className="h-4 w-4" aria-hidden={true} /> : <ClipboardList className="h-4 w-4" aria-hidden={true} />}
-                {isConversation ? "Go to chat" : "Go to task"}
+                <ArrowRight className="h-4 w-4" aria-hidden={true} />
+                {target.label}
               </Button>
             )}
             <div className="ml-auto flex items-center gap-1">

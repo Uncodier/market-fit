@@ -7,8 +7,9 @@ import { InstanceNode } from "@/app/types/instance-nodes"
 import { FALLBACK_POS, IMPRENTA_VIEWPORT_CULL_PAD, IMPRENTA_NODE_W, IMPRENTA_ROW_H, IMPRENTA_VIEWPORT_UNMOUNT_PAD, IMPRENTA_LOD_FULL_DETAIL_SCALE, collectImprentaLiteImagePreviewUrls, collectImprentaLiteVideoPreviewUrls } from './preview-helpers'
 import type { useImprentaMeasurement } from './measurement'
 import type { useImprentaPanelState } from './state'
+import { useAutomaticEditors } from './automatic-editors'
 
-type ImprentaVirtualizationOptions = Pick<ReturnType<typeof useImprentaMeasurement>, "canvasNodes" | "isDarkMode"> & Pick<ReturnType<typeof useImprentaPanelState>, "positions" | "nodeHeightsRef" | "layoutEpoch" | "viewportInfo" | "setViewportInfo" | "viewportStore" | "viewportStoreRef" | "hoverStore" | "dummyNodes" | "draggingNodeId" | "tempConnection" | "generatingNodeIds" | "nodes">
+type ImprentaVirtualizationOptions = Pick<ReturnType<typeof useImprentaMeasurement>, "canvasNodes" | "isDarkMode"> & Pick<ReturnType<typeof useImprentaPanelState>, "positions" | "nodeHeightsRef" | "layoutEpoch" | "viewportInfo" | "setViewportInfo" | "viewportStore" | "viewportStoreRef" | "hoverStore" | "dummyNodes" | "draggingNodeId" | "tempConnection" | "generatingNodeIds" | "nodes"> & { activeEditorNodeId?: string | null; focusedEditorNodeId?: string | null; activeInstanceId?: string }
 
 export function useImprentaVirtualization({
   canvasNodes,
@@ -26,6 +27,9 @@ export function useImprentaVirtualization({
   tempConnection,
   generatingNodeIds,
   nodes,
+  activeEditorNodeId,
+  focusedEditorNodeId,
+  activeInstanceId,
 }: ImprentaVirtualizationOptions) {
   const stablePositions = useMemo(() => {
     const r: Record<string, { x: number; y: number }> = {}
@@ -142,6 +146,8 @@ export function useImprentaVirtualization({
   }, [hoverStore])
 
   const isLargeGraph = isLargeImprentaGraph(canvasNodes.length)
+  const automaticEditorIds = useAutomaticEditors({ enabled: isLargeGraph, scope: activeInstanceId,
+    nodes: canvasNodes, positions: stablePositions, heights: nodeHeightsSnapshot, viewport: viewportInfo, store: viewportStore })
 
   const showFullNodeDetail =
     !isLargeGraph ||
@@ -166,8 +172,10 @@ export function useImprentaVirtualization({
       const isEffectivelyDummy =
         isDummy || (!hasResult && generatingNodeIds.has(node.id) && (node.status === "running" || node.status === "pending"))
       const isDragOrigin = draggingNodeId === node.id || tempConnection?.fromNode === node.id
-      if (vis !== null && !vis.has(node.id) && !isDragOrigin) continue
-      if (!showFullNodeDetail && !isEffectivelyDummy && !isDragOrigin) continue
+      const isEditor = activeEditorNodeId === node.id || focusedEditorNodeId === node.id
+      if (isLargeGraph && !isEditor && !isDragOrigin && !automaticEditorIds.has(node.id)) continue
+      if (vis !== null && !vis.has(node.id) && !isDragOrigin && !isEditor) continue
+      if (!showFullNodeDetail && !isEffectivelyDummy && !isDragOrigin && !isEditor) continue
       out.push(node)
     }
 
@@ -196,6 +204,10 @@ export function useImprentaVirtualization({
     generatingNodeIds,
     viewportInfo,
     stablePositions,
+    isLargeGraph,
+    activeEditorNodeId,
+    focusedEditorNodeId,
+    automaticEditorIds,
   ])
 
   const [mountedCount, setMountedCount] = useState(0)
@@ -213,10 +225,11 @@ export function useImprentaVirtualization({
   }, [domRenderNodes.length, mountedCount])
 
   const slicedRenderNodes = useMemo(() => {
-    const required = domRenderNodes.filter(node => node.id === draggingNodeId || node.id === tempConnection?.fromNode)
+    const required = domRenderNodes.filter(node => node.id === activeEditorNodeId || node.id === focusedEditorNodeId
+      || automaticEditorIds.has(node.id) || node.id === draggingNodeId || node.id === tempConnection?.fromNode)
     const requiredIds = new Set(required.map(node => node.id))
     return [...required, ...domRenderNodes.filter(node => !requiredIds.has(node.id)).slice(0, mountedCount)]
-  }, [domRenderNodes, mountedCount, draggingNodeId, tempConnection?.fromNode])
+  }, [domRenderNodes, mountedCount, draggingNodeId, tempConnection?.fromNode, activeEditorNodeId, focusedEditorNodeId, automaticEditorIds])
 
   const mountedNodeIds = useMemo(() => {
     const ids = new Set<string>()
@@ -288,12 +301,16 @@ export function useImprentaVirtualization({
         const key = `${parentId}->${current.id}`
         if (seen.has(key)) break
         seen.add(key)
-        edges.push({ parentId, childId: current.id })
+        // Large retained scenes must not animate a world-sized SVG. Only the
+        // active editor's immediate loading links need this foreground cue.
+        if (!isLargeGraph || current.id === activeEditorNodeId || parentId === activeEditorNodeId) {
+          edges.push({ parentId, childId: current.id })
+        }
         current = nodesById.get(parentId)
       }
     })
     return edges
-  }, [nodesById, loadingNodeIds])
+  }, [nodesById, loadingNodeIds, isLargeGraph, activeEditorNodeId])
 
   return {
     stablePositions,
@@ -313,6 +330,7 @@ export function useImprentaVirtualization({
     setMountedCount,
     slicedRenderNodes,
     mountedNodeIds,
+    automaticEditorIds,
     canvasGetImages,
     canvasGetVideos,
     loadingNodeIds,

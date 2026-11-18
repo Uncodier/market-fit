@@ -6,16 +6,14 @@ import { ImprentaTempConnectionCanvas } from "../imprenta-temp-connection-canvas
 import { toast } from "sonner"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
 import { Button } from "@/app/components/ui/button"
-import { Plus, Trash2, UploadCloud, X } from "@/app/components/ui/icons"
-import { ImprentaContextEdges } from "../imprenta-context-edges"
-import { destinationsRequireAudience, getPublishContextAnchorY, getPublishContextEdgeCaption, hasPublishAudienceInput, hasPublishContentInput } from "@/app/components/agents/imprenta-publish-context"
-import { ScreenAnchoredPanel } from "@/app/components/ui/screen-anchored-panel"
-import { Card } from "@/app/components/ui/card"
-import { ImprentaContextTypeSelect } from "@/app/components/agents/imprenta-context-type-select"
+import { Plus, UploadCloud, X } from "@/app/components/ui/icons"
+import { ImprentaContextEdgesCanvas } from "../imprenta-context-edges-canvas"
+import { ImprentaNodePicker } from './node-picker'
+import { destinationsRequireAudience, hasPublishAudienceInput, hasPublishContentInput } from "@/app/components/agents/imprenta-publish-context"
 import { ImprentaLoadingRouteEdges } from "../imprenta-world-svg"
 import { createPortal } from "react-dom"
 import { IMPRENTA_LOD_FULL_DETAIL_SCALE, IMPRENTA_LOD_LITE_MARKER_MAX, IMPRENTA_LOD_LITE_MICRO_MAX, IMPRENTA_LOD_LITE_SIMPLE_MAX, FALLBACK_POS, estimateImprentaNodeContentHeight } from './preview-helpers'
-import { imprentaNodeHasResult } from './result-helpers'
+import { ImprentaContextControls } from './context-controls'
 import { ImprentaDummyCardInner } from './dummy-card'
 import { ImprentaLiteGraphNode } from './lite-node'
 import { ImprentaNodeCardInner } from './node-card'
@@ -47,9 +45,9 @@ export function ImprentaPanelView({
   dummyNodes, getLayoutPositions, nodeHeightsRef,
   setPositions, setNodes, supabase,
   handleCreateChild, isUploadingAsset, handleConnectionCancel,
-  setSelectedContextAnchor, contexts, nodesRef,
+  setSelectedContextAnchor, contexts,
   positions, selectedContextId, visibleNodeIds,
-  resolveNodePosition, nodesById, selectedContextAnchor,
+  nodesById, selectedContextAnchor,
   handleUpdateContextType, handleDeleteContext, slicedRenderNodes,
   resolvedPositions, generatingNodeIds, showFullNodeDetail,
   registerNodeRef, handleNodeMouseDown, viewportInfo,
@@ -58,8 +56,17 @@ export function ImprentaPanelView({
   videoParams, audioParams, renderMediaWithZoom,
   actions, loadingRouteEdges, zoomedMedia,
   setZoomedMedia, activeInstanceId, graphError, logsError, retryImprentaData,
-}: ImprentaPanelViewOptions & Pick<ReturnType<typeof useImprentaPanelState>, "graphError" | "logsError"> & ReturnType<typeof useImprentaSynchronization>) {
+  activeEditorNodeId, focusedEditorNodeId, activateEditor, promptDrafts,
+}: ImprentaPanelViewOptions & Pick<ReturnType<typeof useImprentaPanelState>, "graphError" | "logsError" | "activeEditorNodeId" | "focusedEditorNodeId" | "activateEditor" | "promptDrafts"> & ReturnType<typeof useImprentaSynchronization>) {
   const getCardData = useImprentaCardData(nodes, dummyNodes, contexts, logs)
+  const openEditor = (id: string) => {
+    activateEditor(id)
+    const pos = resolvedPositions[id]
+    const viewport = viewportStore.get()
+    viewportStore.requestFocus?.({ x: pos ? pos.x + NODE_W / 2 : (viewport.canvasWidth / 2 - viewport.position.x) / viewport.scale,
+      y: pos ? pos.y + (nodeHeightsSnapshot[id] || ROW_H) / 2 : (viewport.canvasHeight / 2 - viewport.position.y) / viewport.scale,
+      scale: Math.max(0.7, viewport.scale) })
+  }
   return (
     <div
       className="h-full min-h-0 flex flex-col transition-[margin-left,width] duration-300 ease-out relative"
@@ -97,6 +104,7 @@ export function ImprentaPanelView({
               viewportStore={viewportStore}
               graphBounds={maxBounds}
               screenSpaceBehind={
+                <>
                 <ImprentaParentEdgesCanvas
                   nodes={canvasNodes}
                   positions={stablePositions}
@@ -113,6 +121,11 @@ export function ImprentaPanelView({
                   straightLinesBelowScale={isLargeGraph ? IMPRENTA_LOD_FULL_DETAIL_SCALE : 0}
                   markerMax={IMPRENTA_LOD_LITE_MARKER_MAX}
                 />
+                <ImprentaContextEdgesCanvas contexts={contexts} nodes={canvasNodes} positions={stablePositions}
+                  nodeHeights={nodeHeightsSnapshot} viewportStore={viewportStore} dragStore={dragStore}
+                  hoverStore={hoverStore} selectedContextId={selectedContextId} isDarkMode={isDarkMode}
+                  onSelectContext={(id, anchor) => { setSelectedContextId(id); setSelectedContextAnchor(anchor || null) }} />
+                </>
               }
               screenSpaceFront={
                 <>
@@ -127,6 +140,7 @@ export function ImprentaPanelView({
                     // thrash on count crossings) but bails out of every paint and
                     // hit test, so DOM cards render at every zoom.
                     fullDetailScale={isLargeGraph ? IMPRENTA_LOD_FULL_DETAIL_SCALE : 0}
+                    renderAtAllScales={isLargeGraph}
                     liteMarkerMax={IMPRENTA_LOD_LITE_MARKER_MAX}
                     liteMicroMax={IMPRENTA_LOD_LITE_MICRO_MAX}
                     liteSimpleMax={IMPRENTA_LOD_LITE_SIMPLE_MAX}
@@ -134,10 +148,17 @@ export function ImprentaPanelView({
                     thumbs={thumbCache}
                     isDarkMode={isDarkMode}
                     skipIds={mountedNodeIds}
+                    selectedId={activeEditorNodeId}
                     getImageUrls={canvasGetImages}
                     getVideoUrls={canvasGetVideos}
-                    onNodePointerDown={handleCanvasNodePointerDown}
-                    pointerEventsEnabled={tempConnection == null && draggingNodeId == null}
+                    onNodePointerDown={(id, event) => {
+                      if (tempConnection) {
+                        event.preventDefault(); event.stopPropagation()
+                        if (nodesById.get(id)?.type === 'publish') openEditor(id)
+                        else void actions.handleConnectionDrop(event, id)
+                      } else handleCanvasNodePointerDown(id, event)
+                    }}
+                    pointerEventsEnabled={draggingNodeId == null}
                   />
                   <ImprentaTempConnectionCanvas
                     connectionStore={connectionStore}
@@ -183,13 +204,14 @@ export function ImprentaPanelView({
                 activeInstanceId && nodes.length > 0 ? (
                   <TooltipProvider delayDuration={200}>
                     <div className="flex items-center gap-2">
+                      {isLargeGraph && <ImprentaNodePicker nodes={nodes} onSelect={openEditor} />}
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
                             variant="ghost"
                             size="sm"
                             className="h-8 text-xs font-medium px-2.5"
-                            onClick={() => handleCreateChild(null)}
+                            onClick={async () => { const id = await handleCreateChild(null); if (id && isLargeGraph) openEditor(id) }}
                             disabled={isUploadingAsset}
                           >
                             <Plus className="w-3.5 h-3.5 mr-1.5" /> New action
@@ -261,95 +283,11 @@ export function ImprentaPanelView({
               >
                 {/* Parent edges are drawn by the viewport-sized canvas mounted in screenSpaceBehind. */}
 
-                {/* Context edges: single SVG for all paths; labels/UI stay in per-context overlays. */}
-                <ImprentaContextEdges
-                  contexts={contexts}
-                  nodes={canvasNodes}
-                  positions={positions}
-                  nodeHeights={nodeHeightsSnapshot}
-                  selectedContextId={selectedContextId}
-                  onSelectContext={(id, anchor) => {
-                    setSelectedContextId(id)
-                    setSelectedContextAnchor(anchor || null)
-                  }}
-                  hoverStore={hoverStore}
-                />
-
-                {contexts.filter(ctx => !visibleNodeIds || visibleNodeIds.has(ctx.context_node_id) || visibleNodeIds.has(ctx.target_node_id)).map((ctx) => {
-                  if (!positions[ctx.context_node_id] || !positions[ctx.target_node_id]) return null
-                  const start = resolveNodePosition(ctx.context_node_id)
-                  const end = resolveNodePosition(ctx.target_node_id)
-                  const startCy = (nodeHeightsSnapshot[ctx.context_node_id] || ROW_H) / 2
-                  const targetNodeForCtx = nodesById.get(ctx.target_node_id)
-                  const endH = nodeHeightsSnapshot[ctx.target_node_id] || ROW_H
-                  const endCy = getPublishContextAnchorY(targetNodeForCtx?.type, ctx.type, endH)
-                  const startX = start.x + NODE_W
-                  const startY = start.y + startCy
-                  const endX = end.x
-                  const endY = end.y + endCy
-                  const midX = (startX + endX) / 2
-                  const midY = (startY + endY) / 2
-                  const isSelected = selectedContextId === ctx.id
-                  // Context links feeding a node that already produced a result are
-                  // locked: the action has run, so unlinking its inputs would rewrite
-                  // history. Only links to actions (no result yet) are deletable.
-                  const targetHasResult = !!targetNodeForCtx && imprentaNodeHasResult(targetNodeForCtx)
-
-                  return (
-                    <div
-                      key={`ctx-wrapper-${ctx.id}`}
-                      data-imprenta-context-control
-                      className="absolute top-0 left-0 w-full h-full pointer-events-none"
-                      style={{ zIndex: isSelected ? 30 : 0 }}
-                    >
-                      {showFullNodeDetail && !isSelected && (ctx.type != null || targetNodeForCtx?.type === "publish") && (
-                        <div
-                          className="absolute px-2 py-0.5 bg-background border border-primary/20 text-primary text-[10px] font-medium rounded-full shadow-sm pointer-events-auto cursor-pointer whitespace-nowrap"
-                          style={{
-                            left: midX,
-                            top: midY,
-                            transform: "translate(-50%, -50%)",
-                          }}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setSelectedContextId(ctx.id)
-                            setSelectedContextAnchor({ x: e.clientX, y: e.clientY })
-                          }}
-                        >
-                          {getPublishContextEdgeCaption(targetNodeForCtx?.type, ctx.type)}
-                        </div>
-                      )}
-
-                      {isSelected && selectedContextAnchor && (
-                        <ScreenAnchoredPanel anchor={selectedContextAnchor}>
-                          <Card
-                            className="pointer-events-auto z-50 flex items-center gap-1 border-primary/30 p-1 shadow-xl"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <ImprentaContextTypeSelect
-                              value={ctx.type || "reference"}
-                              onValueChange={(val) => handleUpdateContextType(ctx.id, val)}
-                            />
-
-                            {!targetHasResult && (
-                              <>
-                                <div className="mx-1 h-4 w-px bg-border" />
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                                  onClick={() => handleDeleteContext(ctx.id)}
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
-                              </>
-                            )}
-                          </Card>
-                        </ScreenAnchoredPanel>
-                      )}
-                    </div>
-                  )
-                })}
+                <ImprentaContextControls contexts={contexts} positions={positions} nodeHeights={nodeHeightsSnapshot}
+                  nodesById={nodesById} visibleNodeIds={visibleNodeIds} showLabels={showFullNodeDetail}
+                  selectedId={selectedContextId} anchor={selectedContextAnchor} nodeW={NODE_W} rowH={ROW_H}
+                  onSelect={(id, anchor) => { setSelectedContextId(id); setSelectedContextAnchor(anchor) }}
+                  onChange={handleUpdateContextType} onDelete={handleDeleteContext} />
 
                 {/* Draw nodes (virtualized + LOD when graph is large). */}
                 <TooltipProvider delayDuration={200}>
@@ -376,7 +314,7 @@ export function ImprentaPanelView({
                       )
                     }
 
-                    if (!showFullNodeDetail) {
+                    if (!showFullNodeDetail && activeEditorNodeId !== node.id && focusedEditorNodeId !== node.id) {
                       const measured = nodeHeightsSnapshot[node.id]
                       const estimated = estimateImprentaNodeContentHeight(node, ROW_H)
                       const shellH = Math.round(
@@ -433,6 +371,9 @@ export function ImprentaPanelView({
                         audioParams={audioParams}
                         renderMediaWithZoom={renderMediaWithZoom}
                         actions={actions}
+                        promptDrafts={promptDrafts}
+                        isActiveEditor={isLargeGraph && activeEditorNodeId === node.id}
+                        onCloseEditor={() => activateEditor(null)}
                       />
                     )
                   })}

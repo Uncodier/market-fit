@@ -29,6 +29,13 @@ activation recovery action. Invitation polling and manual checks send the select
 `siteId` in the GET query, and invitation cancellation sends it in the DELETE
 query. The API must still verify manager access and invitation ownership.
 
+Invitation creation sends only `siteId`, `channelId`, `connectionType` and `name`.
+The API also accepts optional `clientName`, but rejects unknown fields. The legacy
+`active: true` request field causes `400 Invalid invitation request` before any
+provider call; activation remains owned by server-side finalization, not this
+client flag. Deploy the web payload correction and reload existing tabs. Regression
+coverage: `SupportChannelsSection.test.tsx` checks exact WhatsApp/Messenger payloads.
+
 Provider authorization is not channel readiness. The invitation API returns
 `completed` only after activation and webhook finalization. A `502` leaves setup
 retryable and cannot produce a Connected badge. An explicit

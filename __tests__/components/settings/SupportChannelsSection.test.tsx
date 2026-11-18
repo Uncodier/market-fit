@@ -123,6 +123,41 @@ function TestForm({
 }
 
 describe("SupportChannelsSection", () => {
+  it.each([
+    { type: "whatsapp", connectionType: "whatsapp_waba", label: "WhatsApp" },
+    { type: "messenger", connectionType: "messenger", label: "Messenger" },
+  ])("sends only accepted invitation fields for $type setup", async ({ type, connectionType, label }) => {
+    const invitationUrl = "https://example.test/invite"
+    const post = jest.spyOn(apiClient, "post").mockResolvedValue({
+      success: true,
+      data: { channelId: "partner-pending", invitation: { id: "inv-1", url: invitationUrl } },
+    })
+    const open = jest.spyOn(window, "open").mockReturnValue(null)
+    const onSave = jest.fn()
+    render(<TestForm onSave={onSave} initialConnections={[{
+      id: "partner-pending", type, name: "", status: "pending",
+    }]} />)
+
+    fireEvent.click(screen.getByRole("button", { name: "Connect Account" }))
+
+    await waitFor(() => expect(onSave).toHaveBeenCalled())
+    expect(post).toHaveBeenCalledTimes(1)
+    expect(post).toHaveBeenCalledWith("/api/integrations/zavu/invitations", {
+      siteId: "site-1",
+      channelId: "partner-pending",
+      connectionType,
+      name: label,
+    })
+    expect(open).toHaveBeenCalledWith(invitationUrl, "_blank")
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+      channels: expect.objectContaining({ connections: [expect.objectContaining({
+        id: "partner-pending", type, name: label, status: "pending",
+        zavu_invitation_id: "inv-1", metadata: { invitation_url: invitationUrl },
+      })] }),
+    }))
+    expect(screen.queryByText("Connected")).not.toBeInTheDocument()
+  })
+
   it("uses the site-scoped invitation hook for manual status checks", async () => {
     render(<TestForm onSave={jest.fn()} initialConnections={[{
       id: "wa-pending", type: "whatsapp", name: "WhatsApp", status: "pending", zavu_invitation_id: "inv-1",

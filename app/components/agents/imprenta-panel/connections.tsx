@@ -126,7 +126,7 @@ export function useImprentaConnections({
   }
 
   const handleConnectionDrop = async (
-    e: React.MouseEvent,
+    e: Pick<React.MouseEvent, "stopPropagation">,
     targetNodeId: string,
     slot?: "content" | "context" | "audience"
   ) => {

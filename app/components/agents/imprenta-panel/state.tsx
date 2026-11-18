@@ -15,6 +15,7 @@ import { type ZoomableViewportInfo } from "../zoomable-canvas"
 import { createViewportStore, type ViewportStore } from "@/app/lib/imprenta-viewport-store"
 import { useImprentaUpload } from "@/app/hooks/use-imprenta-upload"
 import { getImprentaThumbCache } from "@/app/lib/imprenta-thumb-cache"
+import { useImprentaEditorState } from './editor-state'
 import { ImageParameters, VideoParameters, AudioParameters, TextParameters } from "../../simple-messages-view/types"
 
 type ImprentaPanelStateOptions = { activeInstanceId?: string }
@@ -30,6 +31,7 @@ export function useImprentaPanelState({ activeInstanceId }: ImprentaPanelStateOp
 
   const supabase = createClient()
   const [nodes, setNodes] = useState<InstanceNode[]>([])
+  const editor = useImprentaEditorState(activeInstanceId, nodes)
 
   const {
     imprentaData, isLoading: isImprentaLoading, refreshImprentaData, cacheUploadedNode, logs: dataLogs,
@@ -143,6 +145,7 @@ export function useImprentaPanelState({ activeInstanceId }: ImprentaPanelStateOp
   const imprentaRequestedInstanceRef = useRef<string | null>(null)
 
   return {
+    ...editor,
     currentSite,
     activeInstanceId,
     isLayoutCollapsed,

@@ -196,7 +196,6 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
         channelId: channel.id,
         connectionType: channel.type === "whatsapp" ? "whatsapp_waba" : "messenger",
         name: channel.name || getSupportChannelLabel(channel.type),
-        active: true,
       })
 
       if (!response.success) {

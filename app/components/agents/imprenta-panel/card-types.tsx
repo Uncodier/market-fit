@@ -23,4 +23,7 @@ export type ImprentaNodeCardProps = Pick<State,
   registerNodeRef: (id: string, el: HTMLDivElement | null) => void
   renderMediaWithZoom: ReturnType<typeof useImprentaMedia>["renderMediaWithZoom"]
   actions: ReturnType<typeof useImprentaLayoutEffects>["actions"]
+  promptDrafts?: State["promptDrafts"]
+  isActiveEditor?: boolean
+  onCloseEditor?: () => void
 }

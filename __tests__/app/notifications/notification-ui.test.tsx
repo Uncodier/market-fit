@@ -84,6 +84,63 @@ describe('notification reading and actions', () => {
     await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Delete notification' })))
     expect(onDelete).toHaveBeenCalledWith(notification.id)
   })
+
+  it.each([
+    ['conversation', 'Go to chat', '/chat?conversationId=item-1'],
+    ['task', 'Go to task', '/control-center/item-1'],
+    ['instance', 'Go to instance', '/robots?instance=item-1'],
+    ['lead', 'Go to lead', '/leads/item-1'],
+    ['site', 'Go to projects', '/projects'],
+    ['campaign', 'Go to campaign', '/campaigns/item-1'],
+    ['content', 'Go to content', '/content/item-1'],
+    ['requirement', 'Go to requirement', '/requirements/item-1'],
+    ['segment', 'Go to segment', '/segments/item-1'],
+  ])('offers a named CTA for %s and preserves full message expansion', async (type, label, href) => {
+    const push = jest.fn()
+    jest.mocked(useRouter).mockReturnValue({ push } as unknown as ReturnType<typeof useRouter>)
+    const onMarkAsRead = jest.fn().mockResolvedValue(undefined)
+    render(<NotificationCard notification={{ ...notification, related_entity_type: type, related_entity_id: 'item-1' }} onMarkAsRead={onMarkAsRead} onDelete={jest.fn()} />)
+    const expand = screen.getByRole('button', { name: 'Read more' })
+    expect(document.getElementById(expand.getAttribute('aria-controls')!)?.textContent).toBe(`${notification.message.slice(0, 240).trimEnd()}…`)
+    fireEvent.click(expand)
+    expect(document.getElementById(expand.getAttribute('aria-controls')!)?.textContent).toBe(notification.message)
+    expect(screen.queryByText('item-1')).not.toBeInTheDocument()
+    expect(push).not.toHaveBeenCalled()
+    expect(onMarkAsRead).not.toHaveBeenCalled()
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: label })))
+    expect(push).toHaveBeenCalledWith(href)
+    expect(onMarkAsRead).toHaveBeenCalledWith(notification.id)
+  })
+
+  it('opens an existing safe action URL without marking an already read notification', () => {
+    const push = jest.fn()
+    jest.mocked(useRouter).mockReturnValue({ push } as unknown as ReturnType<typeof useRouter>)
+    const onMarkAsRead = jest.fn()
+    render(<NotificationCard notification={{ ...notification, is_read: true, action_url: '/billing' }} onMarkAsRead={onMarkAsRead} onDelete={jest.fn()} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Go to details' }))
+    expect(push).toHaveBeenCalledWith('/billing')
+    expect(onMarkAsRead).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    { related_entity_type: 'unknown', related_entity_id: 'item-1' },
+    { related_entity_type: 'lead' },
+    { action_url: '//outside.invalid' },
+  ])('omits navigation for unsupported or incomplete targets: %j', target => {
+    render(<NotificationCard notification={{ ...notification, ...target }} onMarkAsRead={jest.fn()} onDelete={jest.fn()} />)
+    expect(screen.queryByRole('button', { name: /^Go to/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Read more' })).toBeInTheDocument()
+  })
+
+  it('disables related navigation while notification actions are disabled', () => {
+    const push = jest.fn()
+    jest.mocked(useRouter).mockReturnValue({ push } as unknown as ReturnType<typeof useRouter>)
+    render(<NotificationCard notification={{ ...notification, related_entity_type: 'instance', related_entity_id: 'item-1' }} onMarkAsRead={jest.fn()} onDelete={jest.fn()} disabled />)
+    const button = screen.getByRole('button', { name: 'Go to instance' })
+    expect(button).toBeDisabled()
+    fireEvent.click(button)
+    expect(push).not.toHaveBeenCalled()
+  })
 })
 
 describe('notification inbox toolbar', () => {

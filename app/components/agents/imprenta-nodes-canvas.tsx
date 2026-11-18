@@ -10,7 +10,6 @@ import {
 } from "@/app/lib/graph-viewport"
 import {
   bandFromScale,
-  drawLiteNode,
   drawSelectionHighlight,
   liteNodeMarkerRect,
   imprentaCanvasTheme,
@@ -21,6 +20,7 @@ import type { ImprentaThumbCache } from "@/app/lib/imprenta-thumb-cache"
 import { readCachedIdsAndGrid, type GridCacheEntry } from "./imprenta-nodes-canvas-grid"
 import { bindCanvasPointerInteraction } from "./imprenta-nodes-canvas-interaction"
 import { expandMarkerQuery } from "./imprenta-nodes-canvas-geometry"
+import { createImprentaSpriteRenderer, spriteFootprint } from "@/app/lib/imprenta-sprite-renderer"
 
 // Preserve the existing helper import surface.
 export { readCachedIdsAndGrid, type GridCacheEntry } from "./imprenta-nodes-canvas-grid"
@@ -34,6 +34,8 @@ export interface ImprentaNodesCanvasProps {
   rowH: number
   /** Full detail scale; below it, this canvas owns the node rendering. */
   fullDetailScale: number
+  /** Keep canvas previews/hit handling above full detail; preserve overview LOD below it. */
+  renderAtAllScales?: boolean
   liteMarkerMax: number
   liteMicroMax: number
   liteSimpleMax: number
@@ -70,6 +72,7 @@ export function ImprentaNodesCanvas({
   nodeW,
   rowH,
   fullDetailScale,
+  renderAtAllScales = false,
   liteMarkerMax,
   liteMicroMax,
   liteSimpleMax,
@@ -96,6 +99,7 @@ export function ImprentaNodesCanvas({
   const nodeWRef = useRef(nodeW)
   const rowHRef = useRef(rowH)
   const fullRef = useRef(fullDetailScale)
+  const allScalesRef = useRef(renderAtAllScales)
   const markerMaxRef = useRef(liteMarkerMax)
   const microMaxRef = useRef(liteMicroMax)
   const simpleMaxRef = useRef(liteSimpleMax)
@@ -117,6 +121,7 @@ export function ImprentaNodesCanvas({
     nodeWRef.current = nodeW
     rowHRef.current = rowH
     fullRef.current = fullDetailScale
+    allScalesRef.current = renderAtAllScales
     markerMaxRef.current = liteMarkerMax
     microMaxRef.current = liteMicroMax
     simpleMaxRef.current = liteSimpleMax
@@ -135,7 +140,10 @@ export function ImprentaNodesCanvas({
 
   // Per-node URL memoization — avoids re-parsing `node.result` for every repaint.
   // Keyed by node object; invalidated when `node.result` reference changes.
-  const urlCacheRef = useRef<WeakMap<InstanceNode, { resultRef: unknown; imgs: string[]; vids: string[] }>>(
+  const urlCacheRef = useRef<WeakMap<InstanceNode, {
+    resultRef: unknown; imgs: string[]; vids: string[]
+    imageReader: typeof getImageUrls; videoReader: typeof getVideoUrls
+  }>>(
     new WeakMap()
   )
 
@@ -149,6 +157,11 @@ export function ImprentaNodesCanvas({
 
     let rafId: number | null = null
     let lastSnapshot: ViewportSnapshot = viewportStore.get()
+    const sprites = createImprentaSpriteRenderer()
+    let visibleUrls = new Set<string>()
+    let retainedNodes: InstanceNode[] | null = null
+    // A decode completion can emit again for DOM blob encoding; only changed pixels matter.
+    const decoded = new Map<string, { image: HTMLCanvasElement | null; status: string }>()
 
     const resizeToViewport = (snap: ViewportSnapshot) => {
       const maxDpr = Math.min(typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1, 2)
@@ -170,12 +183,13 @@ export function ImprentaNodesCanvas({
       const ctx = canvas.getContext("2d")
       if (!ctx) return
       if (!snap.canvasWidth || !snap.canvasHeight) {
+        visibleUrls = new Set()
         ctx.setTransform(1, 0, 0, 1, 0, 0)
         ctx.clearRect(0, 0, canvas.width, canvas.height)
         return
       }
       // Keep fallback shells until their actual DOM cards have mounted, even at rest.
-      const isTurbo = snap.scale >= fullRef.current
+      const isTurbo = !allScalesRef.current && snap.scale >= fullRef.current
 
       const dpr = resizeToViewport(snap)
       ctx.setTransform(1, 0, 0, 1, 0, 0)
@@ -184,8 +198,8 @@ export function ImprentaNodesCanvas({
       const s = snap.scale
       ctx.setTransform(dpr * s, 0, 0, dpr * s, dpr * snap.position.x, dpr * snap.position.y)
 
-      const band: ImprentaLiteBand = isTurbo 
-        ? "turbo" 
+      const band: ImprentaLiteBand = allScalesRef.current && s >= fullRef.current ? "rich" : isTurbo
+        ? "turbo"
         : bandFromScale(s, markerMaxRef.current, microMaxRef.current, simpleMaxRef.current)
       const pos = positionsRef.current
       const h = heightsRef.current
@@ -212,14 +226,19 @@ export function ImprentaNodesCanvas({
         rowHRef.current
       )
       const candidates = collectIdsFromGrid(cached.grid, expandMarkerQuery(world, band, s))
+      if (retainedNodes !== nodesRef.current) {
+        retainedNodes = nodesRef.current
+        sprites.cache.retainNodes(new Set(retainedNodes.map((node) => node.id)))
+      }
+      sprites.beginFrame({ dpr, interacting: snap.interacting, visibleIds: candidates })
 
       const urlCache = urlCacheRef.current
       const getUrls = (node: InstanceNode) => {
         const hit = urlCache.get(node)
-        if (hit && hit.resultRef === node.result) return hit
+        if (hit && hit.resultRef === node.result && hit.imageReader === getImgRef.current && hit.videoReader === getVidRef.current) return hit
         const imgs = getImgRef.current(node)
         const vids = getVidRef.current(node)
-        const entry = { resultRef: node.result, imgs, vids }
+        const entry = { resultRef: node.result, imgs, vids, imageReader: getImgRef.current, videoReader: getVidRef.current }
         urlCache.set(node, entry)
         return entry
       }
@@ -242,6 +261,9 @@ export function ImprentaNodesCanvas({
         const p = pos[node.id]
         if (!p) continue
         const hh = h[node.id] || rH
+        const footprint = spriteFootprint({ x: p.x, y: p.y, w, h: hh, scale: s, band })
+        if (footprint.x > world.maxX || footprint.y > world.maxY ||
+          footprint.x + footprint.w < world.minX || footprint.y + footprint.h < world.minY) continue
 
         const { imgs, vids } = getUrls(node)
         const coverImage = imgs[0] ?? null
@@ -252,7 +274,7 @@ export function ImprentaNodesCanvas({
           for (let j = 1; j < imgs.length && j <= 3; j++) requestedUrls.push(imgs[j])
         }
 
-        drawLiteNode(ctx, {
+        sprites.draw(ctx, {
           node,
           x: p.x,
           y: p.y,
@@ -279,6 +301,9 @@ export function ImprentaNodesCanvas({
         }
       }
 
+      visibleUrls = new Set(requestedUrls)
+      if (sprites.endFrame()) schedule()
+
       // Protect current viewport URLs from LRU eviction. Throttled to every 4th
       // frame so it doesn't dominate pan cost when thousands of urls are live.
       touchTickRef.current = (touchTickRef.current + 1) & 0x0f
@@ -294,17 +319,33 @@ export function ImprentaNodesCanvas({
     scheduleRef.current = schedule
 
     const unsub = viewportStore.subscribe((snap) => {
+      const previous = lastSnapshot
       lastSnapshot = snap
+      if (snap.scale === previous.scale && snap.position.x === previous.position.x &&
+        snap.position.y === previous.position.y && snap.canvasWidth === previous.canvasWidth &&
+        snap.canvasHeight === previous.canvasHeight && snap.interacting === previous.interacting) return
       schedule()
     })
 
-    const unsubThumbs = thumbs.onDecoded(() => schedule())
+    const unsubThumbs = thumbs.onDecoded((url) => {
+      const image = thumbs.get?.(url) ?? null
+      const status = thumbs.status?.(url) ?? "ready"
+      const previous = decoded.get(url)
+      if (previous?.image === image && previous?.status === status) return
+      decoded.delete(url)
+      decoded.set(url, { image, status })
+      if (decoded.size > 1024) decoded.delete(decoded.keys().next().value!)
+      sprites.cache.invalidateMedia(url)
+      if (visibleUrls.has(url)) schedule()
+    })
 
     schedule()
 
     return () => {
       unsub()
       unsubThumbs()
+      sprites.dispose()
+      decoded.clear()
       scheduleRef.current = null
       if (rafId != null) {
         window.cancelAnimationFrame(rafId)
@@ -317,7 +358,8 @@ export function ImprentaNodesCanvas({
   useEffect(() => {
     scheduleRef.current?.()
   }, [nodes, positions, heights, nodeW, rowH, isDarkMode, selectedId, skipIds,
-    fullDetailScale, liteMarkerMax, liteMicroMax, liteSimpleMax, padWorld])
+    fullDetailScale, renderAtAllScales, liteMarkerMax, liteMicroMax, liteSimpleMax, padWorld,
+    getImageUrls, getVideoUrls])
 
   /** Resolve client coordinates against spatial candidates in reverse paint order. */
   const hitTest = useCallback(
@@ -326,7 +368,7 @@ export function ImprentaNodesCanvas({
       if (!canvas) return null
       const rect = canvas.getBoundingClientRect()
       const snap = viewportStore.get()
-      if (!pointerEnabledRef.current || snap.scale >= fullRef.current) return null
+      if (!pointerEnabledRef.current || (!allScalesRef.current && snap.scale >= fullRef.current)) return null
       const sx = clientX - rect.left
       const sy = clientY - rect.top
       const wx = (sx - snap.position.x) / snap.scale
@@ -338,7 +380,7 @@ export function ImprentaNodesCanvas({
       const cached = readCachedIdsAndGrid(gridCacheRef, nodesRef.current, pos, h, w, rH)
       const point: GraphBBox = { minX: wx, minY: wy, maxX: wx, maxY: wy }
       const s = snap.scale
-      const band = bandFromScale(s, markerMaxRef.current, microMaxRef.current, simpleMaxRef.current)
+      const band = allScalesRef.current && s >= fullRef.current ? "rich" : bandFromScale(s, markerMaxRef.current, microMaxRef.current, simpleMaxRef.current)
       const candidates = collectIdsFromGrid(cached.grid, expandMarkerQuery(point, band, s))
       // Only visit spatial candidates, in reverse paint order so children win.
       const orderedIds = Array.from(candidates).sort(
@@ -379,9 +421,12 @@ export function ImprentaNodesCanvas({
     if (!canvas) return
 
     return bindCanvasPointerInteraction(canvas, {
-      enabled: () => pointerEnabledRef.current && viewportStore.get().scale < fullRef.current,
+      enabled: () => pointerEnabledRef.current && (allScalesRef.current || viewportStore.get().scale < fullRef.current),
       hitTest: (x, y) => hitTest(x, y)?.id ?? null,
-      onNodePointerDown: (id, event) => onDownRef.current(id, event),
+      onNodePointerDown: (id, event) => {
+        event.preventDefault()
+        onDownRef.current(id, event)
+      },
       onBackgroundPointerDown: (event) => onBgDownRef.current?.(event),
     })
   }, [hitTest, viewportStore])

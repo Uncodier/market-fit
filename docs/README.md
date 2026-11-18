@@ -43,6 +43,7 @@ Use the guides below before relying on older implementation notes.
   public links, webhooks, and outbound requests.
 - [Database migrations](DATABASE_MIGRATIONS.md) — safe Supabase migration workflow.
 - [Conversation automation snooze](CONVERSATION_AUTOMATION_SNOOZE.md) — human-reply pause controls, shared database contract, authorization, realtime behavior and offline checks.
+- [Notification CTA compatibility](NOTIFICATION_CTA_COMPATIBILITY.md) — verified entity routes, safe existing action URLs, full-message details and offline regression coverage.
 - [Accounts payable](ACCOUNTS_PAYABLE.md) — supplier bill balances, aging filters and existing bill payment entry.
 - [Inventory assistant API](INVENTORY_ASSISTANT_API.md) — authenticated atomic batch/receipt contracts, local tool manifest and external registration boundary.
 - [Inventory movements](INVENTORY_MOVEMENTS.md) — Operations screen, read-only sample preview, atomic movement/receipt history, replay protection and migration rollout.

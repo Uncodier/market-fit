@@ -21,7 +21,7 @@ function fixture(scale = 0.05) {
     nodeW: 100, rowH: 100, fullDetailScale: 0.7,
     liteMarkerMax: 0.08, liteMicroMax: 0.2, liteSimpleMax: 0.4,
     viewportStore: createViewportStore({ scale, canvasWidth: 2000, canvasHeight: 2000 }),
-    thumbs, isDarkMode: false, getImageUrls: () => [], getVideoUrls: () => [],
+    thumbs, isDarkMode: false, getImageUrls: (): string[] => [], getVideoUrls: (): string[] => [],
     onNodePointerDown: jest.fn(), onBackgroundPointerDown: jest.fn(),
   }
 }
@@ -64,6 +64,63 @@ describe("Imprenta canvas rendering and delegated interaction", () => {
     pointer(view.container.querySelector("canvas")!, 1050, 1050)
     expect(props.onNodePointerDown).not.toHaveBeenCalled()
     expect(props.onBackgroundPointerDown).not.toHaveBeenCalled()
+  })
+
+  it.each([0.05, 1, 2])("keeps previews and clicks at scale %s in all-scales mode", (scale) => {
+    const props = fixture(scale)
+    props.positions.one = { x: 100, y: 100 }
+    const view = render(<ImprentaNodesCanvas {...props} renderAtAllScales />)
+    flush()
+    expect(drawLiteNode).toHaveBeenLastCalledWith(expect.anything(), expect.objectContaining({ node, band: scale < 0.08 ? "marker" : "rich" }))
+    const canvas = view.container.querySelector("canvas")!
+    expect(pointer(canvas, 150 * scale, 150 * scale)).toBe(false)
+    expect(props.onNodePointerDown).toHaveBeenCalledTimes(1)
+    view.rerender(<ImprentaNodesCanvas {...props} renderAtAllScales skipIds={new Set([node.id])} />)
+    pointer(canvas, 150 * scale, 150 * scale)
+    expect(props.onNodePointerDown).toHaveBeenCalledTimes(1)
+    view.rerender(<ImprentaNodesCanvas {...props} renderAtAllScales pointerEventsEnabled={false} />)
+    pointer(canvas, 150 * scale, 150 * scale)
+    expect(props.onNodePointerDown).toHaveBeenCalledTimes(1)
+  })
+
+  it("coalesces affected visible media, ignores offscreen decode and repeated DOM-blob notifications", () => {
+    const props = fixture(0.5)
+    let decode: (url: string) => void = () => {}
+    const image = document.createElement("canvas")
+    props.getImageUrls = () => ["/visible.png"]
+    props.thumbs = { ...thumbs, get: () => image, status: () => "ready",
+      onDecoded: (listener) => { decode = listener; return () => {} } } as ImprentaThumbCache
+    render(<ImprentaNodesCanvas {...props} renderAtAllScales />)
+    flush()
+    decode("/offscreen.png")
+    expect(frames.size).toBe(0)
+    decode("/visible.png")
+    expect(frames.size).toBe(1)
+    flush()
+    decode("/visible.png")
+    expect(frames.size).toBe(0)
+  })
+
+  it("does not rerasterize on selection-only updates or warm viewport pan", () => {
+    const ctx = { setTransform: jest.fn(), clearRect: jest.fn(), drawImage: jest.fn(),
+      beginPath: jest.fn(), save: jest.fn(), restore: jest.fn(), moveTo: jest.fn(), lineTo: jest.fn(),
+      quadraticCurveTo: jest.fn(), closePath: jest.fn(), stroke: jest.fn() }
+    jest.mocked(HTMLCanvasElement.prototype.getContext).mockReturnValue(ctx as unknown as CanvasRenderingContext2D)
+    const props = fixture(1)
+    const view = render(<ImprentaNodesCanvas {...props} renderAtAllScales />)
+    flush()
+    expect(drawLiteNode).toHaveBeenCalledTimes(1)
+    view.rerender(<ImprentaNodesCanvas {...props} renderAtAllScales selectedId={node.id} />)
+    flush()
+    act(() => props.viewportStore.set({ position: { x: 10, y: 20 }, interacting: true }))
+    flush()
+    flush()
+    expect(drawLiteNode).toHaveBeenCalledTimes(1)
+    expect(ctx.drawImage).toHaveBeenCalledTimes(3)
+    act(() => props.viewportStore.set({ hoveredNodeId: node.id }))
+    flush()
+    expect(frames.size).toBe(0)
+    expect(ctx.drawImage).toHaveBeenCalledTimes(3)
   })
 
   it.each([[31, 52.5], [74, 52.5], [52.5, 37], [52.5, 68]])(

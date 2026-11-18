@@ -1,11 +1,11 @@
-import { useState, useCallback, memo } from "react"
+import { useState, useCallback, useEffect, useRef, memo } from "react"
 
 import { imprentaNodeMediaAspectCss } from "@/app/lib/imprenta-media-aspect"
 import { cn } from "@/lib/utils"
 import { Card, CardContent } from "@/app/components/ui/card"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/app/components/ui/tooltip"
 import { Button } from "@/app/components/ui/button"
-import { Trash2, Copy } from "@/app/components/ui/icons"
+import { Trash2, Copy, X } from "@/app/components/ui/icons"
 import { PUBLISH_ANCHOR_AUDIENCE_Y, PUBLISH_ANCHOR_CONTENT_Y, PUBLISH_ANCHOR_CONTEXT_Y, PUBLISH_ANCHOR_LABELS } from "@/app/components/agents/imprenta-publish-context"
 import { Badge } from "@/app/components/ui/badge"
 
@@ -40,11 +40,21 @@ export const ImprentaNodeCardInner = memo(function ImprentaNodeCardInner({
   audioParams,
   renderMediaWithZoom,
   actions,
+  promptDrafts,
+  isActiveEditor,
+  onCloseEditor,
 }: ImprentaNodeCardProps) {
   const [isTestDialogOpen, setIsTestDialogOpen] = useState(false)
   const parentNode = nodes.find(parent => parent.id === node.parent_node_id)
   const mediaAspect = imprentaNodeMediaAspectCss(node, parentNode)
-  const registerRef = useCallback((el: HTMLDivElement | null) => registerNodeRef(node.id, el), [node.id, registerNodeRef])
+  const elementRef = useRef<HTMLDivElement | null>(null)
+  const registerRef = useCallback((el: HTMLDivElement | null) => {
+    elementRef.current = el
+    registerNodeRef(node.id, el)
+  }, [node.id, registerNodeRef])
+  useEffect(() => {
+    if (isActiveEditor) elementRef.current?.focus({ preventScroll: true })
+  }, [isActiveEditor])
   const isVisualMediaCard = isImprentaVisualMediaResultCard(node)
   const renderResultMedia = (url: string, type: "image" | "video", key: React.Key) =>
     renderMediaWithZoom(url, type, key, mediaAspect, isVisualMediaCard)
@@ -56,6 +66,10 @@ export const ImprentaNodeCardInner = memo(function ImprentaNodeCardInner({
       key={node.id}
       ref={registerRef}
       data-node-id={node.id}
+      data-imprenta-editable-node={node.id}
+      data-imprenta-editor={isActiveEditor || undefined}
+      tabIndex={isActiveEditor ? -1 : undefined}
+      aria-label={isActiveEditor ? "Node editor" : undefined}
       className={cn(
         "absolute cursor-grab active:cursor-grabbing",
         isDragging ? "select-none" : ""
@@ -84,6 +98,9 @@ export const ImprentaNodeCardInner = memo(function ImprentaNodeCardInner({
         onMouseEnter={() => actions.handleImprentaNodeHover(node.id)}
         onMouseLeave={() => actions.handleImprentaNodeHover(null)}
       >
+        {isActiveEditor && <Button type="button" size="sm" variant="outline"
+          className="absolute -top-10 left-0" aria-label="Close node editor"
+          onClick={e => { e.stopPropagation(); onCloseEditor?.() }}><X className="h-4 w-4 mr-1" />Close editor</Button>}
         <div
           className="absolute z-20 flex flex-row-reverse items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto"
           style={{ top: -36, right: -6 }}
@@ -233,7 +250,7 @@ export const ImprentaNodeCardInner = memo(function ImprentaNodeCardInner({
               )}
             </div>
 
-            <ImprentaCardEditor actions={actions} node={node} hasResult={hasResult} hasRealChildren={hasRealChildren} isGenerating={isGenerating} supabase={supabase} currentSite={currentSite} textParams={textParams} imageParams={imageParams} videoParams={videoParams} audioParams={audioParams} />
+            <ImprentaCardEditor actions={actions} node={node} hasResult={hasResult} hasRealChildren={hasRealChildren} isGenerating={isGenerating} supabase={supabase} currentSite={currentSite} textParams={textParams} imageParams={imageParams} videoParams={videoParams} audioParams={audioParams} promptDrafts={promptDrafts} />
 
             <ImprentaCardResult hasResult={hasResult} isVisualMediaCard={isVisualMediaCard} nodes={nodes} actions={actions} node={node} logs={logs} currentSite={currentSite} renderResultMedia={renderResultMedia} mediaAspect={mediaAspect} />
 

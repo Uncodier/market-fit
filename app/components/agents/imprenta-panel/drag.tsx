@@ -22,7 +22,8 @@ export function useImprentaDragging({
   supabase,
   positionsRef,
   nodeHeightsRef,
-}: ImprentaDraggingOptions) {
+  activateEditor,
+}: ImprentaDraggingOptions & { activateEditor?: (nodeId: string) => void }) {
   const focusOnReleaseRef = useRef(false)
   const handleWindowMouseMove = useCallback((e: MouseEvent) => {
     const nodeId = draggingNodeRef.current
@@ -108,6 +109,7 @@ export function useImprentaDragging({
     if (!didMove) {
       lastNodeDragPosRef.current = null
       if (focusOnReleaseRef.current) {
+        activateEditor?.(nodeId)
         const pos = dragStartNodePosRef.current
         const element = nodeElementsRef.current[nodeId]
         viewportStore.requestFocus?.({
@@ -134,7 +136,7 @@ export function useImprentaDragging({
         console.error("Failed to update node position", err)
       }
     }
-  }, [handleWindowMouseMove])
+  }, [handleWindowMouseMove, activateEditor])
 
   const beginNodeDrag = useCallback((nodeId: string, clientX: number, clientY: number) => {
     focusOnReleaseRef.current = false
