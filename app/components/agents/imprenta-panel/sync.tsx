@@ -10,6 +10,7 @@ import { WF_LOAD_NODE_TYPES } from "@/app/components/workflows/types"
 import { normalizeImprentaNodeForResultMediaType } from './result-helpers'
 import type { useImprentaPanelState } from './state'
 import { affectsImprentaContexts, createCoalescedReconciliation, hasRecoverableImprentaExecution } from './recovery-polling'
+import { createRecoveryCadence, reconcileSnapshot } from './reconcile-snapshot'
 
 type ImprentaSynchronizationOptions = Pick<ReturnType<typeof useImprentaPanelState>, "imprentaData" | "imprentaSyncedInstanceRef" | "imprentaRequestedInstanceRef" | "deletedNodeIdsRef" | "setInitialPrompt" | "setDummyNodes" | "setPositions" | "setGeneratingNodeIds" | "setSelectedContextId" | "hoverStore" | "setZoomedMedia" | "setTempConnection" | "setNodes" | "setContexts" | "nodesRef" | "supabase" | "nodeHeightsRef" | "refreshImprentaData"> & Partial<Pick<ReturnType<typeof useImprentaPanelState>, "generatingNodeIds">> & { activeInstanceId?: string }
 
@@ -76,6 +77,7 @@ export function useImprentaSynchronization({
     // Subscribe to realtime updates for nodes
     let cancelled = false
     const isCurrent = () => !cancelled && imprentaRequestedInstanceRef.current === activeInstanceId
+    const cadence = createRecoveryCadence()
     let nodeBatchBuffer: NodePayload[] = []
     let nodeBatchTimeout: NodeJS.Timeout | null = null
     let contextTimeout: NodeJS.Timeout | null = null
@@ -85,7 +87,7 @@ export function useImprentaSynchronization({
         .map(node => node.id)
       if (currentNodes.length === 0) return
       const data = await fetchContextsForNodes(currentNodes)
-      if (isCurrent()) setContexts(previous => isCurrent() ? data as ImprentaContext[] : previous)
+      if (isCurrent()) setContexts(previous => isCurrent() ? reconcileSnapshot(previous, data as ImprentaContext[]) : previous)
     }, isCurrent, error => console.error('Failed to reconcile Imprenta contexts', error))
     const scheduleContexts = () => {
       if (contextTimeout) clearTimeout(contextTimeout)
@@ -97,6 +99,7 @@ export function useImprentaSynchronization({
 
     const handleNodePayload = (payload: NodePayload) => {
       if (!isCurrent()) return
+      cadence.reset()
       if (payload.eventType === 'INSERT') {
         const incoming = payload.new as InstanceNode
         if (deletedNodeIdsRef.current.has(incoming.id)) return
@@ -253,8 +256,9 @@ export function useImprentaSynchronization({
     const reconcileFromServer = createCoalescedReconciliation(async includeLogs => {
       const data = await refreshImprentaData({ includeLogs })
       if (!data || !isCurrent()) return
-      setNodes(previous => isCurrent() ? data.nodes.filter(n => !deletedNodeIdsRef.current.has(n.id)) : previous)
-      setContexts(previous => isCurrent() ? data.contexts as ImprentaContext[] : previous)
+      cadence.observe(data.nodes, data.contexts, Date.now())
+      setNodes(previous => isCurrent() ? reconcileSnapshot(previous, data.nodes.filter(n => !deletedNodeIdsRef.current.has(n.id))) : previous)
+      setContexts(previous => isCurrent() ? reconcileSnapshot(previous, data.contexts as ImprentaContext[]) : previous)
     }, isCurrent, error => console.error('Failed to reconcile Imprenta data', error))
     reconciliationRef.current = reconcileFromServer
 
@@ -273,6 +277,7 @@ export function useImprentaSynchronization({
     // Fallback reconcile while nodes are in-flight (covers missed Realtime events)
     const reconcileInterval = setInterval(() => {
       if (document.visibilityState === 'visible'
+        && cadence.due(Date.now())
         && hasRecoverableImprentaExecution(nodesRef.current, activeInstanceId, generatingNodeIdsRef.current)) {
         void reconcileFromServer(false)
       }

@@ -1,8 +1,9 @@
-import { useCallback } from "react"
+import { useCallback, useRef } from "react"
+import { IMPRENTA_NODE_W, IMPRENTA_ROW_H } from './preview-helpers'
 
 import type { useImprentaPanelState } from './state'
 
-type ImprentaDraggingOptions = Pick<ReturnType<typeof useImprentaPanelState>, "draggingNodeRef" | "nodeDragMovedRef" | "dragStartPosRef" | "viewportStore" | "dragStartNodePosRef" | "lastNodeDragPosRef" | "nodeElementsRef" | "nodeDragRafRef" | "dragStore" | "setDraggingNodeId" | "setPositions" | "nodesRef" | "setNodes" | "supabase" | "positionsRef">
+type ImprentaDraggingOptions = Pick<ReturnType<typeof useImprentaPanelState>, "draggingNodeRef" | "nodeDragMovedRef" | "dragStartPosRef" | "viewportStore" | "dragStartNodePosRef" | "lastNodeDragPosRef" | "nodeElementsRef" | "nodeDragRafRef" | "dragStore" | "setDraggingNodeId" | "setPositions" | "nodesRef" | "setNodes" | "supabase" | "positionsRef" | "nodeHeightsRef">
 
 export function useImprentaDragging({
   draggingNodeRef,
@@ -20,7 +21,9 @@ export function useImprentaDragging({
   setNodes,
   supabase,
   positionsRef,
+  nodeHeightsRef,
 }: ImprentaDraggingOptions) {
+  const focusOnReleaseRef = useRef(false)
   const handleWindowMouseMove = useCallback((e: MouseEvent) => {
     const nodeId = draggingNodeRef.current
     if (!nodeId) return
@@ -29,6 +32,8 @@ export function useImprentaDragging({
       if (Math.abs(e.clientX - dragStartPosRef.current.x) > 5 || Math.abs(e.clientY - dragStartPosRef.current.y) > 5) {
         nodeDragMovedRef.current = true
       }
+      // Sub-threshold pointer jitter is a click, not a world-space move.
+      if (!nodeDragMovedRef.current) return
     }
 
     // Prevent text selection while dragging the card.
@@ -102,6 +107,16 @@ export function useImprentaDragging({
     // response node is normalized and rendered.
     if (!didMove) {
       lastNodeDragPosRef.current = null
+      if (focusOnReleaseRef.current) {
+        const pos = dragStartNodePosRef.current
+        const element = nodeElementsRef.current[nodeId]
+        viewportStore.requestFocus?.({
+          x: pos.x + IMPRENTA_NODE_W / 2,
+          y: pos.y + (element?.offsetHeight || nodeHeightsRef.current[nodeId] || IMPRENTA_ROW_H) / 2,
+          scale: Math.max(0.7, viewportStore.get().scale),
+        })
+      }
+      focusOnReleaseRef.current = false
       return
     }
 
@@ -122,6 +137,7 @@ export function useImprentaDragging({
   }, [handleWindowMouseMove])
 
   const beginNodeDrag = useCallback((nodeId: string, clientX: number, clientY: number) => {
+    focusOnReleaseRef.current = false
     nodeDragMovedRef.current = false
     draggingNodeRef.current = nodeId
     dragStartPosRef.current = { x: clientX, y: clientY }
@@ -158,6 +174,7 @@ export function useImprentaDragging({
     ev.stopPropagation()
     ev.preventDefault()
     beginNodeDrag(nodeId, ev.clientX, ev.clientY)
+    focusOnReleaseRef.current = true
   }, [beginNodeDrag])
 
   const handleNodeMouseDown = (e: React.MouseEvent, nodeId: string) => {

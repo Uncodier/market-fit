@@ -144,9 +144,8 @@ export function useImprentaVirtualization({
   const isLargeGraph = isLargeImprentaGraph(canvasNodes.length)
 
   const showFullNodeDetail =
-    !viewportInfo ||
     !isLargeGraph ||
-    viewportInfo.scale >= IMPRENTA_LOD_FULL_DETAIL_SCALE
+    Boolean(viewportInfo && viewportInfo.scale >= IMPRENTA_LOD_FULL_DETAIL_SCALE)
 
   const domOnlyNodeIds = useMemo(() => {
     const ids = new Set<string>()
@@ -214,16 +213,18 @@ export function useImprentaVirtualization({
   }, [domRenderNodes.length, mountedCount])
 
   const slicedRenderNodes = useMemo(() => {
-    return domRenderNodes.slice(0, mountedCount)
-  }, [domRenderNodes, mountedCount])
+    const required = domRenderNodes.filter(node => node.id === draggingNodeId || node.id === tempConnection?.fromNode)
+    const requiredIds = new Set(required.map(node => node.id))
+    return [...required, ...domRenderNodes.filter(node => !requiredIds.has(node.id)).slice(0, mountedCount)]
+  }, [domRenderNodes, mountedCount, draggingNodeId, tempConnection?.fromNode])
 
   const mountedNodeIds = useMemo(() => {
-    const ids = new Set<string>(domOnlyNodeIds)
+    const ids = new Set<string>()
     for (let i = 0;i < slicedRenderNodes.length;i++) {
       ids.add(slicedRenderNodes[i].id)
     }
     return ids
-  }, [slicedRenderNodes, domOnlyNodeIds])
+  }, [slicedRenderNodes])
 
   const canvasGetImages = useCallback(
     (node: InstanceNode) => collectImprentaLiteImagePreviewUrls(node, 4),

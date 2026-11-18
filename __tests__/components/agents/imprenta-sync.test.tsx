@@ -106,6 +106,21 @@ it('never polls idle pending drafts, including chat branches and ordinary child 
   expect(h.fetchContexts).not.toHaveBeenCalled()
 })
 
+it('backs off historical running snapshots and preserves node identity on each unchanged read', async () => {
+  const old = node({ status: 'running', updated_at: '2026-05-18' })
+  const h = setup([old])
+  h.refresh.mockImplementation(async () => ({ nodes: [{ ...old }], contexts: [], logs: [] }))
+  const initial = h.options.nodesRef.current
+  await advance(60000)
+  expect(h.refresh).toHaveBeenCalledTimes(3)
+  expect(h.options.nodesRef.current).toBe(initial)
+  await advance(45000)
+  expect(h.refresh).toHaveBeenCalledTimes(3)
+  visibility('visible')
+  await advance(1000)
+  expect(h.refresh).toHaveBeenCalledTimes(4)
+})
+
 it.each([
   ['running node', { status: 'running' }],
   ['backend starting node', { status: 'starting' }],

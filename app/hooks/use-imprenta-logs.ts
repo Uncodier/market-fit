@@ -1,11 +1,11 @@
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import useSWR from 'swr'
 import { EMPTY_LOGS, fetchImprentaLogs, type ImprentaData } from './imprenta-data-fetchers'
 
 type LogReadState = { scope: object; pending: boolean; error?: unknown }
 type ActiveRead = { scope: object; complete: boolean; promise: Promise<ImprentaData['logs']> }
 
-export function useImprentaLogs(instanceId?: string, siteId?: string) {
+export function useImprentaLogs(instanceId?: string, siteId?: string, loadDisplayLogs = true) {
   const scope = useMemo(() => ({ instanceId, siteId }), [instanceId, siteId])
   const activeScope = useRef<object | null>(scope)
   const version = useRef(0)
@@ -22,13 +22,14 @@ export function useImprentaLogs(instanceId?: string, siteId?: string) {
 
   const { data, error, isLoading, mutate } = useSWR(
     instanceId && siteId ? ['imprenta-logs', instanceId, siteId] as const : null,
-    ([, id]) => fetchImprentaLogs(id),
+    loadDisplayLogs ? ([, id]) => fetchImprentaLogs(id) : null,
     {
       keepPreviousData: false,
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
       shouldRetryOnError: false,
       refreshInterval: 0,
+      revalidateOnMount: loadDisplayLogs,
     },
   )
 
@@ -71,6 +72,12 @@ export function useImprentaLogs(instanceId?: string, siteId?: string) {
   // A successful initial display read may be server-limited or stale. It never
   // substitutes for the fresh, complete read required at publish admission.
   const ensureImprentaLogs = useCallback(() => refreshLogs(true), [refreshLogs])
+  const displayWasEnabled = useRef(loadDisplayLogs)
+  useEffect(() => {
+    const newlyRequired = loadDisplayLogs && !displayWasEnabled.current
+    displayWasEnabled.current = loadDisplayLogs
+    if (newlyRequired) void refreshLogs().catch(() => {})
+  }, [loadDisplayLogs, refreshLogs])
   const currentRead = readState?.scope === scope ? readState : undefined
   const logsError = currentRead?.error ?? error
   return {

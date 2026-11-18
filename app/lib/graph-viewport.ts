@@ -81,6 +81,17 @@ export function collectIdsFromGrid(
   const y0 = Math.floor(viewport.minY / cellSize)
   const y1 = Math.floor(viewport.maxY / cellSize)
   const out = new Set<string>()
+  // A zoomed-out viewport can span millions of empty cells. Visit only occupied
+  // cells when that is cheaper, keeping the same exact candidate contract.
+  if ((x1 - x0 + 1) * (y1 - y0 + 1) > grid.size) {
+    for (const [key, ids] of grid) {
+      const [x, y] = key.split(',').map(Number)
+      if (x >= x0 && x <= x1 && y >= y0 && y <= y1) {
+        for (const id of ids) out.add(id)
+      }
+    }
+    return out
+  }
   for (let cx = x0; cx <= x1; cx++) {
     for (let cy = y0; cy <= y1; cy++) {
       const s = grid.get(`${cx},${cy}`)

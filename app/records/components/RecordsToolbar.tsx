@@ -54,18 +54,18 @@ export function RecordsToolbar(props: RecordsToolbarProps) {
     { value: "date", label: t("records.groupBy.date") || "Date (Month)" },
   ]
 
-  return <div className="flex min-w-0 w-full items-center justify-between gap-2 md:w-auto">
-    <MobileFiltersDrawer alwaysModal>
-    <FilterContainer className="md:flex-col md:items-stretch md:gap-6">
+  return <div className="flex min-w-0 w-full items-center justify-between gap-2 md:gap-4">
+    <MobileFiltersDrawer>
+    <FilterContainer>
       <FilterSection title={t("common.search") || "Search"}>
         <SearchInput placeholder={t("records.search") || "Search records..."} value={props.searchQuery}
           onChange={event => props.onSearchChange(event.target.value)}
-          alwaysExpanded containerClassName="w-full"
+          alwaysExpanded containerClassName="w-full md:w-64"
           className="w-full h-10 md:h-9 bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20" />
       </FilterSection>
       <FilterSection title={t("records.groupBy") || "Group by"}>
         <Select value={props.groupBy} onValueChange={value => props.onGroupChange(value as GroupBy)}>
-          <SelectTrigger className="w-full" aria-label={t("records.groupBy") || "Group by"}>
+          <SelectTrigger className="w-full md:w-[180px]" aria-label={t("records.groupBy") || "Group by"}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

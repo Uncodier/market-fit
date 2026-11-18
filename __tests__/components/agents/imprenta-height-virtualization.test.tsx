@@ -27,3 +27,24 @@ it("invalidates viewport cells when a stationary card grows, without changing it
   view.rerender({ ...options, layoutEpoch: 2, viewportInfo: { ...viewportStore.get(), position: { x: 0, y: -1000 } } })
   expect(view.result.current.visibleNodeIds?.has("a")).toBe(false)
 })
+
+it('does not mount a large graph before the first viewport and immediately mounts its drag origin', () => {
+  const nodes = Array.from({ length: 166 }, (_, index) => ({
+    id: `node-${index}`, type: 'prompt', status: 'pending', result: {},
+  } as InstanceNode))
+  const viewportStore = createViewportStore({ scale: 0.05, canvasWidth: 1440, canvasHeight: 1000 })
+  const options: Parameters<typeof useImprentaVirtualization>[0] = {
+    nodes, canvasNodes: nodes, dummyNodes: [],
+    positions: Object.fromEntries(nodes.map((node, i) => [node.id, { x: (i % 30) * 600, y: Math.floor(i / 30) * 800 }])),
+    nodeHeightsRef: { current: {} }, layoutEpoch: 0, viewportInfo: null,
+    setViewportInfo: jest.fn(), viewportStore, viewportStoreRef: { current: viewportStore },
+    hoverStore: createImprentaHoverStore(), isDarkMode: false,
+    draggingNodeId: null, tempConnection: null, generatingNodeIds: new Set(),
+  }
+  const view = renderHook(props => useImprentaVirtualization(props), { initialProps: options })
+  expect(view.result.current.domRenderNodes).toHaveLength(0)
+  expect(view.result.current.mountedNodeIds.size).toBe(0)
+  view.rerender({ ...options, viewportInfo: viewportStore.get(), draggingNodeId: 'node-165' })
+  expect(view.result.current.slicedRenderNodes.map(node => node.id)).toContain('node-165')
+  expect([...view.result.current.mountedNodeIds]).toEqual(view.result.current.slicedRenderNodes.map(node => node.id))
+})

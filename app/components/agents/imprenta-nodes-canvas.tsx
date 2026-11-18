@@ -1,10 +1,9 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, type MutableRefObject } from "react"
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react"
 import type { InstanceNode } from "@/app/types/instance-nodes"
 import type { ViewportStore, ViewportSnapshot } from "@/app/lib/imprenta-viewport-store"
 import {
-  buildNodeCellGrid,
   collectIdsFromGrid,
   worldViewportFromCanvas,
   type GraphBBox,
@@ -19,62 +18,13 @@ import {
   type ImprentaLiteBand,
 } from "@/app/lib/imprenta-canvas-draw"
 import type { ImprentaThumbCache } from "@/app/lib/imprenta-thumb-cache"
-export type GridCacheEntry = {
-  nodes: InstanceNode[]
-  positions: Record<string, { x: number; y: number }>
-  heights: Record<string, number>
-  nodeW: number
-  rowH: number
-  ids: string[]
-  grid: Map<string, Set<string>>
-  nodesById: Map<string, InstanceNode>
-  nodeIndexes: Map<string, number>
-}
+import { readCachedIdsAndGrid, type GridCacheEntry } from "./imprenta-nodes-canvas-grid"
+import { bindCanvasPointerInteraction } from "./imprenta-nodes-canvas-interaction"
+import { expandMarkerQuery } from "./imprenta-nodes-canvas-geometry"
 
-/** Identity-keyed grid helper kept module-level for HMR/React-Compiler compatibility. */
-export function readCachedIdsAndGrid(
-  cacheRef: MutableRefObject<GridCacheEntry | null>,
-  nodes: InstanceNode[],
-  positions: Record<string, { x: number; y: number }>,
-  heights: Record<string, number>,
-  nodeW: number,
-  rowH: number
-): GridCacheEntry {
-  const cached = cacheRef.current
-  if (
-    cached &&
-    cached.nodes === nodes &&
-    cached.positions === positions &&
-    cached.heights === heights &&
-    cached.nodeW === nodeW &&
-    cached.rowH === rowH
-  ) {
-    return cached
-  }
-  const ids = new Array<string>(nodes.length)
-  const nodesById = new Map<string, InstanceNode>()
-  const nodeIndexes = new Map<string, number>()
-  for (let i = 0; i < nodes.length; i++) {
-    const node = nodes[i];
-    ids[i] = node.id
-    nodesById.set(node.id, node)
-    nodeIndexes.set(node.id, i)
-  }
-  const grid = buildNodeCellGrid(ids, positions, heights, nodeW, rowH)
-  const entry: GridCacheEntry = {
-    nodes,
-    positions,
-    heights,
-    nodeW,
-    rowH,
-    ids,
-    grid,
-    nodesById,
-    nodeIndexes,
-  }
-  cacheRef.current = entry
-  return entry
-}
+// Preserve the existing helper import surface.
+export { readCachedIdsAndGrid, type GridCacheEntry } from "./imprenta-nodes-canvas-grid"
+
 export interface ImprentaNodesCanvasProps {
   /** Nodes to consider (already includes dummies filtered out by the parent). */
   nodes: InstanceNode[]
@@ -90,7 +40,7 @@ export interface ImprentaNodesCanvasProps {
   viewportStore: ViewportStore
   thumbs: ImprentaThumbCache
   isDarkMode: boolean
-  /** Optional: ids currently rendered as full-detail DOM cards (skip in canvas). */
+  /** Actual mounted DOM card ids, not scheduled/desired ids (skip in canvas). */
   skipIds?: Set<string>
   /** Currently selected node id (drawn with ring). */
   selectedId?: string | null
@@ -104,9 +54,8 @@ export interface ImprentaNodesCanvasProps {
   /** World padding to avoid edge popping. */
   padWorld?: number
   /**
-   * Master switch: when false, the canvas disables pointer events entirely so DOM
-   * layers below (full cards, drop anchors) receive them. Typically set to false
-   * while a temp connection is being dragged.
+   * Master switch for delegated canvas hit handling. Paint always remains
+   * pointer-transparent. Disable while dragging a node or temp connection.
    */
   pointerEventsEnabled?: boolean
 }
@@ -140,40 +89,46 @@ export function ImprentaNodesCanvas({
 
   const theme = useMemo(() => imprentaCanvasTheme(isDarkMode), [isDarkMode])
   const themeRef = useRef(theme)
-  themeRef.current = theme
 
   const nodesRef = useRef(nodes)
-  nodesRef.current = nodes
   const positionsRef = useRef(positions)
-  positionsRef.current = positions
   const heightsRef = useRef(heights)
-  heightsRef.current = heights
   const nodeWRef = useRef(nodeW)
-  nodeWRef.current = nodeW
   const rowHRef = useRef(rowH)
-  rowHRef.current = rowH
   const fullRef = useRef(fullDetailScale)
-  fullRef.current = fullDetailScale
   const markerMaxRef = useRef(liteMarkerMax)
-  markerMaxRef.current = liteMarkerMax
   const microMaxRef = useRef(liteMicroMax)
-  microMaxRef.current = liteMicroMax
   const simpleMaxRef = useRef(liteSimpleMax)
-  simpleMaxRef.current = liteSimpleMax
   const skipRef = useRef(skipIds)
-  skipRef.current = skipIds
   const selRef = useRef(selectedId)
-  selRef.current = selectedId
   const getImgRef = useRef(getImageUrls)
-  getImgRef.current = getImageUrls
   const getVidRef = useRef(getVideoUrls)
-  getVidRef.current = getVideoUrls
   const onDownRef = useRef(onNodePointerDown)
-  onDownRef.current = onNodePointerDown
   const onBgDownRef = useRef(onBackgroundPointerDown)
-  onBgDownRef.current = onBackgroundPointerDown
+  const pointerEnabledRef = useRef(pointerEventsEnabled)
   const padRef = useRef(padWorld)
-  padRef.current = padWorld
+
+  // Native listeners and frame callbacks see only committed props.
+  useLayoutEffect(() => {
+    themeRef.current = theme
+    nodesRef.current = nodes
+    positionsRef.current = positions
+    heightsRef.current = heights
+    nodeWRef.current = nodeW
+    rowHRef.current = rowH
+    fullRef.current = fullDetailScale
+    markerMaxRef.current = liteMarkerMax
+    microMaxRef.current = liteMicroMax
+    simpleMaxRef.current = liteSimpleMax
+    skipRef.current = skipIds
+    selRef.current = selectedId
+    getImgRef.current = getImageUrls
+    getVidRef.current = getVideoUrls
+    onDownRef.current = onNodePointerDown
+    onBgDownRef.current = onBackgroundPointerDown
+    pointerEnabledRef.current = pointerEventsEnabled
+    padRef.current = padWorld
+  })
 
   const scheduleRef = useRef<(() => void) | null>(null)
   const touchTickRef = useRef(0)
@@ -219,13 +174,8 @@ export function ImprentaNodesCanvas({
         ctx.clearRect(0, 0, canvas.width, canvas.height)
         return
       }
-      // Only paint when we own the node rendering (lite band), OR we are in turbo mode (missing full cards).
-      const isTurbo = snap.interacting && snap.scale >= fullRef.current
-      if (!isTurbo && snap.scale >= fullRef.current) {
-        ctx.setTransform(1, 0, 0, 1, 0, 0)
-        ctx.clearRect(0, 0, canvas.width, canvas.height)
-        return
-      }
+      // Keep fallback shells until their actual DOM cards have mounted, even at rest.
+      const isTurbo = snap.scale >= fullRef.current
 
       const dpr = resizeToViewport(snap)
       ctx.setTransform(1, 0, 0, 1, 0, 0)
@@ -261,8 +211,7 @@ export function ImprentaNodesCanvas({
         nodeWRef.current,
         rowHRef.current
       )
-      const all = cached.nodes
-      const candidates = collectIdsFromGrid(cached.grid, world)
+      const candidates = collectIdsFromGrid(cached.grid, expandMarkerQuery(world, band, s))
 
       const urlCache = urlCacheRef.current
       const getUrls = (node: InstanceNode) => {
@@ -367,7 +316,8 @@ export function ImprentaNodesCanvas({
   // Schedule repaints on data-only changes.
   useEffect(() => {
     scheduleRef.current?.()
-  }, [nodes, positions, heights, nodeW, rowH, isDarkMode, selectedId, skipIds])
+  }, [nodes, positions, heights, nodeW, rowH, isDarkMode, selectedId, skipIds,
+    fullDetailScale, liteMarkerMax, liteMicroMax, liteSimpleMax, padWorld])
 
   /** Resolve client coordinates against spatial candidates in reverse paint order. */
   const hitTest = useCallback(
@@ -376,7 +326,7 @@ export function ImprentaNodesCanvas({
       if (!canvas) return null
       const rect = canvas.getBoundingClientRect()
       const snap = viewportStore.get()
-      if (snap.scale >= fullRef.current) return null
+      if (!pointerEnabledRef.current || snap.scale >= fullRef.current) return null
       const sx = clientX - rect.left
       const sy = clientY - rect.top
       const wx = (sx - snap.position.x) / snap.scale
@@ -387,9 +337,9 @@ export function ImprentaNodesCanvas({
       const rH = rowHRef.current
       const cached = readCachedIdsAndGrid(gridCacheRef, nodesRef.current, pos, h, w, rH)
       const point: GraphBBox = { minX: wx, minY: wy, maxX: wx, maxY: wy }
-      const candidates = collectIdsFromGrid(cached.grid, point)
       const s = snap.scale
       const band = bandFromScale(s, markerMaxRef.current, microMaxRef.current, simpleMaxRef.current)
+      const candidates = collectIdsFromGrid(cached.grid, expandMarkerQuery(point, band, s))
       // Only visit spatial candidates, in reverse paint order so children win.
       const orderedIds = Array.from(candidates).sort(
         (a, b) => (cached.nodeIndexes.get(b) ?? 0) - (cached.nodeIndexes.get(a) ?? 0)
@@ -428,59 +378,13 @@ export function ImprentaNodesCanvas({
     const canvas = canvasRef.current
     if (!canvas) return
 
-    const onPointerDown = (ev: PointerEvent) => {
-      if (ev.button !== 0) return
-      const hit = hitTest(ev.clientX, ev.clientY)
-      if (hit) {
-        onDownRef.current(hit.id, ev)
-      } else {
-        onBgDownRef.current?.(ev)
-      }
-    }
-
-    // rAF-throttled cursor update: raw pointermove can fire 200+ Hz on Mac trackpads.
-    let lastX = 0
-    let lastY = 0
-    let pendingMove = false
-    let lastCursor: string | null = null
-    const flushCursor = () => {
-      pendingMove = false
-      const hit = hitTest(lastX, lastY)
-      const next = hit ? "grab" : "default"
-      if (next !== lastCursor) {
-        canvas.style.cursor = next
-        lastCursor = next
-      }
-    }
-    const onPointerMove = (ev: PointerEvent) => {
-      lastX = ev.clientX
-      lastY = ev.clientY
-      if (pendingMove) return
-      pendingMove = true
-      window.requestAnimationFrame(flushCursor)
-    }
-
-    canvas.addEventListener("pointerdown", onPointerDown)
-    canvas.addEventListener("pointermove", onPointerMove)
-    return () => {
-      canvas.removeEventListener("pointerdown", onPointerDown)
-      canvas.removeEventListener("pointermove", onPointerMove)
-    }
-  }, [hitTest])
-
-  /** Toggle CSS `pointer-events` off when we are not the hit surface (full detail or disabled). */
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-
-    const apply = (snap: ViewportSnapshot) => {
-      const canHit = pointerEventsEnabled && snap.scale < fullRef.current
-      canvas.style.pointerEvents = canHit ? "auto" : "none"
-    }
-    apply(viewportStore.get())
-    const unsub = viewportStore.subscribe(apply)
-    return unsub
-  }, [viewportStore, pointerEventsEnabled])
+    return bindCanvasPointerInteraction(canvas, {
+      enabled: () => pointerEnabledRef.current && viewportStore.get().scale < fullRef.current,
+      hitTest: (x, y) => hitTest(x, y)?.id ?? null,
+      onNodePointerDown: (id, event) => onDownRef.current(id, event),
+      onBackgroundPointerDown: (event) => onBgDownRef.current?.(event),
+    })
+  }, [hitTest, viewportStore])
 
   return (
     <canvas

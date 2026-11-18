@@ -2,14 +2,14 @@ import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import useSWR from 'swr'
 import type { InstanceNode } from '@/app/types/instance-nodes'
 import {
-  EMPTY_CONTEXTS, EMPTY_LOGS, EMPTY_NODES, fetchImprentaGraph,
+  EMPTY_CONTEXTS, EMPTY_LOGS, EMPTY_NODES, fetchImprentaGraph, imprentaNeedsDisplayLogs,
   type ImprentaData, type ImprentaGraphSnapshot,
 } from './imprenta-data-fetchers'
 import { useImprentaLogs } from './use-imprenta-logs'
 
 export type { ImprentaData } from './imprenta-data-fetchers'
 
-export function useImprentaData(instanceId?: string, siteId?: string) {
+export function useImprentaData(instanceId?: string, siteId?: string, demandDrivenLogs = false) {
   const swrKey = instanceId && siteId ? (['imprenta-data', instanceId, siteId] as const) : null
   const scope = useMemo(() => ({ instanceId, siteId }), [instanceId, siteId])
   const activeScope = useRef<object | null>(scope)
@@ -36,7 +36,8 @@ export function useImprentaData(instanceId?: string, siteId?: string) {
     keepPreviousData: false,
     revalidateOnFocus: false,
   })
-  const { logs, refreshLogs, ...logsState } = useImprentaLogs(instanceId, siteId)
+  const loadDisplayLogs = !demandDrivenLogs || imprentaNeedsDisplayLogs(data?.nodes ?? EMPTY_NODES)
+  const { logs, refreshLogs, ...logsState } = useImprentaLogs(instanceId, siteId, loadDisplayLogs)
   const logsRef = useRef(logs)
   useLayoutEffect(() => { logsRef.current = logs }, [logs])
   const graphError = (refreshFailure?.scope === scope ? refreshFailure.error : undefined) ?? error
@@ -51,7 +52,7 @@ export function useImprentaData(instanceId?: string, siteId?: string) {
     const isCurrent = () => activeScope.current === scope && refreshVersion.current === version
     // Both reads start together; graph cache publication never waits on logs.
     // Log failures remain on logsError, not on the graph reconciliation promise.
-    if (options.includeLogs !== false) void refreshLogs().catch(() => {})
+    if (options.includeLogs !== false && loadDisplayLogs) void refreshLogs().catch(() => {})
     const graphRead = (async () => {
       try {
         const snapshot = await fetchImprentaGraph(['imprenta-data', instanceId, siteId], options.includeLogs !== false)
@@ -72,7 +73,7 @@ export function useImprentaData(instanceId?: string, siteId?: string) {
       }
     })()
     return graphRead
-  }, [instanceId, siteId, scope, mutate, refreshLogs])
+  }, [instanceId, siteId, scope, mutate, refreshLogs, loadDisplayLogs])
 
   const cacheUploadedNode = useCallback(async (node: InstanceNode) => {
     if (activeScope.current !== scope || node.instance_id !== instanceId || node.site_id !== siteId) return

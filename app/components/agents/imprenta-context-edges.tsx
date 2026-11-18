@@ -113,7 +113,7 @@ export const ImprentaContextEdges = memo(function ImprentaContextEdges({
     edges.map((edge) => {
       const strokeWidth = edge.isSelected ? 4 : edge.touchesHoverChain ? 3 : 2
       return (
-        <g key={`ctx-edge-${edge.id}`}>
+        <g key={`ctx-edge-${edge.id}`} data-imprenta-context-control>
           <path
             d={edge.d}
             fill="none"

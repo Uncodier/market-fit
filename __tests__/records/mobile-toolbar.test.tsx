@@ -41,6 +41,16 @@ function toolbarProps() {
 }
 
 describe("Records mobile toolbar", () => {
+  const originalScrollIntoView = HTMLElement.prototype.scrollIntoView
+
+  beforeAll(() => {
+    HTMLElement.prototype.scrollIntoView = jest.fn()
+  })
+
+  afterAll(() => {
+    HTMLElement.prototype.scrollIntoView = originalScrollIntoView
+  })
+
   beforeEach(() => {
     jest.clearAllMocks()
     jest.mocked(useIsMobile).mockReturnValue(true)
@@ -80,21 +90,33 @@ describe("Records mobile toolbar", () => {
     expect(within(panel).queryByRole("radio", { name: "Toggle graph view" })).not.toBeInTheDocument()
   })
 
-  it("keeps the options in the modal even above the mobile breakpoint", () => {
+  it("shows inline search, grouping, dates and sorting on desktop without a filter modal", async () => {
     jest.mocked(useIsMobile).mockReturnValue(false)
     const props = toolbarProps()
     render(<RecordsToolbar {...props} />)
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
-    expect(screen.queryByRole("combobox")).not.toBeInTheDocument()
-    expect(screen.queryByTitle("Sort by")).not.toBeInTheDocument()
+    const search = screen.getByPlaceholderText("Search records...")
+    const group = screen.getByRole("combobox", { name: "Group by" })
+    expect(group).toHaveClass("md:w-[180px]")
+    expect(screen.getByTitle("Sort by")).toBeInTheDocument()
     expect(screen.getByRole("radio", { name: "Toggle graph view" })).toBeInTheDocument()
-    fireEvent.click(screen.getByRole("button", { name: "Search" }))
-    const panel = screen.getByRole("dialog", { name: "Search" })
-    expect(within(panel).getByPlaceholderText("Search records...")).toBeInTheDocument()
-    expect(within(panel).getByRole("combobox", { name: "Group by" })).toBeInTheDocument()
-    expect(within(panel).getByText("Choose dates")).toBeInTheDocument()
-    expect(within(panel).getByTitle("Sort by")).toBeInTheDocument()
-    expect(within(panel).queryByRole("radio", { name: "Toggle graph view" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Search" })).not.toBeInTheDocument()
+    expect(group.parentElement?.parentElement).toHaveClass("md:flex-row", "md:items-center", "md:gap-4")
+    expect(group.parentElement?.parentElement).not.toHaveClass("md:flex-col", "md:items-stretch")
+
+    fireEvent.change(search, { target: { value: "Proposal" } })
+    expect(props.onSearchChange).toHaveBeenCalledWith("Proposal")
+    fireEvent.keyDown(group, { key: "Enter" })
+    fireEvent.click(await screen.findByRole("option", { name: "Category" }))
+    expect(props.onGroupChange).toHaveBeenCalledWith("category")
+    fireEvent.click(screen.getByText("Choose dates"))
+    expect(props.onDateChange).toHaveBeenLastCalledWith({ startDate: new Date(2026, 9, 1), endDate: new Date(2026, 9, 31) })
+    fireEvent.click(screen.getByRole("button", { name: "All time" }))
+    expect(props.onDateChange).toHaveBeenLastCalledWith(null)
+    fireEvent.keyDown(screen.getByTitle("Sort by"), { key: "Enter" })
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Oldest" }))
+    expect(props.onSortChange).toHaveBeenCalledWith("oldest")
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
   })
 
   it.each([true, false])("keeps selected-record actions in the modal (mobile: %s)", mobile => {

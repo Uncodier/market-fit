@@ -150,10 +150,10 @@ describe("mobile primary buttons", () => {
     expect(onClick).toHaveBeenCalledTimes(1)
   })
 
-  it("removes shared mobile primary glass paint and decoration", () => {
+  it("removes mobile glass paint and decoration only from icon controls", () => {
     const css = postcss.parse(readFileSync(path.join(process.cwd(), "app/styles/mobile-primary-buttons.css"), "utf8"))
     const paint = css.nodes.flatMap((node) => node.type === "atrule" ? node.nodes ?? [] : [])
-      .find((node) => node.type === "rule" && node.selectors.includes("html .btn-primary.btn-primary.btn-primary"))
+      .find((node) => node.type === "rule" && node.selector.includes("html .btn-primary.btn-primary.btn-primary:is("))
     expect(paint?.type).toBe("rule")
     const values: Record<string, string> = {}
     if (paint?.type === "rule") paint.walkDecls((decl) => {
@@ -171,12 +171,21 @@ describe("mobile primary buttons", () => {
       color: "hsl(var(--foreground))",
     })
     const surface = css.nodes.flatMap((node) => node.type === "atrule" ? node.nodes ?? [] : [])
-      .find((node) => node.type === "rule" && node.selectors.includes("html .btn-primary > .btn-glass-surface"))
+      .find((node) => node.type === "rule" && node.selector.includes("html .btn-primary:is(") && node.selector.includes("> .btn-glass-surface"))
     const hidden: string[] = []
     if (surface?.type === "rule") surface.walkDecls("display", (decl) => {
       hidden.push(decl.value)
     })
     expect(hidden).toEqual(["none"])
+    expect(paint?.type === "rule" && paint.selector).toContain(":has(> .btn-primary:is(")
+    for (const rule of [paint, surface]) {
+      if (rule?.type !== "rule") throw new Error("Missing icon-only override")
+      for (const selector of rule.selectors) {
+        // Decorative blobs stay hidden for text CTAs too, avoiding Safari artifacts.
+        if (selector.endsWith("::before") || selector.endsWith("::after")) continue
+        expect(selector).toMatch(/:is\(.btn-primary-circular, :has\(> .safari-icon-fix\), :has\(> svg\)\)/)
+      }
+    }
   })
 
   it("replaces opaque desktop paint with tinted glass and removes Safari's hard-edged blobs", () => {

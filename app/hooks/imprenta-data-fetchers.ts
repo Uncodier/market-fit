@@ -15,6 +15,11 @@ export const EMPTY_LOGS: Record<string, unknown>[] = []
 const PAGE_SIZE = 500
 const rootCreationPending = new Set<string>()
 
+export function imprentaNeedsDisplayLogs(nodes: readonly InstanceNode[]) {
+  return nodes.some(node => node.type === 'generate-audience' || node.type === 'publish'
+    || node.settings?.media_type === 'audience' || node.result?.audience_leads || node.result?.example_leads)
+}
+
 async function fetchAllNodes(instanceId: string): Promise<InstanceNode[]> {
   const supabase = createClient()
   const nodes: InstanceNode[] = []

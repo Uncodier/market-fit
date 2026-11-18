@@ -2,9 +2,46 @@
 
 ## Scope
 
-The canvas keeps its existing cards, gestures, level-of-detail thresholds and
+The canvas keeps its existing cards, drag gestures, level-of-detail thresholds and
 persisted graph format. These changes reduce incidental work; they do not replace
 the backend, change RLS, or establish measured production latency improvements.
+
+## Large visual canvases
+
+- Clicking an overview node without dragging focuses its center at a readable
+  zoom. A real drag still saves its position; focusing does not write node data.
+- The paint layer is pointer-transparent. A scoped viewport listener hit-tests
+  overview nodes without intercepting actual DOM cards, inputs or relation UI.
+- Marker queries include their minimum on-screen footprint, not just the smaller
+  world-space rectangle. Fallback shells remain visible until full cards mount.
+  Drag/connection origins mount outside the progressive batch budget; only
+  actually mounted cards are excluded from canvas drawing.
+- Fit and focus publish the same transform to the DOM and viewport store. The
+  shared zoom component is split by state, fit, mouse, touch and background.
+- Large canvases wait for viewport dimensions before mounting full cards. Context
+  labels are hidden in overview (the selected relation editor remains available).
+- Sparse-grid queries iterate occupied cells when a low-zoom viewport would scan
+  more empty cells. This bounds query work at very distant zooms.
+- Imprenta visual-only graphs do not read instance history on entry or recovery.
+  Audience/publish data retains its log-loading path, including newly added
+  nodes. Explicit publish admission still requires a complete fresh read.
+- Repeated unchanged running snapshots preserve node/relation object identities
+  and back off from 15 seconds to at most 120 seconds. Realtime activity resets
+  fast recovery; visibility and manual refresh remain available. Old `running`
+  statuses are not changed or assumed completed by this policy.
+
+Local Chromium microbenchmark, 166 synthetic nodes spread over roughly
+23,000 by 10,000 world units, 60 visibility queries: approximately 32 to 8 ms at
+5% zoom and 790 to 8 ms at 1% zoom. This measures only the actual grid helper in
+an isolated browser, not application FPS or authenticated production latency.
+Offline Chromium/WebKit tests also exercise native pointer routing. A local
+React/Chromium before-and-after focus harness used the actual zoom and drag
+components: the old no-drag click remained at 0.05113 scale; the new click reached
+0.7, centered the same node and kept store/DOM transforms equal, without backend
+requests. This is isolated interaction evidence, not production performance.
+The saved production session redirected to the project selector, so live canvas interaction
+remains unverified; read-only database aggregates informed the synthetic scale.
+No production node status, relation or position was modified during diagnosis.
 
 ## Rendering
 
@@ -34,7 +71,7 @@ the backend, change RLS, or establish measured production latency improvements.
 - Nodes and connections remain one graph snapshot so a partial connection read
   cannot enable graph execution. Logs load independently and do not delay the
   first graph display. Log errors must not be interpreted as an empty history.
-  Initial display history retains its existing server limit; only explicit
+  When needed, display history retains its existing server limit; only explicit
   publishing reads the complete paginated history. Graph refreshes return without
   waiting on optional logs. The Retry notice also reconciles the mounted graph,
   not just its SWR cache, and retains separate graph/log failure indicators.

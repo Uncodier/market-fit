@@ -64,6 +64,38 @@ it("keeps a confirmed upload in the cache used when reopening the canvas", async
   await waitFor(() => expect(fetchNodes).toHaveBeenCalledTimes(2))
 })
 
+it('does not read any history for a visual-only canvas, including recovery refresh', async () => {
+  const { result } = renderHook(() => useImprentaData('instance-a', 'site-a', true), { wrapper: wrapper() })
+  await waitFor(() => expect(result.current.isGraphReady).toBe(true))
+  expect(fetchLogs).not.toHaveBeenCalled()
+  await act(async () => { await result.current.refreshImprentaData() })
+  expect(fetchLogs).not.toHaveBeenCalled()
+  // Explicit publication still requires its independent complete read.
+  await act(async () => { await result.current.ensureImprentaLogs() })
+  expect(fetchLogs).toHaveBeenCalledWith(0, 499)
+})
+
+it('loads audience display history when the graph actually needs it', async () => {
+  fetchNodes.mockResolvedValue({ data: [{ ...node('audience'), type: 'generate-audience' }], error: null })
+  const { result } = renderHook(() => useImprentaData('instance-a', 'site-a', true), { wrapper: wrapper() })
+  await waitFor(() => expect(result.current.isGraphReady).toBe(true))
+  await waitFor(() => expect(result.current.isLogsReady).toBe(true))
+  expect(fetchLogs).toHaveBeenCalledTimes(1)
+})
+
+it('loads logs when a visual canvas gains a live audience node without losing its graph', async () => {
+  const { result, rerender } = renderHook(({ demand }) => useImprentaData('instance-a', 'site-a', demand), {
+    initialProps: { demand: true }, wrapper: wrapper(),
+  })
+  await waitFor(() => expect(result.current.isGraphReady).toBe(true))
+  const graph = result.current.imprentaData
+  expect(fetchLogs).not.toHaveBeenCalled()
+  rerender({ demand: false })
+  await waitFor(() => expect(result.current.isLogsReady).toBe(true))
+  expect(result.current.imprentaData).toBe(graph)
+  expect(fetchLogs).toHaveBeenCalledTimes(1)
+})
+
 it("allows concurrent publications to share a complete log read without cancelling either", async () => {
   const { result } = renderHook(() => useImprentaData("instance-a", "site-a"), { wrapper: wrapper() })
   await waitFor(() => expect(result.current.isLogsReady).toBe(true))

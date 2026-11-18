@@ -298,10 +298,11 @@ export function ImprentaPanelView({
                   return (
                     <div
                       key={`ctx-wrapper-${ctx.id}`}
+                      data-imprenta-context-control
                       className="absolute top-0 left-0 w-full h-full pointer-events-none"
                       style={{ zIndex: isSelected ? 30 : 0 }}
                     >
-                      {!isSelected && (ctx.type != null || targetNodeForCtx?.type === "publish") && (
+                      {showFullNodeDetail && !isSelected && (ctx.type != null || targetNodeForCtx?.type === "publish") && (
                         <div
                           className="absolute px-2 py-0.5 bg-background border border-primary/20 text-primary text-[10px] font-medium rounded-full shadow-sm pointer-events-auto cursor-pointer whitespace-nowrap"
                           style={{

@@ -1,4 +1,4 @@
-/* Shared mobile primary buttons: bare actions with accessible touch targets. */
+/* Shared mobile primary buttons: glass text CTAs and bare icon touch targets. */
 @media (max-width: 767px) {
   /* Remove the recessed surround, including its hover and disabled variants. */
   .btn-primary-well::before,
@@ -174,9 +174,9 @@
     }
   }
 
-  /* All primary actions are bare controls, not glass CTAs, on mobile. */
-  html .btn-primary.btn-primary.btn-primary,
-  html .btn-primary-well.btn-primary-well.btn-primary-well {
+  /* Only icon actions are bare controls; text CTAs retain their tinted glass. */
+  html .btn-primary.btn-primary.btn-primary:is(.btn-primary-circular, :has(> .safari-icon-fix), :has(> svg)),
+  html .btn-primary-well.btn-primary-well.btn-primary-well:has(> .btn-primary:is(.btn-primary-circular, :has(> .safari-icon-fix), :has(> svg))) {
     background-color: transparent !important;
     background-image: none !important;
     border: 0 !important;
@@ -187,7 +187,7 @@
     color: hsl(var(--foreground)) !important;
   }
 
-  html .btn-primary > .btn-glass-surface,
+  html .btn-primary:is(.btn-primary-circular, :has(> .safari-icon-fix), :has(> svg)) > .btn-glass-surface,
   html .btn-primary::before,
   html .btn-primary::after,
   html .btn-primary-well::before,

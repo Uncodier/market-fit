@@ -4,6 +4,7 @@ import { useLayout } from "@/app/context/LayoutContext"
 import { useIsMobile } from "@/app/hooks/use-mobile-view"
 import { createClient } from "@/lib/supabase/client"
 import { useImprentaData } from "@/app/hooks/useImprentaData"
+import { imprentaNeedsDisplayLogs } from "@/app/hooks/imprenta-data-fetchers"
 import { useState, useRef, useMemo } from "react"
 import { InstanceNode } from "@/app/types/instance-nodes"
 import { ImprentaPersistenceBarrier } from "@/app/lib/imprenta-persistence-barrier"
@@ -28,18 +29,19 @@ export function useImprentaPanelState({ activeInstanceId }: ImprentaPanelStateOp
   const sidebarWidth = isMobile ? 0 : isLayoutCollapsed ? 64 : 256;
 
   const supabase = createClient()
+  const [nodes, setNodes] = useState<InstanceNode[]>([])
 
   const {
     imprentaData, isLoading: isImprentaLoading, refreshImprentaData, cacheUploadedNode, logs: dataLogs,
     isGraphReady, graphError, isLogsReady, isLogsLoading, logsError, ensureImprentaLogs,
   } = useImprentaData(
     activeInstanceId,
-    currentSite?.id
+    currentSite?.id,
+    !imprentaNeedsDisplayLogs(nodes.filter(node => node.instance_id === activeInstanceId)),
   )
 
   const logs = dataLogs as ImprentaLog[]
 
-  const [nodes, setNodes] = useState<InstanceNode[]>([])
 
   const [initialPrompt, setInitialPrompt] = useState("")
 

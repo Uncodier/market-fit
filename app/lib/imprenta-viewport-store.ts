@@ -22,7 +22,13 @@ export type ViewportStore = {
   subscribe: (listener: (s: ViewportSnapshot) => void) => () => void
   /** Convenience: mark interaction boundary (writes only `interacting` and fires). */
   setInteracting: (v: boolean) => void
+  /** Commands are applied by the owning canvas before it publishes a snapshot. */
+  requestFocus?: (focus: ViewportFocusRequest) => void
+  subscribeFocus?: (listener: (focus: ViewportFocusRequest) => void) => () => void
 }
+
+/** Center a world-space point at a readable scale (default 0.7). */
+export type ViewportFocusRequest = { x: number; y: number; scale?: number }
 
 const DEFAULT_SNAPSHOT: ViewportSnapshot = {
   scale: 1,
@@ -36,6 +42,7 @@ const DEFAULT_SNAPSHOT: ViewportSnapshot = {
 export function createViewportStore(initial?: Partial<ViewportSnapshot>): ViewportStore {
   let snapshot: ViewportSnapshot = { ...DEFAULT_SNAPSHOT, ...initial }
   const listeners = new Set<(s: ViewportSnapshot) => void>()
+  const focusListeners = new Set<(focus: ViewportFocusRequest) => void>()
   let rafId: number | null = null
 
   const flush = () => {
@@ -60,6 +67,11 @@ export function createViewportStore(initial?: Partial<ViewportSnapshot>): Viewpo
   }
 
   return {
+    requestFocus: (focus) => focusListeners.forEach((listener) => listener(focus)),
+    subscribeFocus: (listener) => {
+      focusListeners.add(listener)
+      return () => { focusListeners.delete(listener) }
+    },
     get: () => snapshot,
     set: (next) => {
       snapshot = {
