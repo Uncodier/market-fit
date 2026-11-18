@@ -61,13 +61,13 @@ export function ShopSection(props: ShopSectionProps) {
 
           <div className="hidden md:block w-px h-16 bg-border shrink-0" />
 
-          <div className="flex-1 space-y-2 w-full">
+          <div className="flex-1 min-w-0 space-y-2 w-full">
             <FormLabel className="text-sm font-semibold">Store Link</FormLabel>
             <FormDescription className="text-xs">
               This is your public marketplace URL. Share it with your customers on social media, in campaigns, or directly via messages.
             </FormDescription>
             <div className="flex items-center gap-2 mt-2 bg-muted/50 border rounded-lg p-1.5 pl-3">
-              <span className="flex-1 text-sm font-mono text-muted-foreground truncate select-all">{siteUrl}</span>
+              <span className="flex-1 min-w-0 text-sm font-mono text-muted-foreground truncate select-all">{siteUrl}</span>
               <div className="flex items-center gap-1 shrink-0">
                 <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={handleCopyUrl} title="Copy Link">
                   <Copy className="h-4 w-4" />

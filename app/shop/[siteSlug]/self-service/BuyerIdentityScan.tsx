@@ -6,6 +6,16 @@ import { Input } from "@/app/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogBody, DialogFooter, DialogForm } from "@/app/components/ui/dialog"
 import { resolveAppApiUrl } from "@/app/commerce/app-api-url"
 import { useSelfService } from "./SelfServiceProvider"
+import { useLocalization } from "@/app/context/LocalizationContext"
+
+const buyerErrorKeys: Record<string, string> = {
+  "This code is invalid or expired. Refresh it in your account and try again.": "shop.selfService.buyer.invalidCode",
+  "Origin not allowed.": "shop.selfService.buyer.originNotAllowed",
+  "Invalid account QR request.": "shop.selfService.buyer.invalidRequest",
+  "Invalid or expired account QR.": "shop.selfService.buyer.expiredQr",
+  "Self-service location unavailable.": "shop.selfService.buyer.locationUnavailable",
+  "Unable to identify this account. Refresh your QR or continue anonymously.": "shop.selfService.buyer.identificationFailed",
+}
 
 /** Raw mf:user UUIDs are never an identity credential at a public kiosk. */
 export function isSignedBuyerCode(code: string) {
@@ -13,6 +23,7 @@ export function isSignedBuyerCode(code: string) {
 }
 
 export function BuyerIdentityScan({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+  const { t } = useLocalization()
   const { context, setIdentity } = useSelfService()
   const [code, setCode] = useState("")
   const [error, setError] = useState("")
@@ -40,7 +51,7 @@ export function BuyerIdentityScan({ open, onOpenChange }: { open: boolean; onOpe
     const trimmed = value.trim()
     if (inFlight.current) return
     if (!isSignedBuyerCode(trimmed)) {
-      setError("Use the signed buyer QR code from your account. Raw user IDs are not accepted.")
+      setError("shop.selfService.buyer.signedCodeRequired")
       return
     }
     const current = generation.current
@@ -56,14 +67,14 @@ export function BuyerIdentityScan({ open, onOpenChange }: { open: boolean; onOpe
       const result = await response.json()
       if (current !== generation.current) return
       if (!response.ok || typeof result.name !== "string") {
-        setError(result.error || "This code is invalid or expired. Refresh it in your account and try again.")
+        setError(buyerErrorKeys[result.error] || result.error || "shop.selfService.buyer.invalidCode")
         return
       }
       setIdentity({ code: trimmed, name: result.name })
       setCode("")
       onOpenChange(false)
     } catch {
-      if (current === generation.current) setError("Unable to verify your code. Please try again.")
+      if (current === generation.current) setError("shop.selfService.buyer.verificationFailed")
     } finally {
       inFlight.current = false
       setLoading(false)
@@ -87,9 +98,9 @@ export function BuyerIdentityScan({ open, onOpenChange }: { open: boolean; onOpe
       starting = scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 230, height: 230 } },
         (value) => { if (!cancelled) void submitRef.current(value) }, () => {})
       starting.catch(() => {
-        if (!cancelled) { setError("Camera unavailable. Allow camera access or paste your buyer code below."); setCamera(false) }
+        if (!cancelled) { setError("shop.selfService.buyer.cameraAccess"); setCamera(false) }
       })
-    }).catch(() => { if (!cancelled) { setError("Camera unavailable. Paste your buyer code below."); setCamera(false) } })
+    }).catch(() => { if (!cancelled) { setError("shop.selfService.buyer.cameraUnavailable"); setCamera(false) } })
     return () => { cancelled = true; void stop() }
   }, [open, camera, id])
 
@@ -105,28 +116,28 @@ export function BuyerIdentityScan({ open, onOpenChange }: { open: boolean; onOpe
 
   return <Dialog open={open} onOpenChange={handleOpenChange}>
     <DialogContent size="md">
-      <DialogHeader><DialogTitle>Scan buyer QR</DialogTitle>
-        <DialogDescription>Optional: link this order to your account using its signed buyer QR. You can also continue anonymously.</DialogDescription>
+      <DialogHeader><DialogTitle>{t("shop.selfService.buyer.title")}</DialogTitle>
+        <DialogDescription>{t("shop.selfService.buyer.description")}</DialogDescription>
       </DialogHeader>
       <DialogForm onSubmit={(event) => { event.preventDefault(); void submit(code) }}>
         <DialogBody className="space-y-5">
           <div className="space-y-3">
             {!camera && <Button type="button" variant="outline" className="w-full"
               disabled={loading} onClick={() => { setError(""); setCamera(true) }}>
-              Use camera
+              {t("shop.selfService.buyer.useCamera")}
             </Button>}
-            {camera && <div id={id} role="region" aria-label="Buyer QR camera" className="min-h-64 w-full overflow-hidden rounded-xl border bg-muted/30" />}
+            {camera && <div id={id} role="region" aria-label={t("shop.selfService.buyer.cameraLabel")} className="min-h-64 w-full overflow-hidden rounded-xl border bg-muted/30" />}
           </div>
           <div className="space-y-2">
-            <label htmlFor={`${id}-code`} className="block text-sm font-medium">Paste or type buyer code</label>
+            <label htmlFor={`${id}-code`} className="block text-sm font-medium">{t("shop.selfService.buyer.codeLabel")}</label>
             <Input id={`${id}-code`} value={code} onChange={(event) => setCode(event.target.value)} autoComplete="off" autoCapitalize="none" spellCheck={false}
               maxLength={1024} placeholder="mf:buyer:…" disabled={loading} aria-invalid={!!error} aria-describedby={error ? `${id}-error` : undefined} />
           </div>
-          {error && <p id={`${id}-error`} role="alert" className="text-sm text-destructive">{error}</p>}
+          {error && <p id={`${id}-error`} role="alert" className="text-sm text-destructive">{error.startsWith("shop.selfService.") ? t(error) : error}</p>}
         </DialogBody>
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>Continue anonymously</Button>
-          <Button type="submit" disabled={loading || !code.trim()} className="!min-w-0">{loading ? "Verifying…" : "Verify buyer code"}</Button>
+          <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>{t("shop.selfService.buyer.anonymous")}</Button>
+          <Button type="submit" disabled={loading || !code.trim()} className="!min-w-0">{t(loading ? "shop.selfService.buyer.verifying" : "shop.selfService.buyer.verify")}</Button>
         </DialogFooter>
       </DialogForm>
     </DialogContent>

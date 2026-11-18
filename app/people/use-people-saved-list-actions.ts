@@ -10,7 +10,7 @@ import type { PeopleFilters } from "./use-people-filters"
 import type { FinderRequest } from "./finder-request-types"
 import { applySavedFinderFilters } from "./hydrate-finder-filters"
 
-type Dependencies = PeopleFilters & Pick<PeopleSearchState, "currentSite" | "setCurrentPage" | "executeSearch" | "isSearchPending" | "availableSegments" | "setAvailableSegments" | "setIsIcpModalOpen" | "removeIcp" | "renameIcp" | "setCollapsibleVersion" | "setIsEditIcpModalOpen" | "editingIcp" | "setEditingIcp" | "editingIcpName" | "setEditingIcpName" | "editingIcpSegmentValue" | "setEditingIcpSegmentValue" | "setEditingIcpSegmentsLoading">
+type Dependencies = PeopleFilters & Pick<PeopleSearchState, "currentSite" | "setSelectedList" | "setSelectedPersonIds" | "setShowResultsOnMobile" | "setCurrentPage" | "executeSearch" | "isSearchPending" | "availableSegments" | "setAvailableSegments" | "setIsIcpModalOpen" | "removeIcp" | "renameIcp" | "setCollapsibleVersion" | "setIsEditIcpModalOpen" | "editingIcp" | "setEditingIcp" | "editingIcpName" | "setEditingIcpName" | "editingIcpSegmentValue" | "setEditingIcpSegmentValue" | "setEditingIcpSegmentsLoading">
 
 export function usePeopleSavedListActions(dependencies: Dependencies) {
   const {
@@ -45,9 +45,13 @@ export function usePeopleSavedListActions(dependencies: Dependencies) {
       }
       if (isSearchPending()) return
       if (res.data?.icp_mining?.source === 'selected_people') {
-        toast.info('This list contains selected people queued for enrichment, not search filters.')
+        if (!currentSite?.id) throw new Error('No site selected')
+        dependencies.setSelectedList({ id: icpId, siteId: currentSite.id })
+        dependencies.setSelectedPersonIds([])
+        dependencies.setShowResultsOnMobile(true)
         return
       }
+      dependencies.setSelectedList(null)
       const q: FinderRequest = res.data?.role_query?.query || {}
       applySavedFinderFilters(q, dependencies)
       // Set collapsible defaults based on saved filters.

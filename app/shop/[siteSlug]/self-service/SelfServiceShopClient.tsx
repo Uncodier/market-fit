@@ -17,16 +17,17 @@ import { ShopHeroTrust } from "../ShopHeroTrust"
 import { ShopFulfillmentHeader } from "../ShopFulfillmentHeader"
 import { ShopMobileCartCta, ShopSiteFooter } from "../ShopSiteFooter"
 import { SelfServiceHeader } from "./SelfServiceHeader"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import { SelfServiceCart } from "./SelfServiceCart"
 import { SelfServiceConfirmation } from "./SelfServiceConfirmation"
 import { useSelfService } from "./SelfServiceProvider"
-import { SelfServiceCoupons } from "./SelfServiceCoupons"
 
 export function SelfServiceShopClient({ initialCatalog, initialCount, initialCategoryOffsets, generalPromos, promoBadgesByItemId, categoryPromosByName }: {
   initialCatalog: CatalogItem[]; initialCount: number; initialCategoryOffsets: ShopCategoryOffset[]
   generalPromos: StorefrontPromoCard[]; promoBadgesByItemId: Record<string, PromoBadge>; categoryPromosByName: Record<string, StorefrontPromoCard[]>
 }) {
   const { context, addItem, fulfillment, setFulfillment, cart, startNewOrder, orderVersion } = useSelfService()
+  const { t } = useLocalization()
   const [search, setSearch] = useState("")
   const query = useDeferredValue(search)
   const [cartOpen, setCartOpen] = useState(false)
@@ -61,16 +62,15 @@ export function SelfServiceShopClient({ initialCatalog, initialCount, initialCat
 
   if (order) return <SelfServiceConfirmation order={order} onStartNew={() => { startNewOrder(); setOrder(null); setSearch("") }} />
   return <div className="flex min-h-screen flex-col bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100">
-    <SelfServiceHeader onOpenCart={() => setCartOpen(true)} searchQuery={search} onSearchChange={setSearch} />
-    <ShopHeroTrust site={heroSite} searchQuery={query} />
+    <SelfServiceHeader onOpenCart={() => setCartOpen(true)} searchQuery={search} onSearchChange={setSearch} promos={coupons} />
+    {coupons.length === 0 && <ShopHeroTrust site={heroSite} searchQuery={query} />}
     <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-3 px-4 pt-5 md:px-8">
       <div className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
         <MapPin className="h-4 w-4 shrink-0" />
-        <span className="truncate">{context.location.name} · Self-service</span>
+        <span className="truncate">{context.location.name} · {t("shop.selfService.label")}</span>
       </div>
       <ShopFulfillmentHeader allowedOptions={context.fulfillmentOptions} fulfillment={fulfillment} setFulfillment={setFulfillment} showSingleOption />
     </div>
-    {!query.trim() && <SelfServiceCoupons promos={coupons} locationId={context.location.id} />}
     <ShopCatalogMain siteSlug={context.location.id} siteId={context.site.id} categories={catalog.categoryOffsets.map((entry) => entry.name)}
       categoryOffsets={catalog.categoryOffsets} searchQuery={query} ownedItems={[]} ownedAccessMap={owned} hideDeviceOrders
       sellableCatalogItems={items} rawCatalogItems={catalog.catalogItems} initialCount={catalog.totalCount}

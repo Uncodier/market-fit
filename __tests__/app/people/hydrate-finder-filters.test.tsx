@@ -220,6 +220,7 @@ it('builds pagination without copying an untrusted saved site into filter state'
 
 function renderSavedListHook() {
   const controls = {
+    setSelectedList: jest.fn(), setSelectedPersonIds: jest.fn(), setShowResultsOnMobile: jest.fn(),
     currentSite: site, setCurrentPage: jest.fn(), executeSearch: jest.fn().mockResolvedValue(undefined),
     isSearchPending: jest.fn().mockReturnValue(false), availableSegments: [], setAvailableSegments: jest.fn(),
     setIsIcpModalOpen: jest.fn(), removeIcp: jest.fn(), renameIcp: jest.fn(), setCollapsibleVersion: jest.fn(),

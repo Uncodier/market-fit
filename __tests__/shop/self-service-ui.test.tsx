@@ -12,6 +12,12 @@ import { useRouter } from "next/navigation"
 import { Html5Qrcode } from "html5-qrcode"
 import { getSelfServiceModifierOptions } from "@/app/commerce/self-service-modifier-options-actions"
 import { shopItem } from "./catalog-fixture"
+import { LocalizationProvider } from "@/app/context/LocalizationContext"
+
+jest.mock("@testing-library/react", () => {
+  const actual = jest.requireActual("@testing-library/react")
+  return { ...actual, render: (ui: React.ReactNode) => actual.render(ui, { wrapper: ({ children }: { children: React.ReactNode }) => <LocalizationProvider preferredLocale="en">{children}</LocalizationProvider> }) }
+})
 
 jest.mock("@/app/shop/[siteSlug]/self-service/SelfServiceProvider", () => ({ useSelfService: jest.fn() }))
 jest.mock("@/app/shop/[siteSlug]/self-service/SelfServiceHeader", () => ({ SelfServiceHeader: () => <header>Self-service</header> }))

@@ -2,9 +2,10 @@
 
 import { ShopHomeSkeleton } from "../ShopHomeSkeleton"
 import { useOptionalSelfService } from "../self-service/SelfServiceProvider"
+import { SelfServiceShopSkeleton } from "../self-service/SelfServiceShopSkeleton"
 
 export default function ShopLoading() {
   const selfService = useOptionalSelfService()
-  if (selfService) return <div className="p-8" role="status">Loading menu…</div>
+  if (selfService) return <SelfServiceShopSkeleton />
   return <ShopHomeSkeleton />
 }

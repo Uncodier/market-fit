@@ -11,6 +11,7 @@ import { PdpItemDescription } from "@/app/components/commerce/pdp/PdpItemDescrip
 import { modifiersUnitTotal } from "@/app/commerce/cart-modifiers"
 import { isSelfServiceItem } from "@/app/commerce/self-service-options"
 import { isItemCompatibleWithFulfillment } from "@/app/commerce/delivery-options"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
 import { resolveItemImage } from "@/app/lib/image-utils"
 import type { CatalogItem } from "@/app/types"
@@ -19,11 +20,28 @@ import { SelfServiceHeader } from "./SelfServiceHeader"
 import { useSelfService } from "./SelfServiceProvider"
 import { useSelfServiceModifiers } from "./useSelfServiceModifiers"
 
+const modifierErrorKeys: Record<string, string> = {
+  "Invalid product option request.": "shop.selfService.product.invalidRequest",
+  "This order type is unavailable at this location.": "shop.selfService.product.orderTypeUnavailable",
+  "This product is unavailable at this location.": "shop.selfService.product.locationUnavailable",
+  "This product is unavailable for your selected order type.": "shop.selfService.product.unavailable",
+  "Unable to load product options. Please reload this page before ordering.": "shop.selfService.product.loadFailed",
+}
+
+// Translate only canonical loader messages; option group names remain user content.
+function translateModifierMessage(message: string, t: (key: string, params?: Record<string, string | number>) => string) {
+  const key = modifierErrorKeys[message]
+  if (key) return t(key)
+  const shortage = /^This item is unavailable: not enough options in ([\s\S]*) for this location and order type\. Please choose another item or ask staff for help\.$/.exec(message)
+  return shortage ? t("shop.selfService.product.insufficientOptions", { name: shortage[1] }) : message
+}
+
 export function SelfServiceProductDetail({ item, modifierGroups, modifierError, modifierFulfillment, modifierUnavailableReason }: {
   item: CatalogItem; modifierGroups: ModifierGroupWithItems[]; modifierError?: string
   modifierFulfillment?: string; modifierUnavailableReason?: string
 }) {
   const { context, addItem, fulfillment } = useSelfService()
+  const { t } = useLocalization()
   const { formatPrice } = useDisplayCurrency()
   const router = useRouter()
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({})
@@ -63,22 +81,22 @@ export function SelfServiceProductDetail({ item, modifierGroups, modifierError, 
         <PdpItemDescription description={item.description} variant="section" showShort />
         <VariantPicker axes={axes} selectedOptions={selectedOptions} onOptionSelect={(axis, value) => setSelectedOptions((previous) => ({ ...previous, [axis]: value }))}
           childrenItems={children} isItemAvailable={available} currency={currency} />
-        {!modifierState.ready ? <p role="status">Loading product options…</p> : modifierState.error ? <p role="alert">{modifierState.error}</p>
-          : modifierState.unavailableReason ? <p role="alert">{modifierState.unavailableReason}</p>
+        {!modifierState.ready ? <p role="status">{t("shop.selfService.product.loading")}</p> : modifierState.error ? <p role="alert">{translateModifierMessage(modifierState.error, t)}</p>
+          : modifierState.unavailableReason ? <p role="alert">{translateModifierMessage(modifierState.unavailableReason, t)}</p>
           : <ModifierPickerPanel key={modifierState.key} groups={modifierState.groups} value={modifiers} onChange={setModifiers} currency={currency} />}
-        <div className="flex items-center gap-4" role="group" aria-label="Quantity">
-          <Button type="button" size="icon" variant="outline" aria-label="Decrease quantity" onClick={() => setQuantity(Math.max(1, quantity - 1))}><Minus className="h-4 w-4" /></Button>
+        <div className="flex items-center gap-4" role="group" aria-label={t("shop.selfService.product.quantity")}>
+          <Button type="button" size="icon" variant="outline" aria-label={t("shop.selfService.product.decrease")} onClick={() => setQuantity(Math.max(1, quantity - 1))}><Minus className="h-4 w-4" /></Button>
           <span aria-live="polite">{quantity}</span>
-          <Button type="button" size="icon" variant="outline" aria-label="Increase quantity" onClick={() => setQuantity(Math.min(1000, quantity + 1))}><Plus className="h-4 w-4" /></Button>
+          <Button type="button" size="icon" variant="outline" aria-label={t("shop.selfService.product.increase")} onClick={() => setQuantity(Math.min(1000, quantity + 1))}><Plus className="h-4 w-4" /></Button>
         </div>
-        {!resolved && <p className="text-sm text-gray-500">Choose your product options to continue.</p>}
-        {resolved && !available(resolved) && <p role="alert">This item is unavailable for your selected order type.</p>}
-        {error && <p role="alert" className="text-red-600">{error}</p>}
+        {!resolved && <p className="text-sm text-gray-500">{t("shop.selfService.product.chooseOptions")}</p>}
+        {resolved && !available(resolved) && <p role="alert">{t("shop.selfService.product.unavailable")}</p>}
+        {error && <p role="alert" className="text-red-600">{t(error)}</p>}
         <Button type="button" size="lg" className="w-full" disabled={!canAdd} onClick={() => {
-          if (!resolved || !canAdd) { setError("Choose the required options before adding this item."); return }
+          if (!resolved || !canAdd) { setError("shop.selfService.product.requiredOptions"); return }
           addItem(resolved, quantity, modifiers)
           router.push(`${home}?cart=1`)
-        }}>Add to order · {formatPrice(unit * quantity, currency)}</Button>
+        }}>{t("shop.selfService.product.add", { price: formatPrice(unit * quantity, currency) })}</Button>
       </div>
     </main>
   </div>

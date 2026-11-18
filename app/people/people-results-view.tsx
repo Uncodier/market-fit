@@ -12,6 +12,7 @@ import { Search, ChevronLeft, Loader } from "@/app/components/ui/icons"
 import { DEFAULT_PAGE_SIZE } from "./finder-request-types"
 import type { PeopleWorkspace } from "./use-people-workspace"
 import { PeopleResultsTable } from "./people-results-table"
+import { SelectedListResults } from "./selected-list-results"
 export function PeopleResultsView({ workspace }: { workspace: PeopleWorkspace }) {
   const {
     isArtifact,
@@ -35,6 +36,10 @@ export function PeopleResultsView({ workspace }: { workspace: PeopleWorkspace })
     onPageChange,
     isEmptyView,
   } = workspace
+  if (workspace.selectedList && workspace.selectedList.siteId === workspace.currentSite?.id) {
+    return <SelectedListResults key={`${workspace.selectedList.siteId}:${workspace.selectedList.id}`}
+      list={workspace.selectedList} onClose={() => workspace.setSelectedList(null)} />
+  }
   return (
 
 <>

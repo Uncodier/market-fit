@@ -8,6 +8,7 @@ import { PromptImage } from "@/app/components/commerce/PromptImage"
 import { isItemCompatibleWithFulfillment } from "@/app/commerce/delivery-options"
 import { isSelfServiceItem } from "@/app/commerce/self-service-options"
 import { requiresVariantSelection } from "@/app/catalog/product-details"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
 import type { PromoBundleData } from "@/app/components/commerce/PromoBundleExperience"
 import { resolveItemImage, resolvePromotionImage } from "@/app/lib/image-utils"
@@ -21,6 +22,7 @@ export function SelfServicePromotion({ promo, items, availableNow }: {
   promo: PromoBundleData; items: Array<{ item: CatalogItem; minimum: number; configurable: boolean }>; availableNow: boolean
 }) {
   const { context, cart, addItem, fulfillment, setPromotion } = useSelfService()
+  const { t } = useLocalization()
   const { formatPrice } = useDisplayCurrency()
   const router = useRouter()
   const [added, setAdded] = useState<string | null>(null)
@@ -30,24 +32,24 @@ export function SelfServicePromotion({ promo, items, availableNow }: {
     <main className="mx-auto max-w-4xl space-y-6 px-4 py-8 md:px-8">
       <PromptImage src={resolvePromotionImage(promo)} alt={promo.name} className="max-h-80 w-full rounded-2xl object-cover" />
       <h2 className="text-3xl font-bold">{promo.name}</h2>
-      <p className="text-lg font-semibold">{promoBadgeLabel(promo)}</p>
+      <p className="text-lg font-semibold">{promoBadgeLabel(promo, t)}</p>
       {promo.description && <p className="whitespace-pre-wrap text-gray-600">{promo.description}</p>}
-      {!availableNow && <p role="alert" className="rounded-lg bg-amber-50 p-4">This offer is not available right now.</p>}
+      {!availableNow && <p role="alert" className="rounded-lg bg-amber-50 p-4">{t("shop.selfService.promotion.unavailable")}</p>}
       {((promo.required_items?.length || 0) + (promo.required_categories?.length || 0) > 0) &&
-        <p>{promo.required_items_mode === "any" ? "Meet at least one of the following requirements." : "Meet all of the following requirements."}</p>}
+        <p>{t(promo.required_items_mode === "any" ? "shop.selfService.promotion.anyRequirement" : "shop.selfService.promotion.allRequirements")}</p>}
       {selfServicePromotionCategories(promo).map((category) => {
         const candidates = new Set((promo.category_pick_items || []).filter((item) => item.category_id === category.id).map((item) => item.id))
         const quantity = cart.filter((line) => line.category_id === category.id || candidates.has(line.id) || (line.parent_id && candidates.has(line.parent_id)))
           .reduce((sum, line) => sum + line.cartQty, 0)
-        return <section key={category.id} aria-label={`${category.name} requirement`} className="rounded-xl bg-gray-50 p-4">
+        return <section key={category.id} aria-label={t("shop.selfService.promotion.categoryLabel", { name: category.name })} className="rounded-xl bg-gray-50 p-4">
           <h3 className="font-semibold">{category.name}</h3>
-          <p>Choose at least {category.minimum} total from this category · {quantity} in order</p>
-          <p className="text-sm text-gray-500">Mix and match eligible items. You do not need every item in this category.</p>
+          <p>{t("shop.selfService.promotion.categoryMinimum", { minimum: category.minimum, quantity })}</p>
+          <p className="text-sm text-gray-500">{t("shop.selfService.promotion.mix")}</p>
         </section>
       })}
       {items.length > 0 && <>
-        <h3 className="text-xl font-semibold">Choose items for this offer</h3>
-        <p className="text-sm text-gray-500">Configure product options where needed. Your offer eligibility and final total are checked when ordering.</p>
+        <h3 className="text-xl font-semibold">{t("shop.selfService.promotion.chooseItems")}</h3>
+        <p className="text-sm text-gray-500">{t("shop.selfService.promotion.optionsHelp")}</p>
         {items.map(({ item, minimum, configurable }) => {
           const compatible = isSelfServiceItem(item, context.fulfillmentOptions, context.location.id) && isItemCompatibleWithFulfillment(item, fulfillment) && item._shop?.sellable !== false &&
             (item.is_purchasable !== false || requiresVariantSelection(item))
@@ -56,21 +58,21 @@ export function SelfServicePromotion({ promo, items, availableNow }: {
             <PromptImage src={resolveItemImage(item, "thumb")} alt="" className="h-20 w-20 rounded-lg object-cover" />
             <div className="flex-1"><Link href={`${home}/${item.id}`} className="font-semibold">{item.name}</Link>
               <p className="text-sm">{formatPrice(Number(item.target_sale_price || 0), item.currency || "USD")}</p>
-              <p className="text-sm text-gray-500">{minimum > 0 ? `Minimum ${minimum}` : "Category choice"} · {inCart} in order</p></div>
+              <p className="text-sm text-gray-500">{t(minimum > 0 ? "shop.selfService.promotion.minimum" : "shop.selfService.promotion.categoryChoice", { minimum, quantity: inCart })}</p></div>
             <Button type="button" variant="outline" disabled={!availableNow || !compatible} onClick={() => {
               setPromotion({ id: promo.id, code: promo.code })
               if (configurable || requiresVariantSelection(item)) router.push(`${home}/${item.id}`)
               else { addItem(item, Math.max(1, minimum - inCart)); setAdded(item.name) }
-            }}>{configurable || requiresVariantSelection(item) ? "Choose options" : "Add"}</Button>
+            }}>{t(configurable || requiresVariantSelection(item) ? "shop.selfService.promotion.chooseOptions" : "shop.selfService.promotion.add")}</Button>
           </div>
         })}
       </>}
-      {added && <p role="status">{added} added to your order.</p>}
+      {added && <p role="status">{t("shop.selfService.promotion.added", { name: added })}</p>}
       <Button type="button" size="lg" className="w-full" disabled={!availableNow} onClick={() => {
         setPromotion({ id: promo.id, code: promo.code })
         router.push(cart.length ? `${home}?cart=1` : home)
-      }}>Apply offer and continue</Button>
-      <Link href={home} className="block text-center text-sm underline">Back to menu</Link>
+      }}>{t("shop.selfService.promotion.apply")}</Button>
+      <Link href={home} className="block text-center text-sm underline">{t("shop.selfService.promotion.back")}</Link>
     </main>
   </div>
 }

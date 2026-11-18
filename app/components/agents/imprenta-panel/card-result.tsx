@@ -9,6 +9,7 @@ import { inferImprentaResultMediaType } from './result-helpers'
 import { MemoMarkdown } from './markdown'
 import type { ImprentaNodeCardProps } from './card-types'
 import { ImprentaUploadedFile } from '@/app/components/agents/imprenta-uploaded-file'
+import { extractImprentaResultText } from './result-text'
 
 export function ImprentaCardResult({ hasResult, isVisualMediaCard, nodes, actions, node, logs, currentSite, renderResultMedia, mediaAspect }: Pick<ImprentaNodeCardProps, "hasResult" | "nodes" | "actions" | "node" | "logs" | "currentSite"> & {
   isVisualMediaCard: boolean
@@ -198,16 +199,17 @@ export function ImprentaCardResult({ hasResult, isVisualMediaCard, nodes, action
             const parentNode = nodes.find(parent => parent.id === node.parent_node_id)
             const isAudienceNode = node.type === "generate-audience" || inferImprentaResultMediaType(node, allNodes) === "audience" || (parentNode && parentNode.type === "generate-audience");
 
-            const hasAnyTextOrNoMedia = ((node.result).text || (!(node.result).outputs && !(node.result).media && !(node.result).images && !(node.result).image && !(node.result).video && !(node.result).audio && !(node.result).text));
+            const resultText = extractImprentaResultText(node.result);
+            const hasAnyTextOrNoMedia = (resultText || (!(node.result).outputs && !(node.result).media && !(node.result).images && !(node.result).image && !(node.result).video && !(node.result).audio));
 
             if (isAudienceNode) {
-              if (!hasAnyTextOrNoMedia && !(node.result).text) return null;
+              if (!hasAnyTextOrNoMedia && !resultText) return null;
             } else {
               if (!hasAnyTextOrNoMedia) return null;
             }
 
-            let textContent = (node.result).text
-              ? String((node.result).text)
+            let textContent = resultText
+              ? resultText
               : "```json\n" + JSON.stringify(node.result, null, 2) + "\n```";
 
             const hasStructuredMedia = !!(node.result).outputs || !!(node.result).media || !!(node.result).images || !!(node.result).image || !!(node.result).video || !!(node.result).audio;
@@ -308,7 +310,7 @@ export function ImprentaCardResult({ hasResult, isVisualMediaCard, nodes, action
               textContent = textContent.replace(/https?:\/\/[^\s"'<>()]+\.(wav|mp3|ogg|m4a|aac|flac|webm)/gi, '').trim();
             }
             // For audience nodes, if there's no actual reasoning text and it's just a JSON dump with audience_id, don't show the code block
-            if (isAudienceNode && !((node.result).text)) {
+            if (isAudienceNode && !resultText) {
               return null;
             }
 

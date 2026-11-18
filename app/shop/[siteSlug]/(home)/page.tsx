@@ -11,6 +11,7 @@ import { ShopSlugNotFound } from "../ShopSlugNotFound"
 import { ShopHomeSkeleton } from "../ShopHomeSkeleton"
 import { getShopRouteContext, type ShopSelfServiceContext } from "../shop-route-context"
 import { SelfServiceShopClient } from "../self-service/SelfServiceShopClient"
+import { SelfServiceShopSkeleton } from "../self-service/SelfServiceShopSkeleton"
 import type { CatalogItem } from "@/app/types"
 
 // Literal required: Next.js cannot statically analyze imported segment config values.
@@ -47,7 +48,7 @@ export default async function ShopPage({ params }: { params: Promise<{ siteSlug:
   return (
     <div className="min-h-screen bg-[#fafafa] flex flex-col font-sans text-gray-900 selection:bg-gray-900 selection:text-white">
       <SiteLocaleBootstrap locale={site.settings?.default_locale} />
-      <Suspense fallback={context?.selfService ? <div className="p-8" role="status">Loading menu…</div> : <ShopHomeSkeleton site={site} />}>
+      <Suspense fallback={context?.selfService ? <SelfServiceShopSkeleton /> : <ShopHomeSkeleton site={site} />}>
         <ShopCatalogPage site={site} siteSlug={siteSlug} selfService={context?.selfService} />
       </Suspense>
     </div>

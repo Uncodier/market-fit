@@ -11,9 +11,10 @@ import { attachDemoSocial } from "./social-seed"
 import { attachDemoPayables } from "./accounts-payable"
 import { COWORK_PREVIEW_URL } from "./habituall/preview"
 import { attachDemoQuotations } from "./quotations"
+import { attachDemoContentResults } from "./content-results"
 
 function finalizeDemoData(data: Record<string, unknown>) {
-  const overview = attachDemoOverview(applyDemoTimeline(data))
+  const overview = attachDemoOverview(applyDemoTimeline(attachDemoContentResults(data)))
   const financial = attachDemoFinancial(overview)
   const performance = attachDemoPerformance(financial)
   const analytics = attachDemoAnalytics(performance)

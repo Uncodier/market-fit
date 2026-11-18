@@ -55,5 +55,10 @@ Appending to a historical completed search list preserves its cursor, but may
 resume the next search page after selected entries are processed if provider
 exhaustion was never recorded. Selected-only lists never run provider search.
 The picker shows only RLS-accessible lists; write authorization is rechecked on
-submission. Selected-list loading shows its queued-list explanation, not editable
-search filters or a member table. Removing members is not part of these buttons.
+submission. Selected-list loading shows a paginated member table using user-scoped
+RLS reads, the persisted list status and each member's processing outcome. Opening
+a list never starts a provider search or enrichment. Accessible generated leads
+link to their existing detail pages; members without an accessible lead retain
+their provider ID and outcome. Completed processing can include `no_match` or
+`needs_review`, not only generated leads. Refresh reloads persisted progress.
+Removing members is not part of these buttons.

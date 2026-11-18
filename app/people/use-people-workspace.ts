@@ -24,6 +24,7 @@ export function usePeopleWorkspace(state: PeopleSearchState, createQuery: typeof
     setShowResultsOnMobile,
   } = dependencies
   const handleSearch = async (page: number = 1) => {
+    state.setSelectedList(null)
     const payload = buildFinderPayload(page)
     await executeSearch(payload)
   }

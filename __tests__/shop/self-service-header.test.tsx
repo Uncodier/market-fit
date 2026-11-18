@@ -10,7 +10,10 @@ jest.mock("@/app/shop/[siteSlug]/self-service/BuyerIdentityScan", () => ({
 }))
 jest.mock("@/app/context/DisplayCurrencyContext", () => ({ useDisplayCurrency: () => ({ formatPrice: (value: number) => `$${value}` }) }))
 jest.mock("@/app/context/LocalizationContext", () => ({
-  useLocalization: () => ({ locale: "en", t: (key: string) => jest.requireActual("@/app/context/locale-catalog").localeMessages.en[key] || key }),
+  useLocalization: () => ({ locale: "en", t: (key: string, params?: Record<string, string | number>) => {
+    const text = jest.requireActual("@/app/context/locale-catalog").localeMessages.en[key] || key
+    return Object.entries(params || {}).reduce((value, [name, replacement]) => value.replaceAll(`{{${name}}}`, String(replacement)), text)
+  } }),
 }))
 
 const startNewOrder = jest.fn()
@@ -47,6 +50,16 @@ it("keeps the logo, back link and cart link in the location flow on detail pages
   expect(screen.getByRole("img", { name: "Example Shop" })).toHaveAttribute("src", "/logo.png")
   expect(screen.getByRole("link", { name: "Back to menu" })).toHaveAttribute("href", "/shop/branch")
   expect(screen.getByRole("link", { name: "Cart, 2 items" })).toHaveAttribute("href", "/shop/branch?cart=1")
+})
+
+it("places offers directly after the toolbar and hides them during search", () => {
+  const promos = [{ id: "offer", name: "Coffee deal", catalog_item_ids: [], category_ids: [] }]
+  const { rerender } = render(<SelfServiceHeader promos={promos} />)
+  const offers = screen.getByRole("region", { name: "Offers" })
+  expect(screen.getByRole("banner").closest(".sticky")?.nextElementSibling).toBe(offers)
+  expect(screen.getByRole("link", { name: /Coffee deal/ })).toHaveAttribute("href", "/shop/branch/promo/offer")
+  rerender(<SelfServiceHeader promos={promos} searchQuery="coffee" />)
+  expect(screen.queryByRole("region", { name: "Offers" })).not.toBeInTheDocument()
 })
 
 it("matches Shop and Marketplace's centered search geometry and action spacing", () => {

@@ -10,7 +10,7 @@ interface ModuleTileProps {
   itemKey: string
   title: string
   onClick: () => void
-  /** True when this module is currently in the sidebar nav / shortcuts. */
+  /** Highlights sidebar shortcuts on desktop, where the sidebar is visible. */
   inMenu?: boolean
 }
 
@@ -47,7 +47,7 @@ export function ModuleTile({
           "group-hover:-translate-y-0.5 group-focus-visible:-translate-y-0.5",
           "rounded-[22px] border px-1 pb-2.5 pt-2 md:px-2",
           marked
-            ? "border-black/12 dark:border-white/14 bg-black/[0.05] dark:bg-white/[0.07]"
+            ? "border-transparent bg-transparent md:border-black/12 md:dark:border-white/14 md:bg-black/[0.05] md:dark:bg-white/[0.07]"
             : "border-transparent bg-transparent",
         ].join(" ")}
       >
@@ -90,7 +90,7 @@ export function ModuleTile({
           className={[
             "text-[11px] text-center leading-tight line-clamp-2 w-full px-1 transition-colors duration-200",
             marked
-              ? "font-semibold text-foreground/80 group-hover:text-foreground"
+              ? "font-medium text-muted-foreground md:font-semibold md:text-foreground/80 group-hover:text-foreground"
               : "font-medium text-muted-foreground group-hover:text-foreground",
           ].join(" ")}
         >

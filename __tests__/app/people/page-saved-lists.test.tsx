@@ -3,6 +3,7 @@ import PeopleSearchPage from '@/app/people/page'
 import { createClient } from '@/lib/supabase/client'
 import { apiClient } from '@/app/services/api-client-service'
 import { deferred } from './test-helpers'
+import { toast } from 'sonner'
 
 let mockSiteId = 'site-a'
 
@@ -34,6 +35,7 @@ const from = jest.fn(() => ({ select, eq, order }))
 beforeEach(() => {
   mockSiteId = 'site-a'
   jest.clearAllMocks()
+  from.mockImplementation(() => ({ select, eq, order }))
   order.mockReset()
   ;(createClient as jest.Mock).mockReturnValue({ from, auth: {
     getSession: jest.fn().mockResolvedValue({ data: { session: { user: { id: 'actor-a' } } }, error: null }),
@@ -131,6 +133,32 @@ it('does not run an unfiltered search when loading a selected-person list', asyn
   const selectedList = await screen.findByText('List 11111111…')
   await act(async () => { fireEvent.click(selectedList) })
   expect(apiClient.post).not.toHaveBeenCalled()
+  expect(toast.info).not.toHaveBeenCalled()
+  expect(screen.getByRole('heading', { name: 'Selected people list' })).toBeInTheDocument()
+})
+
+it('opens a completed selected-person list without rerunning search or enrichment', async () => {
+  order.mockResolvedValue({ data: [{ ...pendingList, status: 'completed' }], error: null })
+  ;(apiClient.get as jest.Mock).mockResolvedValue({ success: true, data: {
+    icp_mining: { source: 'selected_people', status: 'completed' }, role_query: null,
+  } })
+  const memberQuery = {
+    select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(),
+    order: jest.fn().mockReturnThis(),
+    range: jest.fn().mockResolvedValue({ data: [{ ordinal: 1, person_id: 'p-1',
+      processing_status: 'completed', outcome: 'matched', leads: { id: 'lead-1', name: 'Processed person' } }], count: 1, error: null }),
+    maybeSingle: jest.fn().mockResolvedValue({ data: { name: 'Completed selection', status: 'completed',
+      icp_criteria: { source: 'selected_people' } }, error: null }),
+  }
+  render(<PeopleSearchPage />)
+  fireEvent.mouseDown(screen.getByRole('tab', { name: 'Saved lists' }))
+  const savedList = await screen.findByText('List 11111111…')
+  from.mockImplementation(() => memberQuery)
+  await act(async () => { fireEvent.click(savedList) })
+  expect(await screen.findByText('Processed person')).toBeInTheDocument()
+  expect(screen.getByRole('status')).toHaveTextContent('List status: Completed')
+  expect(apiClient.post).not.toHaveBeenCalled()
+  expect(toast.info).not.toHaveBeenCalled()
 })
 
 it('does not report an empty list for a malformed database response', async () => {

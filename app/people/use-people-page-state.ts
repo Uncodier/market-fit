@@ -34,6 +34,7 @@ export function usePeoplePageState() {
 
   // remote data state
   const [searchResults, setSearchResults] = useState<any[]>([])
+  const [selectedList, setSelectedList] = useState<{ id: string; siteId: string } | null>(null)
   const [totalResults, setTotalResults] = useState<number>(0)
   const [error, setError] = useState<string | null>(null)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
@@ -116,6 +117,8 @@ export function usePeoplePageState() {
     pageJump,
     setPageJump,
     searchResults,
+    selectedList,
+    setSelectedList,
     setSearchResults,
     totalResults,
     setTotalResults,

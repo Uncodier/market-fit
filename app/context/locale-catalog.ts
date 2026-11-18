@@ -13,6 +13,8 @@ import type { SupportedLocale } from './locale-preferences';
 import { spanishWorkspaceMessages } from './locales/workspace/es';
 import { screenMessages } from './locales/screens';
 import { procurementMessages } from './locales/procurement';
+import { selfServiceMessages } from './locales/self-service';
+import { selfServiceHeaderMessages } from './locales/self-service/header';
 import enChat from './locales/chat/en.json';
 import esChat from './locales/chat/es.json';
 import frChat from './locales/chat/fr.json';
@@ -40,6 +42,8 @@ function ownMessages(locale: SupportedLocale, legacy: MessageTree): Record<strin
     ...commerceMessages[locale],
     ...procurementMessages[locale],
     ...chatMessages[locale],
+    ...selfServiceMessages[locale],
+    ...selfServiceHeaderMessages[locale],
   };
 }
 

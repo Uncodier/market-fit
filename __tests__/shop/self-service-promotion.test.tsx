@@ -6,6 +6,12 @@ import { selfServicePromotionItems } from "@/app/shop/[siteSlug]/self-service/se
 import { useSelfService } from "@/app/shop/[siteSlug]/self-service/SelfServiceProvider"
 import type { PromoBundleData } from "@/app/components/commerce/PromoBundleExperience"
 import { shopItem } from "./catalog-fixture"
+import { LocalizationProvider } from "@/app/context/LocalizationContext"
+
+jest.mock("@testing-library/react", () => {
+  const actual = jest.requireActual("@testing-library/react")
+  return { ...actual, render: (ui: React.ReactNode) => actual.render(<LocalizationProvider preferredLocale="en">{ui}</LocalizationProvider>) }
+})
 
 jest.mock("@/app/shop/[siteSlug]/self-service/SelfServiceProvider", () => ({ useSelfService: jest.fn() }))
 jest.mock("@/app/shop/[siteSlug]/self-service/SelfServiceHeader", () => ({ SelfServiceHeader: () => null }))
