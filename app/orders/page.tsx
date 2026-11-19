@@ -4,8 +4,8 @@ import React, { useState, useEffect } from "react"
 import useSWR from "swr"
 import { useSite } from "@/app/context/SiteContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
-import { listOrders, updateOrderStatus } from "./actions"
-import { OrderParams, type OrderWithRelations } from "./types"
+import { type OrderWithRelations } from "./types"
+import { useOrdersData } from "./hooks/use-orders-data"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { MobileFiltersDrawer, FilterContainer, FilterSection } from "@/app/components/ui/mobile-filters-drawer"
 import { SearchInput } from "@/app/components/ui/search-input"
@@ -92,16 +92,9 @@ export default function OrdersPage() {
   )
   const locations = locationsData?.data || []
 
-  const fetcher = async (params: OrderParams) => {
-    const res = await listOrders(params)
-    if (res.error) throw new Error(res.error)
-    return res
-  }
-
-  const { data, error, isLoading, mutate } = useSWR(
+  const { data, error, isLoading, mutate, changeStatus } = useOrdersData(
     currentSite?.id && !isSiteLoading && isDateRangeReady
       ? {
-          resource: "orders",
           siteId: currentSite.id,
           page,
           pageSize,
@@ -113,11 +106,6 @@ export default function OrdersPage() {
           sort: sortBy
         }
       : null,
-    ({ resource, ...request }) => {
-      void resource
-      return fetcher(request)
-    },
-    { shouldRetryOnError: (error: Error) => !["Forbidden", "Not authenticated"].includes(error.message) },
   )
   const isOrdersPending = !currentSite || isSiteLoading || !isDateRangeReady || isLoading
 
@@ -134,32 +122,13 @@ export default function OrdersPage() {
       return false
     }
     
-    // Optimistic update
-    mutate(data => {
-      if (!data) return data;
-      return {
-        ...data,
-        data: data.data.map((order) =>
-          order.id === orderId ? { ...order, status: newStatus } : order
-        )
-      }
-    }, { revalidate: false })
-
     try {
-      const result = await updateOrderStatus(currentSite.id, orderId, newStatus)
-      if (result.error) {
-        toast.error(result.error)
-        mutate() // Revert
-        return false
-      } else {
-        toast.success(t('orders.success.statusUpdated') || "Order status updated")
-        mutate() // Ensure full reload to keep in sync
-        return true
-      }
+      await changeStatus(orderId, newStatus)
+      toast.success(t('orders.success.statusUpdated') || "Order status updated")
+      return true
     } catch (error) {
       console.error("Error updating order status:", error)
-      toast.error(t('orders.error.updateFailed') || "Failed to update order status")
-      mutate() // Revert
+      toast.error(error instanceof Error ? error.message : t('orders.error.updateFailed') || "Failed to update order status")
       return false
     }
   }

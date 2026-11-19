@@ -38,6 +38,27 @@ it("checks current permission before every warm cache hit and bypasses it after 
   expect(rpc).toHaveBeenCalledTimes(4)
 })
 
+it("bypasses stale cache for live refreshes after checking authentication and location access", async () => {
+  const params = { siteId: "site", status: "all" }
+  const fresh = { data: [{ id: "order", status: "in_progress" }], count: 1 }
+  jest.mocked(queryOrders).mockResolvedValue(fresh as never)
+  expect(await listOrdersCached(params)).toEqual({ data: [{ id: "hidden" }], count: 1 })
+  expect(await listOrdersCached(params, { fresh: true })).toEqual(fresh)
+  expect(queryOrders).toHaveBeenCalledWith(params)
+  expect(readThroughJsonCache).toHaveBeenCalledTimes(1)
+  expect(getUser).toHaveBeenCalledTimes(2)
+  expect(rpc).toHaveBeenCalledTimes(4)
+})
+
+it.each(["anonymous", "foreign", "unknown-location"])("fresh reads retain the %s access gate", async (denial) => {
+  if (denial === "anonymous") getUser.mockResolvedValue({ data: { user: null }, error: null })
+  if (denial === "foreign") role = null
+  if (denial === "unknown-location") state = null
+  expect((await listOrdersCached({ siteId: "site" }, { fresh: true })).error).toBeDefined()
+  expect(queryOrders).not.toHaveBeenCalled()
+  expect(readThroughJsonCache).not.toHaveBeenCalled()
+})
+
 it.each([null, undefined, "false"])("does not read cached or live rows if scope is unknown: %p", async value => {
   state = value
   expect((await listOrdersCached({ siteId: "site" })).error).toBeDefined()

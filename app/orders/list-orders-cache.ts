@@ -5,10 +5,10 @@ import { readOrderAccess } from "./read-order-access"
 import { readLocationRestrictionState } from "@/lib/permissions/location-boundary"
 import { hashRedisKeyPart } from "@/lib/redis/control-plane"
 import { readCacheEpoch, readThroughJsonCache } from "@/lib/redis/json-cache"
-import type { OrderParams, OrderWithRelations } from "./types"
+import type { OrderParams, OrdersReadOptions, OrderWithRelations } from "./types"
 import { queryOrders } from "./query-orders"
 
-export async function listOrdersCached(params: OrderParams): Promise<{
+export async function listOrdersCached(params: OrderParams, options: OrdersReadOptions = {}): Promise<{
   data: OrderWithRelations[]; count: number; error?: string | null
 }> {
   try {
@@ -33,6 +33,10 @@ export async function listOrdersCached(params: OrderParams): Promise<{
     // Restricted users retain the ordinary order RLS contract, never an older
     // unrestricted cached projection (even when the caller supplies a location).
     if (restricted) return queryOrders(params)
+
+    // Live views must not treat a cached snapshot as a realtime acknowledgement.
+    // Database/checkout writers can change orders before cache invalidation runs.
+    if (options.fresh === true) return queryOrders(params)
 
     // Provider mutations originate outside this Server Action. A realtime reload
     // must not consume a five-second stale cache and then wait indefinitely.

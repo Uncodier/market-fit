@@ -14,6 +14,10 @@ export interface OrderParams {
   sort?: string;
 }
 
+export interface OrdersReadOptions {
+  fresh?: boolean;
+}
+
 export interface OrderWithRelations extends SaleOrderData {
   sales?: {
     status: string;

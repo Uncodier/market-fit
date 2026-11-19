@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { OrderParams, OrderWithRelations } from "./types";
+import { OrderParams, OrdersReadOptions, OrderWithRelations } from "./types";
 import { listOrdersCached } from "./list-orders-cache";
 import { SaleOrderData } from "@/app/types";
 import { shouldCancelLinkedSale } from "./cancel-linked-sale";
@@ -14,8 +14,8 @@ import {
   bumpCacheEpoch,
 } from "@/lib/redis/json-cache";
 
-export async function listOrders(params: OrderParams) {
-  return listOrdersCached(params)
+export async function listOrders(params: OrderParams, options: OrdersReadOptions = {}) {
+  return listOrdersCached(params, options)
 }
 
 async function invalidateOrderCaches(siteId: string) {

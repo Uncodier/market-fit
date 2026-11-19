@@ -52,7 +52,7 @@ it.each(['search', 'saved'] as const)('shows the count and working pagination in
   expect(screen.getByText(/Showing/)).toHaveTextContent('Showing 1 to 10 of 25 people')
   fireEvent.click(screen.getByRole('button', { name: 'Next' }))
   expect(state.onPageChange).toHaveBeenCalledWith(2)
-  fireEvent.click(screen.getByRole('button', { name: '3', exact: true }))
+  fireEvent.click(screen.getByRole('button', { name: /^3$/ }))
   expect(state.onPageChange).toHaveBeenCalledWith(3)
 })
 

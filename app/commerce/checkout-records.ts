@@ -376,11 +376,20 @@ export async function persistCheckoutRecords(
         .update(saleData).eq("id", existingOrder.sale_id).select().single()
       if (saleError) throw new Error(`Sale error: ${saleError.message}`)
       sale = updatedSale
-      const { data: updatedOrder, error: orderError } = await queryClient.from("sale_orders")
-        .update(orderData).eq("id", params.effectiveExistingOrderId).select().single()
+      // Preservation is omission, not an echo of an earlier kitchen snapshot.
+      // Only explicit transitions write status, conditional on the observed state.
+      const { status: requestedStatus, ...orderFields } = orderData
+      const changesStatus = requestedStatus !== existingOrder.status
+      let orderWrite = queryClient.from("sale_orders")
+        .update(changesStatus ? orderData : orderFields)
+        .eq("site_id", params.siteId).eq("id", params.effectiveExistingOrderId)
+      if (changesStatus) orderWrite = orderWrite.eq("status", existingOrder.status)
+      const { data: updatedOrder, error: orderError } = await orderWrite.select().single()
+      if (orderError?.code === "PGRST116") throw new Error("Order changed during checkout. Reload it before retrying.")
       if (orderError) throw new Error(`Order error: ${orderError.message}`)
       order = updatedOrder
     }
+    orderInitialStatus = order.status
   } else {
     const saleData = {
       ...commonSaleData,
