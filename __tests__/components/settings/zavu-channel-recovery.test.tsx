@@ -6,10 +6,11 @@ import { ZavuChannelActivationRecovery, canRecoverZavuActivation } from "@/app/c
 
 const post = jest.fn()
 jest.mock("@/app/services/api-client-service", () => ({ apiClient: { post: (...args: unknown[]) => post(...args) } }))
-jest.mock("sonner", () => ({ toast: { success: jest.fn(), error: jest.fn() } }))
+jest.mock("sonner", () => ({ toast: { success: jest.fn(), error: jest.fn(), warning: jest.fn() } }))
 jest.mock("@/app/context/BillingLimitContext", () => ({ useBillingLimit: () => ({ showBillingLimitFromError: () => false }) }))
 
 beforeEach(() => { jest.clearAllMocks() })
+afterEach(() => { jest.restoreAllMocks() })
 
 it("keeps Telegram unconnected after activation fails and retries the same channel", async () => {
   post.mockResolvedValueOnce({ success: false, status: 502, error: { message: "Activation failed" } })
@@ -61,8 +62,9 @@ it.each(["whatsapp", "messenger"])("continues %s setup through a native external
   expect(onCheck).toHaveBeenCalledTimes(1)
 })
 
-it.each([{}, { metaKey: true }, { ctrlKey: true }])("does not cancel the mounted Continue Setup link click (%#)", modifiers => {
+it.each([{ metaKey: true }, { ctrlKey: true }, { shiftKey: true }, { altKey: true }, { button: 1 }])("preserves native modified Continue Setup clicks (%#)", modifiers => {
   const onConnect = jest.fn()
+  const open = jest.spyOn(window, "open").mockReturnValue(null)
   render(<PartnerSupportChannelSetup type="whatsapp" status="pending"
     invitationUrl="https://example.test/invite" connecting={false} checking={false}
     onConnect={onConnect} onCheck={jest.fn()} />)
@@ -71,6 +73,44 @@ it.each([{}, { metaKey: true }, { ctrlKey: true }])("does not cancel the mounted
   expect(fireEvent(link, click)).toBe(true)
   expect(click.defaultPrevented).toBe(false)
   expect(onConnect).not.toHaveBeenCalled()
+  expect(open).not.toHaveBeenCalled()
+})
+
+it("opens a separate authorization window synchronously on a plain Continue Setup click", () => {
+  const popup = { opener: window, closed: false, location: { replace: jest.fn() }, close: jest.fn() }
+  const open = jest.spyOn(window, "open").mockReturnValue(popup as unknown as Window)
+  const onConnect = jest.fn()
+  const originalUrl = window.location.href
+  render(<PartnerSupportChannelSetup type="whatsapp" status="pending"
+    invitationUrl="https://example.test/invite" connecting={false} checking={false}
+    onConnect={onConnect} onCheck={jest.fn()} />)
+  const link = screen.getByRole("link", { name: "Continue Setup" })
+  const click = createEvent.click(link, { button: 0 })
+  fireEvent(link, click)
+  expect(click.defaultPrevented).toBe(true)
+  expect(open).toHaveBeenCalledWith("about:blank", "_blank", expect.stringContaining("popup=yes"))
+  expect(popup.opener).toBeNull()
+  expect(popup.location.replace).toHaveBeenCalledWith("https://example.test/invite")
+  expect(window.location.href).toBe(originalUrl)
+  expect(onConnect).not.toHaveBeenCalled()
+  expect(post).not.toHaveBeenCalled()
+  expect(toast.warning).not.toHaveBeenCalled()
+})
+
+it("warns when the new window is blocked without falling back to the current page", () => {
+  const open = jest.spyOn(window, "open").mockReturnValue(null)
+  const originalUrl = window.location.href
+  render(<PartnerSupportChannelSetup type="whatsapp" status="pending"
+    invitationUrl="https://example.test/invite" connecting={false} checking={false}
+    onConnect={jest.fn()} onCheck={jest.fn()} />)
+  const link = screen.getByRole("link", { name: "Continue Setup" })
+  const click = createEvent.click(link, { button: 0 })
+  fireEvent(link, click)
+  expect(click.defaultPrevented).toBe(true)
+  expect(open).toHaveBeenCalledTimes(1)
+  expect(window.location.href).toBe(originalUrl)
+  expect(toast.warning).toHaveBeenCalledWith("Allow pop-up windows for this site, then try again or use Cmd/Ctrl-click.")
+  expect(post).not.toHaveBeenCalled()
 })
 
 it("keeps the existing authorization link usable while a status check is running", () => {

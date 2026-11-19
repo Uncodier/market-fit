@@ -36,15 +36,18 @@ provider call; activation remains owned by server-side finalization, not this
 client flag. Deploy the web payload correction and reload existing tabs. Regression
 coverage: `SupportChannelsSection.test.tsx` checks exact WhatsApp/Messenger payloads.
 
-Initial partner setup reserves an isolated blank tab synchronously during the
+Initial partner setup requests an isolated popup window synchronously during the
 click, before awaiting authentication or invitation creation, then navigates that
-tab to the returned HTTPS link. Failed creation closes the unused tab. Popup blocks
-or closed tabs leave the invitation intact and show an explicit continuation notice.
-**Continue Setup** is a native external link with `noopener noreferrer`, not an
-asynchronous `window.open` retry; opening it never creates another invitation and
-remains available during status checks. Non-HTTPS and credential-bearing links are
-rejected. Deploy this web change and reload older settings tabs; no provider or
-database change is required. Existing invitations do not need to be deleted.
+window to the returned HTTPS link. Failed creation closes the unused window. Popup
+blocks or closed windows leave the invitation intact and show a continuation notice.
+An unmodified **Continue Setup** click requests a new 960×760 popup synchronously,
+severs its opener and navigates only that window. It cancels native navigation even
+when blocked: Settings is never replaced as a fallback. Cmd/Ctrl/Shift/Alt and
+non-primary clicks retain native link behavior via `target="_blank"` and
+`noopener noreferrer`. Opening setup never creates another invitation and remains
+available during status checks. Non-HTTPS and credential-bearing links are rejected.
+Deploy this web change and reload older settings tabs; no provider or database
+change is required. Existing invitations do not need to be deleted.
 
 Offline popup regressions are in `partner-setup-window.test.ts` and
 `partner-setup-window-browser.test.ts`; the latter exercises the production helper
@@ -52,14 +55,13 @@ and native link navigation in installed WebKit/Chromium with a static test-only
 destination, no API or provider calls. Missing browser binaries produce explicit
 skips, not evidence of Safari or live Meta onboarding success.
 
-Native `target="_blank"` links still respect the user's browser popup policy.
-Cmd/Ctrl-click opening successfully while a plain click does nothing does not
-prove JavaScript cancelled the click. For Safari, allow pop-up windows for
-`app.makinari.com` under Settings > Websites > Pop-up Windows and retry the existing
-link. Modified clicks are a valid temporary continuation, not a new invitation.
-Component event tests assert neither click is cancelled; browser tests use the
-actual server-rendered Button/anchor, but do not reproduce a user's Safari policy
-or extensions. Do not weaken shared permission/navigation guards on that evidence.
+Browsers can still block requested popup windows or choose a tab instead. Safari
+users can allow pop-ups for `app.makinari.com` under Settings > Websites > Pop-up
+Windows and retry the existing link. Modified clicks are a valid continuation, not
+a new invitation. Component tests verify popup creation/cancellation and native
+modified clicks; browser tests verify the rendered Button/anchor with the production
+click helper. Neither reproduces a user's Safari policy or extensions. Shared
+permission/navigation guards are unchanged.
 
 Provider authorization is not channel readiness. The invitation API returns
 `completed` only after activation and webhook finalization. A `502` leaves setup

@@ -4,7 +4,8 @@ import { Button } from "@/app/components/ui/button"
 import { SectionCardContent, SectionCardFooter } from "@/app/components/ui/section-card"
 import { getSupportChannelIcon } from "./support-channel-card-parts"
 import { PARTNER_LINK_TYPES } from "./zavu-invitation-helpers"
-import { getPartnerSetupUrl } from "./partner-setup-window"
+import { getPartnerSetupUrl, openPartnerSetupFromClick } from "./partner-setup-window"
+import { toast } from "sonner"
 
 export function PartnerSupportChannelSetup({ type, status, invitationUrl, failureReason, activationPending, connecting, checking, onConnect, onCheck }: {
   type: string; status: string; invitationUrl?: string; failureReason?: string
@@ -34,7 +35,11 @@ export function PartnerSupportChannelSetup({ type, status, invitationUrl, failur
     <SectionCardFooter className="flex flex-wrap gap-2">
       <p className="w-full text-xs text-muted-foreground">Connecting this account activates the channel and may incur channel fees.</p>
       {setupUrl ? <Button asChild>
-        <a href={setupUrl} target="_blank" rel="noopener noreferrer">Continue Setup</a>
+        <a href={setupUrl} target="_blank" rel="noopener noreferrer" onClick={event => {
+          if (openPartnerSetupFromClick(event) === false) {
+            toast.warning("Allow pop-up windows for this site, then try again or use Cmd/Ctrl-click.")
+          }
+        }}>Continue Setup</a>
       </Button> : <Button type="button" onClick={onConnect} disabled={connecting || checking}>
         {connecting ? "Connecting..." : "Connect Account"}
       </Button>}

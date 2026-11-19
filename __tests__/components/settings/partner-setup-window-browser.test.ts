@@ -23,6 +23,10 @@ const source = ts.transpileModule(readFileSync(path.join(root, "app/components/s
 const script = `(() => {
   const exports = {};
   new Function('exports', ${JSON.stringify(source)})(exports);
+  document.querySelector('a').onclick = event => {
+    const opened = exports.openPartnerSetupFromClick(event);
+    document.body.dataset.continued = String(opened);
+  };
   document.getElementById('connect').onclick = () => {
     const popup = exports.reservePartnerSetupWindow();
     document.body.dataset.reserved = String(Boolean(popup));
@@ -85,15 +89,44 @@ for (const engine of engines) {
       expect(requests).toEqual([target])
     })
 
-    it("opens the actual rendered Continue Setup anchor with a plain click", async () => {
-      await page.evaluate(() => { window.open = () => { throw new Error("Script popups blocked") } })
+    it("opens Continue Setup in a separate window without changing the settings document", async () => {
+      const originalUrl = page.url()
       expect(await page.getByRole("link", { name: "Continue Setup" }).locator(".btn-glass-surface").count()).toBe(1)
       const popupReady = page.waitForEvent("popup")
       await page.getByRole("link", { name: "Continue Setup" }).click()
       const popup = await popupReady
       await popup.waitForURL(target)
       expect(await popup.evaluate(() => window.opener)).toBeNull()
+      expect(page.url()).toBe(originalUrl)
+      expect(await page.locator("body").getAttribute("data-continued")).toBe("true")
+      expect(context.pages()).toHaveLength(2)
       expect(requests).toEqual([target])
+    })
+
+    it("keeps the settings document intact when the requested popup is blocked", async () => {
+      const originalUrl = page.url()
+      await page.evaluate(() => { window.open = () => null })
+      await page.getByRole("link", { name: "Continue Setup" }).click()
+      expect(await page.locator("body").getAttribute("data-continued")).toBe("false")
+      expect(page.url()).toBe(originalUrl)
+      expect(context.pages()).toHaveLength(1)
+      expect(requests).toEqual([])
+    })
+
+    it("leaves modified clicks uncancelled without requesting a script popup", async () => {
+      const originalUrl = page.url()
+      await page.evaluate(() => {
+        window.open = () => { document.body.dataset.unexpectedPopup = "true"; return null }
+        document.addEventListener("click", event => {
+          document.body.dataset.cancelled = String(event.defaultPrevented)
+        })
+      })
+      await page.getByRole("link", { name: "Continue Setup" }).click({ modifiers: ["ControlOrMeta"] })
+      // Headless macOS engines do not reproduce native background-tab shortcuts.
+      expect(await page.locator("body").getAttribute("data-continued")).toBe("undefined")
+      expect(await page.locator("body").getAttribute("data-cancelled")).toBe("false")
+      expect(await page.locator("body").getAttribute("data-unexpected-popup")).toBeNull()
+      expect(page.url()).toBe(originalUrl)
     })
   })
 }

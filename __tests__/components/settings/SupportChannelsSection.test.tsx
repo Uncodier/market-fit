@@ -151,7 +151,7 @@ describe("SupportChannelsSection", () => {
       connectionType,
       name: label,
     })
-    expect(open).toHaveBeenCalledWith("about:blank", "_blank")
+    expect(open).toHaveBeenCalledWith("about:blank", "_blank", expect.stringContaining("popup=yes"))
     expect(open).toHaveBeenCalledTimes(1)
     expect(warning).toHaveBeenCalledWith("Setup link is ready. Select Continue Setup to open authorization.")
     const continueSetup = screen.getByRole("link", { name: "Continue Setup" })
@@ -180,7 +180,7 @@ describe("SupportChannelsSection", () => {
     }]} />)
 
     fireEvent.click(screen.getByRole("button", { name: "Connect Account" }))
-    expect(open).toHaveBeenCalledWith("about:blank", "_blank")
+    expect(open).toHaveBeenCalledWith("about:blank", "_blank", expect.stringContaining("popup=yes"))
     expect(open.mock.invocationCallOrder[0]).toBeLessThan(post.mock.invocationCallOrder[0])
     expect(popup.opener).toBeNull()
     expect(popup.location.replace).not.toHaveBeenCalled()
