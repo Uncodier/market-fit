@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import type { ReactNode } from "react"
 import Link from "next/link"
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js"
 import { createClient } from "@/lib/supabase/client"
@@ -21,9 +22,10 @@ const statusLabels: Record<string, string> = {
   completed: 'Completed', failed: 'Failed',
 }
 
-export function SelectedListResults({ list, onClose }: {
+export function SelectedListResults({ list, onClose, sidebarToggle }: {
   list: { id: string; siteId: string }
   onClose: () => void
+  sidebarToggle?: ReactNode
 }) {
   const [page, setPage] = useState(1)
   const [revision, setRevision] = useState(0)
@@ -35,26 +37,34 @@ export function SelectedListResults({ list, onClose }: {
   useEffect(() => {
     const client = createClient()
     let active = true
-    let actor: string | undefined
-    let authRevision = 0
-    const { data: listener } = client.auth.onAuthStateChange((_event: AuthChangeEvent, session: Session | null) => {
-      authRevision += 1
-      if (actor && actor !== session?.user?.id) {
-        active = false
-        setSnapshot(null)
-        setIdentityChanged(true)
-      }
+    let actor: string | null | undefined
+    const invalidateIdentity = () => {
+      active = false
+      setSnapshot(null)
+      setLoading(false)
+      setIdentityChanged(true)
+    }
+    const { data: listener } = client.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
+      if (!active) return
+      const nextActor = event === 'SIGNED_OUT' ? null : session?.user?.id ?? null
+      // INITIAL_SESSION and same-user refreshes do not change identity. Once
+      // identity changes, retire this read even if the original user signs back in.
+      if (actor !== undefined && actor !== nextActor) invalidateIdentity()
+      else actor = nextActor
     })
     const load = async () => {
       setLoading(true)
       setError(false)
       setSnapshot(null)
       try {
-        const initialAuthRevision = authRevision
         const session = await client.auth.getSession()
         if (!active) return
-        if (initialAuthRevision !== authRevision) throw new Error('Authentication changed during loading')
-        actor = session.data.session?.user?.id
+        const sessionActor = session.data.session?.user?.id ?? null
+        if (actor !== undefined && actor !== sessionActor) {
+          invalidateIdentity()
+          return
+        }
+        actor = sessionActor
         if (session.error || !actor) throw new Error('Authentication required')
         // Both reads use the current user's RLS; no service-role or provider requests.
         const parent = await client.from('icp_mining').select('id, name, status, icp_criteria')
@@ -84,10 +94,13 @@ export function SelectedListResults({ list, onClose }: {
   }, [list.id, list.siteId, page, revision])
 
   return (
-    <div className="flex-1 min-w-0 overflow-auto p-4 md:p-6">
+    <div className="flex-1 min-h-0 min-w-0 overflow-auto p-4 md:p-6">
       <Card className="p-4 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-lg font-semibold">{snapshot?.name || 'Selected people list'}</h2>
+          <div className="flex min-w-0 items-center gap-2">
+            {sidebarToggle}
+            <h2 className="text-lg font-semibold break-words">{snapshot?.name || 'Selected people list'}</h2>
+          </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setRevision(value => value + 1)} disabled={loading || identityChanged}>Refresh</Button>
             <Button variant="ghost" onClick={onClose}>Back to search</Button>

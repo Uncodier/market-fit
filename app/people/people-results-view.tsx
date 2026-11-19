@@ -1,4 +1,4 @@
-
+import type { CSSProperties } from "react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
@@ -36,46 +36,38 @@ export function PeopleResultsView({ workspace }: { workspace: PeopleWorkspace })
     onPageChange,
     isEmptyView,
   } = workspace
-  if (workspace.selectedList && workspace.selectedList.siteId === workspace.currentSite?.id) {
-    return <SelectedListResults key={`${workspace.selectedList.siteId}:${workspace.selectedList.id}`}
-      list={workspace.selectedList} onClose={() => workspace.setSelectedList(null)} />
-  }
+  const selectedList = workspace.selectedList?.siteId === workspace.currentSite?.id ? workspace.selectedList : null
+  const resultsLeft = (isArtifact ? 0 : (isLayoutCollapsed ? 64 : 256)) + (isSidebarCollapsed ? 0 : 319)
+  const sidebarToggle = <SidebarToggle
+    isCollapsed={isSidebarCollapsed}
+    onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+    ariaLabelShow="Show filters"
+    ariaLabelHide="Hide filters"
+    className="hidden md:flex z-50 mr-4 shrink-0"
+  />
   return (
 
 <>
       {/* Main content: hidden on mobile step 1, full-screen on step 2 */}
       <div
+        data-testid="people-results"
         className={cn(
-          "flex flex-col transition-all duration-300 ease-in-out min-w-0 min-h-0 fixed right-0 top-[var(--topbar-height,64px)] bottom-0",
+          "flex flex-col transition-all duration-300 ease-in-out min-w-0 min-h-0 fixed right-0 left-0 md:left-[var(--people-results-left)] top-[var(--topbar-height,64px)] bottom-0",
           !showResultsOnMobile ? "hidden md:flex" : "flex"
         )}
-        style={{
-          width: typeof window !== 'undefined' && window.innerWidth >= 768
-            ? `calc(100% - ${isArtifact ? 0 : (isLayoutCollapsed ? 64 : 256)}px - ${isSidebarCollapsed ? 0 : 319}px)`
-            : '100%',
-          left: typeof window !== 'undefined' && window.innerWidth >= 768
-            ? `${(isArtifact ? 0 : (isLayoutCollapsed ? 64 : 256)) + (isSidebarCollapsed ? 0 : 319)}px`
-            : '0px'
-        }}
+        style={{ '--people-results-left': `${resultsLeft}px` } as CSSProperties}
       >
+        {selectedList ? <SelectedListResults key={`${selectedList.siteId}:${selectedList.id}`}
+          list={selectedList} sidebarToggle={sidebarToggle} onClose={() => {
+            workspace.setSelectedList(null)
+            setShowResultsOnMobile(false)
+          }} /> : <>
         <div className="w-full z-[50]">
           <StickyHeader
-            className="transition-all duration-300 ease-in-out pl-0 md:pl-4 !top-[var(--topbar-height,64px)] !fixed"
-            style={{
-              width: typeof window !== 'undefined' && window.innerWidth >= 768
-                ? `calc(100% - ${isArtifact ? 0 : (isLayoutCollapsed ? 64 : 256)}px - ${isSidebarCollapsed ? 0 : 319}px)`
-                : '100%',
-              left: typeof window !== 'undefined' && window.innerWidth >= 768
-                ? `${(isArtifact ? 0 : (isLayoutCollapsed ? 64 : 256)) + (isSidebarCollapsed ? 0 : 319)}px`
-                : '0px'
-            }}
+            className="transition-all duration-300 ease-in-out pl-0 md:pl-4 !top-[var(--topbar-height,64px)] !fixed left-0 w-full md:left-[var(--people-results-left)] md:w-[calc(100%_-_var(--people-results-left))]"
           >
             <div className="flex w-full items-center pl-2">
-              <SidebarToggle
-                isCollapsed={isSidebarCollapsed}
-                onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-                className="hidden md:flex z-50 mr-4 shrink-0"
-              />
+              {sidebarToggle}
               <div className="transition-all duration-300 ease-in-out w-full pr-4 md:pr-12">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -219,6 +211,7 @@ export function PeopleResultsView({ workspace }: { workspace: PeopleWorkspace })
             )}
           </div>
         </div>
+        </>}
       </div>
 </>
   )

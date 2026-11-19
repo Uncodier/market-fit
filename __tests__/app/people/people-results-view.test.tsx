@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import type { ReactNode } from 'react'
 import { PeopleResultsView } from '@/app/people/people-results-view'
 import type { PeopleWorkspace } from '@/app/people/use-people-workspace'
 
@@ -12,10 +13,15 @@ jest.mock('@/app/components/ui/sticky-header', () => ({
   StickyHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 jest.mock('@/app/control-center/components/SidebarToggle', () => ({
-  SidebarToggle: () => null,
+  SidebarToggle: ({ onToggle, isCollapsed }: { onToggle: () => void; isCollapsed: boolean }) =>
+    <button onClick={onToggle}>{isCollapsed ? 'Show filters' : 'Hide filters'}</button>,
 }))
 jest.mock('@/app/people/people-results-table', () => ({
   PeopleResultsTable: () => <div>People table</div>,
+}))
+jest.mock('@/app/people/selected-list-results', () => ({
+  SelectedListResults: ({ onClose, sidebarToggle }: { onClose: () => void; sidebarToggle?: ReactNode }) =>
+    <div>{sidebarToggle}<h2>Pregenerated list</h2><button onClick={onClose}>Back to search</button></div>,
 }))
 
 function workspace(overrides: Partial<PeopleWorkspace> = {}) {
@@ -41,6 +47,9 @@ function workspace(overrides: Partial<PeopleWorkspace> = {}) {
     selectionLists: { open: jest.fn(), pending: false },
     onPageChange: jest.fn(),
     isEmptyView: false,
+    currentSite: { id: 'site-a' },
+    selectedList: null,
+    setSelectedList: jest.fn(),
     ...overrides,
   } as unknown as PeopleWorkspace
 }
@@ -73,4 +82,49 @@ it('does not expose stale counts or page controls while a saved list is loading'
   expect(screen.queryByText(/Showing/)).not.toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument()
   expect(screen.queryByRole('spinbutton', { name: 'Go to page' })).not.toBeInTheDocument()
+})
+
+it.each([
+  { isLayoutCollapsed: false, isSidebarCollapsed: false, isArtifact: false, left: '575px' },
+  { isLayoutCollapsed: true, isSidebarCollapsed: false, isArtifact: false, left: '383px' },
+  { isLayoutCollapsed: false, isSidebarCollapsed: true, isArtifact: false, left: '256px' },
+  { isLayoutCollapsed: true, isSidebarCollapsed: true, isArtifact: false, left: '64px' },
+  { isLayoutCollapsed: false, isSidebarCollapsed: false, isArtifact: true, left: '319px' },
+  { isLayoutCollapsed: false, isSidebarCollapsed: true, isArtifact: true, left: '0px' },
+])('shares the result frame for pregenerated lists with desktop left offset $left', ({ left, ...layout }) => {
+  const state = workspace(layout)
+  const { rerender } = render(<PeopleResultsView workspace={state} />)
+  const frame = screen.getByTestId('people-results')
+  expect(frame.style.getPropertyValue('--people-results-left')).toBe(left)
+  expect(frame).toHaveClass('fixed', 'right-0', 'left-0', 'md:left-[var(--people-results-left)]')
+
+  rerender(<PeopleResultsView workspace={{ ...state, selectedList: { id: 'list-a', siteId: 'site-a' } }} />)
+  expect(screen.getByTestId('people-results')).toBe(frame)
+  expect(frame).toContainElement(screen.getByRole('heading', { name: 'Pregenerated list' }))
+  expect(frame.style.getPropertyValue('--people-results-left')).toBe(left)
+  expect(screen.queryByText('People table')).not.toBeInTheDocument()
+})
+
+it('preserves the mobile two-step view and restores the sidebar when closing a pregenerated list', () => {
+  const state = workspace({ selectedList: { id: 'list-a', siteId: 'site-a' }, showResultsOnMobile: false })
+  const { rerender } = render(<PeopleResultsView workspace={state} />)
+  expect(screen.getByTestId('people-results')).toHaveClass('hidden', 'md:flex')
+  rerender(<PeopleResultsView workspace={{ ...state, showResultsOnMobile: true }} />)
+  expect(screen.getByTestId('people-results')).not.toHaveClass('hidden')
+  fireEvent.click(screen.getByRole('button', { name: 'Back to search' }))
+  expect(state.setSelectedList).toHaveBeenCalledWith(null)
+  expect(state.setShowResultsOnMobile).toHaveBeenCalledWith(false)
+})
+
+it('retains the sidebar toggle inside pregenerated-list results', () => {
+  const state = workspace({ selectedList: { id: 'list-a', siteId: 'site-a' } })
+  render(<PeopleResultsView workspace={state} />)
+  fireEvent.click(screen.getByRole('button', { name: 'Hide filters' }))
+  expect(state.setIsSidebarCollapsed).toHaveBeenCalledWith(true)
+})
+
+it('never opens a pregenerated list belonging to the previous site', () => {
+  render(<PeopleResultsView workspace={workspace({ selectedList: { id: 'list-a', siteId: 'site-b' } })} />)
+  expect(screen.queryByRole('heading', { name: 'Pregenerated list' })).not.toBeInTheDocument()
+  expect(screen.getByText('People table')).toBeInTheDocument()
 })

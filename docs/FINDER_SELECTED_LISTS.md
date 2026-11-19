@@ -62,3 +62,11 @@ link to their existing detail pages; members without an accessible lead retain
 their provider ID and outcome. Completed processing can include `no_match` or
 `needs_review`, not only generated leads. Refresh reloads persisted progress.
 Removing members is not part of these buttons.
+
+Pregenerated selected-person lists share the responsive result frame with search
+results, preserving workspace/sidebar offsets, the desktop filter toggle and the
+mobile return to the saved-list picker. Session initialization and same-user token
+refreshes do not cancel loading, retry or pagination. Sign-out or an actual actor
+change retires in-flight reads and clears displayed members, including when the
+original actor signs back in before a stale response arrives. All data reads still
+use the current user's RLS; opening or refreshing a list never starts enrichment.
