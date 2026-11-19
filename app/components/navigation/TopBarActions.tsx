@@ -7,7 +7,7 @@ import { useSite } from "@/app/context/SiteContext";
 import { useLocalization } from "@/app/context/LocalizationContext";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "../ui/button";
-import { PlusCircle, Bot, Globe, LogOut } from "../ui/icons";
+import { Plus, Bot, Globe, LogOut } from "../ui/icons";
 import { CreateTaskDialog } from "../create-task-dialog";
 import { RobotPrimaryActions } from "./RobotPrimaryActions";
 import { TopBarCreationActions } from "./TopBarCreationActions";
@@ -42,7 +42,7 @@ export function TopBarActions(props: TopBarActionsProps) {
   };
 
   return (
-    <div className="flex items-center gap-4">
+    <div className="flex items-center gap-2 sm:gap-4">
       {pathname.startsWith("/content/") &&
         pathname !== "/content/deepResearch" && (
           <Button
@@ -67,7 +67,7 @@ export function TopBarActions(props: TopBarActionsProps) {
               className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
               title={t("layout.topbar.newTask")}
             >
-              <PlusCircle className="h-4 w-4 shrink-0" />
+              <Plus className="h-4 w-4 shrink-0" />
               <span className="hidden sm:inline ml-2">
                 {t("layout.topbar.newTask")}
               </span>

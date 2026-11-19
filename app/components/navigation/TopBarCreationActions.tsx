@@ -1,7 +1,7 @@
 import { useSite } from "@/app/context/SiteContext";
 import { useLocalization } from "@/app/context/LocalizationContext";
 import { Button } from "../ui/button";
-import { PlusCircle } from "../ui/icons";
+import { Plus } from "../ui/icons";
 import { CreateSegmentDialog } from "../create-segment-dialog";
 import { CreateExperimentDialog } from "../create-experiment-dialog";
 import { CreateRequirementDialog } from "../create-requirement-dialog";
@@ -35,7 +35,7 @@ export function TopBarCreationActions({
                 className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
                 title={t("layout.topbar.newSegment")}
               >
-                <PlusCircle className="h-4 w-4 shrink-0" />
+                <Plus className="h-4 w-4 shrink-0" />
                 <span className="hidden sm:inline ml-2">
                   {t("layout.topbar.newSegment")}
                 </span>
@@ -55,7 +55,7 @@ export function TopBarCreationActions({
                   className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
                   title={t("layout.topbar.newExperiment")}
                 >
-                  <PlusCircle className="h-4 w-4 shrink-0" />
+                  <Plus className="h-4 w-4 shrink-0" />
                   <span className="hidden sm:inline ml-2">
                     {t("layout.topbar.newExperiment")}
                   </span>
@@ -76,7 +76,7 @@ export function TopBarCreationActions({
                   className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
                   title={t("layout.topbar.newRequirement")}
                 >
-                  <PlusCircle className="h-4 w-4 shrink-0" />
+                  <Plus className="h-4 w-4 shrink-0" />
                   <span className="hidden sm:inline ml-2">
                     {t("layout.topbar.newRequirement")}
                   </span>
@@ -97,7 +97,7 @@ export function TopBarCreationActions({
                   className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
                   title="Add Lead"
                 >
-                  <PlusCircle className="h-4 w-4 shrink-0" />
+                  <Plus className="h-4 w-4 shrink-0" />
                   <span className="hidden sm:inline ml-2">
                     {t("layout.topbar.addLead")}
                   </span>
@@ -129,7 +129,7 @@ export function TopBarCreationActions({
                 className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
                 title={t("layout.topbar.newContent")}
               >
-                <PlusCircle className="h-4 w-4 shrink-0" />
+                <Plus className="h-4 w-4 shrink-0" />
                 <span className="hidden sm:inline ml-2">
                   {t("layout.topbar.newContent")}
                 </span>

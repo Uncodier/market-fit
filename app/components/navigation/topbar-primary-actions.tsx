@@ -19,5 +19,5 @@ export function TopBarPrimaryActions({ children }: { children: ReactNode }) {
 }
 
 export function TopBarPrimaryActionsSlot() {
-  return <div id={SLOT_ID} data-page-primary-actions className="flex shrink-0 items-center gap-2 [&_.btn-primary]:!min-w-0 [&_.btn-primary]:!h-9 [&_.btn-primary]:!px-4" />
+  return <div id={SLOT_ID} data-page-primary-actions className="flex empty:hidden shrink-0 items-center gap-2 [&_.btn-primary]:!min-w-0 [&_.btn-primary]:!h-9 [&_.btn-primary]:!px-4" />
 }

@@ -52,6 +52,15 @@ and native link navigation in installed WebKit/Chromium with a static test-only
 destination, no API or provider calls. Missing browser binaries produce explicit
 skips, not evidence of Safari or live Meta onboarding success.
 
+Native `target="_blank"` links still respect the user's browser popup policy.
+Cmd/Ctrl-click opening successfully while a plain click does nothing does not
+prove JavaScript cancelled the click. For Safari, allow pop-up windows for
+`app.makinari.com` under Settings > Websites > Pop-up Windows and retry the existing
+link. Modified clicks are a valid temporary continuation, not a new invitation.
+Component event tests assert neither click is cancelled; browser tests use the
+actual server-rendered Button/anchor, but do not reproduce a user's Safari policy
+or extensions. Do not weaken shared permission/navigation guards on that evidence.
+
 Provider authorization is not channel readiness. The invitation API returns
 `completed` only after activation and webhook finalization. A `502` leaves setup
 retryable and cannot produce a Connected badge. An explicit

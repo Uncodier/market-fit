@@ -11,6 +11,7 @@ function PageAction({ label = 'Create tender' }: { label?: string }) {
 }
 test('page primary renders only inside global TopBar and keeps its handler/state', () => {
   const shell = render(<header aria-label="Global TopBar"><TopBarPrimaryActionsSlot /></header>)
+  expect(shell.container.querySelector('[data-page-primary-actions]')).toHaveClass('empty:hidden')
   const page = render(<PageAction />)
   const primary = within(screen.getByRole('banner')).getByRole('button', { name: 'Create tender' })
   expect(page.container.querySelector('button')).toBeNull()

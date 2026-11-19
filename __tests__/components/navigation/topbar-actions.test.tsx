@@ -67,6 +67,11 @@ it.each(["/dashboard", "/costs"])("leaves report export in the page toolbar on %
   expect(screen.queryByRole("button", { name: "Section CSV" })).not.toBeInTheDocument();
 });
 
+it("uses an 8px mobile action gap and a 16px desktop gap", () => {
+  const view = toolbar("/deals", { isDealsPage: true });
+  expect(view.container.firstElementChild).toHaveClass("gap-2", "sm:gap-4");
+});
+
 it.each([
   ["/catalog", "catalog:create"],
   ["/catalog/modifier-groups", "modifier-groups:create"],
@@ -87,6 +92,11 @@ it.each([
   const { rerender } = toolbar(pathname);
   fireEvent.click(screen.getByRole("button"));
   expect(listener).toHaveBeenCalledTimes(1);
+  if (!pathname.startsWith("/content/")) {
+    const icon = screen.getByRole("button").querySelector("svg")!;
+    expect(icon.querySelector("circle")).toBeNull();
+    expect(icon.querySelectorAll("line")).toHaveLength(2);
+  }
   if (!pathname.startsWith("/content/")) {
     mockSite = null;
     rerender(<TopBarActions {...baseProps} />);
@@ -181,6 +191,11 @@ it.each([
 ] as const)("preserves %s dialog mounting and site gating", (flag, dialog) => {
   const { rerender } = toolbar("/quotations", { [flag]: true });
   expect(screen.getByTestId(dialog)).toBeInTheDocument();
+  if (!["asset", "campaign"].includes(dialog)) {
+    const icon = screen.getByTestId(dialog).querySelector("svg")!;
+    expect(icon.querySelector("circle")).toBeNull();
+    expect(icon.querySelectorAll("line")).toHaveLength(2);
+  }
   mockSite = null;
   rerender(<TopBarActions {...baseProps} {...{ [flag]: true }} />);
   expect(screen.queryByTestId(dialog)).not.toBeInTheDocument();

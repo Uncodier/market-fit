@@ -1,12 +1,22 @@
 /** @jest-environment node */
 import { existsSync, readFileSync } from "node:fs"
+import React from "react"
+import { renderToStaticMarkup } from "react-dom/server"
 import os from "node:os"
 import path from "node:path"
 import { chromium, webkit, type Browser, type BrowserContext, type Page } from "playwright"
 import ts from "typescript"
+import { PartnerSupportChannelSetup } from "@/app/components/settings/PartnerSupportChannelSetup"
+
+jest.mock("@/app/components/ui/use-btn-glass-motion", () => ({ useBtnGlassMotion: () => () => {} }))
+jest.mock("@/app/context/PermissionContext", () => ({ useOptionalPermissions: () => null }))
 
 const root = path.resolve(__dirname, "../../..")
 const target = "https://example.test/authorization"
+const setupMarkup = renderToStaticMarkup(React.createElement(PartnerSupportChannelSetup, {
+  type: "whatsapp", status: "pending", invitationUrl: target,
+  connecting: false, checking: false, onConnect: () => {}, onCheck: async () => {},
+}))
 const source = ts.transpileModule(readFileSync(path.join(root, "app/components/settings/partner-setup-window.ts"), "utf8"), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
 }).outputText
@@ -54,8 +64,7 @@ for (const engine of engines) {
       })
       page = await context.newPage()
       page.setDefaultTimeout(4_000)
-      await page.setContent(`<button id="connect">Connect Account</button>
-        <a href="${target}" target="_blank" rel="noopener noreferrer">Continue Setup</a>`)
+      await page.setContent(`<button id="connect">Connect Account</button>${setupMarkup}`)
       await page.addScriptTag({ content: script })
     })
     afterEach(async () => {
@@ -76,8 +85,9 @@ for (const engine of engines) {
       expect(requests).toEqual([target])
     })
 
-    it("opens the native Continue Setup link without script-driven popup creation", async () => {
+    it("opens the actual rendered Continue Setup anchor with a plain click", async () => {
       await page.evaluate(() => { window.open = () => { throw new Error("Script popups blocked") } })
+      expect(await page.getByRole("link", { name: "Continue Setup" }).locator(".btn-glass-surface").count()).toBe(1)
       const popupReady = page.waitForEvent("popup")
       await page.getByRole("link", { name: "Continue Setup" }).click()
       const popup = await popupReady

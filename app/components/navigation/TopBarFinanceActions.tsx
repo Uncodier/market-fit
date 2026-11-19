@@ -2,7 +2,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useSite } from "@/app/context/SiteContext";
 import { useLocalization } from "@/app/context/LocalizationContext";
 import { Button } from "../ui/button";
-import { PlusCircle, ArrowUpRight, FileText } from "../ui/icons";
+import { Plus, ArrowUpRight, FileText } from "../ui/icons";
 import type { TopBarActionsProps } from "./topbar-action-types";
 
 type FinanceProps = Pick<TopBarActionsProps, "isAccountingPage" | "isFinancePage" | "isJournalEntriesPage">;
@@ -22,7 +22,7 @@ export function TopBarFinanceActions({ isAccountingPage, isFinancePage, isJourna
           onClick={() => router.push(`/marketplace?ownerSiteId=${currentSite.id}&returnTo=/purchases/orders`)}
           title={t("buyer.orders.newPurchase") || "New Purchase"}
         >
-          <PlusCircle className="h-4 w-4 shrink-0" />
+          <Plus className="h-4 w-4 shrink-0" />
           <span className="hidden sm:inline font-inter font-medium text-sm">
             {t("buyer.orders.newPurchase") || "New Purchase"}
           </span>
@@ -37,7 +37,7 @@ export function TopBarFinanceActions({ isAccountingPage, isFinancePage, isJourna
           onClick={() => router.push(`/marketplace?ownerSiteId=${currentSite.id}&returnTo=/purchases/subscriptions&filter=recurring`)}
           title={t("buyer.subscriptions.newSubscription") || "New Subscription"}
         >
-          <PlusCircle className="h-4 w-4 shrink-0" />
+          <Plus className="h-4 w-4 shrink-0" />
           <span className="hidden sm:inline font-inter font-medium text-sm">
             {t("buyer.subscriptions.newSubscription") || "New Subscription"}
           </span>
@@ -76,7 +76,7 @@ export function TopBarFinanceActions({ isAccountingPage, isFinancePage, isJourna
           }}
           title={t("bills.create.button") || "New bill"}
         >
-          <PlusCircle className="h-4 w-4 shrink-0" />
+          <Plus className="h-4 w-4 shrink-0" />
           <span className="hidden sm:inline font-inter font-medium text-sm">
             {t("bills.create.button") || "New bill"}
           </span>
@@ -95,7 +95,7 @@ export function TopBarFinanceActions({ isAccountingPage, isFinancePage, isJourna
           }}
           title={t("expenses.create.button") || "Add Expense"}
         >
-          <PlusCircle className="h-4 w-4 shrink-0" />
+          <Plus className="h-4 w-4 shrink-0" />
           <span className="hidden sm:inline font-inter font-medium text-sm">
             {t("expenses.create.button") || "Add Expense"}
           </span>
@@ -109,7 +109,7 @@ export function TopBarFinanceActions({ isAccountingPage, isFinancePage, isJourna
             className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
             onClick={() => window.dispatchEvent(new CustomEvent('accounting:create'))}
           >
-            <PlusCircle className="h-4 w-4 shrink-0" />
+            <Plus className="h-4 w-4 shrink-0" />
             <span className="hidden sm:inline ml-2">Add Account</span>
           </Button>
         </div>
@@ -135,7 +135,7 @@ export function TopBarFinanceActions({ isAccountingPage, isFinancePage, isJourna
             className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm bg-primary hover:bg-primary/90 text-primary-foreground"
             onClick={() => window.dispatchEvent(new CustomEvent('journal:create'))}
           >
-            <PlusCircle className="h-4 w-4 shrink-0" />
+            <Plus className="h-4 w-4 shrink-0" />
             <span className="hidden sm:inline ml-2">{t('accounting.newEntry') || "New Entry"}</span>
           </Button>
         </div>

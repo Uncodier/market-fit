@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { createEvent, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { toast } from "sonner"
 import { TelegramChannelSetup } from "@/app/components/settings/TelegramChannelSetup"
 import { PartnerSupportChannelSetup } from "@/app/components/settings/PartnerSupportChannelSetup"
@@ -59,6 +59,18 @@ it.each(["whatsapp", "messenger"])("continues %s setup through a native external
   expect(onConnect).not.toHaveBeenCalled()
   fireEvent.click(screen.getByRole("button", { name: "Check setup status" }))
   expect(onCheck).toHaveBeenCalledTimes(1)
+})
+
+it.each([{}, { metaKey: true }, { ctrlKey: true }])("does not cancel the mounted Continue Setup link click (%#)", modifiers => {
+  const onConnect = jest.fn()
+  render(<PartnerSupportChannelSetup type="whatsapp" status="pending"
+    invitationUrl="https://example.test/invite" connecting={false} checking={false}
+    onConnect={onConnect} onCheck={jest.fn()} />)
+  const link = screen.getByRole("link", { name: "Continue Setup" })
+  const click = createEvent.click(link, { button: 0, ...modifiers })
+  expect(fireEvent(link, click)).toBe(true)
+  expect(click.defaultPrevented).toBe(false)
+  expect(onConnect).not.toHaveBeenCalled()
 })
 
 it("keeps the existing authorization link usable while a status check is running", () => {

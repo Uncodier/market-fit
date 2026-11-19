@@ -2,7 +2,7 @@ import { usePathname } from "next/navigation";
 import { useSite } from "@/app/context/SiteContext";
 import { useLocalization } from "@/app/context/LocalizationContext";
 import { Button } from "../ui/button";
-import { PlusCircle } from "../ui/icons";
+import { Plus } from "../ui/icons";
 import { CreateDealDialog } from "@/app/deals/components/CreateDealDialog";
 import { CreateQuotationDialog } from "@/app/quotations/components/CreateQuotationDialog";
 import { handleCreateDeal } from "./topbar-create-handlers";
@@ -28,7 +28,7 @@ export function TopBarCommerceActions({
           }
           title={t("layout.topbar.newRecord") || "New Record"}
         >
-          <PlusCircle className="h-4 w-4 shrink-0" />
+          <Plus className="h-4 w-4 shrink-0" />
           <span className="hidden sm:inline ml-2">
             {t("layout.topbar.newRecord") || "New Record"}
           </span>
@@ -43,7 +43,7 @@ export function TopBarCommerceActions({
               className="!min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
               title={t("layout.topbar.addSale")}
             >
-              <PlusCircle className="h-4 w-4 shrink-0" />
+              <Plus className="h-4 w-4 shrink-0" />
               <span className="hidden sm:inline ml-2">
                 {t("layout.topbar.addSale")}
               </span>
@@ -60,7 +60,7 @@ export function TopBarCommerceActions({
             }
             title={t("catalog.addItem") || "Add Item"}
           >
-            <PlusCircle className="h-4 w-4 shrink-0" />
+            <Plus className="h-4 w-4 shrink-0" />
             <span className="hidden sm:inline ml-2">
               {t("catalog.addItem") || "Add Item"}
             </span>
@@ -76,7 +76,7 @@ export function TopBarCommerceActions({
           }
           title={t("catalog.modifiers.create") || "New group"}
         >
-          <PlusCircle className="h-4 w-4 shrink-0" />
+          <Plus className="h-4 w-4 shrink-0" />
           <span className="hidden sm:inline ml-2">
             {t("catalog.modifiers.create") || "New group"}
           </span>
@@ -89,7 +89,7 @@ export function TopBarCommerceActions({
           onClick={() => window.dispatchEvent(new CustomEvent("orders:create"))}
           title={t("orders.add") || "Create Order"}
         >
-          <PlusCircle className="h-4 w-4 shrink-0" />
+          <Plus className="h-4 w-4 shrink-0" />
           <span className="hidden sm:inline ml-2">
             {t("orders.add") || "Create Order"}
           </span>
@@ -104,7 +104,7 @@ export function TopBarCommerceActions({
           }
           title={t("shipments.add") || "Create Shipment"}
         >
-          <PlusCircle className="h-4 w-4 shrink-0" />
+          <Plus className="h-4 w-4 shrink-0" />
           <span className="hidden sm:inline ml-2">
             {t("shipments.add") || "Create Shipment"}
           </span>
@@ -120,7 +120,7 @@ export function TopBarCommerceActions({
             }
             title={t("inventory.addStock") || "Add Stock"}
           >
-            <PlusCircle className="h-4 w-4 shrink-0" />
+            <Plus className="h-4 w-4 shrink-0" />
             <span className="hidden sm:inline ml-2">
               {t("inventory.addStock") || "Add Stock"}
             </span>
@@ -135,7 +135,7 @@ export function TopBarCommerceActions({
           title="New Transfer"
           aria-label="New Transfer"
         >
-          <PlusCircle className="h-4 w-4 shrink-0" />
+          <Plus className="h-4 w-4 shrink-0" />
           <span className="hidden sm:inline ml-2">New Transfer</span>
         </Button>
       )}
@@ -148,7 +148,7 @@ export function TopBarCommerceActions({
           }
           title={t("priceLists.addList") || "Create List"}
         >
-          <PlusCircle className="h-4 w-4 shrink-0" />
+          <Plus className="h-4 w-4 shrink-0" />
           <span className="hidden sm:inline ml-2">
             {t("priceLists.addList") || "Create List"}
           </span>
@@ -164,7 +164,7 @@ export function TopBarCommerceActions({
             }
             title="Add Price"
           >
-            <PlusCircle className="h-4 w-4 shrink-0" />
+            <Plus className="h-4 w-4 shrink-0" />
             <span className="hidden sm:inline ml-2">
               Add Price
             </span>
@@ -180,7 +180,7 @@ export function TopBarCommerceActions({
           }
           title={t("promotions.add") || "Create Promotion"}
         >
-          <PlusCircle className="h-4 w-4 shrink-0" />
+          <Plus className="h-4 w-4 shrink-0" />
           <span className="hidden sm:inline ml-2">
             {t("promotions.add") || "Create Promotion"}
           </span>
@@ -195,7 +195,7 @@ export function TopBarCommerceActions({
           }
           title="Create Subscription"
         >
-          <PlusCircle className="h-4 w-4 shrink-0" />
+          <Plus className="h-4 w-4 shrink-0" />
           <span className="hidden sm:inline ml-2">Create Subscription</span>
         </Button>
       )}
@@ -209,7 +209,7 @@ export function TopBarCommerceActions({
             }
             title="Create Reservation"
           >
-            <PlusCircle className="h-4 w-4 shrink-0" />
+            <Plus className="h-4 w-4 shrink-0" />
             <span className="hidden sm:inline ml-2">Create Reservation</span>
           </Button>
         </div>
@@ -222,7 +222,7 @@ export function TopBarCommerceActions({
               className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
               title="Create Quotation"
             >
-              <PlusCircle className="h-4 w-4 shrink-0" />
+              <Plus className="h-4 w-4 shrink-0" />
               <span className="hidden sm:inline ml-2">Create Quotation</span>
             </Button>
           }
@@ -237,7 +237,7 @@ export function TopBarCommerceActions({
                 className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
                 title={t("layout.topbar.createDeal")}
               >
-                <PlusCircle className="h-4 w-4 shrink-0" />
+                <Plus className="h-4 w-4 shrink-0" />
                 <span className="hidden sm:inline ml-2">
                   {t("layout.topbar.createDeal")}
                 </span>
