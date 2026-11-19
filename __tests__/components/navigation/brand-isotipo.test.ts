@@ -15,9 +15,15 @@ describe('Makinari isotipo', () => {
 
   it('uses the new mark only in the collapsed sidebar with both theme treatments', () => {
     const sidebar = read('app/components/navigation/Sidebar.tsx')
-    expect(sidebar).toContain('renderCollapsed ? "/images/isotipo.svg" : "/images/combination_mark.png"')
-    expect(sidebar).toContain('renderCollapsed ? "brightness-0 dark:invert"')
-    expect(sidebar).toContain('object-contain')
+    const brand = read('app/components/navigation/SidebarBrand.tsx')
+    expect(sidebar).toContain('<SidebarBrand isCollapsed={renderCollapsed} />')
+    expect(brand).toContain('text-black dark:text-white')
+    expect(brand).toContain('src="/images/combination_mark.png"')
+    expect(brand).toContain('object-contain dark:brightness-0 dark:invert')
+    const svg = read('public/images/isotipo.svg')
+    for (const path of svg.matchAll(/<path d="([^"]+)"/g)) {
+      expect(brand).toContain(`d="${path[1]}"`)
+    }
   })
 
   it('provides a white transparent SVG favicon and cache-versioned metadata', () => {

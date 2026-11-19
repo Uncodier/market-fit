@@ -13,7 +13,7 @@ import { RobotsNavItems } from "./RobotsNavItems"
 import { DynamicShortcuts } from "./DynamicShortcuts"
 import { useAuth } from "@/app/hooks/use-auth"
 import { navigateOrAssign } from "@/lib/navigation/stale-router"
-import { NavigationLink } from "./NavigationLink"
+import { SidebarBrand } from "./SidebarBrand"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { NavigationAreaGroups } from "./NavigationAreaGroups"
 import { SIDEBAR_AUTOMATION_AREA_ORDER } from "@/app/config/navigation-areas"
@@ -192,23 +192,7 @@ export function Sidebar({
           className
         )}
       >
-        <NavigationLink
-          href="/robots"
-          className={cn(
-            "flex items-center h-16 border-b dark:border-white/5 border-black/5 flex-none",
-            renderCollapsed ? "justify-center px-3" : "justify-center px-6"
-          )}
-        >
-          <img
-            src={renderCollapsed ? "/images/isotipo.svg" : "/images/combination_mark.png"}
-            alt="Makinari Logo"
-            className={cn(
-              "transition-all duration-200 object-contain",
-              renderCollapsed ? "h-6 w-6" : "h-5 w-auto",
-              renderCollapsed ? "brightness-0 dark:invert" : "dark:brightness-0 dark:invert"
-            )}
-          />
-        </NavigationLink>
+        <SidebarBrand isCollapsed={renderCollapsed} />
 
         <div
           className={cn(

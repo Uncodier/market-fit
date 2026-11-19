@@ -210,9 +210,9 @@ describe("mobile primary buttons", () => {
   it("sizes shared and standalone mobile primary icons to 32px without enlarging the button", () => {
     const css = postcss.parse(readFileSync(path.join(process.cwd(), "app/styles/mobile-primary-buttons.css"), "utf8"))
     const selectors = [
-      "html .btn-primary > .safari-icon-fix",
-      "html .btn-primary > .safari-icon-fix > svg",
-      "html .btn-primary > svg",
+      "html .btn-primary.btn-primary.btn-primary.btn-primary > .safari-icon-fix",
+      "html .btn-primary.btn-primary.btn-primary.btn-primary > .safari-icon-fix > svg",
+      "html .btn-primary.btn-primary.btn-primary.btn-primary > svg",
     ]
     for (const selector of selectors) {
       const values: Record<string, string> = {}
@@ -227,9 +227,14 @@ describe("mobile primary buttons", () => {
         height: "32px !important",
         "min-width": "32px !important",
         "min-height": "32px !important",
-        "flex-shrink": "0",
+        "max-width": "32px !important",
+        "max-height": "32px !important",
+        margin: "0 !important",
+        "flex-shrink": "0 !important",
       })
-      if (selector.endsWith("svg")) expect(values["stroke-width"]).toBe("1.5")
     }
+    const strokes: string[] = []
+    css.walkDecls("stroke-width", declaration => { strokes.push(declaration.value) })
+    expect(strokes).toEqual(["1.5"])
   })
 })

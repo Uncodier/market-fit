@@ -1,27 +1,29 @@
-import { createServiceClient } from '@/lib/supabase/server'
+import { requireSiteAccess } from '@/lib/auth/api-site-access'
+import { SPENDABLE_CREDIT_FIELDS, spendableCredits } from '@/lib/billing/spendable-credits'
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const siteId = searchParams.get('siteId')
 
-    if (!siteId) {
-      return NextResponse.json({ error: 'Site ID is required' }, { status: 400 })
+    if (!z.string().uuid().safeParse(siteId).success || searchParams.getAll('siteId').length !== 1) {
+      return NextResponse.json({ error: 'A valid Site ID is required' }, { status: 400 })
     }
 
-    const supabase = await createServiceClient()
+    const access = await requireSiteAccess(request, siteId!)
+    if (access.error) return access.error
 
-    // Check if billing is setup (has active status and credits_available > 0, or active plan)
-    const { data: billingData, error } = await supabase
+    const { data: billingData, error } = await access.supabase
       .from('billing')
-      .select('status, credits_available, plan')
+      .select(`status,plan,${SPENDABLE_CREDIT_FIELDS}`)
       .eq('site_id', siteId)
       .single()
 
-    if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
-      console.error('Error checking billing:', error)
-      return NextResponse.json({ error: 'Failed to check billing' }, { status: 500 })
+    const available = error ? null : spendableCredits(billingData)
+    if (available === null) {
+      return NextResponse.json({ error: 'Billing unavailable' }, { status: 503 })
     }
 
     // Billing is setup if:
@@ -30,19 +32,12 @@ export async function GET(request: NextRequest) {
     // 3. Has a paid plan (not 'free')
     const hasBillingSetup = billingData && (
       billingData.status === 'active' ||
-      (billingData.credits_available && billingData.credits_available > 0) ||
+      available > 0 ||
       (billingData.plan && billingData.plan !== 'free')
     )
 
-    console.log('Billing check result:', {
-      siteId,
-      billingData,
-      hasBillingSetup
-    })
-
-    return NextResponse.json({ hasBillingSetup: !!hasBillingSetup })
-  } catch (error) {
-    console.error('Error in billing check API:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ hasBillingSetup: !!hasBillingSetup }, { headers: { 'Cache-Control': 'private, no-store' } })
+  } catch {
+    return NextResponse.json({ error: 'Billing unavailable' }, { status: 503 })
   }
 }

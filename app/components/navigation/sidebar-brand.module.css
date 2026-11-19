@@ -1,0 +1,32 @@
+/* Preserve the mark's viewport despite global Safari navigation-icon rules. */
+.brandLink svg.mark,
+:global(html.safari) .brandLink svg.mark {
+  display: block !important;
+  position: static !important;
+  width: 24px !important;
+  height: 24px !important;
+  flex-shrink: 0;
+  overflow: visible;
+  transform: none !important;
+  -webkit-transform: none !important;
+}
+
+.brandLink .mark .ball {
+  transform: translateY(0);
+  -webkit-transform: translateY(0);
+}
+
+.brandLink .mark .lever {
+  transform-box: view-box;
+  transform-origin: 650px 925px;
+  transform: rotate(0deg);
+  -webkit-transform: rotate(0deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brandLink .mark .ball,
+  .brandLink .mark .lever {
+    transform: none !important;
+    -webkit-transform: none !important;
+  }
+}

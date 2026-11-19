@@ -73,15 +73,18 @@
     backdrop-filter: blur(14px) saturate(150%) !important;
   }
 
-  /* Size both the shared icon wrapper and SVG, overriding legacy Safari sizing. */
-  html .btn-primary > .safari-icon-fix,
-  html .btn-primary > .safari-icon-fix > svg,
-  html .btn-primary > svg {
+  /* Outrank legacy Safari button/utility selectors, regardless of import order. */
+  html .btn-primary.btn-primary.btn-primary.btn-primary > .safari-icon-fix,
+  html .btn-primary.btn-primary.btn-primary.btn-primary > .safari-icon-fix > svg,
+  html .btn-primary.btn-primary.btn-primary.btn-primary > svg {
     width: 32px !important;
     height: 32px !important;
     min-width: 32px !important;
     min-height: 32px !important;
-    flex-shrink: 0;
+    max-width: 32px !important;
+    max-height: 32px !important;
+    margin: 0 !important;
+    flex-shrink: 0 !important;
   }
 
   html .btn-primary > .safari-icon-fix > svg,

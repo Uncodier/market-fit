@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
 import { useSite } from '@/app/context/SiteContext'
+import { useCreditPeriodActive } from './use-credit-period-active'
+import { spendableCredits } from '@/lib/billing/spendable-credits'
 
 export interface BillingCheckResult {
   canStartRobot: boolean
@@ -12,11 +13,15 @@ export interface BillingCheckResult {
 
 export function useBillingCheck(): BillingCheckResult {
   const { currentSite } = useSite()
-  const [isLoading, setIsLoading] = useState(true)
+  const billing = currentSite?.billing
+  // Recheck stale context balances at their boundaries, including tab wake-up.
+  useCreditPeriodActive(billing?.trial_started_at, billing?.trial_ends_at)
+  useCreditPeriodActive(billing?.plan_credit_period_start, billing?.plan_credit_period_end)
+  useCreditPeriodActive(billing?.plan_credit_period_start, billing?.paid_subscription_period_end)
 
   // Check if user can start robot based on billing
   const checkBillingAccess = (): BillingCheckResult => {
-    if (!currentSite?.billing) {
+    if (!billing || currentSite?.billing_read_status === 'unavailable' || currentSite?.billing_read_status === 'missing') {
       return {
         canStartRobot: false,
         hasEnginePlan: false,
@@ -27,9 +32,9 @@ export function useBillingCheck(): BillingCheckResult {
       }
     }
 
-    const billing = currentSite.billing
     const plan = billing.plan
-    const creditsAvailable = billing.credits_available || 0
+    const spendable = spendableCredits(billing)
+    const creditsAvailable = spendable ?? 0
     
     // Check if plan is engine, foundry or enterprise (paid plans)
     const hasEnginePlan = plan === 'engine' || plan === 'foundry' || plan === 'enterprise'
@@ -38,7 +43,7 @@ export function useBillingCheck(): BillingCheckResult {
     const hasActiveCredits = creditsAvailable > 0
     
     // Can start robot if has engine+ plan OR has active credits
-    const canStartRobot = hasEnginePlan || hasActiveCredits
+    const canStartRobot = spendable !== null && (hasEnginePlan || hasActiveCredits)
 
     return {
       canStartRobot,
@@ -49,10 +54,6 @@ export function useBillingCheck(): BillingCheckResult {
       isLoading: false
     }
   }
-
-  useEffect(() => {
-    setIsLoading(false)
-  }, [currentSite])
 
   return checkBillingAccess()
 }

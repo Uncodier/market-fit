@@ -1,45 +1,38 @@
-import { createServiceClient } from '@/lib/supabase/server'
+import { requireSiteAccess } from '@/lib/auth/api-site-access'
+import { SPENDABLE_CREDIT_FIELDS, spendableCredits } from '@/lib/billing/spendable-credits'
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const siteId = searchParams.get('siteId')
 
-    if (!siteId) {
-      return NextResponse.json({ error: 'Site ID is required' }, { status: 400 })
+    if (!z.string().uuid().safeParse(siteId).success || searchParams.getAll('siteId').length !== 1) {
+      return NextResponse.json({ error: 'A valid Site ID is required' }, { status: 400 })
     }
 
-    const supabase = await createServiceClient()
+    const access = await requireSiteAccess(request, siteId!)
+    if (access.error) return access.error
 
-    // Check if site has credits available
-    const { data: billingData, error } = await supabase
+    const { data: billingData, error } = await access.supabase
       .from('billing')
-      .select('credits_available')
+      .select(SPENDABLE_CREDIT_FIELDS)
       .eq('site_id', siteId)
       .single()
 
-    if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
-      console.error('Error checking credits:', error)
-      return NextResponse.json({ error: 'Failed to check credits' }, { status: 500 })
+    const available = error ? null : spendableCredits(billingData)
+    if (available === null) {
+      return NextResponse.json({ error: 'Credits unavailable' }, { status: 503 })
     }
 
-    // Has credits if credits_available > 0
-    const hasCredits = billingData && billingData.credits_available && billingData.credits_available > 0
-
-    console.log('Credits check result:', {
-      siteId,
-      credits_available: billingData?.credits_available || 0,
-      hasCredits
-    })
-
-    return NextResponse.json({ 
-      hasCredits: !!hasCredits,
-      credits_available: billingData?.credits_available || 0
-    })
-  } catch (error) {
-    console.error('Error in credits check API:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({
+      hasCredits: available > 0,
+      credits_available: billingData!.credits_available,
+      spendable_credits: available,
+    }, { headers: { 'Cache-Control': 'private, no-store' } })
+  } catch {
+    return NextResponse.json({ error: 'Credits unavailable' }, { status: 503 })
   }
 }
 

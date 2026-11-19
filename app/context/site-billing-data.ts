@@ -48,8 +48,9 @@ export function hydrateSiteBilling(row: Partial<SiteBilling>): SiteBilling {
     billing_interval: parseBillingInterval(row.billing_interval) ?? 'month',
     addons_count: row.addons_count || 0,
     auto_renew: row.auto_renew ?? true,
-    credits_available: row.credits_available || 0,
+    // Preserve unavailable/malformed balances for fail-closed admission checks.
+    credits_available: row.credits_available,
     credits_used: row.credits_used || 0,
-    account_balance: row.account_balance || 0,
+    account_balance: row.account_balance === null ? 0 : row.account_balance,
   }
 }
