@@ -28,6 +28,9 @@ print history, not the parent order's status, in the checked-in implementation.
 - Status changes use a single asynchronous SWR mutation with optimistic feedback,
   rollback on failure, the returned server row, and post-write revalidation.
   Older/in-write reads cannot overwrite that mutation's presentation.
+  Rapid status writes in the mounted list are serialized so mutations of two
+  orders cannot supersede each other. Queued clicks retain their original site
+  and cache key after navigation; they never publish into the newly selected site.
 - Non-atomic checkout omits `status` when the calculated status equals the observed
   value. The returned row supplies the actual status for finalization.
 - An intentional non-atomic status transition filters by the observed status as
