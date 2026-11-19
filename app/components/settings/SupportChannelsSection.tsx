@@ -44,6 +44,7 @@ import { useAgentChannelActivation } from "./use-agent-channel-activation"
 import { isActiveAgentChannel, isManuallyDisabledAgentChannel } from "@/lib/agent-channel-state"
 import { PartnerSupportChannelSetup } from "./PartnerSupportChannelSetup"
 import { PARTNER_LINK_TYPES } from "./zavu-invitation-helpers"
+import { closePartnerSetupWindow, getPartnerSetupUrl, navigatePartnerSetupWindow, reservePartnerSetupWindow } from "./partner-setup-window"
 import { ZavuChannelActivationRecovery, canRecoverZavuActivation } from "./ZavuChannelActivationRecovery"
 interface SupportChannelsSectionProps {
   active: boolean
@@ -183,12 +184,9 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
       return
     }
 
-    const invitationUrl = channel.metadata?.invitation_url
-    if (invitationUrl) {
-      window.open(invitationUrl, "_blank")
-      return
-    }
+    if (getPartnerSetupUrl(channel.metadata?.invitation_url)) return
 
+    let popup = reservePartnerSetupWindow()
     setConnectingIndex(index)
     try {
       const response = await apiClient.post("/api/integrations/zavu/invitations", {
@@ -204,6 +202,8 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
 
       const payload = response.data || {}
       const invitation = payload.invitation || {}
+      const setupUrl = getPartnerSetupUrl(invitation.url)
+      if (!invitation.id || !setupUrl) throw new Error("The server did not return a valid setup link. Please try again.")
       update(index, {
         ...channel,
         id: payload.channelId || channel.id,
@@ -212,18 +212,20 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
         zavu_invitation_id: invitation.id,
         metadata: {
           ...(channel.metadata || {}),
-          invitation_url: invitation.url,
+          invitation_url: setupUrl,
         },
       })
 
-      if (invitation.url) {
-        window.open(invitation.url, "_blank")
+      if (!navigatePartnerSetupWindow(popup, setupUrl)) {
+        toast.warning("Setup link is ready. Select Continue Setup to open authorization.")
       }
+      popup = null
 
       if (onSave) {
         await onSave(form.getValues())
       }
     } catch (error) {
+      closePartnerSetupWindow(popup)
       if (!showBillingLimitFromError(error)) {
         toast.error(error instanceof Error ? error.message : "An error occurred")
       }

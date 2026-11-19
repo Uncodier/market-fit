@@ -36,6 +36,22 @@ provider call; activation remains owned by server-side finalization, not this
 client flag. Deploy the web payload correction and reload existing tabs. Regression
 coverage: `SupportChannelsSection.test.tsx` checks exact WhatsApp/Messenger payloads.
 
+Initial partner setup reserves an isolated blank tab synchronously during the
+click, before awaiting authentication or invitation creation, then navigates that
+tab to the returned HTTPS link. Failed creation closes the unused tab. Popup blocks
+or closed tabs leave the invitation intact and show an explicit continuation notice.
+**Continue Setup** is a native external link with `noopener noreferrer`, not an
+asynchronous `window.open` retry; opening it never creates another invitation and
+remains available during status checks. Non-HTTPS and credential-bearing links are
+rejected. Deploy this web change and reload older settings tabs; no provider or
+database change is required. Existing invitations do not need to be deleted.
+
+Offline popup regressions are in `partner-setup-window.test.ts` and
+`partner-setup-window-browser.test.ts`; the latter exercises the production helper
+and native link navigation in installed WebKit/Chromium with a static test-only
+destination, no API or provider calls. Missing browser binaries produce explicit
+skips, not evidence of Safari or live Meta onboarding success.
+
 Provider authorization is not channel readiness. The invitation API returns
 `completed` only after activation and webhook finalization. A `502` leaves setup
 retryable and cannot produce a Connected badge. An explicit

@@ -5,6 +5,8 @@ import {
 } from "@/app/components/settings/SupportChannelsSection"
 import type { SiteFormValues } from "@/app/components/settings/form-schema"
 import { apiClient } from "@/app/services/api-client-service"
+import type { ApiResponse } from "@/app/services/api-client-response"
+import { toast } from "sonner"
 import { reconcileSupportConnectionById } from "@/app/components/settings/support-channel-connection-utils"
 
 const checkStatus = jest.fn()
@@ -133,6 +135,7 @@ describe("SupportChannelsSection", () => {
       data: { channelId: "partner-pending", invitation: { id: "inv-1", url: invitationUrl } },
     })
     const open = jest.spyOn(window, "open").mockReturnValue(null)
+    const warning = jest.spyOn(toast, "warning")
     const onSave = jest.fn()
     render(<TestForm onSave={onSave} initialConnections={[{
       id: "partner-pending", type, name: "", status: "pending",
@@ -148,13 +151,65 @@ describe("SupportChannelsSection", () => {
       connectionType,
       name: label,
     })
-    expect(open).toHaveBeenCalledWith(invitationUrl, "_blank")
+    expect(open).toHaveBeenCalledWith("about:blank", "_blank")
+    expect(open).toHaveBeenCalledTimes(1)
+    expect(warning).toHaveBeenCalledWith("Setup link is ready. Select Continue Setup to open authorization.")
+    const continueSetup = screen.getByRole("link", { name: "Continue Setup" })
+    expect(continueSetup).toHaveAttribute("href", invitationUrl)
+    expect(continueSetup).toHaveAttribute("target", "_blank")
+    expect(continueSetup).toHaveAttribute("rel", "noopener noreferrer")
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
       channels: expect.objectContaining({ connections: [expect.objectContaining({
         id: "partner-pending", type, name: label, status: "pending",
         zavu_invitation_id: "inv-1", metadata: { invitation_url: invitationUrl },
       })] }),
     }))
+    expect(screen.queryByText("Connected")).not.toBeInTheDocument()
+  })
+
+  it("reserves the setup tab during the click before awaiting invitation creation", async () => {
+    let resolveInvitation!: (value: ApiResponse<unknown>) => void
+    const post = jest.spyOn(apiClient, "post").mockImplementation(() => new Promise(resolve => {
+      resolveInvitation = resolve
+    }))
+    const popup = { opener: window, closed: false, location: { replace: jest.fn() }, close: jest.fn() }
+    const open = jest.spyOn(window, "open").mockReturnValue(popup as unknown as Window)
+    const onSave = jest.fn()
+    render(<TestForm onSave={onSave} initialConnections={[{
+      id: "wa-pending", type: "whatsapp", name: "WhatsApp", status: "pending",
+    }]} />)
+
+    fireEvent.click(screen.getByRole("button", { name: "Connect Account" }))
+    expect(open).toHaveBeenCalledWith("about:blank", "_blank")
+    expect(open.mock.invocationCallOrder[0]).toBeLessThan(post.mock.invocationCallOrder[0])
+    expect(popup.opener).toBeNull()
+    expect(popup.location.replace).not.toHaveBeenCalled()
+
+    resolveInvitation({ success: true, data: { invitation: { id: "inv-1", url: "https://example.test/invite" } } })
+    await waitFor(() => expect(onSave).toHaveBeenCalled())
+    expect(popup.location.replace).toHaveBeenCalledWith("https://example.test/invite")
+    expect(open).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole("link", { name: "Continue Setup" })).toBeInTheDocument()
+  })
+
+  it.each([
+    { success: false, error: { message: "Creation failed" } },
+    { success: true, data: { invitation: { id: "inv-1" } } },
+    { success: true, data: { invitation: { url: "https://example.test/invite" } } },
+    { success: true, data: { invitation: { id: "inv-1", url: "javascript:alert(1)" } } },
+  ])("closes the reserved tab when creation fails or returns an invalid link (%#)", async response => {
+    jest.spyOn(apiClient, "post").mockResolvedValue(response)
+    const popup = { opener: window, closed: false, location: { replace: jest.fn() }, close: jest.fn() }
+    jest.spyOn(window, "open").mockReturnValue(popup as unknown as Window)
+    const onSave = jest.fn()
+    render(<TestForm onSave={onSave} initialConnections={[{
+      id: "wa-pending", type: "whatsapp", name: "WhatsApp", status: "pending",
+    }]} />)
+    fireEvent.click(screen.getByRole("button", { name: "Connect Account" }))
+    await waitFor(() => expect(popup.close).toHaveBeenCalledTimes(1))
+    expect(popup.location.replace).not.toHaveBeenCalled()
+    expect(onSave).not.toHaveBeenCalled()
+    expect(screen.queryByRole("link", { name: "Continue Setup" })).not.toBeInTheDocument()
     expect(screen.queryByText("Connected")).not.toBeInTheDocument()
   })
 

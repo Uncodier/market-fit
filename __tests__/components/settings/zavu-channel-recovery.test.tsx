@@ -45,6 +45,37 @@ it("shows activation pending rather than waiting for authorization", () => {
   expect(screen.getByText("Connecting this account activates the channel and may incur channel fees.")).toBeInTheDocument()
 })
 
+it.each(["whatsapp", "messenger"])("continues %s setup through a native external link without another invitation", type => {
+  const onConnect = jest.fn()
+  const onCheck = jest.fn().mockResolvedValue(undefined)
+  render(<PartnerSupportChannelSetup type={type} status="pending"
+    invitationUrl="https://example.test/invite" connecting={false} checking={false}
+    onConnect={onConnect} onCheck={onCheck} />)
+  const link = screen.getByRole("link", { name: "Continue Setup" })
+  expect(link).toHaveAttribute("href", "https://example.test/invite")
+  expect(link).toHaveAttribute("target", "_blank")
+  expect(link).toHaveAttribute("rel", "noopener noreferrer")
+  fireEvent.click(link, { ctrlKey: true })
+  expect(onConnect).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole("button", { name: "Check setup status" }))
+  expect(onCheck).toHaveBeenCalledTimes(1)
+})
+
+it("keeps the existing authorization link usable while a status check is running", () => {
+  render(<PartnerSupportChannelSetup type="whatsapp" status="pending"
+    invitationUrl="https://example.test/invite" connecting={false} checking
+    onConnect={jest.fn()} onCheck={jest.fn()} />)
+  expect(screen.getByRole("link", { name: "Continue Setup" })).not.toHaveAttribute("disabled")
+  expect(screen.getByRole("button", { name: "Checking..." })).toBeDisabled()
+})
+
+it.each(["javascript:alert(1)", "http://example.test/invite"])("does not render an unsafe setup link (%#)", invitationUrl => {
+  render(<PartnerSupportChannelSetup type="whatsapp" status="pending" invitationUrl={invitationUrl}
+    connecting={false} checking={false} onConnect={jest.fn()} onCheck={jest.fn()} />)
+  expect(screen.queryByRole("link", { name: "Continue Setup" })).not.toBeInTheDocument()
+  expect(screen.getByRole("button", { name: "Connect Account" })).toBeInTheDocument()
+})
+
 const channel = { id: "ch-1", type: "instagram", status: "pending", zavu_sender_id: "sender/1" }
 
 it.each([
