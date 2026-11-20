@@ -10,7 +10,7 @@ export function SavedListBreadcrumb({ root, name, onReturn }: { root: string; na
           </button>
         </li>
         <li className="flex items-center min-w-0">
-          <ChevronRight aria-hidden="true" className="mx-1.5 h-4 w-4 shrink-0" />
+          <ChevronRight aria-hidden={true} className="mx-1.5 h-4 w-4 shrink-0" />
           <h1 aria-current="page" className="truncate text-lg md:text-2xl font-semibold" title={name}>{name}</h1>
         </li>
       </ol>
