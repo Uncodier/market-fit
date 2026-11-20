@@ -85,7 +85,7 @@ export function useRobotsController() {
     }
     
     // Check if we need to auto-create an instance or start a new conversation
-    if (rawActivity === 'robot') {
+    if (rawActivity === 'robot' && searchParams.get('connector') === null) {
       const isNewRequest = searchParams.get("new") === "true" || searchParams.get("instance") === "new"
       const currentQuery = searchParams.get("query")
       
@@ -124,6 +124,7 @@ export function useRobotsController() {
             }, 300)
           }
         }, 200)
+        return () => clearInterval(checkReadyInterval)
       }
     }
   }, [pathname, searchParams, setRobotsViewMode, isSiteContextReady, isLoadingRobots, router])

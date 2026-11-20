@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react"
 
-export function useExternalMessageEvents(setMessage: (message: string) => void, handleSendMessage: () => void) {
+export function useExternalMessageEvents(setMessage: (message: string) => void, handleSendMessage: () => void, manualOnly = false) {
   // Use refs for message handlers to avoid stale closures in event listeners
   const setMessageRef = useRef(setMessage);
   const handleSendMessageRef = useRef(handleSendMessage);
@@ -12,11 +12,14 @@ export function useExternalMessageEvents(setMessage: (message: string) => void, 
 
   // Custom event listener for external components to send messages
   useEffect(() => {
+    if (manualOnly) return
+    let live = true
     const handleRobotSendMessage = (event: Event) => {
       const customEvent = event as CustomEvent<{ text: string }>;
       if (customEvent.detail && customEvent.detail.text) {
         setMessageRef.current(customEvent.detail.text);
         setTimeout(() => {
+          if (!live) return
           handleSendMessageRef.current();
         }, 100);
       }
@@ -31,10 +34,12 @@ export function useExternalMessageEvents(setMessage: (message: string) => void, 
         
         // Use a slight delay to ensure UI is ready
         setTimeout(() => {
+          if (!live) return
           setMessageRef.current(queryText);
           
           // Small delay before firing submit so React can update the textarea
           setTimeout(() => {
+            if (!live) return
             handleSendMessageRef.current();
           }, 300);
         }, 300);
@@ -45,9 +50,10 @@ export function useExternalMessageEvents(setMessage: (message: string) => void, 
     window.addEventListener('robot:send-query-from-url', handleRobotSendQueryFromUrl);
     
     return () => {
+      live = false
       window.removeEventListener('robot:send-message', handleRobotSendMessage);
       window.removeEventListener('robot:send-query-from-url', handleRobotSendQueryFromUrl);
     };
-  }, []); // Empty deps since we use refs for the callbacks
+  }, [manualOnly]);
 
 }

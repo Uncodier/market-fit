@@ -64,10 +64,29 @@ it.each([401, 403])('does not forward requests rejected by site authorization (%
   expect(acquireOperationLeaseResult).not.toHaveBeenCalled()
 })
 
+it('does not retry a scoped turn against the old unscoped assistant API', async () => {
+  ;(fetch as jest.Mock).mockResolvedValue(new Response(null, { status: 404 }))
+  const result = await POST(request(JSON.stringify({ site_id: 'site', instance_id: 'abba0000-0000-4000-8000-000000000002',
+    message: 'List tables', connector_id_hint: 'abba0000-0000-4000-8000-000000000001' })))
+  expect(result.status).toBe(404)
+  expect(fetch).toHaveBeenCalledTimes(1)
+  expect((fetch as jest.Mock).mock.calls[0][0].pathname).toBe('/api/robots/instance/assistant/connector')
+})
+
 it('rejects malformed input before auth or upstream execution', async () => {
   expect((await POST(request('{'))).status).toBe(400)
   expect(fetch).not.toHaveBeenCalled()
   expect(requireSiteAccess).not.toHaveBeenCalled()
+})
+
+it.each([
+  { connector_id_hint: 'supabase' },
+  { connector_id_hint: 'abba0000-0000-4000-8000-000000000001' },
+  { connector_id_hint: 'abba0000-0000-4000-8000-000000000001', instance_id: 'abba0000-0000-4000-8000-000000000002', instance_node_id: 'node' },
+])('rejects an invalid account-scoped turn without acquiring a lease', async filter => {
+  expect((await POST(request(JSON.stringify({ site_id: 'site', message: 'hello', ...filter })))).status).toBe(400)
+  expect(fetch).not.toHaveBeenCalled()
+  expect(acquireOperationLeaseResult).not.toHaveBeenCalled()
 })
 
 it.each([

@@ -23,6 +23,7 @@ import { AutomationPausedBadge } from "./AutomationPausedBadge"
 import { useLocalization } from "@/app/context/LocalizationContext"
 
 interface ConversationItemProps {
+  reviewCount?: number
   conversation: ConversationListItem
   isSelected: boolean
   onSelect: () => void
@@ -62,13 +63,15 @@ function formatMessageDate(timestamp: Date | string): string {
 // Function to get channel icon
 function getChannelIcon(channel: string | undefined, isAgentConversation?: boolean) {
   // Private team-member/agent conversations use the assistant icon.
-  if (isAgentConversation) {
+  if (isAgentConversation && channel !== "internal_review") {
     return <Icons.User size={15} className="text-muted-foreground/60" />;
   }
 
   const iconChannel = channel || 'web'
 
   switch (iconChannel) {
+    case 'internal_review':
+      return <Icons.Lock size={15} className="text-muted-foreground/60" />
     case 'whatsapp':
       return <WhatsAppIcon size={15} className="text-muted-foreground/60" />
     case 'instagram':
@@ -101,6 +104,7 @@ function getChannelIcon(channel: string | undefined, isAgentConversation?: boole
 }
 
 export function ConversationItem({ 
+  reviewCount,
   conversation, 
   isSelected, 
   onSelect, 
@@ -110,6 +114,10 @@ export function ConversationItem({
 }: ConversationItemProps) {
   const { isDarkMode } = useTheme()
   const { t } = useLocalization()
+
+  const participantName = conversation.channel === 'internal_review'
+    ? t("connectors.internalConversation")
+    : conversation.leadName || conversation.participantName
 
   return (
     <div
@@ -151,6 +159,7 @@ export function ConversationItem({
             )}>
               {conversation.title || "Untitled Conversation"}
             </span>
+            {!!reviewCount && <Badge variant="outline" className="shrink-0 text-xs">{t("connectors.reviewCount", { count: reviewCount })}</Badge>}
             {conversation.leadStatus === 'qualified' && (
               <Badge 
                 variant="outline" 
@@ -184,8 +193,8 @@ export function ConversationItem({
             {getChannelIcon(conversation.channel, !conversation.leadName && !conversation.participantName && !!conversation.agentId)}
             <span className="truncate">{conversation.agentName || "No Agent Name"}</span>
             {!conversation.agentName && <span className="text-red-500 flex-shrink-0">!</span>}
-            {(conversation.leadName || conversation.participantName) && <span className="flex-shrink-0"> · </span>}
-            {(conversation.leadName || conversation.participantName) && <span className="truncate">{conversation.leadName || conversation.participantName}</span>}
+            {participantName && <span className="flex-shrink-0"> · </span>}
+            {participantName && <span className="truncate">{participantName}</span>}
           </div>
           <span className={cn(
             "text-[11px] whitespace-nowrap flex-shrink-0",

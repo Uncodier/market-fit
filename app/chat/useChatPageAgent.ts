@@ -103,6 +103,7 @@ export function useChatPageAgent({
 
   // Fetch agent details when conversationId changes
   useEffect(() => {
+    let cancelled = false
     async function fetchConversationAgent() {
       if (!conversationId || conversationId.startsWith("new-")) return
       
@@ -126,10 +127,13 @@ export function useChatPageAgent({
           // Get agent details
           const { getAgentForConversation } = await import("@/app/services/chat-service.client")
           const agent: Agent | null = await getAgentForConversation(conversationAgentId)
-          if (agent) {
+          const url = new URL(window.location.href)
+          if (agent && !cancelled && url.pathname === '/chat' && url.searchParams.get('conversationId') === conversationId) {
             // Update the URL with the agent details
             markUINavigation();
-            router.replace(`/chat?conversationId=${conversationId}&agentId=${agent.id}&agentName=${encodeURIComponent(agent.name)}`)
+            url.searchParams.set('agentId', agent.id)
+            url.searchParams.set('agentName', agent.name)
+            router.replace(`${url.pathname}${url.search}${url.hash}`)
           }
         }
       } catch (error) {
@@ -138,6 +142,7 @@ export function useChatPageAgent({
     }
     
     fetchConversationAgent()
+    return () => { cancelled = true }
   }, [conversationId, router, agentId])
 
   // Add a listener for popstate events (browser back/forward buttons)

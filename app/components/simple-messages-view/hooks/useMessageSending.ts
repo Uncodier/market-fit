@@ -11,6 +11,7 @@ import { buildPendingWorkPayload, enqueuePendingWork } from './pending-work'
 import { createRequestId } from './send-message-reliability'
 
 interface UseMessageSendingProps {
+  connector?: { id?: string; notice: string }
   activeRobotInstance?: any
   selectedActivity: string
   selectedContext: SelectedContextIds
@@ -30,6 +31,7 @@ interface UseMessageSendingProps {
 }
 
 export const useMessageSending = ({
+  connector,
   activeRobotInstance,
   selectedActivity,
   selectedContext,
@@ -120,6 +122,7 @@ export const useMessageSending = ({
     if (!currentSite?.id) return
     let unconfirmed = false
     const success = await sendAssistantMessage({
+      connectorIdHint: connector?.id,
       messageToSend,
       siteId: currentSite.id,
       selectedActivity: activity,
@@ -147,6 +150,7 @@ export const useMessageSending = ({
   }, [
     currentSite?.id,
     selectedActivity,
+    connector?.id,
     selectedContext,
     skillSelection,
     activeRobotInstance,
@@ -244,6 +248,12 @@ export const useMessageSending = ({
     // A failed preflight can leave an optimistic row, but it is not a running workflow.
     const durableLogs = (logsRef?.current || []).filter(log => !log.details?.temp_message)
     const isBusy = shouldQueueCommand(Boolean(findRunningUserLog(durableLogs)) || sendingLockRef.current || isSendingMessage)
+
+    if (connector && (!connector.id || !activeRobotInstance?.id || selectedActivity !== 'ask' || isBusy)) {
+      toast({ title: 'Connector request not sent', description: !connector.id ? connector.notice :
+        'Use Ask in an idle instance. Connector selections cannot be queued or sent to another activity.' })
+      return
+    }
 
     if (selectedActivity !== 'robot' && isWaitingForResponse && !isBusy) {
       toast({ title: 'Assistant status unconfirmed', description: 'Wait for this conversation to confirm the previous result before sending another message.' })
@@ -348,6 +358,7 @@ export const useMessageSending = ({
   }, [
     currentSite?.id,
     isSendingMessage,
+    connector,
     isWaitingForResponse,
     activeRobotInstance,
     selectedActivity,

@@ -14,6 +14,7 @@ export interface SearchInputProps extends Omit<React.InputHTMLAttributes<HTMLInp
   shortcut?: string
   className?: string
   containerClassName?: string
+  expandedHeightClassName?: string
   alwaysExpanded?: boolean
   onExpandedChange?: (expanded: boolean) => void
 }
@@ -27,6 +28,7 @@ const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
     placeholder = "Buscar...", 
     className,
     containerClassName,
+    expandedHeightClassName,
     value,
     alwaysExpanded = false,
     onExpandedChange,
@@ -101,7 +103,7 @@ const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
     }
 
     const expandedWidthClass = containerClassName || "w-64"
-    const expandedHeightClass = className?.includes("h-9") ? "h-9" : "h-11"
+    const expandedHeightClass = expandedHeightClassName ?? (className?.includes("h-9") ? "h-9" : "h-11")
 
 
     return (

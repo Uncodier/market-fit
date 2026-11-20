@@ -8,6 +8,8 @@ export type ProcessedChatMessage = ChatMessage & {
 }
 
 export interface ChatMessagesProps {
+  internalReview?: boolean
+  readOnly?: boolean
   chatMessages: ChatMessage[]
   isLoadingMessages: boolean
   isAgentResponding: boolean
@@ -28,6 +30,7 @@ export interface ChatMessagesProps {
 }
 
 export interface MessageRowActions {
+  readOnly?: boolean
   onEdit: (message: ChatMessage) => void
   onDelete: (message: ChatMessage) => Promise<void>
   onAccept: (message: ChatMessage) => Promise<void>

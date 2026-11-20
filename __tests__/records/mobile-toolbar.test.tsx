@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import { RecordsToolbar } from "@/app/records/components/RecordsToolbar"
 import { RecordsBulkToolbar } from "@/app/records/components/RecordsBulkToolbar"
 import { useIsMobile } from "@/app/hooks/use-mobile-view"
@@ -17,7 +17,6 @@ jest.mock("@/app/context/LocalizationContext", () => ({
     "records.sort.oldest": "Oldest",
     "records.sort.titleAsc": "Title (A-Z)",
     "records.sort.titleDesc": "Title (Z-A)",
-    "datePicker.allTime": "All time",
     "records.bulk.chooseAction": "Choose bulk action",
     "records.bulk.cancel": "Cancel",
     "records.bulk.changeStatus": "Change Status",
@@ -56,9 +55,24 @@ describe("Records mobile toolbar", () => {
     jest.mocked(useIsMobile).mockReturnValue(true)
   })
 
+  it.each([false, true])("does not forward unsupported search props to the DOM (mobile: %s)", mobile => {
+    jest.mocked(useIsMobile).mockReturnValue(mobile)
+    const consoleError = jest.spyOn(console, "error")
+    try {
+      render(<RecordsToolbar {...toolbarProps()} />)
+      if (mobile) fireEvent.click(screen.getByRole("button", { name: "Search" }))
+
+      const input = screen.getByPlaceholderText("Search records...")
+      expect(input).not.toHaveAttribute("collapsedSizeClassName")
+      expect(consoleError).not.toHaveBeenCalled()
+    } finally {
+      consoleError.mockRestore()
+    }
+  })
+
   it("keeps filters in the shared panel and the view selector in the header", async () => {
     const props = toolbarProps()
-    render(<RecordsToolbar {...props} />)
+    const { rerender } = render(<RecordsToolbar {...props} />)
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument()
     expect(screen.queryByText("Choose dates")).not.toBeInTheDocument()
@@ -79,7 +93,8 @@ describe("Records mobile toolbar", () => {
 
     fireEvent.click(within(panel).getByText("Choose dates"))
     expect(props.onDateChange).toHaveBeenLastCalledWith({ startDate: new Date(2026, 9, 1), endDate: new Date(2026, 9, 31) })
-    fireEvent.click(within(panel).getByRole("button", { name: "All time" }))
+    rerender(<RecordsToolbar {...props} dateRange={props.onDateChange.mock.lastCall?.[0]} />)
+    fireEvent.click(within(panel).getByRole("button", { name: "Clear date range" }))
     expect(props.onDateChange).toHaveBeenLastCalledWith(null)
 
     fireEvent.keyDown(within(panel).getByTitle("Sort by"), { key: "Enter" })
@@ -90,20 +105,27 @@ describe("Records mobile toolbar", () => {
     expect(within(panel).queryByRole("radio", { name: "Toggle graph view" })).not.toBeInTheDocument()
   })
 
-  it("shows inline search, grouping, dates and sorting on desktop without a filter modal", async () => {
+  it("places desktop search and grouping on the left and dates, sort and views on the right", async () => {
     jest.mocked(useIsMobile).mockReturnValue(false)
     const props = toolbarProps()
-    render(<RecordsToolbar {...props} />)
+    const { rerender } = render(<RecordsToolbar {...props} />)
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
-    const search = screen.getByPlaceholderText("Search records...")
+    const searchButton = screen.getByRole("button", { name: "Search records..." })
     const group = screen.getByRole("combobox", { name: "Group by" })
-    expect(group).toHaveClass("md:w-[180px]")
-    expect(screen.getByTitle("Sort by")).toBeInTheDocument()
-    expect(screen.getByRole("radio", { name: "Toggle graph view" })).toBeInTheDocument()
+    const sort = screen.getByTitle("Sort by")
+    const left = group.parentElement!
+    const right = sort.parentElement!
+    expect(left).toContainElement(searchButton)
+    expect(left.nextElementSibling).toBe(right)
+    expect(right).toHaveClass("ml-auto", "flex-wrap", "justify-end")
+    expect(within(right).getByRole("button", { name: "Choose dates" })).toBeInTheDocument()
+    expect(within(right).queryByRole("button", { name: "Clear date range" })).not.toBeInTheDocument()
+    expect(within(right).getByRole("radio", { name: "Toggle graph view" })).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Search" })).not.toBeInTheDocument()
-    expect(group.parentElement?.parentElement).toHaveClass("md:flex-row", "md:items-center", "md:gap-4")
-    expect(group.parentElement?.parentElement).not.toHaveClass("md:flex-col", "md:items-stretch")
 
+    fireEvent.click(searchButton)
+    const search = screen.getByPlaceholderText("Search records...")
+    await waitFor(() => expect(search).toHaveFocus())
     fireEvent.change(search, { target: { value: "Proposal" } })
     expect(props.onSearchChange).toHaveBeenCalledWith("Proposal")
     fireEvent.keyDown(group, { key: "Enter" })
@@ -111,9 +133,10 @@ describe("Records mobile toolbar", () => {
     expect(props.onGroupChange).toHaveBeenCalledWith("category")
     fireEvent.click(screen.getByText("Choose dates"))
     expect(props.onDateChange).toHaveBeenLastCalledWith({ startDate: new Date(2026, 9, 1), endDate: new Date(2026, 9, 31) })
-    fireEvent.click(screen.getByRole("button", { name: "All time" }))
+    rerender(<RecordsToolbar {...props} dateRange={props.onDateChange.mock.lastCall?.[0]} />)
+    fireEvent.click(screen.getByRole("button", { name: "Clear date range" }))
     expect(props.onDateChange).toHaveBeenLastCalledWith(null)
-    fireEvent.keyDown(screen.getByTitle("Sort by"), { key: "Enter" })
+    fireEvent.keyDown(sort, { key: "Enter" })
     fireEvent.click(await screen.findByRole("menuitem", { name: "Oldest" }))
     expect(props.onSortChange).toHaveBeenCalledWith("oldest")
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument()

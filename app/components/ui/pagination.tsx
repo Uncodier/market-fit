@@ -115,6 +115,7 @@ export function Pagination({
               size="sm"
               onClick={() => onPageChange(pageNumber)}
               disabled={disabled}
+              aria-current={currentPage === pageNumber ? "page" : undefined}
               className={cn(
                 "!min-w-0 h-8 w-8 p-0 font-medium transition-colors",
                 currentPage === pageNumber

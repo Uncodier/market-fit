@@ -3,6 +3,7 @@
 
 import React, { useEffect, useRef, useState, Suspense, useCallback, useMemo } from "react"
 import "@/app/styles/chat-optimizations.css"
+import { SWRConfig } from "swr"
 import { useSearchParams, useRouter } from "next/navigation"
 import { useAuthContext } from "@/app/components/auth/auth-provider"
 import { markUINavigation } from "@/lib/navigation/navigation-helpers"
@@ -10,6 +11,7 @@ import { useSite } from "@/app/context/SiteContext"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
 import { ChatList } from "@/app/components/chat/chat-list"
+import { PrivateReviewScope } from "@/app/components/chat/private-reviews"
 import { useCommandK } from "@/app/hooks/use-command-k"
 // Chat service functions are imported dynamically where used to avoid client bundling issues
 import { useLocalization } from "@/app/context/LocalizationContext"
@@ -36,9 +38,16 @@ import { useAutoCollapseSidebar } from "@/app/hooks/use-auto-collapse-sidebar"
 
 export default function ChatPage() {
   const { t } = useLocalization()
+  const auth = useAuthContext()
+  const site = useSite()
   return (
     <Suspense fallback={<div className="flex justify-center items-center min-h-screen">{t("details.chat.loading")}</div>}>
-      <ChatPageContent />
+      <PrivateReviewScope actorId={auth.isLoading ? undefined : auth.user?.id} siteId={site.isLoading ? undefined : site.currentSite?.id}>
+        {/* Never use the previous thread's routing metadata during navigation. */}
+        <SWRConfig value={{ keepPreviousData: false }}>
+          <ChatPageContent />
+        </SWRConfig>
+      </PrivateReviewScope>
     </Suspense>
   )
 }
@@ -83,6 +92,7 @@ function ChatPageContent() {
     leadData,
     participantIdentity,
     conversationCustomData,
+    conversationChannel,
     isLoadingLead,
     isAgentOnlyConversation,
     isConversationReady,
@@ -91,6 +101,9 @@ function ChatPageContent() {
     refreshLeadData
   } = useLeadData(conversationId, currentSite?.id)
   
+  const internalReview = conversationChannel === 'internal_review'
+  const allowMessageActions = isConversationReady && !internalReview
+
   // State for invalidated lead modal
   const [showInvalidatedModal, setShowInvalidatedModal] = useState(false)
   const [isDeletingConversation, setIsDeletingConversation] = useState(false)
@@ -119,7 +132,7 @@ function ChatPageContent() {
     agentName,
     conversationId,
     isAgentOnlyConversation,
-    isConversationReady,
+    isConversationReady: allowMessageActions,
     isCommentConversation: commentReply.isCommentConversation,
     commentReplyTarget: commentReply.target,
     setChatMessages,
@@ -136,7 +149,7 @@ function ChatPageContent() {
   )
 
   const handleSendMessageSubmit = useChatDraftSubmit({
-    conversationId, messageRef, clearMessage, handleSendMessage, userJustSentRef,
+    conversationId, deliveryAllowed: allowMessageActions, messageRef, clearMessage, handleSendMessage, userJustSentRef,
   })
 
   // Use optimized keyboard handler
@@ -195,12 +208,6 @@ function ChatPageContent() {
     setIsChatListCollapsed(!isChatListCollapsed)
   }, [isChatListCollapsed, setIsChatListCollapsed])
 
-  // Handle back to mobile list
-  const handleBackToMobileList = useCallback(() => {
-    markUINavigation();
-    router.push('/chat');
-  }, [router]);
-
   // Function to select a conversation - memoized for performance
   const handleSelectConversation = useCallback((selectedConversationId: string, selectedAgentName: string, selectedAgentId: string, conversationTitle?: string) => {
     // First clear messages and set transition state to show skeleton
@@ -237,7 +244,7 @@ function ChatPageContent() {
 
   // Memoize conversation validation to avoid unnecessary calculations
   const hasSelectedConversation = useMemo(() => {
-    return Boolean(conversationId && conversationId !== "" && !conversationId.startsWith("new-"))
+    return Boolean(conversationId && !conversationId.startsWith("new-"))
   }, [conversationId])
 
   // Override agent response state using the API request tracker.
@@ -367,26 +374,18 @@ function ChatPageContent() {
       
       {/* Main chat content */}
       <div className={cn(
-        "flex flex-col md:h-full bg-background transition-all duration-300 ease-in-out min-w-0 min-h-0 fixed right-0 top-[var(--topbar-height,64px)] bottom-0",
+        "flex flex-col md:h-full bg-background transition-all duration-300 ease-in-out min-w-0 min-h-0 fixed left-0 md:left-[var(--chat-panel-offset)] right-0 top-[var(--topbar-height,64px)] bottom-0",
         !hasSelectedConversation ? "hidden md:flex" : "flex"
       )}
-      style={{
-        width: typeof window !== 'undefined' && window.innerWidth >= 768 
-          ? `calc(100% - ${isLayoutCollapsed ? 64 : 256}px - ${isChatListCollapsed ? 0 : 319}px)` 
-          : '100%',
-        left: typeof window !== 'undefined' && window.innerWidth >= 768 
-          ? `${(isLayoutCollapsed ? 64 : 256) + (isChatListCollapsed ? 0 : 319)}px` 
-          : '0px'
-      }}
+      style={{ '--chat-panel-offset': `${(isLayoutCollapsed ? 64 : 256) + (isChatListCollapsed ? 0 : 319)}px` } as React.CSSProperties}
       >
-              {/* Chat header with agent and lead info */}
-              <div className="w-full z-[50]">
-                {/* Header with agent and lead info */}
-                <ChatHeader 
+        <div className="w-full z-[50]">
+          <ChatHeader
             agentId={agentId}
             agentName={displayAgentName}
             currentAgent={currentAgent}
-            isAgentOnlyConversation={isAgentOnlyConversation}
+            isAgentOnlyConversation={isAgentOnlyConversation || internalReview}
+            internalReview={internalReview}
             isLoadingLead={isLoadingLead}
             leadData={leadData}
             participantIdentity={participantIdentity}
@@ -399,7 +398,6 @@ function ChatPageContent() {
             handlePrivateDiscussion={handlePrivateDiscussion}
             conversationId={conversationId}
             onLeadStatusUpdate={refreshLeadData}
-            onBack={handleBackToMobileList}
           />
         </div>
 
@@ -415,12 +413,14 @@ function ChatPageContent() {
               containerRef={messagesContainerRef}
               agentId={agentId}
               agentName={displayAgentName}
-              isAgentOnlyConversation={isAgentOnlyConversation}
+              isAgentOnlyConversation={isAgentOnlyConversation || internalReview}
               isLead={Boolean(leadData?.id)}
               leadData={leadData}
               participantIdentity={participantIdentity}
               conversationId={conversationId}
               conversationCustomData={conversationCustomData}
+              internalReview={internalReview}
+              readOnly={!allowMessageActions}
               onRetryMessage={handleRetryMessage}
               onMessagesUpdate={setChatMessages}
               isChatListCollapsed={isChatListCollapsed}
@@ -429,7 +429,7 @@ function ChatPageContent() {
         </div>
         
         {/* Message input area */}
-        {hasSelectedConversation && (
+        {hasSelectedConversation && allowMessageActions && (
           <div className="transition-all duration-300 ease-in-out">
             <ChatInput 
               setMessage={setMessage}

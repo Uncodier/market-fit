@@ -36,6 +36,7 @@ const ImprentaPanel = dynamic(
 
 import { getScreenMetadata } from "./screen-metadata"
 import { RequirementRunnerCard } from './requirement-runner-card'
+import { robotConnectorHint } from '@/lib/navigation/robot-connector-hint'
 import type { useWorkspaceTabs } from "./use-workspace-tabs"
 
 export function RobotsWorkspace(input: ReturnType<typeof useWorkspaceTabs>) {
@@ -328,6 +329,7 @@ export function RobotsWorkspace(input: ReturnType<typeof useWorkspaceTabs>) {
                     key={`${currentSite?.id}-${siteChangeKey}`}
                     className="h-full absolute inset-0"
                     activeRobotInstance={activeRobotInstance}
+                    connectorHint={robotConnectorHint(input.searchParams)}
                     conversationContext={<RequirementRunnerCard key={`${currentSite?.id}-${activeRobotInstance?.id}`} instance={activeRobotInstance} siteId={currentSite?.id} />}
                     isBrowserVisible={hasBrowserContent}
                     hasTopHeaderSpace={!isMobile || input.searchParams.get('artifact') === 'true'}

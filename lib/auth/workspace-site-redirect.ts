@@ -30,6 +30,8 @@ export function getWorkspaceSiteRedirect(input: {
   if (input.isDemoMode) return null
   if (!input.hasValidSession) return null
   if (input.pathname === "/") return null
+  // The connector attempt cookie owns the callback workspace, not the current selection.
+  if (input.pathname === "/connectors/callback") return null
   if (NO_REDIRECT_PREFIXES.some((prefix) => input.pathname.startsWith(prefix))) return null
   if (COMMERCE_PREFIXES.some((prefix) => prefix.endsWith("/")
     ? input.pathname.startsWith(prefix)

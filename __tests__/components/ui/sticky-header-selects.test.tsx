@@ -58,16 +58,17 @@ describe("sticky header select styling", () => {
   })
 
   it.each([
-    ["/dashboard", "sticky"],
-    ["/chat", "fixed"],
-    ["/robots", "fixed"],
-    ["/people", "fixed"],
+    ["/dashboard", "md:sticky"],
+    ["/records", "md:sticky"],
+    ["/chat", "md:fixed"],
+    ["/robots", "md:fixed"],
+    ["/people", "md:fixed"],
   ])("keeps %s out of Safari's select positioning rules", (pathname, position) => {
     jest.mocked(usePathname).mockReturnValue(pathname)
     const { container } = render(<StickyHeader><SegmentSelect /></StickyHeader>)
     const header = container.querySelector("[data-toolbar-font]")!
 
-    expect(header).toHaveClass(position, "top-[var(--topbar-height,64px)]")
+    expect(header).toHaveClass("static", position, "md:top-[var(--topbar-height,64px)]")
     // Legacy Safari CSS uses substring selectors, including position: relative !important.
     expect(header.matches('[class*="select-trigger"]')).toBe(false)
     expect(screen.getByRole("combobox", { name: "Segment" }).matches('[class*="select-trigger"]')).toBe(true)

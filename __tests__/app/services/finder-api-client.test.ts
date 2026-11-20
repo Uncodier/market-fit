@@ -149,3 +149,30 @@ it('preserves backend authentication errors without retrying the search', async 
   expect(result).toMatchObject({ success: false, status: 401, error })
   expect(fetch).toHaveBeenCalledTimes(1)
 })
+
+it('does not send enrichment when the result context retires during session lookup', async () => {
+  let settle!: (value: unknown) => void
+  getSession.mockReturnValueOnce(new Promise(resolve => { settle = resolve }))
+  const { apiClient } = await import('@/app/services/api-client-service')
+  let current = true
+  const canSend = jest.fn(() => current)
+  const result = apiClient.post('/api/workflow/enrichLead', { site_id: 'test-site', person_id: 'test-person' }, { canSend })
+  await Promise.resolve()
+  expect(getSession).toHaveBeenCalledTimes(1)
+  current = false
+  settle({ data: { session: { access_token: 'test-token', user: { id: 'actor-a' } } } })
+  expect(await result).toMatchObject({ success: false, retryable: false })
+  expect(canSend).toHaveBeenCalledWith('actor-a')
+  expect(fetch).not.toHaveBeenCalled()
+})
+
+it('validates the actor of the exact token before submitting a scoped list action', async () => {
+  const { apiClient } = await import('@/app/services/api-client-service')
+  const canSend = (actor: string | null) => actor === 'actor-a'
+  for (const actor of ['actor-b', 'actor-a']) {
+    getSession.mockResolvedValueOnce({ data: { session: { access_token: 'test-token', user: { id: actor } } } })
+    const result = await apiClient.post('/api/finder/lists', payload, { canSend })
+    expect(result.success).toBe(actor === 'actor-a')
+  }
+  expect(fetch).toHaveBeenCalledTimes(1)
+})

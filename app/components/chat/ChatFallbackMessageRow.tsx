@@ -50,7 +50,7 @@ export function ChatFallbackMessageRow({
             <MessageStatus message={message} onRetry={actions.onRetry} />
           </div>
           <div className="flex items-center min-w-0">
-            {message.command_id && (
+            {!actions.readOnly && message.command_id && (
               <ChatResponseActions
                 messageId={String(message.id || index)}
                 commandId={message.command_id}

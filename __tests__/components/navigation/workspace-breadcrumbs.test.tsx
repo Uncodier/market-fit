@@ -81,19 +81,17 @@ test('details keep their entity title and navigate to the real translated parent
   expect(mockNavigate).toHaveBeenCalledWith(mockItems[1])
 })
 
-test.each(['/robots?instance=one', '/robots/one', '/robots?instance=one&mode=workflow'])(
-  'shows the Robots breadcrumb only on mobile for %s', (path) => {
+test.each(['/robots?instance=one', '/robots/one', '/robots?instance=one&mode=workflow', '/chat?conversationId=one', '/control-center/one'])(
+  'shows a clickable breadcrumb at every viewport for %s', (path) => {
     mockItems = [
-      { path: '/robots', label: 'AI Workspace', timestamp: 1 },
-      { path, label: 'Research agent', timestamp: 2 },
+      { path: getSection(path), label: 'Parent', timestamp: 1 },
+      { path, label: 'Current detail', timestamp: 2 },
     ]
     setRoute(path)
     render(<TopBarTitle title="AI Workspace" isCollapsed onCollapse={() => {}} />)
     const breadcrumb = screen.getByRole('navigation', { name: 'Breadcrumb' })
-    expect(breadcrumb).toHaveClass('md:hidden')
-    const desktopTitle = screen.getAllByRole('heading').find(heading => heading.classList.contains('md:block'))
-    expect(desktopTitle).toHaveClass('hidden', 'md:block')
-    expect(desktopTitle).not.toHaveTextContent('Research agent')
+    expect(breadcrumb).not.toHaveClass('md:hidden')
+    expect(screen.getByRole('heading', { name: 'Current detail' })).toHaveAttribute('aria-current', 'page')
     const parent = breadcrumb.querySelector('button')!
     fireEvent.click(parent)
     expect(mockNavigate).toHaveBeenCalledWith(mockItems[0])

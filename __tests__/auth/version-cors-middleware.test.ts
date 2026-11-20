@@ -16,6 +16,11 @@ beforeEach(() => {
   jest.mocked(enforceApiAdmission).mockResolvedValue(null)
 })
 
+it.each(['/task/one', '/tasks/one'])('routes %s to the task detail screen', async path => {
+  const response = await middleware(new NextRequest(`https://app.makinari.com${path}?title=Review`))
+  expect(response.headers.get('location')).toBe('https://app.makinari.com/control-center/one?title=Review')
+})
+
 it.each(["GET", "HEAD", "OPTIONS"])("leaves version %s CORS to the route without skipping API admission", async method => {
   const request = new NextRequest("https://app.makinari.com/api/version", {
     method, headers: { origin: "https://www.makinari.com" },

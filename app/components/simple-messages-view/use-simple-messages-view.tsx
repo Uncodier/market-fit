@@ -1,6 +1,7 @@
 "use client"
 
 import { useExternalMessageEvents } from "./use-external-message-events"
+import { useConversationConnector } from '@/app/robots/use-conversation-connector'
 import { buildMessageTimeline } from "./message-timeline"
 import { useMessageScroll, useMessageScrollEffects } from "./use-message-scroll"
 
@@ -42,7 +43,7 @@ import { useRunningWorkflow } from './hooks/useRunningWorkflow'
 
 const SCROLL_BOTTOM_THRESHOLD_PX = 80
 
-export function useSimpleMessagesView({ className = "", activeRobotInstance, isBrowserVisible = false, onMessageSent, onNewInstanceCreated, hasTopHeaderSpace = true }: SimpleMessagesViewProps) {
+export function useSimpleMessagesView({ className = "", activeRobotInstance, connectorHint, isBrowserVisible = false, onMessageSent, onNewInstanceCreated, hasTopHeaderSpace = true }: SimpleMessagesViewProps) {
   const [skillSelection, setSkillSelection] = useState<SkillSelection>({ skill_mode: 'auto', skill_slugs: [] })
   const { isDarkMode } = useTheme()
   const { currentSite } = useSite()
@@ -59,6 +60,7 @@ export function useSimpleMessagesView({ className = "", activeRobotInstance, isB
   const { message, setMessage, messageRef, handleMessageChange, clearMessage, textareaRef } = useOptimizedMessageState("", chatCacheKey)
   
   const { user } = useAuthContext()
+  const connector = useConversationConnector(connectorHint, currentSite?.id, user?.id, activeRobotInstance)
   const { userProfile } = useUserProfile(user?.id)
   
 
@@ -248,6 +250,7 @@ export function useSimpleMessagesView({ className = "", activeRobotInstance, isB
     setThinkingStateWithTimeout,
     resetMessageSentState
   } = useMessageSending({
+    connector,
     activeRobotInstance,
     selectedActivity,
     selectedContext,
@@ -421,7 +424,7 @@ export function useSimpleMessagesView({ className = "", activeRobotInstance, isB
     }
   }, [selectedActivity, router])
 
-  useExternalMessageEvents(setMessage, handleSendMessage)
+  useExternalMessageEvents(setMessage, handleSendMessage, connectorHint !== undefined)
 
   const { handleScroll } = useMessageScrollEffects({ ...scroll, activeRobotInstance, isLoadingLogs, isLoadingPlans, isLoadingMore, logs, hasMoreLogs, loadMoreLogs })
 
@@ -448,7 +451,7 @@ export function useSimpleMessagesView({ className = "", activeRobotInstance, isB
   const showFloatingBacklog = backlogHasItems;
 
   return {
-    className, activeRobotInstance, isBrowserVisible, hasTopHeaderSpace, skillSelection,
+    className, activeRobotInstance, isBrowserVisible, hasTopHeaderSpace, skillSelection, connector,
     setSkillSelection, isDarkMode, message, setMessage, handleMessageChange,
     textareaRef, userProfile, selectedContext, setSelectedContext, selectedActivity,
     setSelectedActivity, isStepIndicatorExpanded, setIsStepIndicatorExpanded, isBacklogIndicatorExpanded, setIsBacklogIndicatorExpanded,

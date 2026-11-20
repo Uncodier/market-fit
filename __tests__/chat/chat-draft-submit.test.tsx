@@ -9,15 +9,15 @@ jest.mock('react-hot-toast', () => ({ toast: { error: jest.fn() } }))
 const submitEvent = () => ({ preventDefault: jest.fn() }) as unknown as React.FormEvent
 
 function setup(handleSendMessage: (message: string) => Promise<boolean>) {
-  return renderHook(({ conversationId }) => {
+  return renderHook(({ conversationId, deliveryAllowed }) => {
     const draft = useOptimizedMessageState('', `chat-${conversationId}`)
     const userJustSentRef = useRef(false)
     const submit = useChatDraftSubmit({
-      conversationId, messageRef: draft.messageRef, clearMessage: draft.clearMessage,
+      conversationId, deliveryAllowed, messageRef: draft.messageRef, clearMessage: draft.clearMessage,
       handleSendMessage, userJustSentRef,
     })
     return { ...draft, submit }
-  }, { initialProps: { conversationId: 'conversation-1' } })
+  }, { initialProps: { conversationId: 'conversation-1', deliveryAllowed: true } })
 }
 
 describe('chat draft submission', () => {
@@ -83,7 +83,7 @@ describe('chat draft submission', () => {
     act(() => { result.current.setMessage('Same text') })
     let submit!: Promise<void>
     act(() => { submit = result.current.submit(submitEvent()) })
-    rerender({ conversationId: 'conversation-2' })
+    rerender({ conversationId: 'conversation-2', deliveryAllowed: true })
     act(() => { result.current.setMessage('Same text') })
     await act(async () => { resolve(true); await submit })
     expect(result.current.messageRef.current).toBe('Same text')
@@ -95,6 +95,19 @@ describe('chat draft submission', () => {
     const { result } = setup(send)
     act(() => { result.current.setMessage('  ') })
     await act(async () => { await result.current.submit(submitEvent()) })
+    expect(send).not.toHaveBeenCalled()
+  })
+
+  it('cannot use a queued public send or a fresh submit in a private review conversation', async () => {
+    const send = jest.fn().mockResolvedValue(true)
+    const { result, rerender } = setup(send)
+    const previousSubmit = result.current.submit
+    rerender({ conversationId: 'review-conversation', deliveryAllowed: false })
+    act(() => { result.current.setMessage('Private details') })
+    await act(async () => {
+      await previousSubmit(submitEvent())
+      await result.current.submit(submitEvent())
+    })
     expect(send).not.toHaveBeenCalled()
   })
 })

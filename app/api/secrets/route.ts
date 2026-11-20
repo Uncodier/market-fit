@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import CryptoJS from 'crypto-js';
 import { requireSiteAccess } from '@/lib/auth/api-site-access';
+import { isSameOriginApiRequest } from '@/lib/http/api-proxy-security';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -12,7 +13,18 @@ const MANAGER_OPERATIONS = new Set(['store', 'retrieve', 'delete']);
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      return NextResponse.json({ error: 'Invalid secret request.' }, { status: 400 });
+    }
     const { operation, siteId, instanceId, name, provider, useCase, secretValue } = body;
+    // Never let PostgREST coercion disagree with the security comparisons below.
+    if (typeof operation !== 'string' || typeof siteId !== 'string' ||
+      typeof provider !== 'string' || typeof useCase !== 'string' ||
+      (instanceId != null && typeof instanceId !== 'string') ||
+      (name != null && typeof name !== 'string') ||
+      (secretValue != null && typeof secretValue !== 'string')) {
+      return NextResponse.json({ error: 'Invalid secret request fields.' }, { status: 400 });
+    }
     
     if (!siteId || !provider || !useCase || !operation) {
       return NextResponse.json(
@@ -40,12 +52,25 @@ export async function POST(req: NextRequest) {
       return access.error;
     }
 
+    if (provider === 'composio') {
+      if (useCase !== 'integrations' || instanceId || operation === 'retrieve') {
+        return NextResponse.json({ error: 'Composio credentials are site-scoped and write-only.' }, { status: 403 });
+      }
+      if (operation !== 'check' && (!isSameOriginApiRequest(req) || !req.headers.get('origin'))) {
+        return NextResponse.json({ error: 'Same-origin request required.' }, { status: 403 });
+      }
+      if (operation === 'store' && (!process.env.ENCRYPTION_KEY || typeof secretValue !== 'string' || secretValue.length > 4096 || !secretValue.trim())) {
+        return NextResponse.json({ error: 'A valid credential and configured encryption key are required.' }, { status: 400 });
+      }
+    }
+
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
     // Función para encriptar con AES
     const encryptToken = (text: string): string => {
       const salt = CryptoJS.lib.WordArray.random(128/8).toString();
-      const encrypted = CryptoJS.AES.encrypt(text, ENCRYPTION_KEY + salt).toString();
+      const key = provider === 'composio' ? process.env.ENCRYPTION_KEY! : ENCRYPTION_KEY;
+      const encrypted = CryptoJS.AES.encrypt(text, key + salt).toString();
       return `${salt}:${encrypted}`;
     };
 
@@ -59,7 +84,7 @@ export async function POST(req: NextRequest) {
         try {
           const decrypted = CryptoJS.AES.decrypt(encrypted, ENCRYPTION_KEY + salt);
           result = decrypted.toString(CryptoJS.enc.Utf8);
-        } catch (e) {
+        } catch {
           // Ignorar para intentar fallback
         }
         
@@ -218,8 +243,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true });
     }
     
-  } catch (error: any) {
-    console.error('Secrets API error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: 'Secret operation could not be completed.' }, { status: 500 });
   }
 }

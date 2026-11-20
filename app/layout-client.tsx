@@ -52,6 +52,7 @@ const pathToNavKey: Record<string, string> = {
   "/profile": "profile",
   "/settings": "settings",
   "/skills": "skills",
+  "/connectors": "connectors",
   "/create-site": "createSite",
   "/projects": "projects",
   "/context": "context",

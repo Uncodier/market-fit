@@ -66,6 +66,8 @@ interface ApiClientOptions {
   timeout?: number;
   cache?: RequestCache;
   onAccepted?: () => void;
+  // Local admission guard for a UI action that may expire while auth resolves.
+  canSend?: (requestActor: string | null) => boolean;
 }
 
 
@@ -114,29 +116,30 @@ export class ApiClientService {
     return endpoint;
   }
 
-  private async getAuthToken(): Promise<string | null> {
+  private async getAuthSession(): Promise<{ access_token: string; user?: { id: string } } | null> {
     const supabase = createClient();
     const { data: { session }, error } = await withTimeout<{
-      data: { session: { access_token: string } | null }; error?: unknown
+      data: { session: { access_token: string; user?: { id: string } } | null }; error?: unknown
     }>(
       supabase.auth.getSession(), 10_000,
       'Checking your session timed out. Please sign in again and retry.',
     );
-    return error ? null : session?.access_token || null;
+    return error ? null : session;
   }
 
-  private async applyAuthHeaders(url: string, method: string, headers: Record<string, string>, options: ApiClientOptions): Promise<void> {
+  private async applyAuthHeaders(url: string, method: string, headers: Record<string, string>, options: ApiClientOptions): Promise<string | null> {
     const { requiresSession, finder } = apiRequestAuthPolicy(url, this.apiServerUrl, method, options.includeAuth, headers);
-    if (!requiresSession) return;
-    const token = await this.getAuthToken();
-    if (!token) {
+    if (!requiresSession) return null;
+    const session = await this.getAuthSession();
+    if (!session?.access_token) {
       throw new Error(finder ? 'Your session has expired. Please sign in again to use Find People.'
         : 'Your session has expired. Please sign in again to continue.');
     }
     for (const name of Object.keys(headers)) {
       if (name.toLowerCase() === 'authorization') delete headers[name];
     }
-    headers['Authorization'] = `Bearer ${token}`;
+    headers['Authorization'] = `Bearer ${session.access_token}`;
+    return session.user?.id ?? null;
   }
 
 
@@ -256,7 +259,10 @@ export class ApiClientService {
         ...options.headers
       };
 
-      await this.applyAuthHeaders(url, 'POST', headers, options);
+      const requestActor = await this.applyAuthHeaders(url, 'POST', headers, options);
+      if (options.canSend?.(requestActor) === false) {
+        return { success: false, retryable: false, error: { message: 'This action is no longer current.' } };
+      }
 
       // Bound connection setup separately from the long-running assistant stream.
       const controller = new AbortController();

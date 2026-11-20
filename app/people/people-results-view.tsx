@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react"
+import { useMemo, type CSSProperties } from "react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
@@ -12,7 +12,9 @@ import { Search, ChevronLeft, Loader } from "@/app/components/ui/icons"
 import { DEFAULT_PAGE_SIZE } from "./finder-request-types"
 import type { PeopleWorkspace } from "./use-people-workspace"
 import { PeopleResultsTable } from "./people-results-table"
-import { SelectedListResults } from "./selected-list-results"
+import { useSavedListMembers } from "./use-saved-list-members"
+import { usePeopleResultGroups } from "./use-people-result-groups"
+import { SAVED_LIST_PAGE_SIZE } from "./saved-list-types"
 export function PeopleResultsView({ workspace }: { workspace: PeopleWorkspace }) {
   const {
     isArtifact,
@@ -22,21 +24,40 @@ export function PeopleResultsView({ workspace }: { workspace: PeopleWorkspace })
     setIsSidebarCollapsed,
     showResultsOnMobile,
     setShowResultsOnMobile,
-    currentPage,
-    itemsPerPage,
     pageJump,
     setPageJump,
-    searchResults,
-    totalResults,
-    loading,
     selectedPersonIds,
     isEnriching,
-    setIsConfirmModalOpen,
+    openEnrichConfirmation,
     selectionLists,
-    onPageChange,
-    isEmptyView,
   } = workspace
   const selectedList = workspace.selectedList?.siteId === workspace.currentSite?.id ? workspace.selectedList : null
+  const saved = useSavedListMembers(selectedList)
+  const savedResults = useMemo(() => saved.snapshot?.members.map(member => member.result) ?? [], [saved.snapshot])
+  const savedGroups = usePeopleResultGroups({ searchResults: savedResults, setExpandedGroups: workspace.setExpandedGroups })
+  const processingByPerson = useMemo(() => selectedList ? new Map(saved.snapshot?.members.map(member => [member.personId, member])) : undefined,
+    [selectedList, saved.snapshot])
+  const currentPage = selectedList ? saved.page : workspace.currentPage
+  const itemsPerPage = selectedList ? SAVED_LIST_PAGE_SIZE : workspace.itemsPerPage
+  const searchResults = selectedList ? savedResults : workspace.searchResults
+  const totalResults = selectedList ? saved.snapshot?.total ?? 0 : workspace.totalResults
+  const loading = selectedList ? saved.loading : workspace.loading
+  const onPageChange = (page: number) => {
+    if (selectedList) {
+      if (page === currentPage) return
+      workspace.resetResultSelection()
+      saved.onPageChange(page)
+    } else workspace.onPageChange(page)
+  }
+  const isEmptyView = !selectedList && workspace.isEmptyView
+  const tableWorkspace = selectedList ? { ...workspace, groupedResults: savedGroups.groupedResults,
+    toggleGroup: savedGroups.toggleGroup, error: saved.error,
+    addedPersonIds: new Set(saved.snapshot?.members.filter(member => member.lead).map(member => member.personId)) } : workspace
+  const closeList = () => {
+    workspace.setSelectedList(null)
+    workspace.resetResultSelection()
+    setShowResultsOnMobile(false)
+  }
   const resultsLeft = (isArtifact ? 0 : (isLayoutCollapsed ? 64 : 256)) + (isSidebarCollapsed ? 0 : 319)
   const sidebarToggle = <SidebarToggle
     isCollapsed={isSidebarCollapsed}
@@ -57,24 +78,24 @@ export function PeopleResultsView({ workspace }: { workspace: PeopleWorkspace })
         )}
         style={{ '--people-results-left': `${resultsLeft}px` } as CSSProperties}
       >
-        {selectedList ? <SelectedListResults key={`${selectedList.siteId}:${selectedList.id}`}
-          list={selectedList} sidebarToggle={sidebarToggle} onClose={() => {
-            workspace.setSelectedList(null)
-            setShowResultsOnMobile(false)
-          }} /> : <>
         <div className="w-full z-[50]">
           <StickyHeader
             className="transition-all duration-300 ease-in-out pl-0 md:pl-4 !top-[var(--topbar-height,64px)] !fixed left-0 w-full md:left-[var(--people-results-left)] md:w-[calc(100%_-_var(--people-results-left))]"
           >
-            <div className="flex w-full items-center pl-2">
+            <div className="flex w-full min-w-0 items-center pl-2">
               {sidebarToggle}
-              <div className="transition-all duration-300 ease-in-out w-full pr-4 md:pr-12">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+              <div className="transition-all duration-300 ease-in-out w-full min-w-0 pr-4 md:pr-12 overflow-x-auto">
+                <div className="flex min-w-max items-center justify-between">
+                  <div className="flex shrink-0 items-center gap-2">
+                  {selectedList && <>
+                    <h2 className="max-w-44 truncate font-semibold" title={saved.snapshot?.name}>{saved.snapshot?.name || 'Saved list'}</h2>
+                    <Button variant="outline" size="sm" onClick={() => { workspace.resetResultSelection(); saved.refresh() }} disabled={loading || saved.identityChanged}>Refresh</Button>
+                    <Button variant="ghost" size="sm" onClick={closeList}>Back to search</Button>
+                  </>}
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="flex items-center gap-1.5 text-sm md:!hidden"
+                    className={cn("flex items-center gap-1.5 text-sm md:!hidden", selectedList && "!hidden")}
                     onClick={() => setShowResultsOnMobile(false)}
                   >
                     <ChevronLeft className="h-4 w-4" />
@@ -84,19 +105,19 @@ export function PeopleResultsView({ workspace }: { workspace: PeopleWorkspace })
                 <div className="flex items-center gap-2" data-toolbar-icon-actions="off">
                   <Button variant="secondary" className="h-9 gap-2 px-4 !hidden md:!flex"
                     onClick={() => selectionLists.open('add')}
-                    disabled={!selectedPersonIds.length || loading || selectionLists.pending || isEnriching}>
+                    disabled={!selectedPersonIds.length || loading || saved.identityChanged || selectionLists.pending || isEnriching}>
                     Add to list{selectedPersonIds.length > 0 ? ` (${selectedPersonIds.length})` : ''}
                   </Button>
                   <Button variant="secondary" className="h-9 gap-2 px-4 !hidden md:!flex"
                     onClick={() => selectionLists.open('create')}
-                    disabled={!selectedPersonIds.length || loading || selectionLists.pending || isEnriching}>
+                    disabled={!selectedPersonIds.length || loading || saved.identityChanged || selectionLists.pending || isEnriching}>
                     Create list{selectedPersonIds.length > 0 ? ` (${selectedPersonIds.length})` : ''}
                   </Button>
                   <Button
                     variant="secondary"
                     className="h-9 gap-2 px-4 hidden md:flex"
-                    disabled={selectedPersonIds.length === 0 || isEnriching || selectionLists.pending}
-                    onClick={() => setIsConfirmModalOpen(true)}
+                    disabled={selectedPersonIds.length === 0 || loading || saved.identityChanged || isEnriching || selectionLists.pending}
+                    onClick={openEnrichConfirmation}
                   >
                     {isEnriching && <Loader className="h-4 w-4" />}
                     {isEnriching ? 'Enriching...' : `Enrich selected${selectedPersonIds.length > 0 ? ` (${selectedPersonIds.length})` : ''}`}
@@ -121,8 +142,14 @@ export function PeopleResultsView({ workspace }: { workspace: PeopleWorkspace })
               />
             ) : (
             <Card>
-
-
+              {selectedList && saved.snapshot && <div className="border-b px-6 py-4 space-y-2">
+                <p role="status">List status: {({ pending: 'Pending', running: 'In Progress', mining: 'In Progress', completed: 'Completed', failed: 'Failed' } as Record<string, string>)[saved.snapshot.status] || 'Unknown'} · {saved.snapshot.total} selected people · {saved.snapshot.completed} processed</p>
+                <p className="text-sm text-muted-foreground">Processing and lead outcomes are shown alongside each person&apos;s profile. Opening this list does not start enrichment.</p>
+                {selectedList.query && <div className="flex flex-wrap items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={workspace.runSavedSearch}>Run saved search</Button>
+                  <span className="text-xs text-muted-foreground">Runs the original filters and may use search credits.</span>
+                </div>}
+              </div>}
               <div>
                   {loading ? (
                     <>
@@ -151,9 +178,17 @@ export function PeopleResultsView({ workspace }: { workspace: PeopleWorkspace })
                         </div>
                       </div>
                     </>
-                  ) : (
+                  ) : selectedList && saved.error ? <div role="alert" className="p-6 space-y-3">
+                    <p>{saved.error}</p>
+                    {!saved.identityChanged && <div className="flex flex-wrap gap-2">
+                      <Button variant="outline" onClick={saved.refresh}>Retry</Button>
+                      {currentPage > 1 && <Button variant="ghost" onClick={() => onPageChange(1)}>Return to first page</Button>}
+                    </div>}
+                  </div> : selectedList && searchResults.length === 0 ? <div className="p-6 text-sm text-muted-foreground">
+                    {totalResults && currentPage > 1 ? <Button variant="outline" onClick={() => onPageChange(1)}>Return to first page</Button> : 'No selected people in this list.'}
+                  </div> : (
                     <>
-<PeopleResultsTable workspace={workspace} />
+<PeopleResultsTable workspace={tableWorkspace} processingByPerson={processingByPerson} />
 
                 <div className="flex items-center justify-between px-6 py-4 border-t">
                   <div className="flex items-center gap-4">
@@ -181,7 +216,7 @@ export function PeopleResultsView({ workspace }: { workspace: PeopleWorkspace })
                                 if (e.key === 'Enter') {
                                   const value = Number(pageJump)
                                   const maxPages = Math.max(1, Math.ceil((totalResults || 0) / (itemsPerPage || DEFAULT_PAGE_SIZE)))
-                                  const next = Math.min(Math.max(1, isNaN(value) ? 1 : value), maxPages)
+                                 const next = Math.min(Math.max(1, Number.isFinite(value) ? Math.trunc(value) : 1), maxPages)
                                   onPageChange(next)
                                   setPageJump('')
                                 }
@@ -194,7 +229,7 @@ export function PeopleResultsView({ workspace }: { workspace: PeopleWorkspace })
                               onClick={() => {
                                 const value = Number(pageJump)
                                 const maxPages = Math.max(1, Math.ceil((totalResults || 0) / (itemsPerPage || DEFAULT_PAGE_SIZE)))
-                                const next = Math.min(Math.max(1, isNaN(value) ? 1 : value), maxPages)
+                                 const next = Math.min(Math.max(1, Number.isFinite(value) ? Math.trunc(value) : 1), maxPages)
                                 onPageChange(next)
                                 setPageJump('')
                               }}
@@ -211,7 +246,6 @@ export function PeopleResultsView({ workspace }: { workspace: PeopleWorkspace })
             )}
           </div>
         </div>
-        </>}
       </div>
 </>
   )

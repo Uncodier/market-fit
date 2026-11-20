@@ -17,7 +17,7 @@ jest.mock("@/app/components/ui/date-range-picker", () => ({
 function headerProps(isMobile: boolean) {
   return {
     isMobile,
-    isSidebarCollapsed: true, toggleSidebar: jest.fn(), sidebarLeft: "64px",
+    isSidebarCollapsed: true, toggleSidebar: jest.fn(),
   }
 }
 
@@ -32,7 +32,8 @@ describe("Records page header", () => {
       </RecordsPageHeader>,
     )
 
-    expect(container.querySelector("[data-toolbar-font]")).toHaveClass("sticky", "top-[var(--topbar-height,64px)]", "min-h-[71px]")
+    expect(container.querySelector("[data-toolbar-font]")).toHaveClass("static", "md:sticky", "min-h-[71px]")
+    expect(screen.queryByRole("button", { name: "Show categories" })).not.toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Show record toolbar" })).not.toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Hide record toolbar" })).not.toBeInTheDocument()
     expect(screen.getByRole("radio", { name: "Toggle table view" })).toBeInTheDocument()
@@ -46,7 +47,7 @@ describe("Records page header", () => {
   it("always shows the desktop toolbar without show and hide controls", () => {
     const props = headerProps(false)
     const { container } = render(<RecordsPageHeader {...props}>Options</RecordsPageHeader>)
-    expect(container.firstElementChild).toHaveClass("fixed", "h-[71px]")
+    expect(container.firstElementChild).toHaveClass("md:sticky", "md:top-[var(--topbar-height,64px)]", "min-h-[71px]")
     expect(screen.getByText("Options")).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Show record toolbar" })).not.toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Hide record toolbar" })).not.toBeInTheDocument()

@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/ta
 import { BookOpen, UploadCloud } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
 import { Badge } from "@/app/components/ui/badge"
-import { skillsFromResponse, type ManagedSkill } from "@/app/components/settings/SkillManager"
+import { skillsFromResponse, type ManagedSkill } from "@/app/components/settings/skill-client"
 
 export type SkillSelection = { skill_mode: "auto" | "required"; skill_slugs: string[] }
 const MAX_ASSISTANT_SKILL_BYTES = 48_000

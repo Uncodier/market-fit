@@ -4,34 +4,29 @@ import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 import { useSite } from "@/app/context/SiteContext"
 import { Button } from "@/app/components/ui/button"
-import { Search } from "@/app/components/ui/icons"
-import { Input } from "@/app/components/ui/input"
 import type { QuickNavSection } from "@/app/components/ui/quick-nav"
 import {
   SectionCard, SectionCardContent, SectionCardFooter, SectionCardHeader,
 } from "@/app/components/ui/section-card"
-import { skillRequest, skillsFromResponse, type ManagedSkill } from "./SkillManager"
-import { SettingsCardsLoading } from "./settings-loading"
+import { skillRequest, skillsFromResponse, type ManagedSkill } from "./skill-client"
+import { SkillsSearch } from "./SkillsSearch"
+import { SkillsLoading } from "./skills-loading"
 
-export function SystemSkillsCatalog({ onSectionsChange }: { onSectionsChange?: (sections: QuickNavSection[]) => void }) {
+export function SystemSkillsCatalog({ onSectionsChange, searchTarget = null }: {
+  onSectionsChange?: (sections: QuickNavSection[]) => void
+  searchTarget?: HTMLElement | null
+}) {
   const { currentSite } = useSite()
   const siteId = currentSite?.id
-  const [skills, setSkills] = useState<ManagedSkill[]>([])
+  const [loadedSkills, setSkills] = useState<ManagedSkill[] | null>(null)
   const [query, setQuery] = useState("")
-  const [filter, setFilter] = useState("")
   const [expanded, setExpanded] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const loading = Boolean(siteId && !loadedSkills && !error)
 
   useEffect(() => {
-    setSkills([])
-    setExpanded(null)
-    setQuery("")
-    setFilter("")
-    setError(null)
     if (!siteId) return
     let active = true
-    setLoading(true)
     skillRequest(`/api/skills/system?site_id=${encodeURIComponent(siteId)}`)
       .then(result => {
         if (active) setSkills(skillsFromResponse(result).filter(skill => skill.source === "system"))
@@ -42,12 +37,11 @@ export function SystemSkillsCatalog({ onSectionsChange }: { onSectionsChange?: (
         setError(message)
         toast.error(message)
       })
-      .finally(() => { if (active) setLoading(false) })
     return () => { active = false }
   }, [siteId])
 
-  const visibleSkills = useMemo(() => skills.filter(skill => `${skill.name} ${skill.slug} ${skill.description || ""}`
-    .toLowerCase().includes(filter.trim().toLowerCase())), [skills, filter])
+  const visibleSkills = useMemo(() => (loadedSkills ?? []).filter(skill => `${skill.name} ${skill.slug} ${skill.description || ""}`
+    .toLowerCase().includes(query.trim().toLowerCase())), [loadedSkills, query])
   const roleSkills = useMemo(() => visibleSkills.filter(skill => skill.slug.startsWith("makinari-rol-")), [visibleSkills])
   const otherSkills = useMemo(() => visibleSkills.filter(skill => !skill.slug.startsWith("makinari-rol-")), [visibleSkills])
 
@@ -76,22 +70,9 @@ export function SystemSkillsCatalog({ onSectionsChange }: { onSectionsChange?: (
           Built-in Makinari skills available to robots. Read their instructions below; they cannot be edited here.
         </p>
       </div>
-      <form role="search" onSubmit={event => {
-        event.preventDefault()
-        if (loading || !siteId) return
-        setFilter(query.trim())
-      }}>
-        <div role="toolbar" aria-label="Makinari skill search" className="flex items-center rounded-lg border border-input bg-background p-1 focus-within:ring-2 focus-within:ring-ring">
-          <Input aria-label="Search Makinari skills" value={query} onChange={event => setQuery(event.target.value)}
-            className="min-w-0 flex-1 !h-9 !rounded-none !border-0 !bg-transparent !ring-0 focus-visible:!ring-0"
-            placeholder="Search Makinari skills" />
-          <Button type="submit" size="sm" variant="ghost" className="shrink-0 gap-2"
-            disabled={loading || !siteId || (!query.trim() && !filter)}>
-            <Search size={16} /> Search
-          </Button>
-        </div>
-      </form>
-      {loading && <SettingsCardsLoading kind="skills" />}
+      <SkillsSearch target={searchTarget} label="Search Makinari skills" value={query} onChange={setQuery}
+        disabled={!siteId || loading} />
+      {loading && <SkillsLoading kind="system" />}
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
       {!loading && !error && <p className="text-sm text-muted-foreground" role="status">
         {visibleSkills.length} {visibleSkills.length === 1 ? "skill" : "skills"}
@@ -122,10 +103,10 @@ export function SystemSkillsCatalog({ onSectionsChange }: { onSectionsChange?: (
           ))}
         </div>
       ))}
-      {!loading && !error && !skills.length && (
+      {!loading && !error && !loadedSkills?.length && (
         <p className="text-sm text-muted-foreground">No built-in skills are available.</p>
       )}
-      {!loading && !error && skills.length > 0 && !visibleSkills.length && (
+      {Boolean(loadedSkills?.length) && !visibleSkills.length && (
         <p className="text-sm text-muted-foreground">No skills match your search.</p>
       )}
     </section>

@@ -6,6 +6,7 @@ import { Button } from "@/app/components/ui/button"
 import { Folder, Settings, Plus, ChevronRight, ChevronDown, FileText, Users, Building, Briefcase, Megaphone, CheckSquare, Banknote, ShoppingCart, Quotes, Trash2 } from "@/app/components/ui/icons"
 import { ScrollArea } from "@/app/components/ui/scroll-area"
 import { Skeleton } from "@/app/components/ui/skeleton"
+import { SIDEBAR_ROW_HEIGHT } from "@/app/components/navigation/sidebar-metrics"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { getCategoryIconComponent, isEmojiIcon } from "./category-icon"
 
@@ -263,20 +264,24 @@ export function RecordsSidebar({
   if (isCollapsed) return null
 
   return (
-    <div className="h-full w-full min-w-0 flex flex-col bg-background border-r border-border">
-      <div className="h-[71px] px-4 border-b border-border flex justify-end items-center gap-2 shrink-0">
+    <div className="h-full min-h-0 w-full min-w-0 flex flex-col bg-background border-r border-border">
+      <div className="flex shrink-0 items-center gap-2 px-4 pb-2 pt-4">
+        <h2 className="min-w-0 flex-1 truncate text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+          {t("applications.collections") || "Collections"}
+        </h2>
         <Button 
-          variant="secondary" 
+          variant="ghost"
           size="icon" 
-          className="h-8 w-8 shrink-0 rounded-full"
+          className="ml-auto h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
           onClick={onCreateCategory}
           title={t("records.sidebar.newCategory") || "New Category"}
+          aria-label={t("records.sidebar.newCategory") || "New Category"}
         >
           <Plus className="h-4 w-4" />
         </Button>
       </div>
 
-      <ScrollArea className="flex-1 min-w-0 p-4 [&_[data-radix-scroll-area-viewport]>div]:!block">
+      <ScrollArea className="flex-1 min-h-0 min-w-0 px-4 pb-4 [&_[data-radix-scroll-area-viewport]>div]:!block">
         <div>
           <Button
             variant={selectedCategory === "all" ? "secondary" : "ghost"}
@@ -325,8 +330,9 @@ export function RecordsSidebar({
           </div>
         </div>
       </ScrollArea>
-      {onOpenTrash && <div className="p-4 border-t">
-        <Button variant="ghost" className="w-full justify-start" onClick={onOpenTrash}>
+      {onOpenTrash && <div className="shrink-0 p-4 border-t dark:border-white/5 border-black/5">
+        <Button variant="ghost" className="w-full justify-start py-0"
+          style={{ height: SIDEBAR_ROW_HEIGHT }} onClick={onOpenTrash}>
           <Trash2 className="mr-2 h-4 w-4" />Trash
         </Button>
       </div>}

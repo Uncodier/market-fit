@@ -163,7 +163,10 @@ environment variables before changing production configuration.
 
 ## Product designs
 
-- [Multiple channels and multiple agents](/Users/prado/Desktop/Proyectos/Uncodie/Code/market-fit/docs/MULTI_CHANNEL_MULTI_AGENT_REQUIREMENTS.md) — connection-level assignments, agent Channels tab, Customer Support fallback, proposed common contact workflow, acceptance criteria and pending product decisions; requirements only.
+- [Connectors implementation and rollout](CONNECTORS_IMPLEMENTATION.md) — local implementation boundaries, provider attestation/configuration, version-pinned REST execution, migrations and remaining live/deployment gates.
+- [Connectors and skill-aware discovery](CONNECTORS_ARCHITECTURE.md) — approved target architecture for the native catalogue, connector resources, domain/skill registry and phased rollout; current local coverage is in the implementation guide.
+- [Connector resources and delegated access](CONNECTORS_ACCESS_MODEL.md) — per-account resources, member/agent grants and policy intersection; background delegation remains a target contract, not implemented execution.
+- [Multiple channels and multiple agents](MULTI_CHANNEL_MULTI_AGENT_REQUIREMENTS.md) — connection assignments, agent Channels tab, Customer Support fallback and [legacy route compatibility](MULTI_CHANNEL_ROUTE_COMPATIBILITY.md), including worker handoffs and rollout gates; requirements only.
 - [Procurement implementation](PROCUREMENT_IMPLEMENTATION.md) — local operational routes, security, migration prerequisites, validation and remaining workflows.
 - [Inventory replenishment](PROCUREMENT_REPLENISHMENT.md) — SKU/location minimums, draft requisitions, duplicate guards and deployment-gated inventory worker.
 - [Procurement repair validation](PROCUREMENT_REPAIR_VALIDATION.md) — review regressions, local PostgreSQL/PostgREST checks and rollout prerequisites.

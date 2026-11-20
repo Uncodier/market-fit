@@ -45,7 +45,7 @@ does not install selected-list membership tables or background consumers.
 Offline web regression coverage:
 
 ```bash
-npm test -- --runInBand __tests__/app/people __tests__/api/finder-proxy.test.ts __tests__/app/services/finder-api-client.test.ts
+npm test -- --runInBand __tests__/app/people __tests__/api/finder-proxy.test.ts __tests__/api/saved-list-members.test.ts __tests__/app/services/finder-api-client.test.ts
 ```
 
 Provider-backed acceptance must be verified separately in an explicitly selected
@@ -55,11 +55,15 @@ Appending to a historical completed search list preserves its cursor, but may
 resume the next search page after selected entries are processed if provider
 exhaustion was never recorded. Selected-only lists never run provider search.
 The picker shows only RLS-accessible lists; write authorization is rechecked on
-submission. Selected-list loading shows a paginated member table using user-scoped
-RLS reads, the persisted list status and each member's processing outcome. Opening
-a list never starts a provider search or enrichment. Accessible generated leads
-link to their existing detail pages; members without an accessible lead retain
-their provider ID and outcome. Completed processing can include `no_match` or
+submission. Saved lists use the same result table, toolbar and pagination as
+search, with Processing, Outcome and Lead columns for their persisted members.
+For filter-based lists this shows explicitly appended people, not a reconstructed
+history of search pages. **Run saved search** is a separate, explicit action that
+restores the saved filters and may consume search credits. Opening a list never
+starts provider search or enrichment. Generated leads link to their detail pages
+only when the member's persisted lead is accessible under RLS. Existing leads are
+not matched by name or automatically interpreted as completed processing. Missing
+profiles retain the exact provider ID; completion can include `no_match` or
 `needs_review`, not only generated leads. Refresh reloads persisted progress.
 Removing members is not part of these buttons.
 
@@ -68,5 +72,20 @@ results, preserving workspace/sidebar offsets, the desktop filter toggle and the
 mobile return to the saved-list picker. Session initialization and same-user token
 refreshes do not cancel loading, retry or pagination. Sign-out or an actual actor
 change retires in-flight reads and clears displayed members, including when the
-original actor signs back in before a stale response arrives. All data reads still
-use the current user's RLS; opening or refreshing a list never starts enrichment.
+original actor signs back in before a stale response arrives. Result transitions
+clear row selections and pending confirmation dialogs. List saves and enrichment
+recheck the result/session scope after auth resolution and before sending. Already
+accepted requests are not cancelled; a retired batch sends no additional people.
+
+`GET /api/finder/lists/[id]/members?site_id=...&page=...` verifies authenticated site
+access (including unrestricted location access), then the visible parent and its
+25-member page using the caller's RLS. It does not read global `persons` records
+or use service credentials. Display fields come from the same-site, RLS-visible
+lead linked to the member. Its optional Finder snapshot must match the exact
+provider identity; role and company details are matched by organization identity.
+The response excludes raw documents and contact fields. Members without an
+authorized linked lead retain their provider ID, even if a global profile exists.
+No migration, worker change or provider expenditure is required to open a list.
+The displayed processed count comes from completed membership, not historical
+aggregate search counters. This UX consolidation does not repair worker incidents
+or reconcile existing inconsistent data.

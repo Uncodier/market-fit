@@ -10,13 +10,14 @@ import type { PeopleFilters } from "./use-people-filters"
 import type { FinderRequest } from "./finder-request-types"
 import { applySavedFinderFilters } from "./hydrate-finder-filters"
 
-type Dependencies = PeopleFilters & Pick<PeopleSearchState, "currentSite" | "setSelectedList" | "setSelectedPersonIds" | "setShowResultsOnMobile" | "setCurrentPage" | "executeSearch" | "isSearchPending" | "availableSegments" | "setAvailableSegments" | "setIsIcpModalOpen" | "removeIcp" | "renameIcp" | "setCollapsibleVersion" | "setIsEditIcpModalOpen" | "editingIcp" | "setEditingIcp" | "editingIcpName" | "setEditingIcpName" | "editingIcpSegmentValue" | "setEditingIcpSegmentValue" | "setEditingIcpSegmentsLoading">
+type Dependencies = PeopleFilters & Pick<PeopleSearchState, "currentSite" | "setSelectedList" | "setShowResultsOnMobile" | "isSearchPending" | "availableSegments" | "setAvailableSegments" | "setIsIcpModalOpen" | "removeIcp" | "renameIcp" | "setCollapsibleVersion" | "setIsEditIcpModalOpen" | "editingIcp" | "setEditingIcp" | "editingIcpName" | "setEditingIcpName" | "editingIcpSegmentValue" | "setEditingIcpSegmentValue" | "setEditingIcpSegmentsLoading"> & {
+  resetResultSelection: () => void
+  captureResultScope: () => () => boolean
+}
 
 export function usePeopleSavedListActions(dependencies: Dependencies) {
   const {
     currentSite,
-    setCurrentPage,
-    executeSearch,
     isSearchPending,
     availableSegments,
     setAvailableSegments,
@@ -36,23 +37,26 @@ export function usePeopleSavedListActions(dependencies: Dependencies) {
   } = dependencies
   // Helper function to load ICP data
   const handleLoadIcp = async (icpId: string) => {
-    if (isSearchPending()) return
+    if (isSearchPending() || !currentSite?.id) return
+    dependencies.resetResultSelection()
+    const isCurrent = dependencies.captureResultScope()
     try {
       const url = `/api/finder/icp?icp_id=${encodeURIComponent(icpId)}${currentSite?.id ? `&site_id=${encodeURIComponent(currentSite.id)}` : ''}`
       const res = await apiClient.get<{ icp_mining?: { source?: string }; role_query?: { query?: FinderRequest } }>(url)
+      if (!isCurrent() || isSearchPending()) return
       if (!res.success) {
         throw new Error(res.error?.message || 'Failed to load saved list')
       }
-      if (isSearchPending()) return
       if (res.data?.icp_mining?.source === 'selected_people') {
-        if (!currentSite?.id) throw new Error('No site selected')
+        dependencies.resetResultSelection()
         dependencies.setSelectedList({ id: icpId, siteId: currentSite.id })
-        dependencies.setSelectedPersonIds([])
         dependencies.setShowResultsOnMobile(true)
+        setIsIcpModalOpen(false)
         return
       }
-      dependencies.setSelectedList(null)
-      const q: FinderRequest = res.data?.role_query?.query || {}
+      const q = res.data?.role_query?.query
+      if (!q || typeof q !== 'object' || Array.isArray(q)) throw new Error('Saved filters unavailable')
+      dependencies.resetResultSelection()
       applySavedFinderFilters(q, dependencies)
       // Set collapsible defaults based on saved filters.
       const openDefaults = {
@@ -89,15 +93,10 @@ export function usePeopleSavedListActions(dependencies: Dependencies) {
       setSectionOpenDefaults(openDefaults)
       setCollapsibleVersion(v => v + 1)
       setIsIcpModalOpen(false)
-      toast.success('Saved list loaded')
-      // Trigger search with the full saved query so all API fields are sent (avoid dropping any field)
-      setCurrentPage(1)
-      const payloadFromQ: FinderRequest = { ...q, page: 0 }
-      if (currentSite?.id) {
-        payloadFromQ.site_id = currentSite.id
-      }
-      await executeSearch(payloadFromQ)
+      dependencies.setSelectedList({ id: icpId, siteId: currentSite.id, query: q })
+      dependencies.setShowResultsOnMobile(true)
     } catch (e) {
+      if (!isCurrent()) return
       console.error('[People] Load saved list error:', e)
       toast.error('Failed to load saved list')
     }

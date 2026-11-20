@@ -10,6 +10,7 @@ import { resolveInstanceAssetUrl, useInstanceAssetSummaries } from "@/app/compon
 export function useInstanceCreation(input: ReturnType<typeof useRobotsController>) {
   const { allInstances, setInstanceAvatars, isSiteContextReady, refreshCount, lastAutoCreationAttempt, isLoadingRobots, currentSite, getAllInstances, shouldAutoConvertTab, pendingInstanceId, isAutoCreatingInstance, setIsAutoCreatingInstance, setLastAutoCreationAttempt, refreshRobots, setLocalSelectedInstanceId, setPendingInstanceId, setShouldAutoConvertTab, searchParams, router, activeRobotInstance, setIsResuming } = input
   const siteId = currentSite?.id
+  const hasConnectorLink = searchParams.get('connector') !== null
   const lifecycleRef = useRef<AbortController | null>(null)
   const lifecycleSiteRef = useRef<string | undefined>(undefined)
   const autoCreationRef = useRef<AbortController | null>(null)
@@ -28,9 +29,9 @@ export function useInstanceCreation(input: ReturnType<typeof useRobotsController
 
   useEffect(() => {
     autoEligibilityRef.current = requestedSiteId =>
-      siteId === requestedSiteId && isSiteContextReady && !isLoadingRobots &&
+      !hasConnectorLink && siteId === requestedSiteId && isSiteContextReady && !isLoadingRobots &&
       getAllInstances().length === 0 && !shouldAutoConvertTab && !pendingInstanceId && refreshCount > 0
-  }, [siteId, isSiteContextReady, isLoadingRobots, getAllInstances, shouldAutoConvertTab, pendingInstanceId, refreshCount])
+  }, [hasConnectorLink, siteId, isSiteContextReady, isLoadingRobots, getAllInstances, shouldAutoConvertTab, pendingInstanceId, refreshCount])
 
   const createPlaceholderInstance = useCallback(async (
     checkCurrent?: () => boolean,
@@ -125,7 +126,7 @@ export function useInstanceCreation(input: ReturnType<typeof useRobotsController
     const timeSinceLastAttempt = Date.now() - lastAutoCreationAttempt
     const debounceDelay = 5000 // 5 seconds debounce
     
-    if (!isLoadingRobots && 
+    if (!hasConnectorLink && !isLoadingRobots &&
         siteId &&
         getAllInstances().length === 0 && 
         !shouldAutoConvertTab && 
@@ -173,7 +174,7 @@ export function useInstanceCreation(input: ReturnType<typeof useRobotsController
       }
       void autoCreate()
     }
-  }, [isLoadingRobots, siteId, getAllInstances, shouldAutoConvertTab, pendingInstanceId, isAutoCreatingInstance, refreshRobots, searchParams, router, refreshCount, isSiteContextReady, checkInstancesExistInDB, createPlaceholderInstance, lastAutoCreationAttempt, setIsAutoCreatingInstance, setLastAutoCreationAttempt, setLocalSelectedInstanceId, setPendingInstanceId, setShouldAutoConvertTab])
+  }, [hasConnectorLink, isLoadingRobots, siteId, getAllInstances, shouldAutoConvertTab, pendingInstanceId, isAutoCreatingInstance, refreshRobots, searchParams, router, refreshCount, isSiteContextReady, checkInstancesExistInDB, createPlaceholderInstance, lastAutoCreationAttempt, setIsAutoCreatingInstance, setLastAutoCreationAttempt, setLocalSelectedInstanceId, setPendingInstanceId, setShouldAutoConvertTab])
 
   // No campaigns effect
 

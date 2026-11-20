@@ -90,6 +90,13 @@ beforeEach(() => {
 })
 
 describe('Robots creation asynchronous lifecycle', () => {
+  it('does not auto-create an instance merely because a connector link was opened', async () => {
+    const base = input('site-a', { searchParams: new URLSearchParams('connector=invalid&activity=robot&query=run') })
+    renderHook(useStatefulCreation, { initialProps: base })
+    await act(async () => {})
+    expect(mockInsert).not.toHaveBeenCalled()
+    expect(mockCheck).not.toHaveBeenCalled()
+  })
   it('keeps automatic creation enabled without dismissing a list opened during creation', async () => {
     const pending = deferred<{ data: typeof newInstance; error: null }>()
     mockInsertResult.mockReturnValue(pending.promise)

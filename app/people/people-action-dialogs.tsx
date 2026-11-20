@@ -35,10 +35,10 @@ export function PeopleActionDialogs({ workspace }: { workspace: PeopleWorkspace 
     icpListError,
     refreshIcps,
     setSelectedIcpId,
-    selectedPersonIds,
+    confirmedCount,
     isEnriching,
     isConfirmModalOpen,
-    setIsConfirmModalOpen,
+    setEnrichConfirmationOpen,
     isEditIcpModalOpen,
     setIsEditIcpModalOpen,
     setEditingIcp,
@@ -269,16 +269,16 @@ export function PeopleActionDialogs({ workspace }: { workspace: PeopleWorkspace 
         </DialogContent>
       </Dialog>
       {/* Enrich confirmation modal */}
-      <Dialog open={isConfirmModalOpen} onOpenChange={setIsConfirmModalOpen}>
+      <Dialog open={isConfirmModalOpen} onOpenChange={setEnrichConfirmationOpen}>
         <DialogContent className="sm:max-w-[480px]">
           <DialogHeader>
             <DialogTitle>Enrich selected people</DialogTitle>
             <DialogDescription>
-              Enrich {selectedPersonIds.length} selected {selectedPersonIds.length === 1 ? 'person' : 'people'}? This runs enrichment for each selected person and uses credits. It does not create a saved search list.
+              Enrich {confirmedCount} selected {confirmedCount === 1 ? 'person' : 'people'}? This runs enrichment for each selected person and uses credits. It does not create a saved search list.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsConfirmModalOpen(false)} disabled={isEnriching}>
+            <Button variant="outline" onClick={() => setEnrichConfirmationOpen(false)} disabled={isEnriching}>
               Cancel
             </Button>
             <Button onClick={handleEnrich} disabled={isEnriching}>

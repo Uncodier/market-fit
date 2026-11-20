@@ -14,7 +14,7 @@ import { VoiceAgentSettingsFields } from "@/app/components/settings/VoiceAgentSe
 import { useIcpMiningLists } from "@/app/components/settings/use-icp-mining-lists"
 import { useTeamMembers } from "@/app/components/settings/use-team-members"
 import { useCopywritingSection } from "@/app/components/settings/use-copywriting-section"
-import { skillRequest } from "@/app/components/settings/SkillManager"
+import { skillRequest } from "@/app/components/settings/skill-client"
 import { apiClient } from "@/app/services/api-client-service"
 import { createClient } from "@/lib/supabase/client"
 
@@ -24,7 +24,7 @@ jest.mock("@/app/components/settings/use-icp-mining-lists", () => ({ useIcpMinin
 jest.mock("@/app/components/settings/use-team-members", () => ({ useTeamMembers: jest.fn() }))
 jest.mock("@/app/components/settings/use-copywriting-section", () => ({ useCopywritingSection: jest.fn() }))
 jest.mock("@/app/components/settings/TeamLocationAccess", () => ({ TeamLocationAccess: ({ children }: { children: ReactNode }) => <>{children}</> }))
-jest.mock("@/app/components/settings/SkillManager", () => ({
+jest.mock("@/app/components/settings/skill-client", () => ({
   skillRequest: jest.fn(), skillsFromResponse: (value: unknown) => value,
 }))
 jest.mock("@/app/services/api-client-service", () => ({ apiClient: { get: jest.fn() } }))
@@ -64,7 +64,7 @@ it("shows skill cards until the catalog resolves, then preserves the empty state
   jest.mocked(skillRequest).mockReturnValue(new Promise(done => { resolve = done }))
   render(<SystemSkillsCatalog />)
   const status = expectSkeleton("Loading Makinari skills")
-  expect(status.querySelectorAll(".rounded-xl")).toHaveLength(2)
+  expect(status.querySelectorAll('[data-skeleton-shape="skill-system"]')).toHaveLength(2)
   expect(screen.queryByText("No built-in skills are available.")).not.toBeInTheDocument()
   await act(async () => resolve([]))
   expect(screen.queryByRole("status", { name: "Loading Makinari skills" })).not.toBeInTheDocument()

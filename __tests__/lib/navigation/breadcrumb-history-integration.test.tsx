@@ -5,8 +5,9 @@ import { NAVIGATION_AREAS } from '@/app/config/navigation-areas'
 import { workspaceScreenTitle } from '@/lib/navigation/workspace-screen'
 
 function setRoute(path: string) {
-  jest.mocked(usePathname).mockReturnValue(path)
-  jest.mocked(useSearchParams).mockReturnValue(new URLSearchParams() as ReturnType<typeof useSearchParams>)
+  const [pathname, query] = path.split('?')
+  jest.mocked(usePathname).mockReturnValue(pathname)
+  jest.mocked(useSearchParams).mockReturnValue(new URLSearchParams(query) as ReturnType<typeof useSearchParams>)
 }
 
 beforeEach(() => {
@@ -62,6 +63,7 @@ test.each([
   [false, '/robots?instance=one', '/robots', '/robots'],
   [true, '/robots?instance=one&artifact=true', '/robots', '/robots'],
   [true, '/robots?instance=one', '/robots?instance=two', '/robots?instance=two'],
+  [true, '/robots?instance=one&mode=workflow', '/robots?view=instances', '/robots?view=instances'],
   [true, '/leads/one', '/leads', '/leads'],
 ])('breadcrumb navigation mobile=%s from %s to %s', (mobile, current, target, expected) => {
   const originalMatchMedia = window.matchMedia
@@ -78,4 +80,30 @@ test.each([
   } finally {
     window.matchMedia = originalMatchMedia
   }
+})
+
+test.each([
+  ['/leads?view=table', '/chat?conversationId=one'],
+  ['/robots?mode=workflow&view=instances', '/robots?mode=workflow&instance=one'],
+  ['/control-center?view=calendar', '/control-center/one?title=Task'],
+])('clicking the recorded origin returns from %s through %s and restores the original URL', (origin, detail) => {
+  const push = jest.fn()
+  jest.mocked(useRouter).mockReturnValue({ push } as unknown as ReturnType<typeof useRouter>)
+  setRoute(origin)
+  const hook = renderHook(() => useNavigationHistory())
+  setRoute(detail)
+  hook.rerender()
+  expect(hook.result.current.items.map(item => item.path)).toEqual([origin, detail])
+  act(() => hook.result.current.navigateTo(hook.result.current.items[0]))
+  expect(push).toHaveBeenCalledWith(origin)
+})
+
+test('does not return a direct conversation link to an unrelated stored trail', () => {
+  localStorage.setItem('navigationHistory', JSON.stringify({ items: [
+    { path: '/control-center?view=calendar', label: 'Tasks', timestamp: 1 },
+  ] }))
+  setRoute('/chat?conversationId=one&title=50%25+off')
+  const hook = renderHook(() => useNavigationHistory())
+  expect(hook.result.current.items.map(item => item.path)).toEqual(['/chat', '/chat?conversationId=one&title=50%25+off'])
+  expect(hook.result.current.items[1].label).toBe('50% off')
 })

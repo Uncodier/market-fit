@@ -1,4 +1,4 @@
-/** Approved Makinari site renders, promoted to shared app assets on 2026-09-30. */
+/** Shared Makinari module artwork, including the site renders promoted on 2026-09-30. */
 const ICON_PATH = "/images/modules/makinari-2026-09-30"
 
 export const MAKINARI_MODULE_IMAGE_OVERRIDES: Readonly<Record<string, string | undefined>> = {
@@ -21,4 +21,5 @@ export const MAKINARI_MODULE_IMAGE_OVERRIDES: Readonly<Record<string, string | u
   applicationsDatabase: `${ICON_PATH}/database.webp`,
   applicationsRepositories: `${ICON_PATH}/code.webp`,
   billing: `${ICON_PATH}/billing.webp`,
+  connectors: "/images/modules/connectors.webp",
 }

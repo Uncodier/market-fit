@@ -14,12 +14,11 @@ import { updateLead } from "@/app/leads/actions"
 import { toast } from "sonner"
 import { useSite } from "@/app/context/SiteContext"
 import { useLayout } from "@/app/context/LayoutContext"
-import { ChevronLeft } from "@/app/components/ui/icons"
-import { Button } from "@/app/components/ui/button"
 import type { ParticipantIdentity } from "@/lib/chat/participant-identity"
 import { getChannelLabel } from "@/lib/site-channels"
 import { useNewCustomerSupportConversation } from "@/app/hooks/useNewCustomerSupportConversation"
 import { AutomationSnoozeStatus } from "./AutomationSnoozeStatus"
+import { ReviewInstanceLink } from "./ReviewInstanceLink"
 import { useLocalization } from "@/app/context/LocalizationContext"
 
 interface ChatHeaderProps {
@@ -37,9 +36,9 @@ interface ChatHeaderProps {
   handleNewLeadConversation: () => void
   handleNewAgentConversation: () => void
   handlePrivateDiscussion: () => void
+  internalReview?: boolean
   conversationId?: string
   onLeadStatusUpdate?: () => void
-  onBack?: () => void
 }
 
 export function ChatHeader({
@@ -58,8 +57,8 @@ export function ChatHeader({
   handleNewAgentConversation,
   handlePrivateDiscussion,
   conversationId,
+  internalReview,
   onLeadStatusUpdate,
-  onBack
 }: ChatHeaderProps) {
   const { currentSite } = useSite()
   const { t } = useLocalization()
@@ -170,15 +169,6 @@ export function ChatHeader({
         ...positionStyles
       }}>
       
-      {/* Back Button for Mobile */}
-      {onBack && (
-        <div className="md:hidden absolute left-0 top-0 h-full flex items-center pl-2 z-[1000]">
-          <Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8" aria-label="Back">
-            <ChevronLeft className="h-5 w-5" />
-          </Button>
-        </div>
-      )}
-
       {/* Hide / New — in flex flow so the lead toolbar row cannot stack over the buttons */}
       <div className="hidden md:flex shrink-0 items-stretch relative z-[60]">
         <ChatToggle
@@ -210,6 +200,7 @@ export function ChatHeader({
           "flex-1 min-w-0 flex items-center justify-end transition-all duration-300 ease-in-out gap-4 pr-4 md:pr-0 pl-2"
         )}
       >
+        {internalReview && conversationId && <ReviewInstanceLink key={conversationId} conversationId={conversationId} />}
         {/* Visitor/Lead info - only shown when not loading, not agent-only conversation, and a conversation is selected */}
         {!isLoadingLead && !isAgentOnlyConversation && hasSelectedConversation && (
           <div className="flex items-center gap-3 transition-opacity duration-300 ease-in-out min-w-0 flex-1 justify-end">

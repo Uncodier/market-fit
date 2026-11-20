@@ -16,6 +16,7 @@ import { DeleteConfirmationModal } from "./DeleteConfirmationModal"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { ConversationItem } from "./ConversationItem"
 import { ChannelFilter } from "./ChannelFilter"
+import { usePrivateReviews } from "./private-reviews"
 import { useConversationsList } from "@/app/hooks/useConversationsList"
 import { useConversationRealtime } from "@/app/hooks/useConversationRealtime"
 import { useConversationListActions } from "@/app/hooks/useConversationListActions"
@@ -70,6 +71,7 @@ export function ChatList({
   const router = useRouter()
   const { t } = useLocalization()
   const [searchQuery, setSearchQuery] = useState("")
+  const { byConversation } = usePrivateReviews()
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("")
   const [combinedFilter, setCombinedFilter] = useState<'all' | 'outbound' | 'inbound' | 'replied' | 'tasks' | 'assigned' | 'qualified'>('all')
   const { isDarkMode } = useTheme()
@@ -144,6 +146,18 @@ export function ChatList({
     combinedFilter,
     debouncedSearchQuery,
   })
+
+  // An approval can arrive before the conversation INSERT reaches realtime.
+  // Revalidate the real list, never manufacture a row from private inbox data.
+  const seenRequests = React.useRef(new Set<string>())
+  useEffect(() => {
+    if (isInitialLoad || combinedFilter !== 'all' || debouncedSearchQuery) return
+    const listed = new Set(conversations.map(row => row.id))
+    const needsRefresh = [...byConversation].some(([id, requests]) =>
+      !listed.has(id) && requests.some(request => !seenRequests.current.has(request.id)))
+    seenRequests.current = new Set([...byConversation.values()].flatMap(requests => requests.map(request => request.id)))
+    if (needsRefresh) void refreshConversations()
+  }, [byConversation, conversations, refreshConversations, isInitialLoad, combinedFilter, debouncedSearchQuery])
 
   useAutoSelectTopConversation({
     conversations,
@@ -362,6 +376,7 @@ export function ChatList({
                   </div>
                   {pendingConversations.map(conversation => (
                     <ConversationItem
+                      reviewCount={byConversation.get(conversation.id)?.length}
                       key={conversation.id}
                       conversation={conversation}
                       isSelected={selectedConversationId === conversation.id}
@@ -387,6 +402,7 @@ export function ChatList({
                   )}
                   {otherConversations.map(conversation => (
                     <ConversationItem
+                      reviewCount={byConversation.get(conversation.id)?.length}
                       key={conversation.id}
                       conversation={conversation}
                       isSelected={selectedConversationId === conversation.id}

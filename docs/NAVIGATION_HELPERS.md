@@ -13,6 +13,12 @@ use SPA-first navigation with progress feedback; a timer never reloads the page.
 
 This document describes the centralized navigation helper functions that ensure consistent breadcrumb behavior across the application.
 
+Conversation, robot instance, and task details use the workspace breadcrumb to
+return to the originating screen, including its query parameters. Direct links
+fall back to the module root; on mobile, the Robots root opens the instance list
+instead of automatically selecting an instance. Control Center stores the
+selected table, calendar, or Kanban view in the list URL so it can be restored.
+
 ## Why Use Navigation Helpers?
 
 1. **Consistent breadcrumbs**: All navigations include entity names, avoiding generic "Details" labels

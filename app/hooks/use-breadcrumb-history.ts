@@ -4,7 +4,7 @@ import { procurementRouteTitle } from '@/lib/navigation/procurement-route-title'
 import { workspaceScreenTitle } from '@/lib/navigation/workspace-screen'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { usePathname, useSearchParams, useRouter } from 'next/navigation'
-import { reduceBreadcrumb, enforceInvariants, getScreenKey, hasId } from '@/lib/navigation/breadcrumb-engine'
+import { reduceBreadcrumb, enforceInvariants, getScreenKey, hasId, isReturnableDetail } from '@/lib/navigation/breadcrumb-engine'
 import type { HistoryItem } from '@/lib/navigation/breadcrumb-engine'
 import { markUINavigation } from '@/lib/navigation/navigation-helpers'
 import { mobileInstanceBreadcrumbHref } from '@/app/robots/mobile-instance-navigation'
@@ -122,8 +122,9 @@ function isDirectNavigation(): boolean {
  * Generate a label for a route based on path and query params
  */
 function generateLabel(pathname: string, searchParams: URLSearchParams | null): string {
-  if (!hasId(pathname)) {
-    const screenTitle = workspaceScreenTitle(`${pathname}?${searchParams?.toString() || ''}`)
+  const fullPath = `${pathname}?${searchParams?.toString() || ''}`
+  if (!hasId(fullPath)) {
+    const screenTitle = workspaceScreenTitle(fullPath)
     if (screenTitle) return screenTitle
   }
   const procurementTitle = procurementRouteTitle(pathname)
@@ -137,12 +138,12 @@ function generateLabel(pathname: string, searchParams: URLSearchParams | null): 
     let label = 'Database'
     const customTitle = searchParams?.get('title')
     if (customTitle) {
-      const decodedTitle = decodeURIComponent(customTitle)
+      const decodedTitle = customTitle
       label = decodedTitle.length > 40 ? decodedTitle.substring(0, 40) + '...' : decodedTitle
     } else {
       const name = searchParams?.get('name')
       if (name) {
-        const decodedName = decodeURIComponent(name)
+        const decodedName = name
         label = decodedName.length > 40 ? decodedName.substring(0, 40) + '...' : decodedName
       } else {
         label = pathSegments.length > 2 ? 'Database Details' : 'Database'
@@ -156,12 +157,12 @@ function generateLabel(pathname: string, searchParams: URLSearchParams | null): 
     let label = 'Code'
     const customTitle = searchParams?.get('title')
     if (customTitle) {
-      const decodedTitle = decodeURIComponent(customTitle)
+      const decodedTitle = customTitle
       label = decodedTitle.length > 40 ? decodedTitle.substring(0, 40) + '...' : decodedTitle
     } else {
       const name = searchParams?.get('name')
       if (name) {
-        const decodedName = decodeURIComponent(name)
+        const decodedName = name
         label = decodedName.length > 40 ? decodedName.substring(0, 40) + '...' : decodedName
       } else {
         label = pathSegments.length > 2 ? 'Code Details' : 'Code'
@@ -179,7 +180,7 @@ function generateLabel(pathname: string, searchParams: URLSearchParams | null): 
     // Check if there's a custom title in query params first
     const customTitle = searchParams?.get('title')
     if (customTitle) {
-      const decodedTitle = decodeURIComponent(customTitle)
+      const decodedTitle = customTitle
       // Trim long titles to keep breadcrumb readable
       label = decodedTitle.length > 40 
         ? decodedTitle.substring(0, 40) + '...' 
@@ -188,7 +189,7 @@ function generateLabel(pathname: string, searchParams: URLSearchParams | null): 
       // Check for name in query params
       const name = searchParams?.get('name')
       if (name) {
-        const decodedName = decodeURIComponent(name)
+        const decodedName = name
         // Trim long names to keep breadcrumb readable
         label = decodedName.length > 40 
           ? decodedName.substring(0, 40) + '...' 
@@ -206,7 +207,7 @@ function generateLabel(pathname: string, searchParams: URLSearchParams | null): 
     // Prioritize conversation title over agent name
     const conversationTitle = searchParams?.get('title')
     if (conversationTitle) {
-      const decodedTitle = decodeURIComponent(conversationTitle)
+      const decodedTitle = conversationTitle
       // Trim the title to 30 characters max
       label = decodedTitle.length > 30 
         ? decodedTitle.substring(0, 30) + '...' 
@@ -214,7 +215,7 @@ function generateLabel(pathname: string, searchParams: URLSearchParams | null): 
     } else {
       const agentName = searchParams?.get('agentName')
       if (agentName) {
-        label = `Chat: ${decodeURIComponent(agentName)}`
+        label = `Chat: ${agentName}`
       }
     }
   }
@@ -224,7 +225,7 @@ function generateLabel(pathname: string, searchParams: URLSearchParams | null): 
     // Check if there's an instance name in query params
     const instanceName = searchParams?.get('name')
     if (instanceName) {
-      const decodedName = decodeURIComponent(instanceName)
+      const decodedName = instanceName
       // Trim long names to keep breadcrumb readable
       label = decodedName.length > 40 
         ? decodedName.substring(0, 40) + '...' 
@@ -325,6 +326,7 @@ export function useNavigationHistory() {
     
     // Skip if path hasn't changed
     if (previousPathRef.current === fullPath) return
+    const hasPreviousRoute = Boolean(previousPathRef.current)
     
     const isDirect = isDirectNavigation()
     
@@ -335,6 +337,15 @@ export function useNavigationHistory() {
     
     setHistory(prev => {
       const last = prev.items[prev.items.length - 1]
+      if (isReturnableDetail(fullPath)) {
+        // A direct entry does not inherit a stale origin from another tab or visit.
+        const trail = hasPreviousRoute ? prev.items : []
+        const next = { items: reduceBreadcrumb(trail, {
+          type: 'navigate', path: fullPath, label: generateLabel(pathname, searchParams),
+        }) }
+        saveHistory(next)
+        return next
+      }
       if (isDirect && last && getScreenKey(last.path) === getScreenKey(fullPath)) {
         // Even if direct, ensure the label is up-to-date and invariants hold
         const currentLabel = generateLabel(pathname, searchParams)
@@ -378,13 +389,14 @@ export function useNavigationHistory() {
    * Navigate to a specific item in history
    */
   const navigateTo = useCallback((item: HistoryItem) => {
+    if (!item.path.startsWith('/') || /^\/[\\/]|[\r\n\t]/.test(item.path)) return
     // Mark as UI navigation using the proper function
     markUINavigation()
     
     const destination = mobileInstanceBreadcrumbHref(
       item.path,
       fullPath,
-      typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches,
+      typeof window !== 'undefined' && window.matchMedia?.('(max-width: 767px)').matches,
     )
     router.push(destination)
   }, [router, fullPath])

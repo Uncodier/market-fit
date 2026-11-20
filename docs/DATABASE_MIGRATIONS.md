@@ -88,6 +88,57 @@ Document the exact deployment command only after the repository has a canonical,
 checked-in workflow. Until then, do not copy ad hoc dashboard or CLI commands
 into automation.
 
+## Private instance approval conversations (not applied)
+
+`20261120060000_connector_review_conversations.sql` adds a review destination;
+it does **not** change the meaning of `connector_action_approvals.conversation_id`.
+The latter is immutable channel provenance, and remains NULL for instance requests.
+For the authenticated approval API, the service-only left embed on the existing
+site-scoped approvals SELECT is `connector_approval_review_links(review_conversation_id)`.
+The `approval_id` PK/FK makes this a nullable to-one object, not an array. An
+equivalent batched query selects `approval_id,review_conversation_id` from the
+mapping for the already authorized approval IDs. Do not expose mappings directly
+to the browser. For a channel approval the destination is the original conversation;
+for an interactive approval it is the separate UUID, never a synthetic ID.
+
+The request RPC creates or reuses one real row per site, instance, original owner
+and runtime-selected agent, in the same transaction as proposal admission. The
+row has a generic title, a reserved `internal_review` channel (also in
+`custom_data.channel` for legacy Web filters), and no visitor, lead or messages.
+`last_message_at` records request activity for the normal list's sort. The private
+action, arguments and result never enter generic conversation metadata. Existing
+policies still apply. An additional restrictive policy requires the original
+instance ownership to still match, and current connector site access. A reader
+must be that owner, or a manager with current effective use of a represented,
+enabled connector. This is permission to see the generic container, **not** to
+approve an action. Per-request validation and the manager decision RPC remain
+mandatory. Normal workspace chat permissions are not broadened.
+
+**Rollout gate:** deploy and test exclusions in every customer-facing service-role
+query, assistant/channel host and dispatch path **before** allowing the migration
+to create any rows. RLS cannot protect a BYPASSRLS query. For PostgREST channel
+reads use `channel.is.null,channel.neq.internal_review` as an OR condition;
+`neq` alone would silently hide legacy NULL channels. Coordinate the linked-reader
+API and UI release as well: readers that require the new relation cannot operate
+against an old schema. Inspect target trigger, grant, FK and realtime configuration
+first, and pause affected writes in a maintenance window. The SQL aborts if
+`internal_review` was already in use or the expected enabled workflow webhook
+trigger has drifted. No linked environment was inspected or modified here.
+
+Existing **pending, unexpired** interactive requests get a link only when the
+original site, instance owner, active prompt agent and same-site connector can be
+verified. Invalid/stale, terminal, expired and channel approvals are untouched;
+the migration neither reissues requests nor reopens them on replay. If an
+interactive request has no valid mapping, do not fabricate a conversation.
+Ordinary conversation webhooks keep their dispatcher; review events skip it, and
+even service-role `messages` writes to review threads fail. Browser roles lose
+table-level `TRIGGER`, `TRUNCATE` and `REFERENCES` on conversations and `TRIGGER`
+on messages: those rights bypass row boundaries (respectively executable triggers,
+bulk wipes and hidden-ID FK probes). Ordinary row CRUD and existing FKs remain.
+
+Disposable PostgreSQL tests (socket-only, no configured database URL):
+`npm test -- --runInBand __tests__/connectors/review-conversations-postgres.test.ts __tests__/connectors/connector-approval-postgres.test.ts`.
+
 ## Record diagram save ambiguity
 
 `20261117223000_record_diagram_trash_guard_ambiguity.sql` corrects the

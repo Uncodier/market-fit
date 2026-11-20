@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, type Dispatch, type SetStateAction } from "react"
 import { useLayout } from "@/app/context/LayoutContext"
 import { RelationSelectValue } from "@/app/components/ui/relation-select"
 import { useSite } from "@/app/context/SiteContext"
@@ -10,8 +10,9 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { useSearchParams } from "next/navigation"
 
 import { useSavedFinderLists } from "./use-saved-finder-lists"
+import type { SavedListReference } from "./saved-list-types"
 
-export function usePeoplePageState() {
+export function usePeoplePageState(peopleTab: "search" | "saved", setPeopleTab: Dispatch<SetStateAction<"search" | "saved">>) {
   const searchParams = useSearchParams()
   const isArtifact = searchParams ? searchParams.get("artifact") === "true" : false
   const urlSort = searchParams ? searchParams.get('sort') : null
@@ -23,8 +24,7 @@ export function usePeoplePageState() {
   const isMobile = useIsMobile()
   const { currentSite } = useSite()
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
-  const [sidebarLeft, setSidebarLeft] = useState("256px")
-  const [peopleTab, setPeopleTab] = useState<"search" | "saved">("search")
+  const sidebarLeft = isMobile || isArtifact ? "0px" : isLayoutCollapsed ? "64px" : "256px"
   // Mobile two-step: step 1 = filters, step 2 = results
   const [showResultsOnMobile, setShowResultsOnMobile] = useState(false)
   // pagination
@@ -33,8 +33,8 @@ export function usePeoplePageState() {
   const [pageJump, setPageJump] = useState<string>("")
 
   // remote data state
-  const [searchResults, setSearchResults] = useState<any[]>([])
-  const [selectedList, setSelectedList] = useState<{ id: string; siteId: string } | null>(null)
+  const [searchResults, setSearchResults] = useState<Record<string, unknown>[]>([])
+  const [selectedList, setSelectedList] = useState<SavedListReference | null>(null)
   const [totalResults, setTotalResults] = useState<number>(0)
   const [error, setError] = useState<string | null>(null)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
@@ -65,10 +65,6 @@ export function usePeoplePageState() {
   const [editingIcpSegmentsLoading, setEditingIcpSegmentsLoading] = useState(false)
   // Persist collapsed/expanded state for Saved lists tab so it survives tab switches
   const [savedSectionOpenDefaults, setSavedSectionOpenDefaults] = useState<Record<string, boolean>>({})
-
-  useEffect(() => {
-    setSidebarLeft(isMobile ? "0px" : isArtifact ? "0px" : isLayoutCollapsed ? "64px" : "256px")
-  }, [isLayoutCollapsed, isMobile, isArtifact])
 
   useEffect(() => {
     document.title = "Find People | Market Fit"
@@ -105,7 +101,6 @@ export function usePeoplePageState() {
     isSidebarCollapsed,
     setIsSidebarCollapsed,
     sidebarLeft,
-    setSidebarLeft,
     peopleTab,
     setPeopleTab,
     showResultsOnMobile,

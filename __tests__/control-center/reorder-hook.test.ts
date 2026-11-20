@@ -1,4 +1,5 @@
 import { act, renderHook } from '@testing-library/react'
+import { useSearchParams } from 'next/navigation'
 import { toast } from 'react-hot-toast'
 import { useSite } from '@/app/context/SiteContext'
 import { createClient } from '@/utils/supabase/client'
@@ -83,5 +84,26 @@ describe('control-center reorder caller', () => {
     await act(async () => result.current.handleUpdateTaskStatus('task', 'pending', 1))
     expect(createClient).not.toHaveBeenCalled()
     expect(mockRefreshTasks).not.toHaveBeenCalled()
+  })
+
+  it('stores the selected task view in the URL and restores it from the breadcrumb destination', () => {
+    const originalUrl = window.location.href
+    const mockSearch = jest.mocked(useSearchParams)
+    const setSearch = (query: string) => mockSearch.mockReturnValueOnce(
+      new URLSearchParams(query) as ReturnType<typeof useSearchParams>,
+    )
+    try {
+      window.history.replaceState(null, '', '/control-center?view=calendar')
+      setSearch(window.location.search)
+      const { result, rerender } = renderHook(() => useControlCenterPage())
+      expect(result.current.viewType).toBe('calendar')
+      act(() => result.current.setViewType('table'))
+      expect(window.location.search).toBe('?view=table')
+      setSearch(window.location.search)
+      rerender()
+      expect(result.current.viewType).toBe('table')
+    } finally {
+      window.history.replaceState(null, '', originalUrl)
+    }
   })
 })

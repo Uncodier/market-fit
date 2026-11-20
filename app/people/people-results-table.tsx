@@ -6,8 +6,12 @@ import { ChevronDown, ChevronRight, Check } from "@/app/components/ui/icons"
 import { Badge } from "@/app/components/ui/badge"
 import type { PeopleWorkspace } from "./use-people-workspace"
 import { CompanyLogo } from "./company-logo"
+import { ListProcessingCells, type ListProcessing } from "./list-processing-cells"
 
-export function PeopleResultsTable({ workspace }: { workspace: PeopleWorkspace }) {
+export function PeopleResultsTable({ workspace, processingByPerson }: {
+  workspace: Pick<PeopleWorkspace, 'expandedGroups' | 'selectedPersonIds' | 'addedPersonIds' | 'groupedResults' | 'toggleGroup' | 'togglePersonSelection'> & { error: string | null }
+  processingByPerson?: ReadonlyMap<string, ListProcessing>
+}) {
   const {
     error,
     expandedGroups,
@@ -19,7 +23,7 @@ export function PeopleResultsTable({ workspace }: { workspace: PeopleWorkspace }
   } = workspace
   return (
                 <div className="overflow-x-auto">
-                <Table className="w-full min-w-[2600px]" style={{ tableLayout: 'fixed' }}>
+                <Table className={cn("w-full", processingByPerson ? "min-w-[3000px]" : "min-w-[2600px]")} style={{ tableLayout: 'fixed' }}>
                   <TableHeader>
                     <TableRow>
                       <TableHead className="whitespace-nowrap" style={{ width: 56, minWidth: 56 }}> </TableHead>
@@ -27,6 +31,11 @@ export function PeopleResultsTable({ workspace }: { workspace: PeopleWorkspace }
                       <TableHead className="whitespace-nowrap" style={{ width: 150, minWidth: 150 }}>Role Title</TableHead>
                       <TableHead className="whitespace-nowrap" style={{ width: 140, minWidth: 140 }}>Company</TableHead>
                       <TableHead className="whitespace-nowrap" style={{ width: 120, minWidth: 120 }}>Person Location</TableHead>
+                      {processingByPerson && <>
+                        <TableHead className="whitespace-nowrap" style={{ width: 130 }}>Processing</TableHead>
+                        <TableHead className="whitespace-nowrap" style={{ width: 130 }}>Outcome</TableHead>
+                        <TableHead className="whitespace-nowrap" style={{ width: 130 }}>Lead</TableHead>
+                      </>}
                       <TableHead className="whitespace-nowrap" style={{ width: 100, minWidth: 100 }}>Start Date</TableHead>
                       <TableHead className="whitespace-nowrap" style={{ width: 100, minWidth: 100 }}>End Date</TableHead>
                       <TableHead className="whitespace-nowrap" style={{ width: 160, minWidth: 160 }}>Headline</TableHead>
@@ -46,7 +55,7 @@ export function PeopleResultsTable({ workspace }: { workspace: PeopleWorkspace }
                   <TableBody>
                           {error && (
                             <TableRow>
-                              <TableCell colSpan={19}>
+                              <TableCell colSpan={processingByPerson ? 22 : 19}>
                                 <div className="py-8 text-center text-sm text-destructive">{error}</div>
                               </TableCell>
                             </TableRow>
@@ -133,6 +142,7 @@ export function PeopleResultsTable({ workspace }: { workspace: PeopleWorkspace }
                                   <TableCell className="font-medium">
                                     <div className="line-clamp-2" title={group.location}>{group.location}</div>
                                   </TableCell>
+                                  {processingByPerson && <ListProcessingCells member={processingByPerson.get(group.personId)} />}
                                   <TableCell className="font-medium whitespace-nowrap">{primary.start ?? "N/A"}</TableCell>
                                   <TableCell className="font-medium whitespace-nowrap">{primary.end ?? (primary.start ? "Present" : "N/A")}</TableCell>
                                   <TableCell className="font-medium min-w-0">
@@ -185,7 +195,7 @@ export function PeopleResultsTable({ workspace }: { workspace: PeopleWorkspace }
                                   </TableCell>
                                 </TableRow>
 
-                                {isExpandable && isExpanded && group.roles.slice(1).map((role: any) => (
+                                {isExpanded && isExpandable && group.roles.slice(1).map((role: { id: string; title: string; start?: string; end?: string; isCurrent?: boolean; description?: string }) => (
                                   <TableRow key={`${group.key}-${role.id}`} className="group hover:bg-muted/30 transition-colors border-l-4 border-l-blue-200 bg-muted/20">
                                     <TableCell className="w-[56px]"></TableCell>
                                     <TableCell>
@@ -201,6 +211,7 @@ export function PeopleResultsTable({ workspace }: { workspace: PeopleWorkspace }
                                     <TableCell className="font-medium">
                                       <div className="line-clamp-2" title={group.location}>{group.location}</div>
                                     </TableCell>
+                                    {processingByPerson && <ListProcessingCells member={processingByPerson.get(group.personId)} />}
                                     <TableCell className="font-medium whitespace-nowrap">{role.start ?? "N/A"}</TableCell>
                                     <TableCell className="font-medium whitespace-nowrap">{role.end ?? (role.start ? "Present" : "N/A")}</TableCell>
                                     <TableCell className="font-medium min-w-0">

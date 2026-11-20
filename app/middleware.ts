@@ -96,7 +96,8 @@ const ALIAS_MAP: Record<string, string> = {
   'lead': 'leads',
   'person': 'people',
   'company': 'companies',
-  'task': 'tasks',
+  'task': 'control-center',
+  'tasks': 'control-center',
   'segment': 'segments',
   'asset': 'assets'
 }
@@ -388,7 +389,9 @@ export async function middleware(request: NextRequest) {
       if (!isPrefetch) {
         const url = request.nextUrl.clone()
         url.pathname = '/auth'
-        url.search = `?returnTo=${encodeURIComponent(pathname + request.nextUrl.search)}`
+        // OAuth proof must never be copied into login return URLs or their logs.
+        const returnPath = pathname === '/connectors/callback' ? '/connectors' : pathname + request.nextUrl.search
+        url.search = `?returnTo=${encodeURIComponent(returnPath)}`
         return copyResponseCookies(sessionResponse, NextResponse.redirect(url))
       }
     }

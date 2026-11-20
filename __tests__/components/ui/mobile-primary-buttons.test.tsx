@@ -106,7 +106,7 @@ describe("mobile primary buttons", () => {
     expect(declarations(".btn-primary-well")["min-height"]).toBe("48px !important")
   })
 
-  it("keeps shared icon actions square and visually hides only their labels on mobile", () => {
+  it("keeps topbar icon actions square and visually hides only their labels on mobile", () => {
     const css = postcss.parse(readFileSync(path.join(process.cwd(), "app/styles/mobile-primary-buttons.css"), "utf8"))
     const valuesFor = (selector: string) => {
       const values: Record<string, string> = {}
@@ -118,27 +118,26 @@ describe("mobile primary buttons", () => {
       })
       return values
     }
-    for (const icon of [".safari-icon-fix", "svg"]) {
-      const button = `.btn-primary:has(> ${icon})`
-      const well = `.btn-primary-well:has(> .btn-primary > ${icon})`
-      for (const selector of [button, well]) {
-        expect(valuesFor(selector)).toMatchObject({
-          width: "48px !important",
-          "min-width": "48px !important",
-          "max-width": "48px !important",
-          padding: "0 !important",
-          gap: "0 !important",
-        })
-      }
-      expect(valuesFor(`${button} > span:not(.safari-icon-fix):not(.btn-glass-surface)`)).toMatchObject({
-        display: "block !important",
-        position: "absolute !important",
-        width: "1px !important",
-        height: "1px !important",
-        overflow: "hidden !important",
-        clip: "rect(0, 0, 0, 0) !important",
+    const scope = ":is([data-topbar], [data-page-primary-actions])"
+    const iconButton = `${scope} .btn-primary:has(> :is(.safari-icon-fix, svg))`
+    const well = `${scope} .btn-primary-well:has(> .btn-primary > :is(.safari-icon-fix, svg))`
+    for (const selector of [iconButton, well]) {
+      expect(valuesFor(selector)).toMatchObject({
+        width: "48px !important",
+        "min-width": "48px !important",
+        "max-width": "48px !important",
+        padding: "0 !important",
+        gap: "0 !important",
       })
     }
+    expect(valuesFor(`${iconButton} > span:not(.safari-icon-fix):not(.btn-glass-surface)`)).toMatchObject({
+      display: "block !important",
+      position: "absolute !important",
+      width: "1px !important",
+      height: "1px !important",
+      overflow: "hidden !important",
+      clip: "rect(0, 0, 0, 0) !important",
+    })
     const onClick = jest.fn()
     render(<div><Button onClick={onClick}>
       <svg aria-hidden="true" data-testid="topbar-icon" />
@@ -150,10 +149,11 @@ describe("mobile primary buttons", () => {
     expect(onClick).toHaveBeenCalledTimes(1)
   })
 
-  it("removes mobile glass paint and decoration only from icon controls", () => {
+  it("removes mobile glass paint and decoration only from topbar primary buttons", () => {
     const css = postcss.parse(readFileSync(path.join(process.cwd(), "app/styles/mobile-primary-buttons.css"), "utf8"))
+    const scope = ":is([data-topbar], [data-page-primary-actions])"
     const paint = css.nodes.flatMap((node) => node.type === "atrule" ? node.nodes ?? [] : [])
-      .find((node) => node.type === "rule" && node.selector.includes("html .btn-primary.btn-primary.btn-primary:is("))
+      .find((node) => node.type === "rule" && node.selectors.includes(`html ${scope} .btn-primary.btn-primary`))
     expect(paint?.type).toBe("rule")
     const values: Record<string, string> = {}
     if (paint?.type === "rule") paint.walkDecls((decl) => {
@@ -171,21 +171,16 @@ describe("mobile primary buttons", () => {
       color: "hsl(var(--foreground))",
     })
     const surface = css.nodes.flatMap((node) => node.type === "atrule" ? node.nodes ?? [] : [])
-      .find((node) => node.type === "rule" && node.selector.includes("html .btn-primary:is(") && node.selector.includes("> .btn-glass-surface"))
+      .find((node) => node.type === "rule" && node.selector === `${scope} .btn-primary > .btn-glass-surface`)
     const hidden: string[] = []
     if (surface?.type === "rule") surface.walkDecls("display", (decl) => {
       hidden.push(decl.value)
     })
     expect(hidden).toEqual(["none"])
-    expect(paint?.type === "rule" && paint.selector).toContain(":has(> .btn-primary:is(")
-    for (const rule of [paint, surface]) {
-      if (rule?.type !== "rule") throw new Error("Missing icon-only override")
-      for (const selector of rule.selectors) {
-        // Decorative blobs stay hidden for text CTAs too, avoiding Safari artifacts.
-        if (selector.endsWith("::before") || selector.endsWith("::after")) continue
-        expect(selector).toMatch(/:is\(.btn-primary-circular, :has\(> .safari-icon-fix\), :has\(> svg\)\)/)
-      }
-    }
+    expect(paint?.type === "rule" && paint.selectors).toEqual([
+      `html ${scope} .btn-primary.btn-primary`,
+      `html ${scope} .btn-primary-well`,
+    ])
   })
 
   it("replaces opaque desktop paint with tinted glass and removes Safari's hard-edged blobs", () => {
@@ -207,13 +202,10 @@ describe("mobile primary buttons", () => {
     expect(hidden).toEqual(expect.arrayContaining([".btn-primary::before", ".btn-primary::after"]))
   })
 
-  it("sizes shared and standalone mobile primary icons to 32px without enlarging the button", () => {
+  it("sizes mobile topbar primary icons to 28px without changing the button size", () => {
     const css = postcss.parse(readFileSync(path.join(process.cwd(), "app/styles/mobile-primary-buttons.css"), "utf8"))
-    const selectors = [
-      "html .btn-primary.btn-primary.btn-primary.btn-primary > .safari-icon-fix",
-      "html .btn-primary.btn-primary.btn-primary.btn-primary > .safari-icon-fix > svg",
-      "html .btn-primary.btn-primary.btn-primary.btn-primary > svg",
-    ]
+    const button = "html :is([data-topbar], [data-page-primary-actions]) .btn-primary.btn-primary.btn-primary"
+    const selectors = ["> .safari-icon-fix", "> .safari-icon-fix > svg", "> svg"].map(selector => `${button} ${selector}`)
     for (const selector of selectors) {
       const values: Record<string, string> = {}
       css.walkRules((rule) => {
@@ -223,12 +215,12 @@ describe("mobile primary buttons", () => {
         })
       })
       expect(values).toMatchObject({
-        width: "32px !important",
-        height: "32px !important",
-        "min-width": "32px !important",
-        "min-height": "32px !important",
-        "max-width": "32px !important",
-        "max-height": "32px !important",
+        width: "28px !important",
+        height: "28px !important",
+        "min-width": "28px !important",
+        "min-height": "28px !important",
+        "max-width": "28px !important",
+        "max-height": "28px !important",
         margin: "0 !important",
         "flex-shrink": "0 !important",
       })

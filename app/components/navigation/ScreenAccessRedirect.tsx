@@ -18,6 +18,8 @@ export function ScreenAccessRedirect() {
   const access = useOptionalScreenAccess()
 
   useEffect(() => {
+    // Completion independently authorizes the workspace bound to its attempt cookie.
+    if (pathname === "/connectors/callback") return
     if (!access?.isReady || access.isSiteAdmin) return
     if (isAlwaysAllowedPath(pathname)) return
     const navKey = getNavKeyForPath(pathname, new URLSearchParams(searchParams.toString()))

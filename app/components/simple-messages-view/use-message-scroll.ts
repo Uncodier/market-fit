@@ -3,6 +3,11 @@ import type { SimpleMessagesViewProps, InstanceLog } from "./types"
 const SCROLL_BOTTOM_THRESHOLD_PX = 80
 const SCROLL_POSITION_EPSILON_PX = 1
 
+function composerPadding(composer: HTMLElement) {
+  // Reserve whole CSS pixels so fractional layout jitter doesn't feed another render.
+  return Math.max(60, Math.ceil(composer.getBoundingClientRect().height) + 24)
+}
+
 function scrollPosition(container: HTMLDivElement) {
   const maxTop = Math.max(0, container.scrollHeight - container.clientHeight)
   // Safari can report positions outside the scroll range during rubber-banding.
@@ -133,7 +138,7 @@ export function useMessageScrollEffects({
     // ResizeObserver callback paints the latest turn underneath the composer.
     const composer = bottomContainerRef.current
     if (composer) {
-      const padding = Math.max(60, composer.getBoundingClientRect().height + 24)
+      const padding = composerPadding(composer)
       if (padding !== bottomPadding) setBottomPadding(padding)
     }
 
@@ -201,10 +206,7 @@ export function useMessageScrollEffects({
     if (!bottomContainerRef.current) return
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        // Use bounding client rect for more accurate total height
-        const rect = (entry.target as HTMLElement).getBoundingClientRect()
-        // Add 24px as extra buffer to ensure the last message is just above the input area and floating elements
-        setBottomPadding(Math.max(60, rect.height + 24))
+        setBottomPadding(composerPadding(entry.target as HTMLElement))
       }
     })
     

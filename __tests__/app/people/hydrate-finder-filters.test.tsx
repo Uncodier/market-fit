@@ -220,7 +220,8 @@ it('builds pagination without copying an untrusted saved site into filter state'
 
 function renderSavedListHook() {
   const controls = {
-    setSelectedList: jest.fn(), setSelectedPersonIds: jest.fn(), setShowResultsOnMobile: jest.fn(),
+    setSelectedList: jest.fn(), setShowResultsOnMobile: jest.fn(), resetResultSelection: jest.fn(),
+    captureResultScope: jest.fn(() => () => true),
     currentSite: site, setCurrentPage: jest.fn(), executeSearch: jest.fn().mockResolvedValue(undefined),
     isSearchPending: jest.fn().mockReturnValue(false), availableSegments: [], setAvailableSegments: jest.fn(),
     setIsIcpModalOpen: jest.fn(), removeIcp: jest.fn(), renameIcp: jest.fn(), setCollapsibleVersion: jest.fn(),
@@ -235,7 +236,7 @@ function renderSavedListHook() {
   return { ...hook, controls }
 }
 
-it('loads through handleLoadIcp, preserves open defaults, and executes the full saved query with current scope', async () => {
+it('loads saved members and preserves the full query for an explicit search', async () => {
   const query = { ...saved, provider_only_field: 'preserved' }
   jest.mocked(apiClient.get).mockResolvedValue({ success: true, data: { role_query: { query } } })
   const { result, controls } = renderSavedListHook()
@@ -246,9 +247,8 @@ it('loads through handleLoadIcp, preserves open defaults, and executes the full 
   expect(controls.setCollapsibleVersion).toHaveBeenCalledTimes(1)
   expect(controls.setCollapsibleVersion.mock.calls[0][0](3)).toBe(4)
   expect(controls.setIsIcpModalOpen).toHaveBeenCalledWith(false)
-  expect(controls.setCurrentPage).toHaveBeenCalledWith(1)
-  expect(controls.executeSearch).toHaveBeenCalledWith({ ...query, page: 0, site_id: site.id })
-  expect(toast.success).toHaveBeenCalledWith('Saved list loaded')
+  expect(controls.setSelectedList).toHaveBeenCalledWith({ id: 'list/1', siteId: site.id, query })
+  expect(controls.executeSearch).not.toHaveBeenCalled()
 })
 
 it('does not fetch or hydrate while search is pending', async () => {

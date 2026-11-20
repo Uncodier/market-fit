@@ -47,8 +47,7 @@ test("uses a full list screen, preserves the mounted draft and brings the select
   expect(screen.getByLabelText("Workspace sections").closest("header")).toBeInTheDocument()
   const draft = screen.getByLabelText("Agent draft")
   fireEvent.change(draft, { target: { value: "Unsent draft" } })
-  fireEvent.click(screen.getByRole("button", { name: "Back to instances" }))
-  expect(mockPush).toHaveBeenCalledWith("/robots?view=instances")
+  expect(screen.queryByRole("button", { name: "Back to instances" })).not.toBeInTheDocument()
   mockQuery = "view=instances"
   view.rerender(<RobotsPage />)
   expect(screen.getByRole("region", { name: "Instances" })).toBeInTheDocument()

@@ -22,6 +22,7 @@ function recordSendFailure(params: Parameters<typeof markRobotInstanceErrorIfUna
 }
 
 export async function sendAssistantMessage(params: {
+  connectorIdHint?: string
   messageToSend: string
   siteId: string
   selectedActivity: string
@@ -112,6 +113,7 @@ export async function sendAssistantMessage(params: {
     const instanceId = activeRobotInstance?.id
     if (instanceId) {
       requestPayload.instance_id = instanceId
+      if (params.connectorIdHint) requestPayload.connector_id_hint = params.connectorIdHint
     }
 
     const response = await postWithRetry('/api/robots/instance/assistant', requestPayload, {

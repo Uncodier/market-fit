@@ -2,8 +2,9 @@
 
 import { useEffect } from "react"
 import { navigateOrAssign } from "@/lib/navigation/stale-router"
+import { resolveInstanceIdParam } from "@/lib/navigation/robots-instance"
 import {
-  isInstanceListView, mobileInstanceDetailHref, mobileInstanceListHref,
+  isInstanceListView, mobileInstanceDetailHref,
   shouldCanonicalizeMobileInstance,
 } from "./mobile-instance-navigation"
 import type { useWorkspaceTabs } from "./use-workspace-tabs"
@@ -22,11 +23,13 @@ export function useMobileInstanceNavigation(workspace: ReturnType<typeof useWork
     router.replace(`/robots?${params}`, { scroll: false })
   }, [isMobileWorkspace, activeRobotInstance, search, selectedInstanceId, router])
 
-  const backToInstances = () => {
-    // Keep the active instance and its mounted draft; only change the visible screen.
-    setLocalSelectedInstanceId(selectedInstanceId)
-    navigateOrAssign(router, mobileInstanceListHref(search))
-  }
+  useEffect(() => {
+    const requested = resolveInstanceIdParam(new URLSearchParams(search))
+    // Keep the current instance mounted when the breadcrumb opens the mobile list.
+    if (isMobileWorkspace && !showList && requested && requested !== "new") {
+      setLocalSelectedInstanceId(requested)
+    }
+  }, [isMobileWorkspace, showList, search, setLocalSelectedInstanceId])
 
   const selectInstance = (id: string) => {
     setLocalSelectedInstanceId(id)
@@ -34,5 +37,5 @@ export function useMobileInstanceNavigation(workspace: ReturnType<typeof useWork
     navigateOrAssign(router, mobileInstanceDetailHref(search, id, instance?.requirement_title || instance?.name))
   }
 
-  return { isMobileWorkspace, showList, backToInstances, selectInstance }
+  return { isMobileWorkspace, showList, selectInstance }
 }

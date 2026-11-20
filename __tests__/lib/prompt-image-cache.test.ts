@@ -61,3 +61,9 @@ it('rejects duplicates and unsafe paths while preserving reserved characters in 
   expect(parsePromptImageInput(new URLSearchParams({ prompt: 'Coffee / tea? 50% #1 & more', width: '512' })))
     .toMatchObject({ prompt: 'Coffee / tea? 50% #1 & more', width: 512, height: 1024 })
 })
+
+it('accepts image prompts up to 3000 characters and rejects longer ones', () => {
+  const prompt = 'a'.repeat(3_000)
+  expect(parsePromptImageInput(new URLSearchParams({ prompt }))).toMatchObject({ prompt })
+  expect(parsePromptImageInput(new URLSearchParams({ prompt: `${prompt}a` }))).toBeNull()
+})

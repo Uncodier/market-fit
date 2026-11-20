@@ -2,34 +2,25 @@
 
 import type { ReactNode } from "react"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { ControlCenterHeader } from "@/app/control-center/components/ControlCenterHeader"
+import { SidebarToggle } from "@/app/control-center/components/SidebarToggle"
 
 interface RecordsPageHeaderProps {
   isMobile: boolean
   isSidebarCollapsed: boolean
   toggleSidebar: () => void
-  sidebarLeft: string
   children: ReactNode
 }
 
 export function RecordsPageHeader({
   isMobile,
-  isSidebarCollapsed, toggleSidebar, sidebarLeft, children,
+  isSidebarCollapsed, toggleSidebar, children,
 }: RecordsPageHeaderProps) {
-  if (isMobile) {
-    return (
-      <StickyHeader>
-        <div className="flex min-w-0 w-full items-center justify-between gap-2 md:gap-0">{children}</div>
-      </StickyHeader>
-    )
-  }
-
   return (
-    <ControlCenterHeader
-      isSidebarCollapsed={isSidebarCollapsed}
-      toggleSidebar={toggleSidebar}
-      sidebarLeft={sidebarLeft}
-      leftContent={children}
-    />
+    <StickyHeader>
+      <div className="flex w-full min-w-0 items-center gap-2 md:gap-3 md:py-3">
+        {!isMobile && <SidebarToggle isCollapsed={isSidebarCollapsed} onToggle={toggleSidebar} />}
+        {children}
+      </div>
+    </StickyHeader>
   )
 }

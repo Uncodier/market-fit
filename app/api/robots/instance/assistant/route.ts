@@ -8,6 +8,7 @@ import {
   timingSafeEqual,
 } from "node:crypto"
 import { requireSiteAccess } from "@/lib/auth/api-site-access"
+import { isRobotConnectorId } from '@/lib/navigation/robot-connector-hint'
 import {
   strengthenImprentaAssistantPayload,
   ImprentaContractValidationError,
@@ -119,6 +120,13 @@ export async function POST(request: NextRequest) {
       )
     }
     let verifiedUserAuthorization: string | null = null
+    if (parsedBody.connector_id_hint !== undefined && (!isRobotConnectorId(parsedBody.connector_id_hint) ||
+      !isRobotConnectorId(parsedBody.instance_id) || parsedBody.instance_node_id !== undefined || hasValidServiceApiKey(request))) {
+      return NextResponse.json({ error: { message: 'Invalid connector selection for this conversation' } }, { status: 400 })
+    }
+    // Older assistant APIs discard unknown fields. Never send a linked turn to
+    // that endpoint: an API without the scoped route must reject it, not widen it.
+    if (parsedBody.connector_id_hint !== undefined) targetUrl.pathname = `${ASSISTANT_PATH}/connector`
     if (!hasValidServiceApiKey(request)) {
       const access = await requireSiteAccess(request, siteId)
       if (access.error) return access.error

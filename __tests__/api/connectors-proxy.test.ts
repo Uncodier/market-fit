@@ -1,0 +1,272 @@
+/** @jest-environment node */
+import { randomBytes } from "node:crypto"
+import { NextRequest, NextResponse } from "next/server"
+import { proxyConnector } from "@/app/api/connectors/proxy"
+import { createClient } from "@/lib/supabase/server"
+import { readAttemptCookie, setAttemptCookie } from "@/app/api/connectors/attempt-cookie"
+
+jest.mock("@/lib/supabase/server", () => ({ createClient: jest.fn() }))
+
+const siteId = "11111111-1111-4111-8111-111111111111"
+const userId = "22222222-2222-4222-8222-222222222222"
+const attemptId = "33333333-3333-4333-8333-333333333333"
+const auth = createClient as jest.Mock
+const getUser = jest.fn()
+const getSession = jest.fn()
+const rpc = jest.fn()
+const fetchMock = jest.fn()
+const credential = randomBytes(32).toString("hex")
+const previousFetch = global.fetch
+const previousUrl = process.env.API_SERVER_URL
+
+function request(path: string, method = "GET", body?: unknown, headers: Record<string, string> = {}) {
+  return new NextRequest(`https://app.example.test/api/connectors/${path}`, {
+    method, headers: { origin: "https://app.example.test", "content-type": "application/json", ...headers },
+    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+  })
+}
+
+beforeEach(() => {
+  jest.clearAllMocks()
+  process.env.API_SERVER_URL = "https://api.example.test"
+  global.fetch = fetchMock
+  rpc.mockResolvedValue({ data: [{ can_view: true, can_manage: true }], error: null })
+  getUser.mockResolvedValue({ data: { user: { id: userId } }, error: null })
+  getSession.mockResolvedValue({ data: { session: { access_token: credential, user: { id: userId } } }, error: null })
+  auth.mockResolvedValue({ rpc, auth: { getUser, getSession } })
+  fetchMock.mockResolvedValue(Response.json({ items: [] }))
+})
+
+afterAll(() => {
+  global.fetch = previousFetch
+  if (previousUrl === undefined) delete process.env.API_SERVER_URL
+  else process.env.API_SERVER_URL = previousUrl
+})
+
+it("validates route, site and unknown fields before any remote access", async () => {
+  expect((await proxyConnector(request("catalog"), ["catalog"])).status).toBe(400)
+  expect((await proxyConnector(request("proxy"), ["proxy"])).status).toBe(404)
+  expect((await proxyConnector(request(`catalog?site_id=${siteId}&user_id=${userId}`), ["catalog"])).status).toBe(400)
+  expect(fetchMock).not.toHaveBeenCalled()
+})
+
+it('reads only the requested account summary, removes private fields and rejects a substituted ID', async () => {
+  const path = ['connections', attemptId]
+  const get = (extra = '') => proxyConnector(request(`${path.join('/')}?site_id=${siteId}${extra}`), path)
+  const dto = { id: attemptId, toolkit_slug: 'supabase', display_name: 'Reporting', provider_status: 'ACTIVE',
+    enabled: true, revocation_pending: false, revision: 1, verified_at: null, can_use: true }
+  expect((await get('&q=search')).status).toBe(400)
+  rpc.mockResolvedValueOnce({ data: [{ can_view: true, can_manage: false }], error: null })
+  fetchMock.mockResolvedValueOnce(Response.json({ ...dto, provider_account_id: credential }))
+  expect(await (await get()).json()).toEqual(dto)
+  expect(fetchMock.mock.calls[0][0].pathname).toBe(`/api/connectors/connections/${attemptId}`)
+  fetchMock.mockResolvedValueOnce(Response.json({ ...dto, id: userId }))
+  expect((await get()).status).toBe(502)
+})
+
+it("binds only on a same-origin manager request and projects an exact ID/revision receipt", async () => {
+  const path = ["connections", attemptId, "bind-project"]
+  const input = { site_id: siteId, expected_revision: 3, project_ref: "a".repeat(20) }
+  const submit = (body: unknown, headers?: Record<string, string>) => proxyConnector(request(path.join("/"), "POST", body, headers), path)
+  expect((await submit(input, { origin: "https://foreign.example.test" })).status).toBe(403)
+  expect((await submit({ ...input, actor_id: userId })).status).toBe(400)
+  rpc.mockResolvedValueOnce({ data: [{ can_view: true, can_manage: false }], error: null })
+  expect((await submit(input)).status).toBe(403)
+  expect(fetchMock).not.toHaveBeenCalled()
+  fetchMock.mockResolvedValueOnce(Response.json({ connector_id: attemptId, revision: 4, provider_metadata: credential }))
+  expect(await (await submit(input)).json()).toEqual({ connector_id: attemptId, revision: 4 })
+  expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual(input)
+  fetchMock.mockResolvedValueOnce(Response.json({ connector_id: userId, revision: 4 }))
+  expect((await submit(input)).status).toBe(502)
+})
+
+it("protects the approval inbox and never forwards caller-selected execution arguments", async () => {
+  const inbox = request(`approvals?site_id=${siteId}`)
+  rpc.mockResolvedValueOnce({ data: [{ can_view: true, can_manage: false }], error: null })
+  expect((await proxyConnector(inbox, ["approvals"])).status).toBe(403)
+  const path = ["approvals", attemptId, "approve"]
+  const submit = (body: unknown) => proxyConnector(request(path.join("/"), "POST", body), path)
+  expect((await submit({ site_id: siteId, arguments: {}, actor: userId })).status).toBe(400)
+  expect(fetchMock).not.toHaveBeenCalled()
+  fetchMock.mockResolvedValueOnce(Response.json({ id: attemptId, status: "completed" }))
+  expect((await submit({ site_id: siteId })).status).toBe(200)
+  expect(fetchMock.mock.calls[0][0].pathname).toBe(`/api/connectors/approvals/${attemptId}/approve`)
+  expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ site_id: siteId })
+})
+
+it("projects bounded thread context fields without passing raw source messages or provider data to the client", async () => {
+  const item = { id: attemptId, connector_id: attemptId, agent_id: userId, conversation_id: attemptId,
+    review_conversation_id: attemptId, account_label: "Support", tool_slug: "GMAIL_FETCH_EMAILS", version: "1", arguments: {},
+    expires_at: "2026-11-21T12:00:00Z", created_at: "2026-11-20T12:00:00Z",
+    context: { agent_label: "Support agent", conversation_title: "Delivery question", instance_id: null,
+      instance_label: null, source_excerpt: "Has my order shipped?" } }
+  fetchMock.mockResolvedValueOnce(Response.json({ items: [{ ...item, result: credential,
+    context: { ...item.context, raw_message: credential } }] }))
+  const response = await proxyConnector(request(`approvals?site_id=${siteId}`), ["approvals"])
+  expect(await response.json()).toEqual({ items: [item] })
+  expect(response.headers.get('cache-control')).toContain('no-store')
+})
+
+it("requires manager access and forwards only workspace and toolkit for OAuth setup", async () => {
+  const path = ["managed-oauth"]
+  const input = { site_id: siteId, toolkit_slug: "googlecalendar" }
+  const makeRequest = (body: unknown) => request(path[0], "POST", body)
+  expect((await proxyConnector(makeRequest({ ...input, scopes: ["unreviewed"] }), path)).status).toBe(400)
+  rpc.mockResolvedValueOnce({ data: [{ can_view: true, can_manage: false }], error: null })
+  expect((await proxyConnector(makeRequest(input), path)).status).toBe(403)
+  expect(fetchMock).not.toHaveBeenCalled()
+  fetchMock.mockResolvedValueOnce(Response.json({ status: "available" }))
+  const response = await proxyConnector(makeRequest(input), path)
+  expect(await response.json()).toEqual({ status: "available" })
+  expect(response.headers.has("set-cookie")).toBe(false)
+  expect(fetchMock).toHaveBeenCalledWith(expect.objectContaining({ pathname: "/api/connectors/managed-oauth" }), expect.objectContaining({ body: JSON.stringify(input) }))
+})
+
+it("forwards tool searches and exact catalogue policy IDs without granting execution", async () => {
+  const tools = ["catalog", "supabase", "tools"]
+  const response = await proxyConnector(request(`${tools.join("/")}?site_id=${siteId}&page=2&q=list+tables`), tools)
+  expect(response.status).toBe(200)
+  const url: URL = fetchMock.mock.calls[0][0]
+  expect(url.pathname).toBe("/api/connectors/catalog/supabase/tools")
+  expect(Object.fromEntries(url.searchParams)).toEqual({ site_id: siteId, page: "2", q: "list tables" })
+
+  const path = ["connections", attemptId, "policy"]
+  const update = { site_id: siteId, expected_revision: 1, allowed_tools: ["SUPABASE_LIST_TABLES", "A".repeat(150)], allowed_hosts: ["assistant"], require_approval: false, enabled: false }
+  fetchMock.mockResolvedValueOnce(Response.json({ revision: 2 }))
+  expect((await proxyConnector(request(path.join("/"), "PATCH", update), path)).status).toBe(200)
+  expect(fetchMock.mock.calls[1][0].pathname).toBe(`/api/connectors/connections/${attemptId}/policy`)
+  expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual(update)
+  expect((await proxyConnector(request(path.join("/"), "PATCH", { ...update, allowed_tools: ["SUPABASE_*"] }), path)).status).toBe(400)
+  expect(fetchMock).toHaveBeenCalledTimes(2)
+})
+
+it.each(["all", "selected"])("forwards an explicit %s tool mode with an empty ID list", async mode => {
+  const path = ["connections", attemptId, "policy"]
+  const update = { site_id: siteId, expected_revision: 1, tool_access_mode: mode, allowed_tools: [], allowed_hosts: ["assistant"], require_approval: true, enabled: true }
+  const submit = (body: unknown) => proxyConnector(request(path.join("/"), "PATCH", body), path)
+  expect((await submit({ ...update, tool_access_mode: "*" })).status).toBe(400)
+  expect(fetchMock).not.toHaveBeenCalled()
+  expect((await submit(update)).status).toBe(200)
+  expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual(update)
+})
+
+it("never reflects token fields or provider error messages from token setup", async () => {
+  const path = ["supabase-token"]
+  const token = `sbp_${randomBytes(24).toString("hex")}`
+  const input = { site_id: siteId, project_ref: "a".repeat(20), token }
+  const submit = () => proxyConnector(request(path[0], "POST", input), path)
+  fetchMock.mockResolvedValueOnce(Response.json({ status: "completed", connector_id: attemptId, token }))
+  expect(await (await submit()).json()).toEqual({ status: "completed", connector_id: attemptId })
+  fetchMock.mockResolvedValueOnce(Response.json({ error: { code: "SUPABASE_TOKEN_REJECTED", message: token } }, { status: 422 }))
+  const rejected = await submit()
+  expect(rejected.status).toBe(422)
+  expect(await rejected.text()).not.toContain(token)
+})
+
+it("forwards toolkit tool pages through the actor-scoped read boundary", async () => {
+  const response = await proxyConnector(request(`catalog/gmail/tools?site_id=${siteId}&cursor=next`), ["catalog", "gmail", "tools"])
+  expect(response.status).toBe(200)
+  const [url, init] = fetchMock.mock.calls[0]
+  expect(url.pathname).toBe("/api/connectors/catalog/gmail/tools")
+  expect(url.searchParams.get("cursor")).toBe("next")
+  expect(init.headers.authorization).toBe(`Bearer ${credential}`)
+  expect((await proxyConnector(request(`catalog/gmail/execute?site_id=${siteId}`), ["catalog", "gmail", "execute"])).status).toBe(404)
+})
+
+it("denies cross-origin mutations and missing use/view invariant", async () => {
+  expect((await proxyConnector(request(`connections/${attemptId}/sync`, "POST", { site_id: siteId, expected_revision: 1 }, { origin: "https://evil.example.test" }), ["connections", attemptId, "sync"])).status).toBe(403)
+  expect((await proxyConnector(request(`connections/${attemptId}/access`, "PATCH", {
+    site_id: siteId, expected_revision: 0, members: [{ user_id: userId, can_view: false, can_use: true }], agents: [],
+  }), ["connections", attemptId, "access"])).status).toBe(400)
+  expect(fetchMock).not.toHaveBeenCalled()
+})
+
+it("fails closed on screen denial and permission outage", async () => {
+  rpc.mockResolvedValueOnce({ data: [{ can_view: false }], error: null })
+  expect((await proxyConnector(request(`catalog?site_id=${siteId}`), ["catalog"])).status).toBe(403)
+  rpc.mockResolvedValueOnce({ data: null, error: { code: "offline" } })
+  expect((await proxyConnector(request(`catalog?site_id=${siteId}`), ["catalog"])).status).toBe(503)
+  expect(fetchMock).not.toHaveBeenCalled()
+})
+
+it("forwards only the authenticated actor credential and scoped query", async () => {
+  const result = await proxyConnector(request(`catalog?site_id=${siteId}&q=calendar`), ["catalog"])
+  expect(result.status).toBe(200)
+  expect(auth).toHaveBeenCalledWith(true)
+  expect(getUser).toHaveBeenCalledTimes(1)
+  expect(rpc).toHaveBeenCalledWith("connector_site_access", { p_site_id: siteId, p_user_id: userId })
+  const [url, init] = fetchMock.mock.calls[0]
+  expect(url.origin).toBe("https://api.example.test")
+  expect(init.headers.authorization).toBe(`Bearer ${credential}`)
+  expect(init.headers["x-api-key"]).toBeUndefined()
+  expect(init.redirect).toBe("error")
+  expect(await result.text()).not.toContain(credential)
+})
+
+it("keeps an actor/site-bound OAuth nonce in an HttpOnly attempt cookie", async () => {
+  fetchMock.mockResolvedValue(Response.json({ attempt_id: attemptId, redirect_url: "https://connect.composio.dev/link" }))
+  const response = await proxyConnector(request("auth-attempts", "POST", { site_id: siteId, toolkit_slug: "gmail", auth_config_id: "ac_test" }), ["auth-attempts"])
+  const cookie = response.headers.get("set-cookie")!
+  expect(cookie).toContain("HttpOnly")
+  expect(cookie).toContain("SameSite=lax")
+  const body = JSON.parse(fetchMock.mock.calls[0][1].body)
+  expect(body.nonce).toMatch(/^[a-f0-9]{64}$/)
+  expect(await response.text()).not.toContain(body.nonce)
+  const parsed = readAttemptCookie(request("pending-auth", "GET", undefined, { cookie: cookie.split(";")[0] }), attemptId)
+  expect(parsed).toEqual({ nonce: body.nonce, site_id: siteId, user_id: userId })
+})
+
+it("requires the original actor's attempt cookie and rejects forged completion fields", async () => {
+  const path = ["auth-attempts", attemptId, "complete"]
+  expect((await proxyConnector(request(path.join("/"), "POST", { session_uri: "opaque" }), path)).status).toBe(403)
+  const response = NextResponse.json({})
+  setAttemptCookie(response, attemptId, { site_id: siteId, user_id: siteId, nonce: randomBytes(32).toString("hex") })
+  expect((await proxyConnector(request(path.join("/"), "POST", { session_uri: "opaque" }, {
+    cookie: response.headers.get("set-cookie")!.split(";")[0],
+  }), path)).status).toBe(403)
+  expect((await proxyConnector(request(path.join("/"), "POST", { session_uri: "opaque", site_id: siteId }), path)).status).toBe(400)
+  expect(fetchMock).not.toHaveBeenCalled()
+})
+
+it("does not retry a mutation after an ambiguous network failure", async () => {
+  fetchMock.mockRejectedValue(new Error("connection interrupted"))
+  const response = await proxyConnector(request(`connections/${attemptId}/sync`, "POST", { site_id: siteId, expected_revision: 1 }), ["connections", attemptId, "sync"])
+  expect(response.status).toBe(502)
+  expect((await response.json()).error.code).toBe("OUTCOME_UNKNOWN")
+  expect(fetchMock).toHaveBeenCalledTimes(1)
+})
+
+it("accepts RPC-authorized coowners without a legacy membership role", async () => {
+  const response = await proxyConnector(request(`connections/${attemptId}/sync`, "POST", { site_id: siteId, expected_revision: 1 }), ["connections", attemptId, "sync"])
+  expect(response.status).toBe(200)
+  expect(fetchMock).toHaveBeenCalledTimes(1)
+})
+
+it("denies location/screen/license RPC denial and manager-only attempt reads", async () => {
+  rpc.mockResolvedValueOnce({ data: [{ can_view: false, can_manage: false }], error: null })
+  expect((await proxyConnector(request(`catalog?site_id=${siteId}`), ["catalog"])).status).toBe(403)
+  rpc.mockResolvedValueOnce({ data: [{ can_view: true, can_manage: false }], error: null })
+  expect((await proxyConnector(request(`auth-attempts/${attemptId}?site_id=${siteId}`), ["auth-attempts", attemptId])).status).toBe(403)
+  expect(fetchMock).not.toHaveBeenCalled()
+})
+
+it("requires verified identity and the same user's session", async () => {
+  getUser.mockResolvedValueOnce({ data: { user: null }, error: null })
+  expect((await proxyConnector(request(`catalog?site_id=${siteId}`), ["catalog"])).status).toBe(401)
+  expect(rpc).not.toHaveBeenCalled()
+  getSession.mockResolvedValueOnce({ data: { session: { user: { id: siteId }, access_token: credential } }, error: null })
+  expect((await proxyConnector(request(`catalog?site_id=${siteId}`), ["catalog"])).status).toBe(401)
+  expect(fetchMock).not.toHaveBeenCalled()
+})
+
+it("clears only the completed attempt cookie with its original path", async () => {
+  const cookieResponse = NextResponse.json({})
+  setAttemptCookie(cookieResponse, attemptId, { site_id: siteId, user_id: userId, nonce: randomBytes(32).toString("hex") })
+  fetchMock.mockResolvedValueOnce(Response.json({ status: "completed", connector_id: attemptId, toolkit_slug: "mail" }))
+  const path = ["auth-attempts", attemptId, "complete"]
+  const response = await proxyConnector(request(path.join("/"), "POST", { session_uri: "proof" }, { cookie: cookieResponse.headers.get("set-cookie")!.split(";")[0] }), path)
+  expect(response.status).toBe(200)
+  expect(response.headers.get("set-cookie")).toContain(`mf_connector_${attemptId}=`)
+  expect(response.headers.get("set-cookie")).toContain("Max-Age=0")
+  expect(response.headers.get("set-cookie")).toContain("Path=/api/connectors")
+})

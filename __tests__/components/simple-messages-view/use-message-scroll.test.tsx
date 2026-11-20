@@ -347,6 +347,16 @@ describe('robot message scroll', () => {
     expect(writeTop).not.toHaveBeenCalled()
   })
 
+  it('settles when consecutive composer measurements differ by a fraction of a pixel', () => {
+    const { rerender } = render(<Harness />)
+    const composer = screen.getByTestId('composer')
+    let reads = 0
+    composer.getBoundingClientRect = () => ({ height: ++reads % 2 ? 200.125 : 200.25 } as DOMRect)
+    rerender(<Harness />)
+    resize(composer)
+    expect(screen.getByTestId('bottom-padding')).toHaveTextContent('225')
+  })
+
   it.each(['wheel', 'touch'])('suspends following on upward %s intent before the browser moves', gesture => {
     const { rerender } = render(<Harness />)
     const container = screen.getByTestId('messages')

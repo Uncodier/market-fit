@@ -435,10 +435,22 @@ export function CategoryTemplateEditor({ isOpen, onClose, category, categories =
               </div>
             )}
           </div>
+          {category && onDeleted && (
+            <SectionCard role="region" aria-label="Danger zone" className="border-destructive/30">
+              <SectionCardHeader>
+                <SectionCardTitle className="text-destructive">Danger zone</SectionCardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Move this collection, its records and subcategories to Trash. You can restore them from Trash.
+                </p>
+              </SectionCardHeader>
+              <SectionCardContent>
+                <DeleteRecordCategory category={category} disabled={isSaving} onDeleted={onDeleted} />
+              </SectionCardContent>
+            </SectionCard>
+          )}
         </div>
 
         <DialogFooter>
-          {category && onDeleted && <DeleteRecordCategory category={category} disabled={isSaving} onDeleted={onDeleted} />}
           <Button variant="outline" onClick={onClose} disabled={isSaving}>Cancel</Button>
           <Button onClick={handleSave} disabled={isSaving || !name}>
             {isSaving ? "Saving..." : "Save Template"}

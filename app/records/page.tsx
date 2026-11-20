@@ -180,10 +180,10 @@ export default function RecordsPage() {
       {/* Sidebar */}
       <div 
         className={cn(
-          "hidden md:block fixed h-screen transition-[width,opacity,left] duration-300 ease-in-out z-[100]",
+          "hidden md:block fixed top-[var(--topbar-height,64px)] h-[calc(100dvh-var(--topbar-height,64px))] transition-[width,opacity,left] duration-300 ease-in-out z-[100]",
           isSidebarCollapsed ? "w-0 opacity-0" : "w-[319px] opacity-100"
         )}
-        style={{ left: sidebarLeft, top: '64px' }}
+        style={{ left: sidebarLeft }}
       >
         <RecordsSidebar
           categories={categories}
@@ -205,19 +205,14 @@ export default function RecordsPage() {
       {/* Main content */}
       <div 
         className={cn(
-          "flex flex-col h-full flex-1 min-w-0 transition-all duration-300 ease-in-out relative",
-          !isSidebarCollapsed ? "md:ml-0" : ""
+          "relative flex h-full min-w-0 flex-1 flex-col transition-[margin] duration-300 ease-in-out",
+          !isSidebarCollapsed && "md:ml-[319px]"
         )}
-        style={{
-          marginLeft: `-${sidebarLeft}`,
-          width: `calc(100% + ${sidebarLeft})`
-        }}
       >
           <RecordsPageHeader
             isMobile={isMobile}
             isSidebarCollapsed={isSidebarCollapsed}
             toggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-            sidebarLeft={sidebarLeft}
           >
             {
               selectedRecords.size > 0 ? (
@@ -237,13 +232,8 @@ export default function RecordsPage() {
             }
           </RecordsPageHeader>
 
-        <div className={cn("flex-1 min-h-0 min-w-0 bg-muted/30 transition-colors duration-300 ease-in-out", !isMobile && "pt-[71px]", viewType === "graph" ? "overflow-hidden" : "overflow-y-auto")}>
-          <div 
-            className="min-h-full flex flex-col transition-all duration-300 ease-in-out"
-            style={{ 
-              paddingLeft: isMobile ? '0px' : `calc(${sidebarLeft} + ${!isSidebarCollapsed ? "319px" : "0px"})`
-            }}
-          >
+        <div className={cn("flex-1 min-h-0 min-w-0 bg-muted/30 transition-colors duration-300 ease-in-out", viewType === "graph" ? "overflow-hidden" : "overflow-y-auto")}>
+          <div className="min-h-full flex flex-col">
             {isLoading ? (
               <div className={cn("min-h-full min-w-0", viewType === "graph" ? "" : viewType === "kanban" ? "py-4 md:py-8" : "p-4 md:p-8")}>
                 {viewType === "table" ? (

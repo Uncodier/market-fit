@@ -130,6 +130,7 @@ export const NAVIGATION_AREAS: Record<
       { key: "channels", href: "/settings", settingsTab: "channels" },
       { key: "activities", href: "/settings", settingsTab: "activities" },
       { key: "skills", href: "/skills" },
+      { key: "connectors", href: "/connectors" },
       { key: "workflows", href: "/robots", robotsMode: "workflow" },
     ],
   },

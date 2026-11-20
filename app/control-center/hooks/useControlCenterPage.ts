@@ -2,7 +2,7 @@
 
 import { isTaskStatus } from "../task-data"
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useSite } from "@/app/context/SiteContext"
 import { useLayout } from "@/app/context/LayoutContext"
 import { useIsMobile } from "@/app/hooks/use-mobile-view"
@@ -20,9 +20,12 @@ import { navigateToTask } from "@/lib/navigation/navigation-helpers"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useControlCenterData, ExtendedTask, enrichTasks } from "../hooks/useControlCenterData"
 
+type TaskListView = "table" | "kanban" | "calendar"
+
 export function useControlCenterPage() {
   const { t } = useLocalization()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { currentSite } = useSite()
   const { isLayoutCollapsed } = useLayout()
   const isMobile = useIsMobile()
@@ -42,7 +45,14 @@ export function useControlCenterPage() {
     updateTasksCache,
   } = useControlCenterData(currentSite?.id, currentSite?.user_id)
   const [searchQuery, setSearchQuery] = useState("")
-  const [viewType, setViewType] = useState<"table" | "kanban" | "calendar">("kanban")
+  const view = searchParams.get("view")
+  const viewType: TaskListView = view === "table" || view === "calendar" ? view : "kanban"
+  const setViewType = (next: TaskListView) => {
+    const url = new URL(window.location.href)
+    if (next === "kanban") url.searchParams.delete("view")
+    else url.searchParams.set("view", next)
+    window.history.replaceState(null, "", url)
+  }
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)

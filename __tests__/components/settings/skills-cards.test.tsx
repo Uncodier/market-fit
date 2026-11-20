@@ -1,5 +1,7 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
+import { useState } from "react"
 import { SkillManager } from "@/app/components/settings/SkillManager"
+import { SkillDialog, type SkillDialogAction } from "@/app/components/settings/SkillDialog"
 import { SystemSkillsCatalog } from "@/app/components/settings/SystemSkillsCatalog"
 import { CommunitySkillsBrowser } from "@/app/components/settings/CommunitySkillsBrowser"
 
@@ -13,24 +15,81 @@ beforeEach(() => {
 })
 afterAll(() => { global.fetch = originalFetch })
 
+function DialogHarness({ initialAction = { type: "add" } }: { initialAction?: SkillDialogAction }) {
+  const [action, setAction] = useState<SkillDialogAction | null>(initialAction)
+  return <SkillDialog action={action} siteId="site-1" onActionChange={setAction} onSaved={jest.fn()} />
+}
+
+function CommunityHarness() {
+  const [target, setTarget] = useState<HTMLElement | null>(null)
+  const [action, setAction] = useState<SkillDialogAction | null>(null)
+  return <>
+    <header data-testid="skills-search-header" ref={setTarget} />
+    <CommunitySkillsBrowser searchTarget={target} onImport={url => setAction({ type: "import", url })} />
+    <SkillDialog action={action} siteId="site-1" onActionChange={setAction} onSaved={jest.fn()} />
+  </>
+}
+
 describe("Skills cards", () => {
-  it("shows only the upload form when the site has no administrable skills", async () => {
-    render(<SkillManager />)
-    const editor = document.getElementById("skill-editor")!
-    expect(editor).toBeInTheDocument()
-    await waitFor(() => expect(within(screen.getByLabelText("Manage skills")).getByText(/No administrable skills yet/)).toBeInTheDocument())
+  it("shows an empty list without an inline editor when the site has no administrable skills", async () => {
+    let resolve!: (response: Response) => void
+    jest.mocked(global.fetch).mockReturnValueOnce(new Promise(done => { resolve = done }))
+    render(<SkillManager onEdit={jest.fn()} />)
+    const loading = screen.getByRole("status", { name: "Loading your skills" })
+    expect(loading.querySelectorAll('[data-skeleton-shape="skill-managed"]')).toHaveLength(2)
+    expect(within(loading).queryByRole("button")).not.toBeInTheDocument()
+    expect(screen.queryByText(/No administrable skills yet/)).not.toBeInTheDocument()
+    await act(async () => resolve({ ok: true, json: async () => ({ skills: [] }) } as Response))
+    expect(screen.getByText(/No administrable skills yet/)).toBeVisible()
+    expect(loading).not.toBeInTheDocument()
     expect(document.getElementById("site-skills")).not.toBeInTheDocument()
+    expect(screen.queryByLabelText("Skill Markdown")).not.toBeInTheDocument()
+  })
+
+  it("uploads pasted Markdown from the dialog and closes it on success", async () => {
+    render(<DialogHarness />)
+    const editor = screen.getByRole("dialog", { name: "Add skill" })
     const submit = within(editor).getByRole("button", { name: "Upload skill" })
     expect(submit.closest(".border-t")).toBeInTheDocument()
     fireEvent.change(within(editor).getByLabelText("Skill Markdown"), { target: { value: "---\nname: Test\n---\n# Instructions" } })
     await waitFor(() => expect(submit).toBeEnabled())
     fireEvent.click(submit)
     await waitFor(() => expect(global.fetch).toHaveBeenCalledWith("/api/skills", expect.objectContaining({ method: "POST" })))
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument())
+  })
+
+  it("opens the editor from a managed skill and reloads the list after saving", async () => {
+    const initialContent = "---\nname: My skill\n---\n# Original"
+    const updatedContent = "---\nname: Updated skill\n---\n# Updated"
+    let skill = { id: "custom-1", slug: "my-skill", name: "My skill", content: initialContent }
+    global.fetch = jest.fn().mockImplementation(async (_path: string, init?: RequestInit) => {
+      if (init?.method === "PATCH") skill = { ...skill, name: "Updated skill", content: updatedContent }
+      return { ok: true, json: async () => ({ skills: [skill] }) }
+    })
+    function ManageHarness() {
+      const [action, setAction] = useState<SkillDialogAction | null>(null)
+      const [revision, setRevision] = useState(0)
+      return <>
+        <SkillManager onEdit={skill => setAction({ type: "edit", skill })} revision={revision} />
+        <SkillDialog action={action} siteId="site-1" onActionChange={setAction} onSaved={() => setRevision(current => current + 1)} />
+      </>
+    }
+    render(<ManageHarness />)
+    fireEvent.click(await screen.findByRole("button", { name: "Edit" }))
+    const dialog = within(screen.getByRole("dialog", { name: "Edit skill" }))
+    const markdown = dialog.getByLabelText("Skill Markdown")
+    expect(markdown).toHaveValue(initialContent)
+    fireEvent.change(markdown, { target: { value: updatedContent } })
+    fireEvent.click(dialog.getByRole("button", { name: "Save changes" }))
+    expect(await screen.findByRole("heading", { name: "Updated skill" })).toBeVisible()
+    expect(global.fetch).toHaveBeenCalledWith("/api/skills/custom-1", expect.objectContaining({
+      method: "PATCH", body: JSON.stringify({ site_id: "site-1", content: updatedContent }),
+    }))
   })
 
   it("selects a Markdown file from the footer for review before uploading", async () => {
-    render(<SkillManager />)
-    const editor = document.getElementById("skill-editor")!
+    render(<DialogHarness />)
+    const editor = screen.getByRole("dialog", { name: "Add skill" })
     const selectFile = within(editor).getByRole("button", { name: "Select file" })
     const upload = within(editor).getByRole("button", { name: "Upload skill" })
     const fileInput = within(editor).getByLabelText("SKILL.md file") as HTMLInputElement
@@ -58,8 +117,8 @@ describe("Skills cards", () => {
   })
 
   it("explains missing frontmatter before upload without sending the file to the API", async () => {
-    render(<SkillManager />)
-    const editor = document.getElementById("skill-editor")!
+    render(<DialogHarness />)
+    const editor = screen.getByRole("dialog", { name: "Add skill" })
     const fileInput = within(editor).getByLabelText("SKILL.md file") as HTMLInputElement
     const upload = within(editor).getByRole("button", { name: "Upload skill" })
     const invalid = "# Configure the project\nUse your own credentials outside the skill."
@@ -85,7 +144,7 @@ describe("Skills cards", () => {
         { id: "github-1", slug: "community", name: "Community skill", source: "github", enabled: false },
       ] }),
     })
-    render(<><SkillManager /><SystemSkillsCatalog /></>)
+    render(<><SkillManager onEdit={jest.fn()} /><SystemSkillsCatalog /></>)
     const manage = screen.getByLabelText("Manage skills")
     const makinari = screen.getByLabelText("Current Makinari skills")
     await waitFor(() => expect(within(manage).getByText("Custom skill")).toBeInTheDocument())
@@ -109,7 +168,7 @@ describe("Skills cards", () => {
         { id: "custom-1", slug: "my-skill", name: "My skill", source: "custom", enabled },
       ] }) }
     })
-    render(<SkillManager />)
+    render(<SkillManager onEdit={jest.fn()} />)
     const card = (await screen.findByText("My skill")).closest(".rounded-xl") as HTMLElement
     const header = within(card).getByRole("heading", { name: "My skill" }).parentElement!.parentElement!
     const toggle = within(card).getByRole("switch", { name: "Enabled" })
@@ -143,7 +202,7 @@ describe("Skills cards", () => {
       ] }) }
     })
     try {
-      render(<SkillManager />)
+      render(<SkillManager onEdit={jest.fn()} />)
       const card = (await screen.findByText("My skill")).closest(".rounded-xl") as HTMLElement
       expect(within(card).getByRole("button", { name: "Edit" })).toBeInTheDocument()
       const deleteButton = within(card).getByRole("button", { name: "Delete" })
@@ -183,7 +242,13 @@ describe("Skills cards", () => {
       { id: "system:website-seo", slug: "website-seo", name: "Website SEO", source: "system" },
       { id: "custom:other", slug: "custom", name: "Custom skill", source: "custom" },
     ] }) })
-    render(<SystemSkillsCatalog onSectionsChange={onSectionsChange} />)
+    function CatalogHarness() {
+      const [target, setTarget] = useState<HTMLElement | null>(null)
+      return <><header data-testid="skills-search-header" ref={setTarget} />
+        <SystemSkillsCatalog onSectionsChange={onSectionsChange} searchTarget={target} />
+      </>
+    }
+    render(<CatalogHarness />)
     await waitFor(() => expect(onSectionsChange).toHaveBeenLastCalledWith([
       { id: "current-skills", title: "Current skills" },
       { id: "current-skill-roles", title: "Roles", children: [
@@ -199,15 +264,11 @@ describe("Skills cards", () => {
     expect(document.getElementById("system-skill-makinari-rol-qa")).toHaveClass("scroll-mt-36")
     expect(within(screen.getByLabelText("Current Makinari skills")).queryByText("Custom skill")).not.toBeInTheDocument()
     const catalog = screen.getByLabelText("Current Makinari skills")
-    const toolbar = within(catalog).getByRole("toolbar", { name: "Makinari skill search" })
+    const toolbar = within(screen.getByTestId("skills-search-header")).getByRole("search", { name: "Search Makinari skills" })
+    expect(catalog).not.toContainElement(toolbar)
     const input = within(toolbar).getByRole("textbox", { name: "Search Makinari skills" })
-    const search = within(toolbar).getByRole("button", { name: "Search" })
-    expect(search).toHaveAttribute("type", "submit")
-    expect(search).toBeDisabled()
+    expect(toolbar.querySelector('button[type="submit"]')).toBeNull()
     fireEvent.change(input, { target: { value: "frontend" } })
-    expect(document.getElementById("system-skill-makinari-rol-qa")).toBeInTheDocument()
-    expect(search).toBeEnabled()
-    fireEvent.click(search)
     await waitFor(() => expect(onSectionsChange).toHaveBeenLastCalledWith([
       { id: "current-skills", title: "Current skills" },
       { id: "current-skill-roles", title: "Roles", children: [
@@ -216,12 +277,9 @@ describe("Skills cards", () => {
     ]))
     expect(document.getElementById("system-skill-makinari-rol-qa")).not.toBeInTheDocument()
     fireEvent.change(input, { target: { value: "qa" } })
-    fireEvent.submit(input.closest("form")!)
     await waitFor(() => expect(document.getElementById("system-skill-makinari-rol-qa")).toBeInTheDocument())
     expect(document.getElementById("system-skill-makinari-rol-frontend")).not.toBeInTheDocument()
-    fireEvent.change(input, { target: { value: "" } })
-    expect(search).toBeEnabled()
-    fireEvent.click(search)
+    fireEvent.click(within(toolbar).getByRole("button", { name: "Clear search" }))
     await waitFor(() => expect(document.getElementById("system-skill-website-seo")).toBeInTheDocument())
     expect(document.getElementById("system-skill-makinari-rol-frontend")).toBeInTheDocument()
   })
@@ -235,7 +293,8 @@ describe("Skills cards", () => {
         ? { preview: { content: "---\nname: Test\n---\n# Instructions", sha256: digest } }
         : { success: true },
     }))
-    render(<CommunitySkillsBrowser />)
+    render(<DialogHarness />)
+    fireEvent.click(screen.getByRole("button", { name: "Import from URL" }))
     fireEvent.change(screen.getByLabelText("Community skill URL (HTTPS)"), { target: { value: url } })
     fireEvent.click(screen.getByRole("button", { name: "Preview" }))
     await waitFor(() => expect(screen.getByLabelText("Community skill preview")).toHaveTextContent("# Instructions"))
@@ -252,35 +311,53 @@ describe("Skills cards", () => {
     ))
   })
 
-  it("places search outside the import card and keeps manual preview and import in its footer", async () => {
-    render(<CommunitySkillsBrowser />)
+  it("loads discovery with the compact widget closed and searches on submit", async () => {
+    jest.mocked(global.fetch).mockResolvedValue({ ok: true, json: async () => ({ results: [] }) } as Response)
+    render(<CommunityHarness />)
     const browser = document.getElementById("community-skills")!
-    const importCard = document.getElementById("community-import")!
-    const search = within(browser).getByRole("button", { name: "Search" })
-    const toolbar = within(browser).getByRole("toolbar", { name: "Community skill search" })
-    const preview = within(importCard).getByRole("button", { name: "Preview" })
-    const importButton = within(importCard).getByRole("button", { name: "Import reviewed skill" })
-    const footer = preview.closest(".border-t")
-    expect(footer).toBeInTheDocument()
-    expect(footer).toContainElement(importButton)
-    expect(browser).not.toContainElement(importCard)
-    expect(search.closest(".rounded-xl")).not.toBeInTheDocument()
-    expect(toolbar).toContainElement(search)
-    expect(toolbar).toContainElement(within(browser).getByLabelText("Search community skills"))
-    expect(search).toHaveAttribute("type", "submit")
-    expect(search).toBeDisabled()
-    expect(importButton).toBeDisabled()
-    expect(document.getElementById("community-results")).toHaveAttribute("hidden")
-    expect(screen.queryByText("Search results")).not.toBeInTheDocument()
-    fireEvent.change(within(browser).getByLabelText("Search community skills"), { target: { value: "email" } })
-    expect(search).toBeEnabled()
-    fireEvent.submit(search.closest("form")!)
+    const toolbar = within(screen.getByTestId("skills-search-header")).getByRole("search", { name: "Search community skills" })
+    expect(browser).not.toContainElement(toolbar)
+    expect(toolbar.querySelector('button[type="submit"]')).toBeNull()
+    const input = within(toolbar).getByRole("textbox", { name: "Search community skills" })
+    const expand = within(toolbar).getByRole("button", { name: "Search community skills" })
+    expect(expand.parentElement).toHaveClass("opacity-100")
+    expect(input.closest(".pointer-events-none")).not.toBeNull()
+    fireEvent.click(expand)
+    expect(input.closest(".pointer-events-none")).toBeNull()
+    expect(input).toHaveAttribute("enterkeyhint", "search")
+    expect(input).toHaveAttribute("maxlength", "100")
+    fireEvent.submit(toolbar)
+    expect(screen.queryByLabelText("Community skill URL (HTTPS)")).not.toBeInTheDocument()
+    const loading = screen.getByRole("status", { name: "Loading community skills" })
+    expect(loading.querySelectorAll('[data-skeleton-shape="skill-community"]')).toHaveLength(2)
+    expect(await screen.findByRole("heading", { name: "Discover community skills" })).toBeVisible()
+    expect(loading).not.toBeInTheDocument()
+    expect(global.fetch).toHaveBeenCalledTimes(1)
+    expect(global.fetch).toHaveBeenCalledWith("/api/skills/external?site_id=site-1&query=skills", expect.anything())
+    fireEvent.change(input, { target: { value: "email" } })
+    expect(global.fetch).toHaveBeenCalledTimes(1)
+    fireEvent.submit(toolbar)
+    expect(screen.getByRole("status", { name: "Loading community skills" })).toBeInTheDocument()
     await waitFor(() => expect(global.fetch).toHaveBeenCalledWith(
       "/api/skills/external?site_id=site-1&query=email", expect.anything(),
     ))
-    expect(screen.getByText("No community skills found for this search.")).toBeInTheDocument()
+    expect(await screen.findByText("No community skills found for this search.")).toBeVisible()
     expect(document.getElementById("community-results")).not.toHaveAttribute("hidden")
-    expect(document.getElementById("community-results")!.nextElementSibling).toBe(importCard)
+    fireEvent.click(within(toolbar).getByRole("button", { name: "Clear search" }))
+    expect(await screen.findByRole("heading", { name: "Discover community skills" })).toBeVisible()
+  })
+
+  it("shows discovery failures and retries the real catalog request", async () => {
+    jest.mocked(global.fetch)
+      .mockResolvedValueOnce({ ok: false, json: async () => ({ error: "GitHub search unavailable" }) } as Response)
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ results: [
+        { name: "Writing skill", url: "https://github.com/team/writing/blob/main/SKILL.md" },
+      ] }) } as Response)
+    render(<CommunityHarness />)
+    expect(await screen.findByRole("alert")).toHaveTextContent("GitHub search unavailable")
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }))
+    expect(await screen.findByRole("heading", { name: "1. Writing skill" })).toBeVisible()
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument()
   })
 
   it("numbers each search result and adds only the result whose SHA-256 was previewed", async () => {
@@ -302,9 +379,9 @@ describe("Skills cards", () => {
           } }
           : { success: true },
     }))
-    render(<CommunitySkillsBrowser />)
-    fireEvent.change(screen.getByLabelText("Search community skills"), { target: { value: "skill" } })
-    fireEvent.click(screen.getByRole("button", { name: "Search" }))
+    render(<CommunityHarness />)
+    fireEvent.change(screen.getByRole("textbox", { name: "Search community skills" }), { target: { value: "skill" } })
+    fireEvent.submit(screen.getByRole("search", { name: "Search community skills" }))
     const results = await screen.findByLabelText("Community search results")
     await waitFor(() => expect(results.querySelectorAll(".rounded-xl")).toHaveLength(2))
     const cards = results.querySelectorAll(".rounded-xl")
@@ -321,28 +398,23 @@ describe("Skills cards", () => {
     expect(firstTitle).toHaveTextContent("32 forks")
     expect(within(second).queryByLabelText("Repository popularity")).not.toBeInTheDocument()
     expect(document.getElementById("community-skills")!.nextElementSibling).toBe(results)
-    expect(results.nextElementSibling).toBe(document.getElementById("community-import"))
-    expect(within(first).getByRole("button", { name: "Add" })).toBeDisabled()
-    expect(within(second).getByRole("button", { name: "Add" })).toBeDisabled()
-    fireEvent.click(within(first).getByRole("button", { name: "Preview" }))
-    await waitFor(() => expect(within(first).getByLabelText("Preview of First skill")).toHaveTextContent("# First instructions"))
-    expect(within(first).getByRole("button", { name: "Add" })).toBeEnabled()
-    expect(within(second).getByRole("button", { name: "Add" })).toBeDisabled()
-    fireEvent.click(within(first).getByRole("button", { name: "Add" }))
-    await waitFor(() => expect(global.fetch).toHaveBeenCalledWith(
-      "/api/skills/external/import",
-      expect.objectContaining({ method: "POST", body: JSON.stringify({ site_id: "site-1", url: firstUrl, sha256: firstSha }) }),
-    ))
-    await waitFor(() => expect(within(first).queryByLabelText("Preview of First skill")).not.toBeInTheDocument())
-    expect(within(first).getByRole("button", { name: "Add" })).toBeDisabled()
-    await waitFor(() => expect(within(second).getByRole("button", { name: "Preview" })).toBeEnabled())
-    fireEvent.click(within(second).getByRole("button", { name: "Preview" }))
-    await waitFor(() => expect(within(second).getByLabelText("Preview of Second skill")).toHaveTextContent("# Second instructions"))
-    fireEvent.click(within(second).getByRole("button", { name: "Add" }))
+    fireEvent.click(within(second).getByRole("button", { name: "Review and import" }))
+    const dialog = within(screen.getByRole("dialog", { name: "Import skill" }))
+    expect(dialog.getByLabelText("Community skill URL (HTTPS)")).toHaveValue(secondUrl)
+    const submit = dialog.getByRole("button", { name: "Import reviewed skill" })
+    expect(submit).toBeDisabled()
+    fireEvent.click(dialog.getByRole("button", { name: "Preview" }))
+    expect(await dialog.findByLabelText("Community skill preview")).toHaveTextContent("# Second instructions")
+    fireEvent.click(submit)
     await waitFor(() => expect(global.fetch).toHaveBeenCalledWith(
       "/api/skills/external/import",
       expect.objectContaining({ method: "POST", body: JSON.stringify({ site_id: "site-1", url: secondUrl, sha256: secondSha }) }),
     ))
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument())
+    fireEvent.click(within(first).getByRole("button", { name: "Review and import" }))
+    expect(screen.getByLabelText("Community skill URL (HTTPS)")).toHaveValue(firstUrl)
+    expect(screen.queryByLabelText("Community skill preview")).not.toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Import reviewed skill" })).toBeDisabled()
   })
 
   it("shows zero popularity counts but hides invalid metrics", async () => {
@@ -350,9 +422,9 @@ describe("Skills cards", () => {
       { name: "Zero", url: "https://github.com/team/zero/blob/main/SKILL.md", stars: 0, forks: 0 },
       { name: "Unknown", url: "https://github.com/team/unknown/blob/main/SKILL.md", stars: -2, forks: "many" },
     ] }) })
-    render(<CommunitySkillsBrowser />)
-    fireEvent.change(screen.getByLabelText("Search community skills"), { target: { value: "skill" } })
-    fireEvent.click(screen.getByRole("button", { name: "Search" }))
+    render(<CommunityHarness />)
+    fireEvent.change(screen.getByRole("textbox", { name: "Search community skills" }), { target: { value: "skill" } })
+    fireEvent.submit(screen.getByRole("search", { name: "Search community skills" }))
     const results = screen.getByLabelText("Community search results")
     await waitFor(() => expect(within(results).getByText("2. Unknown")).toBeInTheDocument())
     const zero = within(results).getByText("1. Zero").closest(".rounded-xl") as HTMLElement
@@ -364,25 +436,4 @@ describe("Skills cards", () => {
     expect(within(unknown).queryByLabelText("Repository popularity")).not.toBeInTheDocument()
   })
 
-  it("clears an old result preview when searching again", async () => {
-    const url = "https://github.com/team/repo/blob/main/SKILL.md"
-    global.fetch = jest.fn().mockImplementation(async (path: string) => ({
-      ok: true,
-      json: async () => path === "/api/skills/external/preview"
-        ? { preview: { content: "# Instructions", sha256: "a".repeat(64) } }
-        : { results: [{ name: "Skill", url }] },
-    }))
-    render(<CommunitySkillsBrowser />)
-    fireEvent.change(screen.getByLabelText("Search community skills"), { target: { value: "one" } })
-    fireEvent.click(screen.getByRole("button", { name: "Search" }))
-    const results = await screen.findByLabelText("Community search results")
-    await waitFor(() => expect(within(results).getByText("1. Skill")).toBeInTheDocument())
-    const resultCard = () => within(results).getByText("1. Skill").closest(".rounded-xl") as HTMLElement
-    fireEvent.click(within(resultCard()).getByRole("button", { name: "Preview" }))
-    await waitFor(() => expect(within(resultCard()).getByRole("button", { name: "Add" })).toBeEnabled())
-    fireEvent.change(screen.getByLabelText("Search community skills"), { target: { value: "two" } })
-    fireEvent.click(screen.getByRole("button", { name: "Search" }))
-    await waitFor(() => expect(within(resultCard()).queryByLabelText("Preview of Skill")).not.toBeInTheDocument())
-    expect(within(resultCard()).getByRole("button", { name: "Add" })).toBeDisabled()
-  })
 })

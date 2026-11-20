@@ -1,12 +1,13 @@
 "use client"
 
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useLayoutEffect, useRef } from 'react'
 import type { FormEvent, MutableRefObject } from 'react'
 import { toast } from 'react-hot-toast'
 import type { ChatResponseFormat } from '@/lib/chat/response-format'
 
 interface ChatDraftSubmitProps {
   conversationId: string
+  deliveryAllowed?: boolean
   messageRef: MutableRefObject<string>
   clearMessage: () => void
   handleSendMessage: (message: string, responseFormat?: ChatResponseFormat) => Promise<boolean>
@@ -14,16 +15,18 @@ interface ChatDraftSubmitProps {
 }
 
 export function useChatDraftSubmit({
-  conversationId, messageRef, clearMessage, handleSendMessage, userJustSentRef,
+  conversationId, deliveryAllowed = true, messageRef, clearMessage, handleSendMessage, userJustSentRef,
 }: ChatDraftSubmitProps) {
-  const activeConversationRef = useRef<string | null>(conversationId)
-  useEffect(() => {
-    activeConversationRef.current = conversationId
+  const activeConversationRef = useRef<string | null>(null)
+  useLayoutEffect(() => {
+    activeConversationRef.current = deliveryAllowed ? conversationId : null
     return () => { activeConversationRef.current = null }
-  }, [conversationId])
+  }, [conversationId, deliveryAllowed])
 
   return useCallback(async (event: FormEvent, responseFormat: ChatResponseFormat = 'text') => {
     event.preventDefault()
+    // A keyboard submit can be queued before navigation or a routing change.
+    if (activeConversationRef.current !== conversationId) return
     const draft = messageRef.current
     if (!draft.trim()) return
 

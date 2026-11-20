@@ -48,14 +48,14 @@ export function SettingsSelectionLoading({ label, variant = "checkbox" }: {
   </SettingsLoading>
 }
 
-export function SettingsCardsLoading({ kind }: { kind: "skills" | "team" | "copywriting" }) {
-  const labels = { skills: "Loading Makinari skills", team: "Loading team members", copywriting: "Loading copywriting" }
+export function SettingsCardsLoading({ kind }: { kind: "team" | "copywriting" }) {
+  const labels = { team: "Loading team members", copywriting: "Loading copywriting" }
   return <SettingsLoading label={labels[kind]} className="space-y-6">
     <SettingsCardsSkeletonContent kind={kind} />
   </SettingsLoading>
 }
 
-export function SettingsCardsSkeletonContent({ kind }: { kind: "skills" | "team" | "copywriting" }) {
+export function SettingsCardsSkeletonContent({ kind }: { kind: "team" | "copywriting" }) {
   return <>
     {kind === "copywriting" && <div className="flex items-center justify-between gap-4">
       <TextLines /><Skeleton className="h-9 w-32" />
@@ -63,9 +63,9 @@ export function SettingsCardsSkeletonContent({ kind }: { kind: "skills" | "team"
     {[0, 1].map(row => <SectionCard key={row} data-skeleton-shape={kind === "team" ? "list" : kind}>
       <SectionCardHeader className={kind === "team" ? "border-b border-border/70" : ""}>
       <div className="flex items-center gap-3">
-        {kind !== "skills" && <Skeleton className={kind === "team" ? "h-10 w-10 rounded-full" : "h-5 w-5"} />}
+        <Skeleton className={kind === "team" ? "h-10 w-10 rounded-full" : "h-5 w-5"} />
         <TextLines />
-        {kind !== "skills" && <Skeleton className={kind === "team" ? "h-6 w-11 rounded-full" : "h-5 w-5"} />}
+        <Skeleton className={kind === "team" ? "h-6 w-11 rounded-full" : "h-5 w-5"} />
       </div>
       </SectionCardHeader>
       {kind === "team" && <SectionCardContent className="pt-4">

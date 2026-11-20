@@ -16,13 +16,14 @@ describe("records page header", () => {
     jest.mocked(useIsMobile).mockReturnValue(isMobile)
     const { container } = render(
       <RecordsPageHeader isMobile={isMobile} isSidebarCollapsed={false}
-        toggleSidebar={jest.fn()} sidebarLeft="256px">
+        toggleSidebar={jest.fn()}>
         <input aria-label="Search records" />
       </RecordsPageHeader>
     )
 
     expect(screen.getByRole("textbox", { name: "Search records" })).toBeVisible()
-    expect(container.firstElementChild).toHaveClass(isMobile ? "sticky" : "fixed")
+    expect(container.firstElementChild).toHaveAttribute("data-toolbar-font")
+    expect(container.firstElementChild).toHaveClass("static", "md:sticky")
     expect(screen.queryByRole("button", { name: /record toolbar/i })).not.toBeInTheDocument()
   })
 
@@ -31,7 +32,7 @@ describe("records page header", () => {
     const toggleSidebar = jest.fn()
     render(
       <RecordsPageHeader isMobile={false} isSidebarCollapsed={false}
-        toggleSidebar={toggleSidebar} sidebarLeft="64px">
+        toggleSidebar={toggleSidebar}>
         <input aria-label="Search records" />
       </RecordsPageHeader>
     )

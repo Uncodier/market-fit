@@ -25,6 +25,7 @@ import { useChatMessageActions } from "./use-chat-message-actions"
 import { getConversationPostContext, isSocialCommentConversation, orderCommentMessages } from "@/lib/chat/social-comment-context"
 import { CommentDisplayProvider } from "./CommentReplyContext"
 import { PostContextCard } from "./PostContextCard"
+import { PrivateReviewThread } from "./PrivateReviewThread"
 
 export function ChatMessages({
   chatMessages,
@@ -40,6 +41,8 @@ export function ChatMessages({
   participantIdentity,
   conversationId,
   conversationCustomData,
+  readOnly = false,
+  internalReview = false,
   onRetryMessage,
   onMessagesUpdate,
   isChatListCollapsed = false,
@@ -84,12 +87,14 @@ export function ChatMessages({
     onMessagesUpdate,
   })
 
+  const actionsBlocked = readOnly || internalReview
   const rowActions: MessageRowActions = {
+    readOnly: actionsBlocked,
     onEdit: messageActions.handleEditMessage,
     onDelete: messageActions.handleDeleteMessage,
     onAccept: messageActions.handleAcceptMessage,
     onUndoAccept: messageActions.handleUndoAcceptMessage,
-    onRetry: onRetryMessage,
+    onRetry: actionsBlocked ? undefined : onRetryMessage,
     deletingMessageId: messageActions.deletingMessageId,
     acceptingMessageId: messageActions.acceptingMessageId,
     acceptedActionsMessageIds: messageActions.acceptedActionsMessageIds,
@@ -157,7 +162,7 @@ export function ChatMessages({
               <p className="text-xs text-muted-foreground">Post context is shown with each comment.</p>
             )}
             {chatMessages.length === 0 ? (
-              <EmptyConversation agentId={agentId} agentName={agentName} />
+              !internalReview && <EmptyConversation agentId={agentId} agentName={agentName} />
             ) : (
               processedMessages.map((message, index) => {
                 const showDateSeparator =
@@ -237,6 +242,7 @@ export function ChatMessages({
               </div>
             )}
 
+            <PrivateReviewThread conversationId={conversationId} internal={internalReview} />
             <div className="h-[250px]" />
           </div>
           </CommentDisplayProvider>

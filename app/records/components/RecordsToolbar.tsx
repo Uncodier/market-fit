@@ -6,6 +6,7 @@ import { MobileFiltersDrawer, FilterContainer, FilterSection } from "@/app/compo
 import { SortDropdown } from "@/app/components/ui/sort-dropdown"
 import { ViewSelector, type ViewType } from "@/app/components/view-selector"
 import { useLocalization } from "@/app/context/LocalizationContext"
+import { useIsMobile } from "@/app/hooks/use-mobile-view"
 import { RecordDateFilter } from "./RecordDateFilter"
 import type { RecordDateRange } from "../lib/list-filter"
 
@@ -25,28 +26,9 @@ interface RecordsToolbarProps {
   onViewChange: (value: ViewType) => void
 }
 
-function RecordsToolbarOptions({ dateRange, onDateChange, sortBy, onSortChange }: Pick<RecordsToolbarProps,
-  "dateRange" | "onDateChange" | "sortBy" | "onSortChange"
->) {
-  const { t } = useLocalization()
-  return <>
-    <FilterSection title={t("records.groupBy.date") || "Date (Month)"}>
-      <RecordDateFilter value={dateRange} onChange={onDateChange} />
-    </FilterSection>
-    <FilterSection title={t("sortBy") || "Sort by"}>
-      <SortDropdown sortBy={sortBy} setSortBy={onSortChange} options={[
-        { value: "newest", label: t("records.sort.newest") || "Newest" },
-        { value: "oldest", label: t("records.sort.oldest") || "Oldest" },
-        { value: "updated_at", label: "Updated At" },
-        { value: "title_asc", label: t("records.sort.titleAsc") || "Title (A-Z)" },
-        { value: "title_desc", label: t("records.sort.titleDesc") || "Title (Z-A)" },
-      ]} />
-    </FilterSection>
-  </>
-}
-
 export function RecordsToolbar(props: RecordsToolbarProps) {
   const { t } = useLocalization()
+  const isMobile = useIsMobile()
   const groups: { value: GroupBy; label: string }[] = [
     { value: "status", label: t("records.groupBy.status") || "Status" },
     { value: "category", label: t("records.groupBy.category") || "Category" },
@@ -54,30 +36,59 @@ export function RecordsToolbar(props: RecordsToolbarProps) {
     { value: "date", label: t("records.groupBy.date") || "Date (Month)" },
   ]
 
-  return <div className="flex min-w-0 w-full items-center justify-between gap-2 md:gap-4">
-    <MobileFiltersDrawer>
-    <FilterContainer>
-      <FilterSection title={t("common.search") || "Search"}>
-        <SearchInput placeholder={t("records.search") || "Search records..."} value={props.searchQuery}
-          onChange={event => props.onSearchChange(event.target.value)}
-          alwaysExpanded containerClassName="w-full md:w-64"
-          className="w-full h-10 md:h-9 bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20" />
-      </FilterSection>
-      <FilterSection title={t("records.groupBy") || "Group by"}>
-        <Select value={props.groupBy} onValueChange={value => props.onGroupChange(value as GroupBy)}>
-          <SelectTrigger className="w-full md:w-[180px]" aria-label={t("records.groupBy") || "Group by"}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {groups.map(group => <SelectItem key={group.value} value={group.value}>{group.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </FilterSection>
-      <RecordsToolbarOptions {...props} />
-    </FilterContainer>
-    </MobileFiltersDrawer>
-    <div className="ml-auto shrink-0">
-      <ViewSelector currentView={props.viewType} onViewChange={props.onViewChange} showCalendar showGraph />
+  const search = (
+    <SearchInput placeholder={t("records.search") || "Search records..."} value={props.searchQuery}
+      onChange={event => props.onSearchChange(event.target.value)}
+      alwaysExpanded={isMobile} containerClassName={isMobile ? "w-full" : "w-64 max-w-full"}
+      className="w-full h-10 md:h-9 bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20" />
+  )
+  const groupBy = (
+    <Select value={props.groupBy} onValueChange={value => props.onGroupChange(value as GroupBy)}>
+      <SelectTrigger className="w-full max-w-full md:w-[180px]" aria-label={t("records.groupBy") || "Group by"}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {groups.map(group => <SelectItem key={group.value} value={group.value}>{group.label}</SelectItem>)}
+      </SelectContent>
+    </Select>
+  )
+  const dates = <RecordDateFilter value={props.dateRange} onChange={props.onDateChange} />
+  const sort = <SortDropdown sortBy={props.sortBy} setSortBy={props.onSortChange} options={[
+    { value: "newest", label: t("records.sort.newest") || "Newest" },
+    { value: "oldest", label: t("records.sort.oldest") || "Oldest" },
+    { value: "updated_at", label: "Updated At" },
+    { value: "title_asc", label: t("records.sort.titleAsc") || "Title (A-Z)" },
+    { value: "title_desc", label: t("records.sort.titleDesc") || "Title (Z-A)" },
+  ]} />
+  const views = <ViewSelector currentView={props.viewType} onViewChange={props.onViewChange} showCalendar showGraph />
+
+  if (isMobile) {
+    return (
+      <div className="flex w-full min-w-0 items-center justify-between gap-2">
+        <MobileFiltersDrawer>
+          <FilterContainer>
+            <FilterSection title={t("common.search") || "Search"}>{search}</FilterSection>
+            <FilterSection title={t("records.groupBy") || "Group by"}>{groupBy}</FilterSection>
+            <FilterSection title={t("records.groupBy.date") || "Date (Month)"}>{dates}</FilterSection>
+            <FilterSection title={t("sortBy") || "Sort by"}>{sort}</FilterSection>
+          </FilterContainer>
+        </MobileFiltersDrawer>
+        <div className="ml-auto shrink-0">{views}</div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex w-full min-w-0 flex-wrap items-center justify-between gap-2">
+      <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
+        {search}
+        {groupBy}
+      </div>
+      <div className="ml-auto flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2">
+        {dates}
+        {sort}
+        {views}
+      </div>
     </div>
-  </div>
+  )
 }

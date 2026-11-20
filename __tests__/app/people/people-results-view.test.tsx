@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import type { ReactNode } from 'react'
 import { PeopleResultsView } from '@/app/people/people-results-view'
 import type { PeopleWorkspace } from '@/app/people/use-people-workspace'
+import { savedSnapshot } from './saved-list-fixtures'
 
 jest.mock('@/app/context/LocalizationContext', () => ({
   useLocalization: () => ({ t: (key: string) => ({
@@ -19,10 +19,10 @@ jest.mock('@/app/control-center/components/SidebarToggle', () => ({
 jest.mock('@/app/people/people-results-table', () => ({
   PeopleResultsTable: () => <div>People table</div>,
 }))
-jest.mock('@/app/people/selected-list-results', () => ({
-  SelectedListResults: ({ onClose, sidebarToggle }: { onClose: () => void; sidebarToggle?: ReactNode }) =>
-    <div>{sidebarToggle}<h2>Pregenerated list</h2><button onClick={onClose}>Back to search</button></div>,
-}))
+jest.mock('@/app/people/use-saved-list-members', () => ({ useSavedListMembers: jest.fn(() => ({
+  snapshot: { ...savedSnapshot(), name: 'Pregenerated list' }, page: 1, loading: false, error: null,
+  identityChanged: false, refresh: jest.fn(), onPageChange: jest.fn(),
+})) }))
 
 function workspace(overrides: Partial<PeopleWorkspace> = {}) {
   return {
@@ -43,13 +43,16 @@ function workspace(overrides: Partial<PeopleWorkspace> = {}) {
     loading: false,
     selectedPersonIds: [],
     isEnriching: false,
-    setIsConfirmModalOpen: jest.fn(),
+    openEnrichConfirmation: jest.fn(),
     selectionLists: { open: jest.fn(), pending: false },
     onPageChange: jest.fn(),
     isEmptyView: false,
     currentSite: { id: 'site-a' },
     selectedList: null,
     setSelectedList: jest.fn(),
+    setSelectedPersonIds: jest.fn(),
+    resetResultSelection: jest.fn(),
+    setExpandedGroups: jest.fn(),
     ...overrides,
   } as unknown as PeopleWorkspace
 }
@@ -102,7 +105,7 @@ it.each([
   expect(screen.getByTestId('people-results')).toBe(frame)
   expect(frame).toContainElement(screen.getByRole('heading', { name: 'Pregenerated list' }))
   expect(frame.style.getPropertyValue('--people-results-left')).toBe(left)
-  expect(screen.queryByText('People table')).not.toBeInTheDocument()
+  expect(frame).toContainElement(screen.getByText('People table'))
 })
 
 it('preserves the mobile two-step view and restores the sidebar when closing a pregenerated list', () => {
@@ -113,6 +116,7 @@ it('preserves the mobile two-step view and restores the sidebar when closing a p
   expect(screen.getByTestId('people-results')).not.toHaveClass('hidden')
   fireEvent.click(screen.getByRole('button', { name: 'Back to search' }))
   expect(state.setSelectedList).toHaveBeenCalledWith(null)
+  expect(state.resetResultSelection).toHaveBeenCalledTimes(1)
   expect(state.setShowResultsOnMobile).toHaveBeenCalledWith(false)
 })
 

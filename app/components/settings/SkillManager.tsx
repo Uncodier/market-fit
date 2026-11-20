@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { useSite } from "@/app/context/SiteContext"
 import { Button } from "@/app/components/ui/button"
@@ -8,72 +8,39 @@ import { ConfirmDialog } from "@/app/components/ui/confirm-dialog"
 import { AlertTriangle, Trash2 } from "@/app/components/ui/icons"
 import { Label } from "@/app/components/ui/label"
 import { Switch } from "@/app/components/ui/switch"
-import { Textarea } from "@/app/components/ui/textarea"
 import {
   SectionCard, SectionCardContent, SectionCardFooter, SectionCardHeader,
 } from "@/app/components/ui/section-card"
+import { skillRequest, skillsFromResponse, type ManagedSkill } from "./skill-client"
+import { SkillsLoading } from "./skills-loading"
 
-export type ManagedSkill = {
-  id: string
-  slug: string
-  name: string
-  description?: string
-  content?: string
-  source?: string
-  enabled?: boolean
-  url?: string
-}
-
-export function skillsFromResponse(value: unknown): ManagedSkill[] {
-  if (!value || typeof value !== "object") return []
-  const data = value as Record<string, unknown>
-  const entries = Array.isArray(value) ? value : Array.isArray(data.skills) ? data.skills :
-    Array.isArray(data.results) ? data.results : Array.isArray(data.data) ? data.data : []
-  return entries.filter((entry): entry is ManagedSkill => Boolean(entry && typeof entry === "object" &&
-    typeof entry.id === "string" && typeof entry.slug === "string" && typeof entry.name === "string"))
-}
-
-export async function skillRequest(url: string, method = "GET", body?: Record<string, unknown>): Promise<any> {
-  const response = await fetch(url, {
-    method,
-    ...(body ? { headers: { "content-type": "application/json" }, body: JSON.stringify(body) } : {}),
-    cache: "no-store",
-  })
-  const result = await response.json()
-  if (!response.ok) throw new Error(typeof result.error === "string" ? result.error : result.error?.message || "Skill request failed")
-  return result
-}
-
-export function SkillManager() {
+export function SkillManager({ onEdit, revision = 0 }: { onEdit: (skill: ManagedSkill) => void; revision?: number }) {
   const { currentSite } = useSite()
   const siteId = currentSite?.id
-  const [skills, setSkills] = useState<ManagedSkill[]>([])
-  const [content, setContent] = useState("")
-  const [editingId, setEditingId] = useState<string | null>(null)
+  const [skills, setSkills] = useState<ManagedSkill[] | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [skillToDelete, setSkillToDelete] = useState<ManagedSkill | null>(null)
   const [pending, setPending] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const hasFrontmatter = /^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/.test(content.replace(/^\uFEFF/, ""))
-
-  const refresh = useCallback(async () => {
-    if (!siteId) return
-    try {
-      setSkills(skillsFromResponse(await skillRequest(`/api/skills?site_id=${encodeURIComponent(siteId)}`))
-        .filter(skill => skill.source !== "system"))
-    } catch (error) { toast.error(error instanceof Error ? error.message : "Could not load skills") }
-  }, [siteId])
+  const [localRevision, setLocalRevision] = useState(0)
 
   useEffect(() => {
-    setSkills([])
-    setContent("")
-    setEditingId(null)
-    setSkillToDelete(null)
-    void refresh()
-  }, [refresh])
+    if (!siteId) return
+    let active = true
+    skillRequest(`/api/skills?site_id=${encodeURIComponent(siteId)}`)
+      .then(result => {
+        if (!active) return
+        setSkills(skillsFromResponse(result).filter(skill => skill.source !== "system"))
+        setLoadError(null)
+      })
+      .catch(error => {
+        if (active) setLoadError(error instanceof Error ? error.message : "Could not load skills")
+      })
+    return () => { active = false }
+  }, [siteId, revision, localRevision])
 
   async function run(operation: () => Promise<void>) {
     setPending(true)
-    try { await operation(); await refresh() }
+    try { await operation(); setLocalRevision(current => current + 1) }
     catch (error) { toast.error(error instanceof Error ? error.message : "Skill request failed") }
     finally { setPending(false) }
   }
@@ -83,11 +50,7 @@ export function SkillManager() {
     setPending(true)
     try {
       await skillRequest(`/api/skills/${skillToDelete.id}`, "DELETE", { site_id: siteId })
-      if (editingId === skillToDelete.id) {
-        setEditingId(null)
-        setContent("")
-      }
-      await refresh()
+      setLocalRevision(current => current + 1)
       toast.success("Skill deleted")
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not delete skill")
@@ -99,59 +62,15 @@ export function SkillManager() {
 
   return (
     <div className="space-y-6" aria-label="Manage skills">
-      <SectionCard id="skill-editor">
-        <SectionCardHeader
-          title={editingId ? "Edit skill" : "Upload a skill"}
-          description="Upload a SKILL.md file or paste its Markdown. Start with --- and a name field; never upload API keys or credentials."
-        />
-        <SectionCardContent>
-          <div className="space-y-2">
-            <Label htmlFor="skill-content">Skill Markdown</Label>
-            <Textarea id="skill-content" className="min-h-36 font-mono" value={content} disabled={pending}
-              onChange={event => setContent(event.target.value)}
-              aria-invalid={Boolean(content.trim()) && !hasFrontmatter}
-              aria-describedby={content.trim() && !hasFrontmatter ? "skill-frontmatter-error" : undefined}
-              placeholder="---\nname: my-skill\ndescription: ...\n---\n# Instructions" />
-            {content.trim() && !hasFrontmatter && (
-              <p id="skill-frontmatter-error" role="alert" className="text-sm text-destructive">
-                SKILL.md must start with a frontmatter header (---, name: ..., ---). Do not include API keys or credentials.
-              </p>
-            )}
-          </div>
-        </SectionCardContent>
-        <SectionCardFooter>
-          <input ref={fileInputRef} id="skill-file" type="file" accept=".md,text/markdown,text/plain"
-            aria-label="SKILL.md file" className="sr-only" tabIndex={-1} disabled={pending}
-            onChange={async event => {
-              const file = event.target.files?.[0]
-              if (!file) return
-              event.target.value = ""
-              if (file.size > 131_072) { toast.error("Skill must be smaller than 128 KB"); return }
-              setEditingId(null)
-              setContent(await file.text())
-            }} />
-          <Button type="button" variant="outline" disabled={pending || !siteId}
-            onClick={() => fileInputRef.current?.click()}>Select file</Button>
-          {editingId && <Button variant="outline" disabled={pending} onClick={() => {
-            setEditingId(null)
-            setContent("")
-          }}>Cancel edit</Button>}
-          <Button disabled={pending || !siteId || !content.trim() || !hasFrontmatter} onClick={() => void run(async () => {
-            await skillRequest(editingId ? `/api/skills/${editingId}` : "/api/skills", editingId ? "PATCH" : "POST", { site_id: siteId, content })
-            setContent("")
-            setEditingId(null)
-            toast.success(editingId ? "Skill updated" : "Skill uploaded")
-          })}>{editingId ? "Save changes" : "Upload skill"}</Button>
-        </SectionCardFooter>
-      </SectionCard>
-
-      {skills.length > 0 ? (
+      {loadError && <p role="alert" className="text-sm text-destructive">{loadError}</p>}
+      {(skills?.length || (siteId && !skills && !loadError)) ? (
         <section id="site-skills" className="space-y-4" aria-label="Your skills">
           <div>
             <h2 className="text-lg font-semibold">Your skills</h2>
             <p className="text-sm text-muted-foreground">Edit, enable, or remove the skills created or imported for this site.</p>
           </div>
-          {skills.map(skill => (
+          {!skills && <SkillsLoading kind="managed" />}
+          {skills?.map(skill => (
             <SectionCard key={skill.id}>
               <SectionCardHeader
                 title={skill.name}
@@ -173,11 +92,7 @@ export function SkillManager() {
                 </SectionCardContent>
               )}
               <SectionCardFooter>
-                <Button size="sm" variant="outline" disabled={pending} onClick={() => {
-                  setEditingId(skill.id)
-                  setContent(skill.content || "")
-                  document.getElementById("skill-editor")?.scrollIntoView({ behavior: "smooth" })
-                }}>Edit</Button>
+                <Button size="sm" variant="outline" disabled={pending} onClick={() => onEdit(skill)}>Edit</Button>
                 <Button type="button" size="sm" variant="outline" disabled={pending}
                   className="gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive"
                   onClick={() => setSkillToDelete(skill)}>
@@ -187,7 +102,7 @@ export function SkillManager() {
             </SectionCard>
           ))}
         </section>
-      ) : (
+      ) : !loadError && (
         <p className="text-sm text-muted-foreground">No administrable skills yet. Upload or import one to get started.</p>
       )}
       <ConfirmDialog open={Boolean(skillToDelete)} onOpenChange={open => { if (!open) setSkillToDelete(null) }}

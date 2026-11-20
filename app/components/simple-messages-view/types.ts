@@ -9,6 +9,7 @@ export interface SimpleMessagesViewProps {
   onNewInstanceCreated?: (instanceId: string) => void
   hasTopHeaderSpace?: boolean // Used to add top padding for fixed headers
   conversationContext?: ReactNode
+  connectorHint?: string | null
 }
 
 // Media Parameter Types

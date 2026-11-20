@@ -1,6 +1,5 @@
 import { useCallback, useEffect } from "react"
 import { toast } from "sonner"
-import { apiClient } from "@/app/services/api-client-service"
 import { getSegments } from "@/app/segments/actions"
 import { createClient } from "@/lib/supabase/client"
 import type { createFinderQuery } from "./finder-api"
@@ -8,7 +7,9 @@ import type { PeoplePageState } from "./use-people-page-state"
 import type { PeopleFilters } from "./use-people-filters"
 import type { usePeopleResultGroups } from "./use-people-result-groups"
 
-type Dependencies = Pick<PeoplePageState & PeopleFilters & ReturnType<typeof usePeopleResultGroups>, "currentSite" | "currentPage" | "totalResults" | "setAddingToLeads" | "setIsSegmentModalOpen" | "showBillingLimitFromError" | "setSegmentsLoading" | "availableSegments" | "setAvailableSegments" | "selectedSegmentId" | "icpName" | "setIcpName" | "selectedPersonIds" | "setSelectedPersonIds" | "setIsEnriching" | "setIsConfirmModalOpen" | "setAddedPersonIds" | "buildFinderPayload" | "groupedResults">
+type LeadSummary = { name: string | null; company: unknown; companies?: { name?: string | null } | null }
+
+type Dependencies = Pick<PeoplePageState & PeopleFilters & ReturnType<typeof usePeopleResultGroups>, "currentSite" | "currentPage" | "totalResults" | "setAddingToLeads" | "setIsSegmentModalOpen" | "showBillingLimitFromError" | "setSegmentsLoading" | "availableSegments" | "setAvailableSegments" | "selectedSegmentId" | "icpName" | "setIcpName" | "setSelectedPersonIds" | "setAddedPersonIds" | "buildFinderPayload" | "groupedResults">
 
 export function usePeopleLeadActions(dependencies: Dependencies & { createQuery: typeof createFinderQuery }) {
   const {
@@ -27,10 +28,7 @@ export function usePeopleLeadActions(dependencies: Dependencies & { createQuery:
     selectedSegmentId,
     icpName,
     setIcpName,
-    selectedPersonIds,
     setSelectedPersonIds,
-    setIsEnriching,
-    setIsConfirmModalOpen,
     setAddedPersonIds,
     buildFinderPayload,
     groupedResults,
@@ -45,7 +43,7 @@ export function usePeopleLeadActions(dependencies: Dependencies & { createQuery:
       setSegmentsLoading(true)
       const res = await getSegments(currentSite.id)
       if (res?.segments) {
-        setAvailableSegments(res.segments.map((s: any) => ({ id: s.id, name: s.name })))
+        setAvailableSegments(res.segments.map(s => ({ id: s.id, name: s.name })))
       }
     } catch (e) {
       console.error('[People] Load segments error:', e)
@@ -62,18 +60,9 @@ export function usePeopleLeadActions(dependencies: Dependencies & { createQuery:
     }
     try {
       setAddingToLeads(true)
-      const payload = buildFinderPayload(currentPage) as any
-      if (currentSite?.id) {
-        payload.site_id = currentSite.id
-      }
-      if (selectedSegmentId && selectedSegmentId !== 'none') {
-        payload.segment_id = selectedSegmentId
-      }
-      if (icpName && icpName.trim().length > 0) {
-        payload.name = icpName.trim()
-      }
-      // Add total_targets with current search results total
-      payload.total_targets = totalResults
+      const payload = { ...buildFinderPayload(currentPage), site_id: currentSite.id, total_targets: totalResults,
+        ...(selectedSegmentId && selectedSegmentId !== 'none' ? { segment_id: selectedSegmentId } : {}),
+        ...(icpName.trim() ? { name: icpName.trim() } : {}) }
       const res = await createQuery(payload)
       if (!res.success) {
         throw new Error(res.error?.message || 'Failed to create query')
@@ -81,10 +70,10 @@ export function usePeopleLeadActions(dependencies: Dependencies & { createQuery:
       toast.success('List saved. Check Saved lists for enrichment status.')
       setIsSegmentModalOpen(false)
       setIcpName("")
-    } catch (e: any) {
+    } catch (e) {
       console.error('[People] Add to leads error:', e)
       if (!showBillingLimitFromError(e)) {
-        toast.error(e?.message || 'Failed to add leads')
+        toast.error(e instanceof Error ? e.message : 'Failed to add leads')
       }
     } finally {
       setAddingToLeads(false)
@@ -113,6 +102,7 @@ export function usePeopleLeadActions(dependencies: Dependencies & { createQuery:
       if (!leads || leads.length === 0) {
         return new Set()
       }
+      const leadSummaries: LeadSummary[] = leads
 
       // Create a Set of matched person IDs
       const matchedPersonIds = new Set<string>()
@@ -129,7 +119,7 @@ export function usePeopleLeadActions(dependencies: Dependencies & { createQuery:
       }
 
       // Helper function to get company name from lead
-      const getLeadCompanyName = (lead: any): string | null => {
+      const getLeadCompanyName = (lead: LeadSummary): string | null => {
         // Check companies relation first
         if (lead.companies?.name) {
           return lead.companies.name
@@ -139,7 +129,7 @@ export function usePeopleLeadActions(dependencies: Dependencies & { createQuery:
           if (typeof lead.company === 'string') {
             return lead.company
           }
-          if (typeof lead.company === 'object' && lead.company.name) {
+          if (typeof lead.company === 'object' && 'name' in lead.company && typeof lead.company.name === 'string') {
             return lead.company.name
           }
         }
@@ -156,7 +146,7 @@ export function usePeopleLeadActions(dependencies: Dependencies & { createQuery:
         let foundMatch = false
 
         // Check each lead for a match
-        for (const lead of leads) {
+        for (const lead of leadSummaries) {
           const leadName = normalize(lead.name)
 
           // Match by name (required)
@@ -215,7 +205,7 @@ export function usePeopleLeadActions(dependencies: Dependencies & { createQuery:
 
         if (!foundMatch && personName) {
           // Log potential matches for debugging
-          const potentialMatches = leads.filter((lead: any) => {
+          const potentialMatches = leadSummaries.filter(lead => {
             const leadName = normalize(lead.name)
             return leadName.includes(personName) || personName.includes(leadName)
           })
@@ -223,7 +213,7 @@ export function usePeopleLeadActions(dependencies: Dependencies & { createQuery:
             console.log('⚠️ No exact match but found similar names:', {
               personName: group.personName,
               personCompany: group.companyName,
-              similarLeads: potentialMatches.map((l: any) => ({ name: l.name, company: getLeadCompanyName(l) }))
+              similarLeads: potentialMatches.map(l => ({ name: l.name, company: getLeadCompanyName(l) }))
             })
           }
         }
@@ -246,6 +236,7 @@ export function usePeopleLeadActions(dependencies: Dependencies & { createQuery:
 
   // Background check to see if people already have leads in the site
   useEffect(() => {
+    let active = true
     const runCheck = async () => {
       if (!currentSite?.id || groupedResults.length === 0) {
         setAddedPersonIds(new Set())
@@ -259,16 +250,18 @@ export function usePeopleLeadActions(dependencies: Dependencies & { createQuery:
 
       try {
         const matchedIds = await checkLeadsForPeople(groupedResults, currentSite.id)
+        if (!active) return
         console.log('🔍 Lead check completed, matched IDs:', Array.from(matchedIds))
         setAddedPersonIds(matchedIds)
       } catch (error) {
         console.error('Error checking leads for people:', error)
-        setAddedPersonIds(new Set())
+        if (active) setAddedPersonIds(new Set())
       }
     }
 
     runCheck()
-  }, [groupedResults, currentSite?.id, checkLeadsForPeople])
+    return () => { active = false }
+  }, [groupedResults, currentSite?.id, checkLeadsForPeople, setAddedPersonIds])
   const togglePersonSelection = (personId: string) => {
     setSelectedPersonIds(prev => {
       if (prev.includes(personId)) {
@@ -279,57 +272,5 @@ export function usePeopleLeadActions(dependencies: Dependencies & { createQuery:
     })
   }
 
-  const handleEnrich = async () => {
-    if (!currentSite?.id) {
-      toast.error('Site ID is required')
-      return
-    }
-
-    if (selectedPersonIds.length === 0) {
-      toast.error('No people selected')
-      return
-    }
-
-    setIsEnriching(true)
-    setIsConfirmModalOpen(false)
-
-    try {
-      let successCount = 0
-      let errorCount = 0
-
-      for (const personId of selectedPersonIds) {
-        try {
-          const response = await apiClient.post('/api/workflow/enrichLead', {
-            site_id: currentSite.id,
-            person_id: personId
-          })
-
-          if (response.success) {
-            successCount++
-          } else {
-            errorCount++
-            console.error(`Failed to enrich person ${personId}:`, response.error)
-          }
-        } catch (error) {
-          errorCount++
-          console.error(`Error enriching person ${personId}:`, error)
-        }
-      }
-
-      if (successCount > 0) {
-        toast.success(`Successfully enriched ${successCount} ${successCount === 1 ? 'person' : 'people'}`)
-        setSelectedPersonIds([])
-      }
-
-      if (errorCount > 0) {
-        toast.error(`Failed to enrich ${errorCount} ${errorCount === 1 ? 'person' : 'people'}`)
-      }
-    } catch (error) {
-      console.error('Error in enrich process:', error)
-      toast.error('An error occurred while enriching leads')
-    } finally {
-      setIsEnriching(false)
-    }
-  }
-  return { handleAddToLeads, handleConfirmAddToLeads, checkLeadsForPeople, togglePersonSelection, handleEnrich }
+  return { handleAddToLeads, handleConfirmAddToLeads, checkLeadsForPeople, togglePersonSelection }
 }

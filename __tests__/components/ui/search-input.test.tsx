@@ -30,7 +30,8 @@ describe("SearchInput animation state", () => {
     fireEvent.click(screen.getByTitle("Search catalog..."))
 
     expect(onExpandedChange).toHaveBeenLastCalledWith(true)
-    expect(container).toHaveClass("w-full")
+    expect(container).toHaveClass("w-full", "h-11")
+    expect(input).toHaveClass("h-11")
 
     fireEvent.blur(input)
     act(() => {
@@ -54,6 +55,16 @@ describe("SearchInput animation state", () => {
     expect(button).toHaveClass("!h-10", "!w-10")
     expect(collapsed).toHaveClass("h-10", "w-10", "top-1/2", "-translate-y-1/2")
     expect(collapsed?.parentElement).toHaveClass("h-10", "w-10", "shrink-0")
+  })
+
+  it("reserves the full height of the expanded search in the mobile drawer", () => {
+    render(<SearchInput placeholder="Search leads..." alwaysExpanded expandedHeightClassName="h-12" />)
+
+    const input = screen.getByPlaceholderText("Search leads...")
+    const expanded = input.parentElement?.parentElement
+    for (const element of [input, expanded, expanded?.parentElement]) {
+      expect(element).toHaveClass("h-12")
+    }
   })
 
   it("keeps the clear control inside the expanded input in a toolbar", () => {

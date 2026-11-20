@@ -1,4 +1,5 @@
 import { workspaceScreenRoot, workspaceScreenTitle } from './workspace-screen'
+import { resolveInstanceIdParam } from './robots-instance'
 
 export interface HistoryItem {
   path: string
@@ -13,7 +14,7 @@ export type BreadcrumbEvent =
 
 const ID_PARAMS = [
   'id', 'agentId', 'conversationId', 'leadId', 'segmentId', 'campaignId',
-  'experimentId', 'requirementId', 'contentId', 'saleId', 'robotId', 'instance',
+  'experimentId', 'requirementId', 'contentId', 'saleId', 'robotId', 'instance', 'instance_id', 'instanceId',
 ]
 
 const SECTION_TITLES: Record<string, string> = {
@@ -63,6 +64,11 @@ const NESTED_SECTION_TITLES: Record<string, string> = {
 export function getScreenKey(fullPath: string): string {
   const [pathname, search] = fullPath.split('?')
   const params = new URLSearchParams(search || '')
+  if (pathname === '/chat' && params.get('conversationId')) {
+    return `/chat?conversationId=${params.get('conversationId')}`
+  }
+  const instance = pathname === '/robots' && resolveInstanceIdParam(params)
+  if (instance) return `/robots?instance=${instance}`
   const idParts: string[] = []
   for (const param of ID_PARAMS) {
     if (params.has(param)) {
@@ -99,10 +105,8 @@ export function hasId(fullPath: string): boolean {
   return segments.length > sectionSegmentsCount || ID_PARAMS.some((param) => params.has(param))
 }
 
-function normalizeLabel(label: string): string {
-  const value = label.toLowerCase().trim()
-  if (value === 'chat' || value === 'conversations') return 'conversations'
-  return value
+export function isReturnableDetail(path: string): boolean {
+  return hasId(path) && ['/chat', '/robots', '/control-center'].includes(getSection(path))
 }
 
 function sectionRootItem(item: HistoryItem, timestamp?: number): HistoryItem {
@@ -136,7 +140,7 @@ export function enforceInvariants(items: HistoryItem[]): HistoryItem[] {
       result[result.length - 1] = curr
       continue
     }
-    if (normalizeLabel(prev.label) === normalizeLabel(curr.label)) {
+    if (!isReturnableDetail(curr.path) && prev.label.trim().toLowerCase() === curr.label.trim().toLowerCase()) {
       result[result.length - 1] = curr
       continue
     }
@@ -162,12 +166,22 @@ export function reduceBreadcrumb(items: HistoryItem[], event: BreadcrumbEvent): 
       return enforceInvariants([newItem])
     }
 
-    // Chat list and conversation are one crumb: the section root.
-    if (currentSection === '/chat') {
-      const origin = items[0] && getSection(items[0].path) === '/chat'
-        ? sectionRootItem(items[0], timestamp)
-        : item('/chat', 'Chat', timestamp)
-      return enforceInvariants([origin])
+    if (isReturnableDetail(event.path)) {
+      const existingIndex = items.findIndex(entry => getScreenKey(entry.path) === getScreenKey(event.path))
+      if (existingIndex > 0) {
+        return enforceInvariants([...items.slice(0, existingIndex), newItem])
+      }
+      const previous = items[items.length - 1]
+      if (previous && existingIndex === -1) {
+        // Switching between sibling details keeps the original way back to the list.
+        const trail = getSection(previous.path) === currentSection && hasId(previous.path)
+          ? items.slice(0, -1)
+          : items
+        if (trail.length) return enforceInvariants([...trail, newItem])
+      }
+      const mode = currentSection === '/robots' ? new URLSearchParams(event.path.split('?')[1]).get('mode') : null
+      const root = mode === 'workflow' || mode === 'imprenta' ? `/robots?mode=${mode}` : currentSection
+      return [item(root, workspaceScreenTitle(root) || SECTION_TITLES[currentSection], timestamp - 1), newItem]
     }
 
     if (items.length === 0) {
@@ -212,7 +226,7 @@ export function reduceBreadcrumb(items: HistoryItem[], event: BreadcrumbEvent): 
       newItems[newItems.length - 1] = {
         ...lastItem,
         label: event.title,
-        ...(targetPath ? { path: targetPath } : {}),
+        ...(targetPath && !isReturnableDetail(lastItem.path) ? { path: targetPath } : {}),
       }
     }
 

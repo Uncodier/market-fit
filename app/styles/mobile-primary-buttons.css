@@ -1,4 +1,4 @@
-/* Shared mobile primary buttons: glass text CTAs and bare icon touch targets. */
+/* Mobile primary buttons keep their glass treatment outside the topbar. */
 @media (max-width: 767px) {
   /* Remove the recessed surround, including its hover and disabled variants. */
   .btn-primary-well::before,
@@ -36,11 +36,9 @@
     min-width: 48px !important;
   }
 
-  /* Keep icon-bearing primary actions compact across the full mobile breakpoint. */
-  .btn-primary-well:has(> .btn-primary > .safari-icon-fix),
-  .btn-primary-well:has(> .btn-primary > svg),
-  .btn-primary:has(> .safari-icon-fix),
-  .btn-primary:has(> svg) {
+  /* Only topbar icon actions collapse to a square touch target. */
+  :is([data-topbar], [data-page-primary-actions]) .btn-primary-well:has(> .btn-primary > :is(.safari-icon-fix, svg)),
+  :is([data-topbar], [data-page-primary-actions]) .btn-primary:has(> :is(.safari-icon-fix, svg)) {
     width: 48px !important;
     min-width: 48px !important;
     max-width: 48px !important;
@@ -49,8 +47,7 @@
   }
 
   /* Visually hide labels without removing their accessible names. */
-  .btn-primary:has(> .safari-icon-fix) > span:not(.safari-icon-fix):not(.btn-glass-surface),
-  .btn-primary:has(> svg) > span:not(.safari-icon-fix):not(.btn-glass-surface) {
+  :is([data-topbar], [data-page-primary-actions]) .btn-primary:has(> :is(.safari-icon-fix, svg)) > span:not(.safari-icon-fix):not(.btn-glass-surface) {
     display: block !important;
     position: absolute !important;
     width: 1px !important;
@@ -74,21 +71,21 @@
   }
 
   /* Outrank legacy Safari button/utility selectors, regardless of import order. */
-  html .btn-primary.btn-primary.btn-primary.btn-primary > .safari-icon-fix,
-  html .btn-primary.btn-primary.btn-primary.btn-primary > .safari-icon-fix > svg,
-  html .btn-primary.btn-primary.btn-primary.btn-primary > svg {
-    width: 32px !important;
-    height: 32px !important;
-    min-width: 32px !important;
-    min-height: 32px !important;
-    max-width: 32px !important;
-    max-height: 32px !important;
+  html :is([data-topbar], [data-page-primary-actions]) .btn-primary.btn-primary.btn-primary > .safari-icon-fix,
+  html :is([data-topbar], [data-page-primary-actions]) .btn-primary.btn-primary.btn-primary > .safari-icon-fix > svg,
+  html :is([data-topbar], [data-page-primary-actions]) .btn-primary.btn-primary.btn-primary > svg {
+    width: 28px !important;
+    height: 28px !important;
+    min-width: 28px !important;
+    min-height: 28px !important;
+    max-width: 28px !important;
+    max-height: 28px !important;
     margin: 0 !important;
     flex-shrink: 0 !important;
   }
 
-  html .btn-primary > .safari-icon-fix > svg,
-  html .btn-primary > svg {
+  :is([data-topbar], [data-page-primary-actions]) .btn-primary > .safari-icon-fix > svg,
+  :is([data-topbar], [data-page-primary-actions]) .btn-primary > svg {
     stroke-width: 1.5;
   }
 
@@ -177,9 +174,9 @@
     }
   }
 
-  /* Only icon actions are bare controls; text CTAs retain their tinted glass. */
-  html .btn-primary.btn-primary.btn-primary:is(.btn-primary-circular, :has(> .safari-icon-fix), :has(> svg)),
-  html .btn-primary-well.btn-primary-well.btn-primary-well:has(> .btn-primary:is(.btn-primary-circular, :has(> .safari-icon-fix), :has(> svg))) {
+  /* Cover direct topbar actions and page actions portaled into either shell. */
+  html :is([data-topbar], [data-page-primary-actions]) .btn-primary.btn-primary,
+  html :is([data-topbar], [data-page-primary-actions]) .btn-primary-well {
     background-color: transparent !important;
     background-image: none !important;
     border: 0 !important;
@@ -190,15 +187,11 @@
     color: hsl(var(--foreground)) !important;
   }
 
-  html .btn-primary:is(.btn-primary-circular, :has(> .safari-icon-fix), :has(> svg)) > .btn-glass-surface,
-  html .btn-primary::before,
-  html .btn-primary::after,
-  html .btn-primary-well::before,
-  html .btn-primary-well::after {
+  :is([data-topbar], [data-page-primary-actions]) .btn-primary > .btn-glass-surface {
     display: none !important;
   }
 
-  html .btn-primary svg {
+  :is([data-topbar], [data-page-primary-actions]) .btn-primary svg {
     filter: none !important;
   }
 }

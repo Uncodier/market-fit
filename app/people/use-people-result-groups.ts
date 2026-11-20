@@ -3,6 +3,34 @@ import type { PeoplePageState } from "./use-people-page-state"
 
 type Dependencies = Pick<PeoplePageState, "searchResults" | "setExpandedGroups">
 
+type Organization = {
+  id?: string | number; name?: string; logo?: string; description?: string;
+  website?: string; domain?: string; employee_count?: number; employees?: number;
+  revenue?: number; founded_date?: string; industries?: unknown[];
+  linkedin_info?: { public_identifier?: string; public_profile_url?: string };
+}
+type FinderRow = {
+  id?: string | number; person_id?: string | number; organization_id?: string | number;
+  person_name?: string; name?: string; avatar_url?: string; organization_name?: string;
+  location?: string; start_date?: string; end_date?: string; position_start_date?: string; position_end_date?: string;
+  role_position_start_date?: string; role_position_end_date?: string; role_title?: string; role_description?: string;
+  person_headline?: string | string[]; person_description?: string; organization_description?: string;
+  organization_employees?: number; organization_revenue?: number; organization_founded_date?: string; organization_industries?: unknown[];
+  is_current?: boolean; organization?: Organization; company?: Organization;
+  role?: { title?: string; description?: string; position_start_date?: string; position_end_date?: string };
+  person?: { id?: string | number; full_name?: string; name?: string; photo?: string; avatar_url?: string; photo_url?: string;
+    location?: string | { name?: string }; headline?: string | string[]; description?: string;
+    linkedin_info?: { public_identifier?: string; public_profile_url?: string } };
+}
+type ResultRole = { id: string; title: string; start?: string; end?: string; isCurrent?: boolean; description?: string }
+type ResultGroup = {
+  key: string; personId: string; personName: string; avatarUrl?: string; companyId: string; companyName: string;
+  companyLogoUrl?: string; location: string; personLinkedIn?: string; companyLinkedIn?: string; companyWebsite?: string;
+  companyDomain?: string; personHeadline: string; personDescription: string; organizationDescription: string;
+  organizationEmployees?: number; organizationRevenue?: number; organizationFoundedDate: string;
+  organizationIndustries: string; roles: ResultRole[];
+}
+
 export function usePeopleResultGroups(dependencies: Dependencies) {
   const {
     searchResults,
@@ -10,15 +38,18 @@ export function usePeopleResultGroups(dependencies: Dependencies) {
   } = dependencies
   // Group results by person and company (same person.id and organization.id)
   const groupedResults = useMemo(() => {
-    const map = new Map<string, any>()
-    for (const r of searchResults || []) {
+    const map = new Map<string, ResultGroup>()
+    for (const row of searchResults || []) {
+      // The transport accepts provider-defined fields; consume just the known display shape.
+      const r: FinderRow = row
       const personId = String(r?.person?.id || r?.person_id || r?.id || '')
       const companyId = String(r?.organization?.id || r?.company?.id || r?.organization_id || '')
       const personName = r?.person?.full_name || r?.person?.name || r?.person_name || r?.name || 'Unknown'
       const avatarUrl = r?.person?.photo || r?.person?.avatar_url || r?.person?.photo_url || r?.avatar_url
       const companyName = r?.organization?.name || r?.company?.name || r?.organization_name || '—'
       const companyLogoUrl = r?.organization?.logo || r?.company?.logo
-      const location = r?.person?.location?.name || r?.person?.location || r?.location || '—'
+      const personLocation = r?.person?.location
+      const location = (typeof personLocation === 'string' ? personLocation : personLocation?.name) || r?.location || '—'
       const start = r?.start_date || r?.role?.position_start_date || r?.position_start_date || r?.role_position_start_date
       const end = r?.end_date || r?.role?.position_end_date || r?.position_end_date || r?.role_position_end_date
       const personLinkedInIdentifier = r?.person?.linkedin_info?.public_identifier
@@ -43,7 +74,11 @@ export function usePeopleResultGroups(dependencies: Dependencies) {
         const orgIndustries = (() => {
           const ind = r?.organization?.industries ?? r?.organization_industries
           if (!ind || !Array.isArray(ind)) return ''
-          return ind.map((i: any) => (typeof i === 'string' ? i : i?.name ?? i?.id ?? '')).filter(Boolean).join(', ')
+          return ind.map(i => {
+            if (typeof i === 'string') return i
+            if (i && typeof i === 'object') return ('name' in i ? i.name : undefined) ?? ('id' in i ? i.id : '')
+            return ''
+          }).filter(Boolean).join(', ')
         })()
         map.set(key, {
           key,
@@ -65,7 +100,7 @@ export function usePeopleResultGroups(dependencies: Dependencies) {
           organizationRevenue: typeof orgRevenue === 'number' ? orgRevenue : undefined,
           organizationFoundedDate: typeof orgFoundedDate === 'string' ? orgFoundedDate : '',
           organizationIndustries: typeof orgIndustries === 'string' ? orgIndustries : '',
-          roles: [] as Array<{ id: string; title: string; start?: string; end?: string; isCurrent?: boolean; description?: string }>
+          roles: [],
         })
       }
       const group = map.get(key)!

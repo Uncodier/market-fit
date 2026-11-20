@@ -9,6 +9,7 @@ export function mobileInstanceListHref(search: string) {
   const source = new URLSearchParams(search)
   const params = new URLSearchParams()
   const mode = source.get("mode")
+  for (const value of source.getAll('connector')) params.append('connector', value)
   if (mode === "workflow" || mode === "imprenta") params.set("mode", mode)
   params.set("view", "instances")
   return `/robots?${params}`
@@ -39,5 +40,6 @@ export function mobileInstanceBreadcrumbHref(target: string, current: string, is
   if (!isMobile || !(currentPath === "/robots" || currentPath.startsWith("/robots/")) ||
     targetPath !== "/robots" || resolveInstanceIdParam(targetParams) ||
     currentParams.get("artifact") === "true" || targetParams.get("artifact") === "true") return target
+  if (isInstanceListView(targetParams)) return target
   return mobileInstanceListHref(targetParams.has("mode") ? targetParams.toString() : currentParams.toString())
 }

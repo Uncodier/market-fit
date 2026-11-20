@@ -1,8 +1,10 @@
 import { z } from 'zod'
 
+// Keep in sync with the image generation API and its signing route.
+const IMAGE_PROMPT_MAX_LENGTH = 3_000
 const dimension = z.coerce.number().int().min(1).max(1600).default(1024)
 const schema = z.object({
-  prompt: z.string().trim().min(1).max(2000).refine(value => value !== '.' && value !== '..' && !/[\u0000-\u001f\u007f]/.test(value)),
+  prompt: z.string().trim().min(1).max(IMAGE_PROMPT_MAX_LENGTH).refine(value => value !== '.' && value !== '..' && !/[\u0000-\u001f\u007f]/.test(value)),
   width: dimension,
   height: dimension,
   site_id: z.string().uuid().optional(),

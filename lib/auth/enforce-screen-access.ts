@@ -23,6 +23,8 @@ export async function resolveBlockedScreenRedirect(
   if (isServerActionRequest(request.headers)) return null
 
   const { pathname, searchParams } = request.nextUrl
+  // OAuth completion checks the attempt's site, not the currently selected one.
+  if (pathname === '/connectors/callback') return null
   if (isAlwaysAllowedPath(pathname)) return null
 
   const siteId = request.cookies.get(CURRENT_SITE_COOKIE)?.value

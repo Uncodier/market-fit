@@ -266,6 +266,7 @@ export function TopBar({
 
   return (
     <div
+      data-topbar
       data-toolbar-font
       className={cn(
         "flex flex-col border-b dark:border-white/5 border-black/5 bg-background/95 backdrop-blur-sm sticky top-0 z-[200]",

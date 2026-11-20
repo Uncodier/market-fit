@@ -1,13 +1,19 @@
 import { LocalizationProvider } from '@/app/context/LocalizationContext'
 import type { ReactNode } from 'react'
 import { createRef } from "react"
-import { render as rtlRender, screen, within } from "@testing-library/react"
+import { fireEvent, render as rtlRender, screen, waitFor, within } from "@testing-library/react"
 import { ChatMessages } from "@/app/components/chat/ChatMessages"
+import { ChatList } from "@/app/components/chat/chat-list"
+import { useConversationsList } from "@/app/hooks/useConversationsList"
+import { PrivateReviewScope } from "@/app/components/chat/private-reviews"
 import { ChatMessageContent } from "@/app/components/chat/chat-message-content"
 import { CommentSourceLinks } from "@/app/components/chat/CommentSourceLinks"
 import { ConversationItem } from "@/app/components/chat/ConversationItem"
 import type { ChatMessage } from "@/app/types/chat"
 
+jest.mock("@/app/hooks/useConversationsList", () => ({ useConversationsList: jest.fn() }))
+jest.mock("@/app/hooks/useConversationRealtime", () => ({ useConversationRealtime: () => {} }))
+jest.mock("@/app/hooks/useConversationListActions", () => ({ useConversationListActions: () => ({}) }))
 jest.mock("react-markdown", () => ({ __esModule: true, default: ({ children }: { children: string }) => <p>{children}</p> }))
 jest.mock("remark-gfm", () => ({ __esModule: true, default: () => undefined }))
 jest.mock("@/app/components/email/EmailViewer", () => ({ EmailViewer: () => null }))
@@ -128,6 +134,67 @@ it("preserves a meaningful custom title and shows the participant and post subti
   expect(screen.getByText("Reader")).toBeInTheDocument()
   expect(within(screen.getByRole("button", { name: "More options" })).queryByText("Reader")).not.toBeInTheDocument()
 })
+
+it('renders the authorized private review beside real messages, never as an extra customer message', async () => {
+  const conversationId = '728ac770-ad93-4147-8cf4-afe0ae4ad125'
+  const id = '728ac770-ad93-4147-8cf4-afe0ae4ad124'
+  jest.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ items: [{
+    id, conversation_id: conversationId, agent_id: id, connector_id: id, account_label: 'Support', tool_slug: 'READ',
+    version: 'v1', expires_at: '2099-01-01T00:00:00Z', arguments: { query: 'private-request-only' },
+  }] }) } as Response)
+  render(<PrivateReviewScope siteId={id} actorId="manager"><ChatMessages {...props} conversationId={conversationId}
+    chatMessages={[message()]} /></PrivateReviewScope>)
+  expect(await screen.findByRole('button', { name: 'Approve and run' })).toBeVisible()
+  const rows = screen.getAllByTestId('message')
+  expect(rows).toHaveLength(1)
+  expect(rows[0]).not.toHaveTextContent('private-request-only')
+  expect(screen.getByText(/private-request-only/)).toBeVisible()
+})
+
+it('refetches a missing review conversation and only offers the real returned row for selection', async () => {
+  const target = '728ac770-ad93-4147-8cf4-afe0ae4ad125'
+  const request = '728ac770-ad93-4147-8cf4-afe0ae4ad124'
+  jest.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ items: [{
+    id: request, conversation_id: null, review_conversation_id: target, agent_id: request, connector_id: request,
+    account_label: 'Private account', tool_slug: 'READ', version: 'v1', expires_at: '2099-01-01T00:00:00Z',
+    arguments: { filter: 'private details' },
+  }] }) } as Response)
+  const refreshConversations = jest.fn()
+  const list = { conversations: [], isInitialLoad: false, refreshConversations }
+  const listHook = jest.mocked(useConversationsList)
+  listHook.mockReturnValue(list as unknown as ReturnType<typeof useConversationsList>)
+  const select = jest.fn()
+  const ui = () => <PrivateReviewScope siteId={request} actorId="reviewer"><ChatList siteId={request}
+    selectedConversationId={request} onSelectConversation={select} /></PrivateReviewScope>
+  const view = render(ui())
+  await waitFor(() => expect(refreshConversations).toHaveBeenCalledTimes(1))
+  expect(screen.queryByText(/Awaiting review/)).not.toBeInTheDocument()
+  const row = { id: target, title: 'Instance approvals', agentId: request, agentName: 'Agent', timestamp: new Date(), channel: 'internal_review' }
+  listHook.mockReturnValue({ ...list, conversations: [row] } as unknown as ReturnType<typeof useConversationsList>)
+  view.rerender(ui())
+  expect(screen.getByText('Internal conversation')).toBeVisible()
+  fireEvent.click(screen.getByText('Awaiting review (1)'))
+  expect(select).toHaveBeenCalledWith(target, 'Agent', request, 'Instance approvals')
+  expect(screen.queryByText(/private details|Private account/)).not.toBeInTheDocument()
+})
+
+it('shows an internal review inline in an empty real message history, then shows that nothing remains', async () => {
+  const target = '728ac770-ad93-4147-8cf4-afe0ae4ad125'
+  const id = '728ac770-ad93-4147-8cf4-afe0ae4ad124'
+  jest.mocked(fetch).mockResolvedValueOnce({ ok: true, json: async () => ({ items: [{
+    id, conversation_id: null, review_conversation_id: target, agent_id: id, connector_id: id, account_label: 'Support', tool_slug: 'READ',
+    version: 'v1', expires_at: '2099-01-01T00:00:00Z', arguments: { query: 'private-request-only' },
+  }] }) } as Response).mockResolvedValueOnce({ ok: true, json: async () => ({ items: [] }) } as Response)
+  render(<PrivateReviewScope siteId={id} actorId="manager"><ChatMessages {...props} conversationId={target}
+    internalReview chatMessages={[]} /></PrivateReviewScope>)
+  expect(await screen.findByRole('button', { name: 'Approve and run' })).toBeVisible()
+  expect(screen.queryByTestId('message')).not.toBeInTheDocument()
+  expect(screen.queryByText('No messages')).not.toBeInTheDocument()
+  fireEvent.focus(window)
+  expect(await screen.findByText('No actions are waiting for review.')).toBeVisible()
+  expect(screen.queryByText(/private-request-only/)).not.toBeInTheDocument()
+})
+
 function render(ui: ReactNode) {
   return rtlRender(ui, { wrapper: ({ children }) => <LocalizationProvider preferredLocale="en">{children}</LocalizationProvider> })
 }

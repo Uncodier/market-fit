@@ -70,13 +70,16 @@ They are the existing renders, not newly generated images. The 1024px originals
 are resized without cropping to 512px WebP (quality 90), retaining 2x resolution
 for the 256px icon component. All 19 files together are approximately 239 KiB.
 
-`app/config/module-image-overrides.ts` selects exactly these shared overrides:
+The original shared overrides in `app/config/module-image-overrides.ts` are:
 Campaigns, Segments, Price Lists, Leads, Point of Sale, Conversations (`chat`),
 Order Lines, Tasks (`controlCenter`), Check In, Inventory, Assets, AI Goals
 (`requirements`), AI Activities (`activities`), Workflows, Performance, Cost
 Reports, Database, Code (`applicationsRepositories`), and Billing. These images
 load directly from static files for every site, without credentials, database
 lookups, generation requests, or site-credit charges.
+
+Connectors also uses a static override. Its AI-generated 3D render is stored
+as a 512px WebP at `public/images/modules/connectors.webp`.
 
 Procurement modules, Accounts Payable, Inventory Minimums and Modifier Groups use
 `/api/images/modules/{itemKey}`. Accounts Payable's distinct amber receipt is not

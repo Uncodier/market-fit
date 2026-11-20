@@ -81,7 +81,8 @@ export default function LeadsPage() {
                 onDelete={handleBulkDelete}
               />
             ) : (
-              <div className="flex min-w-0 items-center justify-between gap-2 md:gap-0 w-full">
+              <div className="flex w-full min-w-0 items-center justify-between gap-2 md:flex-wrap md:py-2">
+                <div className="min-w-0 md:flex md:flex-[1_1_28rem]">
                 <MobileFiltersDrawer triggerText={t('common.search') || "Search"}>
                   <FilterContainer>
                     <FilterSection mobileOnly>
@@ -89,15 +90,16 @@ export default function LeadsPage() {
                         placeholder="Search leads..."
                         value={searchQuery}
                         onChange={handleSearchChange}
-                        alwaysExpanded={true}
-                        className="w-full h-10 md:h-9 bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"  
-                        containerClassName="w-full" 
+                        alwaysExpanded
+                        expandedHeightClassName="h-12"
+                        className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
+                        containerClassName="w-full"
                       />
                     </FilterSection>
 
                     
 
-                    <FilterSection title={t('common.status') || 'Status'} className={cn(searchQuery && "max-md:hidden")}>
+                    <FilterSection title={t('common.status') || 'Status'} className={cn("md:min-w-0", searchQuery && "max-md:hidden")}>
                       <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-none md:rounded-full flex flex-wrap md:flex-nowrap md:flex-row w-full md:max-w-full overflow-y-visible md:overflow-x-auto justify-start items-center gap-2 md:gap-0">
                         <TabsTrigger value="all" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5" title={t('leads.tabs.all') || 'All Companies'}>
                           <LayoutGrid size={13} className="mr-2 md:mr-0" />
@@ -134,7 +136,7 @@ export default function LeadsPage() {
                       </TabsList>
                     </FilterSection>
                     
-                    <FilterSection className={cn("flex flex-col md:flex-row items-stretch md:items-center gap-2 mt-2 md:mt-0", searchQuery && "max-md:hidden")}>
+                    <FilterSection className={cn("flex flex-col md:flex-row items-stretch md:items-center gap-2 mt-2 md:mt-0 md:shrink-0", searchQuery && "max-md:hidden")}>
                       <Button 
                         variant="secondary" 
                         size={(filters.status.length > 0 || filters.segments.length > 0 || filters.origin.length > 0) ? "default" : "sm"}
@@ -163,13 +165,12 @@ export default function LeadsPage() {
                       )}
                     </FilterSection>
 
-                    <FilterSection desktopOnly>
+                    <FilterSection desktopOnly className="md:shrink-0">
                       <SearchInput  
                         placeholder="Search leads..."
                         value={searchQuery}
                         onChange={handleSearchChange}
-                        className="w-full h-10 md:h-9 bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"  
-                        containerClassName="w-full md:w-64" 
+                        className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
                       />
                     </FilterSection>
                     <FilterSection mobileOnly>
@@ -182,6 +183,7 @@ export default function LeadsPage() {
                     </FilterSection>
                   </FilterContainer>
                 </MobileFiltersDrawer>
+                </div>
             
 
                 <LeadsToolbar

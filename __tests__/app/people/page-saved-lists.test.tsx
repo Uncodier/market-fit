@@ -1,9 +1,11 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import type { Session } from '@supabase/supabase-js'
 import PeopleSearchPage from '@/app/people/page'
 import { createClient } from '@/lib/supabase/client'
 import { apiClient } from '@/app/services/api-client-service'
 import { deferred } from './test-helpers'
 import { toast } from 'sonner'
+import { savedSnapshot } from './saved-list-fixtures'
 
 let mockSiteId = 'site-a'
 
@@ -31,16 +33,25 @@ const select = jest.fn().mockReturnThis()
 const eq = jest.fn().mockReturnThis()
 const order = jest.fn()
 const from = jest.fn(() => ({ select, eq, order }))
+const authListeners = new Set<(event: string, session: Session | null) => void>()
+const session = { user: { id: 'actor-a' } } as Session
 
 beforeEach(() => {
   mockSiteId = 'site-a'
   jest.clearAllMocks()
   from.mockImplementation(() => ({ select, eq, order }))
   order.mockReset()
+  authListeners.clear()
   ;(createClient as jest.Mock).mockReturnValue({ from, auth: {
-    getSession: jest.fn().mockResolvedValue({ data: { session: { user: { id: 'actor-a' } } }, error: null }),
-    onAuthStateChange: jest.fn(() => ({ data: { subscription: { unsubscribe: jest.fn() } } })),
+    getSession: jest.fn().mockResolvedValue({ data: { session }, error: null }),
+    onAuthStateChange: jest.fn(callback => {
+      authListeners.add(callback)
+      return { data: { subscription: { unsubscribe: () => authListeners.delete(callback) } } }
+    }),
   } })
+  ;(fetch as jest.Mock).mockReset().mockImplementation(async () => ({ ok: true, json: async () => savedSnapshot({
+    id: pendingList.id, siteId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  }) }))
   order.mockResolvedValue({ data: [pendingList], error: null })
   jest.spyOn(console, 'log').mockImplementation(() => {})
   jest.spyOn(console, 'error').mockImplementation(() => {})
@@ -134,29 +145,27 @@ it('does not run an unfiltered search when loading a selected-person list', asyn
   await act(async () => { fireEvent.click(selectedList) })
   expect(apiClient.post).not.toHaveBeenCalled()
   expect(toast.info).not.toHaveBeenCalled()
-  expect(screen.getByRole('heading', { name: 'Selected people list' })).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'Saved list' })).toBeInTheDocument()
 })
 
 it('opens a completed selected-person list without rerunning search or enrichment', async () => {
+  mockSiteId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
   order.mockResolvedValue({ data: [{ ...pendingList, status: 'completed' }], error: null })
   ;(apiClient.get as jest.Mock).mockResolvedValue({ success: true, data: {
     icp_mining: { source: 'selected_people', status: 'completed' }, role_query: null,
   } })
-  const memberQuery = {
-    select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(),
-    order: jest.fn().mockReturnThis(),
-    range: jest.fn().mockResolvedValue({ data: [{ ordinal: 1, person_id: 'p-1',
-      processing_status: 'completed', outcome: 'matched', leads: { id: 'lead-1', name: 'Processed person' } }], count: 1, error: null }),
-    maybeSingle: jest.fn().mockResolvedValue({ data: { name: 'Completed selection', status: 'completed',
-      icp_criteria: { source: 'selected_people' } }, error: null }),
-  }
+  const snapshot = savedSnapshot({ id: pendingList.id, siteId: mockSiteId, name: 'Completed selection', status: 'completed' })
+  snapshot.members[0].result.person.full_name = 'Processed person'
+  ;(fetch as jest.Mock).mockResolvedValue({ ok: true, json: async () => snapshot })
   render(<PeopleSearchPage />)
   fireEvent.mouseDown(screen.getByRole('tab', { name: 'Saved lists' }))
   const savedList = await screen.findByText('List 11111111…')
-  from.mockImplementation(() => memberQuery)
   await act(async () => { fireEvent.click(savedList) })
   expect(await screen.findByText('Processed person')).toBeInTheDocument()
   expect(screen.getByRole('status')).toHaveTextContent('List status: Completed')
+  for (const name of ['Person Name', 'Role Title', 'Company', 'Processing', 'Outcome', 'Lead']) {
+    expect(screen.getByRole('columnheader', { name })).toBeInTheDocument()
+  }
   expect(apiClient.post).not.toHaveBeenCalled()
   expect(toast.info).not.toHaveBeenCalled()
 })
@@ -177,6 +186,7 @@ it('keeps saved company IDs, domains and person location IDs when searching agai
   fireEvent.mouseDown(screen.getByRole('tab', { name: 'Saved lists' }))
   const savedList = await screen.findByText('List 11111111…')
   await act(async () => { fireEvent.click(savedList) })
+  expect(apiClient.post).not.toHaveBeenCalled()
   fireEvent.mouseDown(screen.getByRole('tab', { name: 'Search people' }))
   expect(screen.getByRole('button', { name: 'Remove ID 42' })).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Remove ID 43' })).toBeInTheDocument()
@@ -186,4 +196,72 @@ it('keeps saved company IDs, domains and person location IDs when searching agai
     expect(apiClient.post).toHaveBeenCalledWith(`/api/finder/person_role_search${suffix}`,
       expect.objectContaining({ organizations: [42, 43], organization_domains: ['acme.com'], person_locations: [71, 72] }), { includeAuth: true })
   }
+})
+
+async function openMembershipList(query?: Record<string, unknown>) {
+  mockSiteId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+  ;(apiClient.get as jest.Mock).mockResolvedValue({ success: true, data: query
+    ? { icp_mining: { source: 'person_role_search' }, role_query: { query } }
+    : { icp_mining: { source: 'selected_people' }, role_query: null } })
+  const view = render(<PeopleSearchPage />)
+  fireEvent.mouseDown(screen.getByRole('tab', { name: 'Saved lists' }))
+  fireEvent.click(await screen.findByText('List 11111111…'))
+  const person = await screen.findByText('Alice')
+  return { ...view, person }
+}
+
+it('shows members of a mixed list in one table and only runs its exact saved filters on demand', async () => {
+  const query = { site_id: 'ignored', page: 12, organizations: [42], provider_only_field: 'kept' }
+  const { person } = await openMembershipList(query)
+  expect(screen.getAllByRole('table')).toHaveLength(1)
+  expect(within(person.closest('tr')!).getByText('Matched')).toBeInTheDocument()
+  expect(apiClient.post).not.toHaveBeenCalled()
+  ;(apiClient.post as jest.Mock).mockImplementation(async (endpoint: string) => ({ success: true,
+    data: endpoint.endsWith('/totals') ? { total_persons: 24 } : { search_results: [{ person: { id: '99', full_name: 'Live search result' } }] } }))
+  fireEvent.click(person)
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Run saved search' })) })
+  expect(await screen.findByText('Live search result')).toBeInTheDocument()
+  expect(screen.queryByText('Alice')).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Enrich selected' })).toBeDisabled()
+  expect(screen.queryByRole('columnheader', { name: 'Processing' })).not.toBeInTheDocument()
+  for (const suffix of ['', '/totals']) {
+    expect(apiClient.post).toHaveBeenCalledWith(`/api/finder/person_role_search${suffix}`,
+      { ...query, site_id: mockSiteId, page: 0 }, { includeAuth: true })
+  }
+  fireEvent.change(screen.getByRole('spinbutton', { name: 'Go to page' }), { target: { value: '2' } })
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: /^Go$/ })) })
+  for (const suffix of ['', '/totals']) {
+    expect(apiClient.post).toHaveBeenCalledWith(`/api/finder/person_role_search${suffix}`,
+      { ...query, site_id: mockSiteId, page: 1 }, { includeAuth: true })
+  }
+})
+
+it('drops list selections when starting a different search via the sidebar', async () => {
+  const { person } = await openMembershipList()
+  fireEvent.click(person)
+  expect(screen.getByRole('button', { name: 'Enrich selected (1)' })).toBeEnabled()
+  fireEvent.mouseDown(screen.getByRole('tab', { name: 'Search people' }))
+  ;(apiClient.post as jest.Mock).mockImplementation(async (endpoint: string) => ({ success: true,
+    data: endpoint.endsWith('/totals') ? { total_persons: 1 } : { search_results: [{ person: { id: '99', full_name: 'New person' } }] } }))
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Search' })) })
+  expect(await screen.findByText('New person')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Enrich selected' })).toBeDisabled()
+  expect(apiClient.post).toHaveBeenCalledTimes(2)
+})
+
+it.each(['site', 'session'] as const)('retires a pending confirmation and list rows on %s change', async boundary => {
+  const { person, rerender } = await openMembershipList()
+  fireEvent.click(person)
+  fireEvent.click(screen.getByRole('button', { name: 'Enrich selected (1)' }))
+  expect(screen.getByRole('dialog')).toBeInTheDocument()
+  if (boundary === 'site') {
+    mockSiteId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
+    rerender(<PeopleSearchPage />)
+  } else {
+    await act(async () => { for (const listener of [...authListeners]) listener('SIGNED_OUT', null) })
+  }
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  expect(screen.queryByText('Alice')).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Enrich selected' })).toBeDisabled()
+  expect(apiClient.post).not.toHaveBeenCalled()
 })

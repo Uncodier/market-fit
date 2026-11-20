@@ -9,12 +9,15 @@ describe('breadcrumb-engine', () => {
     path?: string
   ): BreadcrumbEvent => ({ type: 'update', title, parent, path })
 
-  it('keeps a single Conversations crumb when opening a conversation', () => {
+  it('keeps the Conversations list clickable when opening a conversation', () => {
     let state = reduceBreadcrumb([], nav('/chat', 'Chat'))
     expect(state).toEqual([{ path: '/chat', label: 'Chat', timestamp }])
 
     state = reduceBreadcrumb(state, nav('/chat?conversationId=123', 'Chat: Maria'))
-    expect(state).toEqual([{ path: '/chat', label: 'Chat', timestamp }])
+    expect(state).toEqual([
+      { path: '/chat', label: 'Chat', timestamp },
+      { path: '/chat?conversationId=123', label: 'Chat: Maria', timestamp },
+    ])
   })
 
   it('uses the destination section when opening a lead from Chat', () => {
@@ -23,7 +26,7 @@ describe('breadcrumb-engine', () => {
     state = reduceBreadcrumb(state, nav('/leads/456?name=Maria', 'Maria Garcia'))
 
     expect(state).toEqual([
-      { path: '/leads', label: 'Leads', timestamp: timestamp - 1 },
+      { path: '/leads', label: 'Customers', timestamp: timestamp - 1 },
       { path: '/leads/456?name=Maria', label: 'Maria Garcia', timestamp },
     ])
   })
@@ -36,7 +39,7 @@ describe('breadcrumb-engine', () => {
     const state = reduceBreadcrumb(stale, nav('/leads/456', 'Maria Garcia'))
 
     expect(state).toEqual([
-      { path: '/leads', label: 'Leads', timestamp: timestamp - 1 },
+      { path: '/leads', label: 'Customers', timestamp: timestamp - 1 },
       { path: '/leads/456', label: 'Maria Garcia', timestamp },
     ])
   })
@@ -105,7 +108,28 @@ describe('breadcrumb-engine', () => {
       nav('/chat?conversationId=123', 'Chat: Maria')
     )
 
-    expect(state).toEqual([{ path: '/chat', label: 'Conversations', timestamp }])
+    expect(state.map(item => item.label)).toEqual(['Conversations', 'Chat: Maria'])
+  })
+
+  it.each([
+    ['/chat?conversationId=1', '/chat'],
+    ['/robots?instance_id=1&mode=workflow', '/robots?mode=workflow'],
+    ['/control-center/1', '/control-center'],
+  ])('gives direct entry to %s a clickable parent at %s', (detail, parent) => {
+    const state = reduceBreadcrumb([], nav(detail, 'Details'))
+    expect(state.map(item => item.path)).toEqual([parent, detail])
+  })
+
+  it('preserves query parameters on the origin when opening a different detail or enriching its URL', () => {
+    const origin = '/control-center?view=table'
+    let state = reduceBreadcrumb([], nav(origin, 'Tasks'))
+    state = reduceBreadcrumb(state, nav('/control-center/1?title=Review', 'Review'))
+    state = reduceBreadcrumb(state, upd('TASK-1 - Review', { title: 'Tasks', path: '/control-center' }, '/control-center/1'))
+    expect(state.map(item => item.path)).toEqual([origin, '/control-center/1?title=Review'])
+    state = reduceBreadcrumb(state, nav('/chat?conversationId=2', 'Chat'))
+    state = reduceBreadcrumb(state, nav('/chat?conversationId=2&agentId=3', 'Chat'))
+    state = reduceBreadcrumb(state, nav('/chat?conversationId=4', 'Chat'))
+    expect(state.map(item => item.path)).toEqual([origin, '/control-center/1?title=Review', '/chat?conversationId=4'])
   })
 
   it('resets when navigating to a sidebar root', () => {

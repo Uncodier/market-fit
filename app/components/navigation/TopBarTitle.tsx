@@ -2,7 +2,7 @@
 
 import { procurementRouteTitle } from '@/lib/navigation/procurement-route-title'
 import { localeMessages } from '@/app/context/locale-catalog'
-import { enforceInvariants, hasId } from '@/lib/navigation/breadcrumb-engine'
+import { enforceInvariants, getScreenKey, hasId } from '@/lib/navigation/breadcrumb-engine'
 import { workspaceScreenTitle } from '@/lib/navigation/workspace-screen'
 import { usePathname, useSearchParams } from "next/navigation"
 import { Button } from "../ui/button"
@@ -141,9 +141,10 @@ export function TopBarTitle({
   // Convert history items to breadcrumb format
   const fullPath = `${pathname}?${searchParams.toString()}`
   const isScreenRoot = !hasId(fullPath)
-  const isRobotsRoute = pathname === "/robots" || pathname.startsWith("/robots/")
   const normalizedHistory = enforceInvariants(historyItems)
-  const breadcrumbItems = hasHistory && !isScreenRoot ? normalizedHistory.map((item, index, array) => {
+  const currentItem = normalizedHistory[normalizedHistory.length - 1]
+  const breadcrumbItems = hasHistory && !isScreenRoot && currentItem && getScreenKey(currentItem.path) === getScreenKey(fullPath)
+    ? normalizedHistory.map((item, index, array) => {
     const [pathnameOnly, queryString] = item.path.split("?")
     const pathSegments = pathnameOnly.split("/").filter(Boolean)
     
@@ -161,7 +162,7 @@ export function TopBarTitle({
     return {
       href: item.path,
       label: translatedRoot || translatedProcurement || item.label,
-      originalIndex: historyItems.indexOf(item),
+      historyItem: item,
       isCurrent: index === array.length - 1
     }
   }) : null;
@@ -203,13 +204,7 @@ export function TopBarTitle({
           </ol>
         </nav>
       ) : breadcrumbItems ? (
-        <>
-        {isRobotsRoute && (
-          <h1 className="hidden md:block text-2xl font-semibold text-foreground font-inter truncate">
-            {getDefaultTitle()}
-          </h1>
-        )}
-        <nav className={cn("flex items-center min-w-0", isRobotsRoute && "md:hidden")} aria-label="Breadcrumb">
+        <nav className="flex items-center min-w-0" aria-label="Breadcrumb">
           <ol className="flex items-center min-w-0">
               {breadcrumbItems.map((item, index) => {
                 // Calculate dynamic font size
@@ -240,12 +235,8 @@ export function TopBarTitle({
                       </h1>
                     ) : (
                       <button
-                        onClick={() => {
-                          const historyItem = historyItems[item.originalIndex]
-                          if (historyItem) {
-                            navigateTo(historyItem)
-                          }
-                        }}
+                        type="button"
+                        onClick={() => navigateTo(item.historyItem)}
                         className={cn(
                           "font-semibold text-muted-foreground hover:text-foreground transition-all duration-200 cursor-pointer font-inter truncate block min-w-0 text-left",
                           fontSize
@@ -259,7 +250,6 @@ export function TopBarTitle({
               })}
           </ol>
         </nav>
-        </>
       ) : (
         <h1 className="text-2xl font-semibold text-foreground font-inter truncate">{isScreenRoot ? getDefaultTitle() : (customTitle?.path === pathname ? customTitle.title : null) || getDefaultTitle() || title}</h1>
       )}

@@ -1,14 +1,14 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import Link from "next/link"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import { toast } from "sonner"
 import {
   SectionCard,
   SectionCardHeader,
   SectionCardTitle,
-  SectionCardDescription,
   SectionCardContent,
-  SectionCardFooter,
 } from "@/app/components/ui/section-card"
 import { Button } from "../ui/button"
 import { Input } from "../ui/input"
@@ -25,7 +25,8 @@ interface ComposioSectionProps {
   onSave?: (data: SiteFormValues) => void
 }
 
-export function ComposioSection({ active, siteId, onSave }: ComposioSectionProps) {
+export function ComposioSection({ active, siteId }: ComposioSectionProps) {
+  const { t } = useLocalization()
   const [apiKey, setApiKey] = useState("")
   const [isApiKeyStored, setIsApiKeyStored] = useState(false)
   const [isSavingApiKey, setIsSavingApiKey] = useState(false)
@@ -95,14 +96,15 @@ export function ComposioSection({ active, siteId, onSave }: ComposioSectionProps
           Composio Integration
         </SectionCardTitle>
         <p className="text-sm text-muted-foreground mt-1">
-          Bring your own Composio API key to enable powerful external actions for your agents.
+          Connectors can use platform-managed credentials when available. Optionally bring your own Composio API key for this workspace.
         </p>
       </SectionCardHeader>
       <SectionCardContent className="pb-6">
+        <Button asChild variant="outline" size="sm"><Link href="/connectors">{t("connectors.browse")}</Link></Button>
         <div className="space-y-2">
           <Label className="text-sm font-medium text-foreground">Composio API Key (BYOK)</Label>
           <p className="text-xs text-muted-foreground mb-4">
-            Required to allow agents to interact with third-party tools via Composio.
+            Optional workspace provider configuration, not an agent access grant. Provider costs may apply in either mode; platform-managed credentials do not promise free usage.
           </p>
           {isApiKeyStored ? (
             <div className="flex items-center gap-2 mt-2 p-3 bg-muted/20 rounded-md border">

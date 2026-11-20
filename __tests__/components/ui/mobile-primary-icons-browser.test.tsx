@@ -19,7 +19,7 @@ jest.mock("@/app/context/PermissionContext", () => ({
 }))
 
 const fixture = renderToStaticMarkup(<main>
-  <header className="flex h-[64px] items-center justify-between px-4 lg:px-8 w-full max-w-full">
+  <header data-topbar className="flex h-[64px] items-center justify-between px-4 lg:px-8 w-full max-w-full">
     <div className="flex-1 min-w-0 pr-4"><h1 className="truncate">Sales opportunities</h1></div>
     <div data-topbar-actions className="flex items-center gap-2 sm:gap-4">
       <Button aria-label="Create deal" className="!h-9 !w-9 !p-0 !min-w-0 aspect-square">
@@ -29,19 +29,17 @@ const fixture = renderToStaticMarkup(<main>
       <TopBarPrimaryActionsSlot />
     </div>
   </header>
-  <Button aria-label="Save" tint="destructive" disabled>
-    <Plus className="w-4 h-4 mr-2" />
-    <span>Save</span>
-  </Button>
-  <Button asChild size="icon">
-    <a href="#projects" aria-label="Open projects">
-      <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
-        <circle cx="12" cy="12" r="10" />
-      </svg>
-    </a>
-  </Button>
-  <Button variant="secondary" aria-label="Secondary action"><Plus /></Button>
-  <Button>Continue</Button>
+  <section aria-label="Page actions">
+    <Button tint="whatsapp" className="w-full neu-auth-whatsapp-btn">
+      <Plus className="mr-2 h-4 w-4" />
+      <span>Use Makinari on WhatsApp</span>
+    </Button>
+    <Button>Sign In</Button>
+  </section>
+  <div data-page-primary-actions>
+    <Button disabled>Save</Button>
+    <Button variant="secondary" aria-label="Secondary action"><Plus /></Button>
+  </div>
 </main>)
 
 describe.each([
@@ -64,7 +62,7 @@ describe.each([
 
   afterAll(async () => { await browser?.close() })
 
-  it.each([341, 390, 640, 767])("renders 32px icons centered in 48px targets at %ipx", async width => {
+  it.each([341, 390, 640, 767])("renders 28px icons centered in 48px targets at %ipx", async width => {
     const context = await browser.newContext({ viewport: { width, height: 800 }, offline: true })
     try {
       await context.route("**/*", route => route.abort())
@@ -74,7 +72,7 @@ describe.each([
       // Reverse the last two sheets too: the fix must not depend on import order.
       for (const reversed of [false, true]) {
         const styles = await page.addStyleTag({ content: reversed ? mobileCss + safariCss : safariCss + mobileCss })
-        const actions = await page.locator(".btn-primary:has(svg)").evaluateAll(buttons => buttons.map(button => {
+        const actions = await page.locator("[data-topbar] .btn-primary:has(svg)").evaluateAll(buttons => buttons.map(button => {
           const box = button.getBoundingClientRect()
           const svg = button.querySelector("svg")!
           const icon = svg.getBoundingClientRect()
@@ -88,16 +86,13 @@ describe.each([
             stroke: getComputedStyle(svg).strokeWidth,
           }
         }))
-        expect(actions).toHaveLength(3)
+        expect(actions).toHaveLength(1)
         expect(actions.map(({ name, svg }) => ({ name, svg }))).toEqual([
-          { name: "Create deal", svg: [32, 32] },
-          { name: "Save", svg: [32, 32] },
-          { name: "Open projects", svg: [32, 32] },
+          { name: "Create deal", svg: [28, 28] },
         ])
         for (const action of actions) {
           expect(action.button).toEqual([48, 48])
-          expect(action).toMatchObject({ svg: [32, 32] })
-          if (action.wrapper) expect(action.wrapper).toEqual([32, 32])
+          if (action.wrapper) expect(action.wrapper).toEqual([28, 28])
           expect(action.offset[0]).toBeCloseTo(0)
           expect(action.offset[1]).toBeCloseTo(0)
           expect(action.stroke).toBe("1.5px")
@@ -115,15 +110,50 @@ describe.each([
             circles: header.querySelectorAll("svg circle").length,
           }
         })
-        expect(spacing).toEqual({ left: 16, right: 16, vertical: [8, 8], iconPadding: [8, 8, 8, 8], slotDisplay: "none", circles: 0 })
+        expect(spacing).toEqual({ left: 16, right: 16, vertical: [8, 8], iconPadding: [10, 10, 10, 10], slotDisplay: "none", circles: 0 })
         const secondaryWidth = await page.getByRole("button", { name: "Secondary action" }).locator("svg").evaluate(svg => svg.getBoundingClientRect().width)
         expect(secondaryWidth).toBeLessThan(32)
-        await page.getByRole("button", { name: "Continue", exact: true }).waitFor({ state: "visible" })
         await page.getByRole("button", { name: "Create deal" }).waitFor({ state: "visible" })
         await styles.evaluate(style => style.parentNode?.removeChild(style))
       }
     } finally { await context.close() }
   }, 20_000)
+
+  it.each([390, 768])("only strips topbar primary paint on mobile (%ipx)", async width => {
+    const context = await browser.newContext({ viewport: { width, height: 800 }, offline: true })
+    try {
+      const page = await context.newPage()
+      await page.setContent(`<!doctype html><html class="dark ${name === "WebKit" ? "safari" : ""}"><body>${fixture}</body></html>`)
+      await page.addStyleTag({ content: globalCss + safariCss + mobileCss })
+      const paint = (label: string) => page.getByRole("button", { name: label, exact: true }).evaluate(button => {
+        const style = getComputedStyle(button)
+        const glass = button.querySelector(".btn-glass-surface")
+        return {
+          background: style.backgroundColor,
+          shadow: style.boxShadow,
+          glass: glass ? getComputedStyle(glass).display : null,
+        }
+      })
+      const transparent = "rgba(0, 0, 0, 0)"
+      if (width < 768) {
+        await page.getByRole("button", { name: "Create deal" }).hover()
+        expect(await paint("Create deal")).toEqual({ background: transparent, shadow: "none", glass: "none" })
+        expect(await paint("Save")).toEqual({ background: transparent, shadow: "none", glass: "none" })
+      } else {
+        expect((await paint("Create deal")).background).not.toBe(transparent)
+        expect((await paint("Save")).background).not.toBe(transparent)
+      }
+      expect((await paint("Secondary action")).background).not.toBe(transparent)
+      for (const label of ["Sign In", "Use Makinari on WhatsApp"]) {
+        const style = await paint(label)
+        expect(style.background).not.toBe(transparent)
+        expect(style.glass).not.toBe("none")
+      }
+      const whatsapp = page.getByRole("button", { name: "Use Makinari on WhatsApp" })
+      expect((await whatsapp.boundingBox())?.width).toBeGreaterThan(240)
+      expect((await whatsapp.locator("span", { hasText: "Use Makinari on WhatsApp" }).boundingBox())?.width).toBeGreaterThan(100)
+    } finally { await context.close() }
+  })
 
   it("retains desktop icon sizing at the 768px breakpoint", async () => {
     const context = await browser.newContext({ viewport: { width: 768, height: 800 }, offline: true })

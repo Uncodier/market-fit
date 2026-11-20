@@ -22,10 +22,8 @@ test("preserves automatic selection and canonicalizes it for navigation visibili
   expect(router.replace).toHaveBeenCalledWith("/robots?instance=one", { scroll: false })
 })
 
-test("pushes the list and detail screens, with browser back/forward restoring the list", () => {
+test("keeps the active instance mounted when the breadcrumb returns to the list", () => {
   const view = renderHook(useMobileInstanceNavigation, { initialProps: input("instance=one&mode=workflow&screen=files") })
-  act(() => view.result.current.backToInstances())
-  expect(navigateOrAssign).toHaveBeenLastCalledWith(router, "/robots?mode=workflow&view=instances")
   expect(setLocalSelectedInstanceId).toHaveBeenLastCalledWith("one")
   view.rerender(input("mode=workflow&view=instances"))
   expect(view.result.current.showList).toBe(true)

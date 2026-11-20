@@ -40,8 +40,8 @@ describe('Robots page responsibility boundaries', () => {
 
   it('uses a pushed mobile list and moves workspace tabs into the mobile toolbar', () => {
     expect(source('page.tsx')).toContain('<MobileInstanceList')
-    expect(source('page.tsx')).toContain('<MobileInstanceToolbar {...workspace} onBack={backToInstances} />')
-    expect(source('mobile-instance-toolbar.tsx')).toContain('<MobileInstanceBackButton onBack={onBack} />')
+    expect(source('page.tsx')).toContain('<MobileInstanceToolbar {...workspace} />')
+    expect(source('mobile-instance-toolbar.tsx')).not.toContain('onBack')
     expect(source('mobile-instance-toolbar.tsx')).toContain('<ResponsiveTabsList')
     expect(source('instance-header.tsx')).not.toContain('MobileInstanceBackButton')
     expect(source('use-mobile-instance-navigation.ts')).not.toContain('setIsBrowserModalOpen')

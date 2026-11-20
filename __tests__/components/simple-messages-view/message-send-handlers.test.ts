@@ -39,6 +39,14 @@ it('sends without redundant browser identity/log persistence and trusts API pers
   }), { instanceId: 'instance', message: 'hello', requestId: 'current-request' })
 })
 
+it('sends the account as a turn filter, not part of the prompt, message or selected context', async () => {
+  const id = 'abc10000-0000-4000-8000-000000000001'
+  await sendAssistantMessage({ ...params, connectorIdHint: id })
+  const payload = (postWithRetry as jest.Mock).mock.calls[0][1]
+  expect(payload).toMatchObject({ message: 'hello', instance_id: 'instance', connector_id_hint: id })
+  expect(JSON.stringify([payload.system_prompt, payload.context])).not.toContain(id)
+})
+
 it('transports user-selected speech preferences in context and text-preparation instructions', async () => {
   await expect(sendAssistantMessage({
     ...params,

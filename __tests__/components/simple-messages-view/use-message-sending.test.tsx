@@ -25,6 +25,17 @@ function props() {
 beforeEach(() => { jest.clearAllMocks(); jest.useFakeTimers() })
 afterEach(() => { jest.useRealTimers() })
 
+it.each(['busy', 'unavailable', 'robot'])('does not downgrade a linked turn to unscoped or queued work: %s', async mode => {
+  const options = props()
+  if (mode === 'busy') options.logsRef.current = [{ log_type: 'user_action', details: { status: 'running' } }]
+  if (mode === 'robot') options.selectedActivity = 'robot'
+  const hook = renderHook(() => useMessageSending({ ...options, connector: { id: mode === 'unavailable' ? undefined : 'account', notice: 'Unavailable' } }))
+  await act(async () => { await hook.result.current.handleSendMessage() })
+  expect(sendAssistantMessage).not.toHaveBeenCalled()
+  expect(enqueuePendingWork).not.toHaveBeenCalled()
+  expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Connector request not sent' }))
+})
+
 it.each([false, true])('clears sending/thinking on terminal result %s without waiting for realtime', async result => {
   ;(sendAssistantMessage as jest.Mock).mockResolvedValue(result)
   const hook = renderHook(() => useMessageSending(props()))

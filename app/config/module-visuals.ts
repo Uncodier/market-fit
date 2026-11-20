@@ -141,6 +141,7 @@ export const NAV_ITEM_ICON: Record<string, LucideIcon> = {
   channels: Phone,
   activities: Activity,
   skills: Brain,
+  connectors: Plug,
   workflows: Workflow,
   reportPerformance: TrendingUp,
   reportOverview: PieChart,
@@ -326,6 +327,7 @@ export const MODULE_VARIANTS: Record<string, ModuleVariant> = {
   channels: buildVariant(248, 265, 90, 68, 54, "mesh-1", false),
   activities: buildVariant(260, 245, 310, 72, 50, "mesh-2", false),
   skills: buildVariant(280, 265, 160, 75, 56, "mesh-3", false),
+  connectors: buildVariant(195, 180, 150, 75, 56, "mesh-3", false),
   workflows: buildVariant(262, 248, 120, 80, 52, "mesh-4", true, true),
 
   // —— Applications (slate → indigo, lower chroma) ——

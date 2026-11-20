@@ -20,6 +20,7 @@ import esChat from './locales/chat/es.json';
 import frChat from './locales/chat/fr.json';
 import deChat from './locales/chat/de.json';
 import jaChat from './locales/chat/ja.json';
+import enConnectors from './locales/connectors/en.json';
 
 export const chatMessages: Record<SupportedLocale, Record<string, string>> = {
   en: enChat, es: esChat, fr: frChat, de: deChat, ja: jaChat,
@@ -44,6 +45,7 @@ function ownMessages(locale: SupportedLocale, legacy: MessageTree): Record<strin
     ...chatMessages[locale],
     ...selfServiceMessages[locale],
     ...selfServiceHeaderMessages[locale],
+    ...(locale === 'en' ? enConnectors : {}),
   };
 }
 

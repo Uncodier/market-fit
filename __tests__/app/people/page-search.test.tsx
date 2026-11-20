@@ -64,7 +64,7 @@ it('creates a list from selected people, not from the full search', async () => 
   const [endpoint, payload, options] = (apiClient.post as jest.Mock).mock.calls[2]
   expect(endpoint).toBe('/api/finder/lists')
   expect(payload).toEqual({ name: 'My prospects', site_id: 'site-a', person_ids: ['person-1'], request_id: expect.any(String) })
-  expect(options).toEqual({ includeAuth: true })
+  expect(options).toEqual({ includeAuth: true, canSend: expect.any(Function) })
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   expect(toast.success).toHaveBeenCalledWith('List created. Selected people are queued for background enrichment.')
 })
@@ -86,7 +86,7 @@ it('labels selected-person enrichment without claiming to create a list or campa
   await act(async () => { fireEvent.click(screen.getByRole('button', { name: /^Enrich selected$/ })) })
   expect(apiClient.post).toHaveBeenLastCalledWith('/api/workflow/enrichLead', {
     site_id: 'site-a', person_id: 'person-1',
-  })
+  }, { includeAuth: true, canSend: expect.any(Function) })
   expect((apiClient.post as jest.Mock).mock.calls.some(([path]) => path.endsWith('/createQuery'))).toBe(false)
 })
 

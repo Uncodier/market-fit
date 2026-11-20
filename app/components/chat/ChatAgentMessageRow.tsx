@@ -147,7 +147,7 @@ export function ChatAgentMessageRow({
         <ChatMessageContent message={message} />
         <div className="flex items-center justify-between gap-2 mt-2">
           <div className="flex items-center min-w-0">
-            <ChatResponseActions
+            {!actions.readOnly && <ChatResponseActions
               messageId={String(message.id || index)}
               commandId={message.command_id}
               agentId={agentId}
@@ -155,10 +155,10 @@ export function ChatAgentMessageRow({
               conversationId={conversationId}
               userPrompt={responsePrompt}
               response={message.text}
-            />
+            />}
           </div>
           <div className="flex items-center justify-end shrink-0">
-            {message.metadata?.status === "pending" ? (
+            {!actions.readOnly && message.metadata?.status === "pending" ? (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -174,7 +174,7 @@ export function ChatAgentMessageRow({
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-            ) : message.metadata?.status === "accepted" ? (
+            ) : !actions.readOnly && message.metadata?.status === "accepted" ? (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>

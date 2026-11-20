@@ -1,6 +1,7 @@
 # Multiple channels and multiple agents
 
-Date: 2026-11-11  
+Date: 2026-11-11 (legacy route and worker review: 2026-11-19).
+
 Status: Requirements and proposed design; not an implementation or rollout claim.
 
 ## 1. Goal and agreed scope
@@ -90,15 +91,14 @@ Inspected local code provides reusable foundations, not complete support:
   inbound Voice exception. It is not a general agent router.
 - [Support agent lookup](/Users/prado/Desktop/Proyectos/Uncodie/Code/API/src/app/api/agents/customerSupport/message/agent-data.ts)
   finds active `Customer Support` agents within a site and currently prefers the
-  newest created agent. A deterministic product default still needs definition.
+  newest created agent. This is not the canonical support identity required by section 4.
 - [Support message route](/Users/prado/Desktop/Proyectos/Uncodie/Code/API/src/app/api/agents/customerSupport/message/route.ts)
   already searches for Customer Support when `agentId` is absent. When no active
   support agent exists for a known site, it has a response-skipped path; the
   placeholder string used there is not a real fallback agent.
 - [Temporal channel guidance](/Users/prado/Desktop/Proyectos/Uncodie/Code/API/docs/CHANNEL_MESSAGE_TEMPORAL.md)
-  describes durable bounded pre-response guidance. Revalidate its current HTTP
-  behavior against code before implementation; it does not establish generic
-  multi-agent execution or a running production worker.
+  describes bounded pre-response guidance, not generic agent execution. For the
+  current HTTP modes and provider paths, see the [route compatibility review](MULTI_CHANNEL_ROUTE_COMPATIBILITY.md).
 
 ## 4. Assignment storage and mutation contract
 
@@ -254,6 +254,15 @@ Shared UX requirements:
 
 ## 6. Common contact workflow
 
+The following flow is for **channel ingress**, including calls through legacy
+Customer Support URLs. A missing request `agentId` is not an unassigned connection.
+Keep existing URLs and caller payloads: resolve the verified connection on the
+server, honor conversation ownership, and use the canonical fallback only when the
+connection is known and unassigned. An ambiguous connection must not trigger fallback.
+**Direct agent chat** still requires an authorized target; it has no support fallback.
+The [legacy route contracts and worker handoffs](MULTI_CHANNEL_ROUTE_COMPATIBILITY.md)
+are part of this plan, including callers that never pass through the public HTTP route.
+
 ```text
 Receive event
   -> Authenticate provider/session and deduplicate stable event identity
@@ -384,6 +393,11 @@ effect of channel reassignment on open conversations remain implementation decis
 | AC-28 | New connection setup works inside the persisted agent's Channels tab with the same confirmations, assignment and readiness guarantees as Settings |
 | AC-29 | Multiple legacy support agents remain visible; migration records one canonical default and does not merge, delete or select a different default on retry |
 | AC-30 | Deleting an assigned agent cannot turn the connection into an unassigned-fallback path; later messages remain conversation-only |
+| AC-31 | With the same webhook URL and payload format (no `agentId`), a new turn goes to canonical Support after migration. After reassignment, a fresh conversation on that number goes to Sales using its own tools and the same sender; the second number is unchanged. A replay of the first event does not start Sales. |
+| AC-32 | Two candidate connections, a missing connection identity, or a lookup outage never select Support, the first account, or the email branch. Keep a diagnostic for an authenticated event; do not generate or send. |
+| AC-33 | Direct chat uses the persisted internal conversation agent; a missing target, foreign target or external conversation never redirects to Support. The explicit-agent workflow and direct Sales/CMO calls never substitute a channel agent. |
+| AC-34 | Existing web callers keep the default final-reply POST and optional `202` + session-authorized status; service POSTs still receive `202`. A timeout, duplicate POST, or status poll for the same identified turn creates no second reply. A saved-only turn has no fabricated assistant message. |
+| AC-35 | Exercise both HTTP and direct worker/service entrypoints through delivery: carry the same verified connection and effective agent; respect disabled state, snooze and approval. A draft, Voice echo, or uncertain send does not start another responder. |
 
 Use focused Jest tests for routing, permissions, state transitions, UI and retry
 behavior. Add database tests for uniqueness, tenant integrity and concurrent edits.
@@ -402,7 +416,9 @@ delivery, live RLS, Temporal availability or provider-side Voice configuration.
 4. Implement dynamic tool discovery, disabled-by-default enablement and scoped
    owner delegation; add common routing, conversation-only suppression and
    supervisor takeover across all channel adapters and workers.
-5. Validate migration compatibility, legacy channels, concurrency and suppression.
+5. Run AC-31–35 across the API, widget and worker, alongside migration, concurrency
+   and suppression checks. Resolve the [route-specific rollout gates](MULTI_CHANNEL_ROUTE_COMPATIBILITY.md#rollout-gates)
+   before exposing reassignment; keep already admitted turns on their original execution.
 6. Coordinate approved database, API, worker and frontend rollout; monitor routing
    reasons, missing fallback, ambiguous identity and delivery errors.
 

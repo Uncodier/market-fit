@@ -9,6 +9,7 @@ export function ChatMessageActionsBar({
   message: ChatMessage
   actions: MessageRowActions
 }) {
+  if (actions.readOnly) return null
   return (
     <div className="flex justify-center w-full">
       <MessageActions

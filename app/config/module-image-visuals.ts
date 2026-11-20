@@ -65,6 +65,7 @@ export const MODULE_IMAGE_HINTS: Record<string, string> = {
   channels: "classic telephone",
   activities: "AI sparkle",
   skills: "brain",
+  connectors: "modular connector pair",
   workflows: "lightning bolt",
 
   applicationsDatabase: "database",
@@ -270,6 +271,8 @@ const MODULE_IMAGE_CLARIFIERS: Partial<Record<string, string>> = {
     "Create a completely new marketplace variant as one open market stall with a broad scalloped canopy, a simple waist-high counter, and exactly two large produce crates tucked beneath it; use a wide airy silhouette with no enclosed shop facade, doorway, display window, street, vendor, sign, text, base, or extra objects",
   team:
     "Show exactly three oversized circular person avatar icons filling most of the canvas, arranged as a tight group; no full bodies, tiny icons, text, or surrounding container",
+  connectors:
+    "Show two chunky rounded connector halves joining at one visible central seam to form a single compact diagonal silhouette. Use a broad keyed coupling and a slim brushed-metal collar to make the connection unmistakable; no wall outlet, cable, exposed prongs, puzzle pieces, or extra objects",
   integrations:
     "Show one unmistakable electrical power plug with two metal prongs and a short curved cable; no socket, puzzle piece, connector nodes, or extra objects",
   social:

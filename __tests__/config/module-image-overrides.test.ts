@@ -31,13 +31,20 @@ const selectedIcons = [
 const assetPath = "/images/modules/makinari-2026-09-30"
 
 describe("selected Makinari module icons", () => {
-  it("overrides exactly the requested 19 modules", () => {
+  it("preserves the original 19 module overrides alongside the Connectors render", () => {
     expect(Object.keys(MAKINARI_MODULE_IMAGE_OVERRIDES).sort()).toEqual(
-      selectedIcons.map(([key]) => key).sort(),
+      [...selectedIcons.map(([key]) => key), "connectors"].sort(),
     )
     expect(readdirSync(path.join(process.cwd(), "public", assetPath)).sort()).toEqual(
       selectedIcons.map(([, name]) => `${name}.webp`).sort(),
     )
+  })
+
+  it("ships the generated Connectors icon as an optimized shared WebP", async () => {
+    const url = getModuleImageUrl("automation", "connectors", "Connectors")
+    const bytes = readFileSync(path.join(process.cwd(), "public", url))
+    expect(await sharp(bytes).metadata()).toMatchObject({ format: "webp", width: 512, height: 512 })
+    expect(bytes.length).toBeLessThan(100_000)
   })
 
   it.each(selectedIcons)("serves %s as the same static asset in every workspace", (key, name) => {
