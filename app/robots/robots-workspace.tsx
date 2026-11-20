@@ -330,6 +330,8 @@ export function RobotsWorkspace(input: ReturnType<typeof useWorkspaceTabs>) {
                     className="h-full absolute inset-0"
                     activeRobotInstance={activeRobotInstance}
                     connectorHint={robotConnectorHint(input.searchParams)}
+                    createConnectorInstance={input.selectedInstanceId === 'new' && !input.isLoadingRobots && !input.isAutoCreatingInstance
+                      ? async () => (await input.createPlaceholderInstance())?.id : undefined}
                     conversationContext={<RequirementRunnerCard key={`${currentSite?.id}-${activeRobotInstance?.id}`} instance={activeRobotInstance} siteId={currentSite?.id} />}
                     isBrowserVisible={hasBrowserContent}
                     hasTopHeaderSpace={!isMobile || input.searchParams.get('artifact') === 'true'}

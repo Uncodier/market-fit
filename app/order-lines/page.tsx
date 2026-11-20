@@ -250,7 +250,7 @@ export default function OrderLinesPage() {
                     />
                   </FilterSection>
 
-                  <FilterSection title={t("common.status")}>
+                  <FilterSection title={t("common.status")} className="min-w-0">
                     <TabsList className="flex h-auto w-full flex-wrap items-center justify-start gap-2 overflow-y-visible rounded-none bg-transparent p-0 md:h-8 md:max-w-full md:flex-nowrap md:flex-row md:gap-0 md:overflow-x-auto md:rounded-full md:bg-muted/30 md:p-0.5">
                       {statusTabs.map(({ value, label, title, Icon }) => (
                         <TabsTrigger
@@ -299,6 +299,7 @@ export default function OrderLinesPage() {
                     title={t("common.dateRange")}
                   >
                     <DateRangeControl
+                      placement="mobile"
                       dateRange={dateRange}
                       clearLabel={clearDateRangeLabel}
                       onChange={(startDate, endDate) => {
@@ -328,20 +329,19 @@ export default function OrderLinesPage() {
               </MobileFiltersDrawer>
 
               <div className="ml-auto flex shrink-0 items-center gap-3">
-                <div className="hidden md:block">
-                  <DateRangeControl
-                    dateRange={dateRange}
-                    clearLabel={clearDateRangeLabel}
-                    onChange={(startDate, endDate) => {
-                      setDateRange({ startDate, endDate })
-                      setPage(1)
-                    }}
-                    onClear={() => {
-                      setDateRange(null)
-                      setPage(1)
-                    }}
-                  />
-                </div>
+                <DateRangeControl
+                  placement="desktop"
+                  dateRange={dateRange}
+                  clearLabel={clearDateRangeLabel}
+                  onChange={(startDate, endDate) => {
+                    setDateRange({ startDate, endDate })
+                    setPage(1)
+                  }}
+                  onClear={() => {
+                    setDateRange(null)
+                    setPage(1)
+                  }}
+                />
                 <SortDropdown
                   sortBy={sortBy}
                   setSortBy={setSortBy}
@@ -364,20 +364,22 @@ export default function OrderLinesPage() {
 }
 
 function DateRangeControl({
+  placement,
   dateRange,
   clearLabel,
   onChange,
   onClear,
 }: {
+  placement: "mobile" | "desktop"
   dateRange: { startDate: Date; endDate: Date } | null
   clearLabel: string
   onChange: (startDate: Date, endDate: Date) => void
   onClear: () => void
 }) {
   return (
-    <div className="relative w-full">
+    <div className={placement === "mobile" ? "relative w-full" : "relative hidden items-center md:flex"}>
       <CalendarDateRangePicker
-        className="w-full [&_button]:pr-10"
+        className={placement === "mobile" ? "w-full [&_button]:pr-10" : "[&_button]:pr-10"}
         onRangeChange={onChange}
         initialStartDate={dateRange?.startDate}
         initialEndDate={dateRange?.endDate}

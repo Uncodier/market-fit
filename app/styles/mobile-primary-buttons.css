@@ -89,10 +89,14 @@
     stroke-width: 1.5;
   }
 
-  /* The desktop moving blobs become hard-edged patches in Safari without blur. */
-  .btn-primary::before,
-  .btn-primary::after {
-    display: none !important;
+  /* Keep the inner lights soft on mobile Safari, where the desktop fallback removes blur. */
+  html.safari .btn-primary:not(:disabled):not([aria-disabled="true"])::before,
+  html.safari .btn-primary:not(:disabled):not([aria-disabled="true"])::after {
+    filter: blur(12px);
+  }
+
+  html.safari .btn-primary:not(:disabled):not([aria-disabled="true"])::after {
+    display: block;
   }
 
   .btn-primary:not(:disabled):not([aria-disabled="true"]):hover {
@@ -188,6 +192,11 @@
   }
 
   :is([data-topbar], [data-page-primary-actions]) .btn-primary > .btn-glass-surface {
+    display: none !important;
+  }
+
+  :is([data-topbar], [data-page-primary-actions]) .btn-primary::before,
+  :is([data-topbar], [data-page-primary-actions]) .btn-primary::after {
     display: none !important;
   }
 

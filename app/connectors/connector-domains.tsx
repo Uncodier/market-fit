@@ -1,35 +1,72 @@
 "use client"
 
 import { Button } from "@/app/components/ui/button"
-import { PanelLeftOpen } from "@/app/components/ui/icons"
+import { badgeVariants } from "@/app/components/ui/badge"
+import {
+  BarChart, Brain, Briefcase, Calendar, Code, CreditCard, Database, FolderOpen, HelpCircle,
+  LayoutGrid, ListTodo, Megaphone, MessageSquare, PanelLeftOpen, Plug, Receipt, ShieldCheck,
+  Truck, Users, type LucideIcon,
+} from "@/app/components/ui/icons"
 import { Sheet, SheetClose, SheetContent, SheetTitle, SheetTrigger } from "@/app/components/ui/sheet"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { cn } from "@/lib/utils"
 import { ConnectorDomainRowsSkeleton } from "./connector-skeletons"
-import type { Catalog } from "./types"
+import type { z } from "zod"
+import type { Catalog, connectorDomainCountsSchema } from "./types"
 
 type DomainProps = {
   domains: Catalog["domains"]
+  domainCounts?: z.infer<typeof connectorDomainCountsSchema>
   loading: boolean
   selected: string
   onSelect: (domain: string) => void
 }
 
 const subtitleClassName = "px-[10.8px] pb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground"
+const domainIcons = new Map<string, LucideIcon>([
+  ["", LayoutGrid],
+  ["ai", Brain],
+  ["crm", Users],
+  ["marketing", Megaphone],
+  ["communication", MessageSquare],
+  ["productivity", ListTodo],
+  ["calendar", Calendar],
+  ["files", FolderOpen],
+  ["commerce", CreditCard],
+  ["support", HelpCircle],
+  ["developer", Code],
+  ["analytics", BarChart],
+  ["storage", Database],
+  ["hr", Briefcase],
+  ["finance", Receipt],
+  ["security", ShieldCheck],
+  ["procurement", Truck],
+])
 
-function DomainList({ domains, loading, selected, onSelect, inSheet = false }: DomainProps & { inSheet?: boolean }) {
+function DomainList({ domains, domainCounts, loading, selected, onSelect, inSheet = false }: DomainProps & { inSheet?: boolean }) {
   const { t } = useLocalization()
   if (loading) return <ConnectorDomainRowsSkeleton />
   return <ul className="space-y-0.5">
     {[{ id: "", label: t("connectors.allDomains") }, ...domains].map(({ id, label }) => {
       const isSelected = selected === id
+      const count = id ? domainCounts?.counts[id] : domainCounts?.total
+      const Icon = domainIcons.get(id) ?? Plug
       const button = <button type="button"
         className={cn(
-          "flex min-h-11 w-full items-center rounded-md px-[10.8px] py-[7.2px] text-left text-[12.6px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring md:min-h-0",
+          "block min-h-11 w-full rounded-md px-[10.8px] py-[7.2px] text-left text-[12.6px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring md:min-h-8",
           isSelected ? "bg-primary/15 text-primary" : "hover:bg-accent/20",
         )}
         aria-pressed={isSelected} onClick={() => { if (!isSelected) onSelect(id) }}>
-        <span className="min-w-0 truncate">{label}</span>
+        {/* Keep layout inside the button so Safari's global button styles cannot center the row contents. */}
+        <span className="flex w-full min-w-0 items-center gap-2">
+          <span className="flex min-w-0 flex-1 items-center gap-2 text-left">
+            <Icon size={16} className={cn(!isSelected && "text-muted-foreground")} aria-hidden />
+            <span className="truncate">{label}</span>
+          </span>
+          {typeof count === "number" && <span className={cn(badgeVariants({ variant: "secondary" }), "min-w-[2ch] shrink-0 justify-end px-1.5 py-0 text-right text-[11px] tabular-nums", isSelected && "bg-primary/10 text-primary")}>
+            {count}
+          </span>}
+        </span>
       </button>
       return <li key={id}>{inSheet ? <SheetClose asChild>{button}</SheetClose> : button}</li>
     })}

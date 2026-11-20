@@ -1,6 +1,6 @@
 # Multiple channels and multiple agents
 
-Date: 2026-11-11 (legacy route and worker review: 2026-11-19).
+Date: 2026-11-11 (channel execution plan revised 2026-11-20).
 
 Status: Requirements and proposed design; not an implementation or rollout claim.
 
@@ -100,6 +100,17 @@ Inspected local code provides reusable foundations, not complete support:
   describes bounded pre-response guidance, not generic agent execution. For the
   current HTTP modes and provider paths, see the [route compatibility review](MULTI_CHANNEL_ROUTE_COMPATIBILITY.md).
 
+**Implementation decision:** Reuse the `customerSupport/message` implementation,
+not its URL. The target for channel message generation is `POST /api/agent/message`;
+do not build a responder per channel or move channel traffic to direct chat. The
+[context builder](../../API/src/app/api/agents/customerSupport/message/context.ts) mixes
+conversation history and channel guidance with Support policies. The [command builder](../../API/src/app/api/agents/customerSupport/message/generate.ts)
+also sets the Support role and tool list. At this shared boundary, load the
+effective same-site agent's role, instructions and background by ID, combine them
+with the original conversation and channel context, and pass that agent's already
+authorized tools. Keep Support-specific defaults for Support, not for every agent.
+This centralizes reply generation, not provider ingress, delivery or Voice setup.
+
 ## 4. Assignment storage and mutation contract
 
 Use one canonical relationship for both screens. Do not persist independently
@@ -189,6 +200,9 @@ roles, initial agent activation state and capacity policy remain to be specified
 initial tool state is confirmed as disabled for every tool.
 
 ### Dynamic MCP catalog and owner-backed preauthorization
+
+Tools are managed separately. The following are requirements on that existing
+integration, not a second catalog, grant system or editor for channel assignments.
 
 - Discover the full applicable MCP tool catalog dynamically, following the
   Assistant integration pattern rather than maintaining a hardcoded tool list.
@@ -407,20 +421,26 @@ delivery, live RLS, Temporal availability or provider-side Voice configuration.
 
 ## 10. Workstreams and rollout
 
-1. Audit all inbound/delivery consumers, Assistant MCP discovery and authorization,
-   and specify the remaining implementation details in section 11.
+1. Confirm which ingress and delivery paths carry the verified connection and
+   effective agent identity. Keep the provider exceptions in the compatibility review visible.
 2. Define the shared assignment schema, authorization and atomic mutation contract.
 3. Enable independent additional-agent creation, remove role-based identity
    assumptions, and implement Settings selectors, embedded connection setup and
    agent Channels tab with shared state refresh.
-4. Implement dynamic tool discovery, disabled-by-default enablement and scoped
-   owner delegation; add common routing, conversation-only suppression and
-   supervisor takeover across all channel adapters and workers.
+4. Wire the selected agent into the existing channel responder as described in
+   section 3. Test two agents with distinct backgrounds and allowed tools on the
+   same channel type: each command must use only its agent's configuration and
+   its own conversation history. Retain suppression, takeover and delivery checks.
 5. Run AC-31–35 across the API, widget and worker, alongside migration, concurrency
    and suppression checks. Resolve the [route-specific rollout gates](MULTI_CHANNEL_ROUTE_COMPATIBILITY.md#rollout-gates)
    before exposing reassignment; keep already admitted turns on their original execution.
 6. Coordinate approved database, API, worker and frontend rollout; monitor routing
    reasons, missing fallback, ambiguous identity and delivery errors.
+7. Extract the verified executor at `POST /api/agent/message` and switch every
+   channel message-generation caller to that endpoint, including the worker turn
+   behind the chat widget. The widget keeps its public workflow POST and status
+   endpoints. Keep the old message URL only for legacy callers; leaving channel
+   activities pointed at that adapter does not complete the migration.
 
 Do not ship UI assignment as operational before backend consumers honor it.
 Preserve existing settings and unrelated working-tree changes. Do not deploy,
@@ -452,8 +472,8 @@ apply remote migrations, commit or run production builds without explicit approv
   qualify, and the exact idempotent provisioning and unavailable-assignment storage.
 - Specify who can create/manage agents and assignments, the initial agent activation
   state and applicable capacity rules. Tool activation is already defined as off.
-- Specify the owner-consent flow, delegation scope/lifecycle, tool identity/version
-  rules, catalog refresh strategy and operation-specific approval requirements.
+- Verify that the channel command consumes existing tool grants for the effective
+  agent; track any catalog or delegation gaps with the tool-management workstream.
 - Specify supervisor identity and relationship storage, takeover/release/resume
   controls, and whether channel reassignment changes already-open conversations.
 - Audit all provider adapters and define verification for all-channel support,

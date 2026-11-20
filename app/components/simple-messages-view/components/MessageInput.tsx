@@ -17,6 +17,7 @@ import { areMentionsEqual, getMentionQuery } from '@/app/components/context/ment
 import { ContextMentionPicker } from '@/app/components/context/context-mention-picker'
 import { useTypewriterPlaceholder } from '../hooks/useTypewriterPlaceholder'
 import { SkillSelector, type SkillSelection } from './SkillSelector'
+import { ConnectorSelector } from './ConnectorSelector'
 
 const COMPOSER_TEXTAREA_STYLE: React.CSSProperties = {
   lineHeight: '1.5',
@@ -53,6 +54,7 @@ interface MessageInputProps {
   isEmptyState?: boolean
   skillSelection: SkillSelection
   onSkillSelectionChange: (selection: SkillSelection) => void
+  connectorSelector?: Omit<React.ComponentProps<typeof ConnectorSelector>, 'siteId' | 'disabled'> & { scope: string }
 }
 
 const MessageInputComponent: React.FC<MessageInputProps> = ({
@@ -79,6 +81,7 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
   isEmptyState = false,
   skillSelection,
   onSkillSelectionChange,
+  connectorSelector,
 }) => {
   const [mentionState, setMentionState] = useState<{ query: string, start: number, end: number } | null>(null)
   const [hasInput, setHasInput] = useState(() => message.trim().length > 0)
@@ -311,6 +314,8 @@ const MessageInputComponent: React.FC<MessageInputProps> = ({
                 {selectedActivity !== 'robot' && (
                   <SkillSelector siteId={currentSite?.id} value={skillSelection} onChange={onSkillSelectionChange} disabled={disabled} />
                 )}
+                {connectorSelector && <ConnectorSelector key={connectorSelector.scope} {...connectorSelector}
+                  siteId={currentSite?.id} disabled={disabled} />}
                 
                 <MediaParametersToolbar
                   selectedActivity={selectedActivity}

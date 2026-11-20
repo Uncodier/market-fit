@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { robotConnectorHint } from '@/lib/navigation/robot-connector-hint'
 import { useConversationConnector } from '@/app/robots/use-conversation-connector'
+import { useConnectorSelection } from '@/app/robots/use-connector-selection'
 import { connectorRequest } from '@/app/connectors/connector-request'
 import { useExternalMessageEvents } from '@/app/components/simple-messages-view/use-external-message-events'
 import { mobileInstanceDetailHref, mobileInstanceListHref } from '@/app/robots/mobile-instance-navigation'
@@ -52,4 +53,33 @@ it('never submits a connector conversation through the automatic URL event (incl
     act(() => jest.runAllTimers())
     expect(draft).not.toHaveBeenCalled(); expect(submit).not.toHaveBeenCalled()
   } finally { jest.useRealTimers() }
+})
+
+it('verifies a manual selection, clears it on instance change, and preserves the deep-link mode', async () => {
+  request.mockResolvedValue(account)
+  const hook = renderHook(({ instance, hint }) => useConnectorSelection(hint, 'site', 'actor', { id: instance, site_id: 'site' }),
+    { initialProps: { instance: 'one', hint: undefined as string | null | undefined } })
+  act(() => hook.result.current.selectConnector(id))
+  expect(hook.result.current.manualOnly).toBe(true)
+  expect(hook.result.current.connector?.id).toBeUndefined()
+  await waitFor(() => expect(hook.result.current.connector?.id).toBe(id))
+  hook.rerender({ instance: 'two', hint: undefined })
+  expect(hook.result.current.connector).toBeUndefined()
+  hook.rerender({ instance: 'two', hint: null })
+  expect(hook.result.current.connector?.notice).toContain('unavailable')
+  act(() => hook.result.current.selectConnector())
+  expect(hook.result.current.connector).toBeUndefined()
+  expect(hook.result.current.manualOnly).toBe(true)
+  hook.rerender({ instance: 'two', hint: id })
+  await waitFor(() => expect(hook.result.current.connector?.id).toBe(id))
+})
+
+it('permits and verifies account selection before a new conversation exists', async () => {
+  request.mockResolvedValue(account)
+  const hook = renderHook(() => useConnectorSelection(undefined, 'site', 'actor'))
+  expect(hook.result.current.canSelect).toBe(true)
+  act(() => hook.result.current.selectConnector(id))
+  expect(hook.result.current.connector?.id).toBeUndefined()
+  await waitFor(() => expect(hook.result.current.connector).toMatchObject({ id, toolkit: 'supabase' }))
+  expect(hook.result.current.manualOnly).toBe(true)
 })

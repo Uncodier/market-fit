@@ -7,6 +7,7 @@ export function createMessagesViewModel(): MessagesViewModel {
   return {
     className: '', activeRobotInstance: undefined, isBrowserVisible: false, hasTopHeaderSpace: true,
     skillSelection: { skill_mode: 'auto', skill_slugs: [] }, connector: undefined, setSkillSelection: jest.fn(),
+    connectorSelection: { connector: undefined, scope: 'test', selectedId: undefined, selectConnector: jest.fn(), canSelect: false, manualOnly: false },
     isDarkMode: false, message: '', setMessage: jest.fn(), handleMessageChange: jest.fn(),
     textareaRef: createRef<HTMLTextAreaElement>(), userProfile: null,
     selectedContext: { leads: [], contents: [], requirements: [], tasks: [], campaigns: [], quotations: [], deals: [], records: [] },

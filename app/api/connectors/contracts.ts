@@ -14,6 +14,7 @@ export function connectorRoute(path: string[], method: string) {
   if (!path.length || path.length > 3 || path.some(value => !/^[a-zA-Z0-9_-]+$/.test(value))) return null
   if (method === "GET") {
     if (path.length === 1 && path[0] === "approvals") return "approval-inbox"
+    if (path.length === 1 && path[0] === "domain-counts") return "domain-counts"
     if (path.length === 1 && ["catalog", "connections"].includes(path[0])) return "read"
     if (path[0] === "connections" && path.length === 2 && uuid.safeParse(path[1]).success) return "connection-summary"
     if (path[0] === "catalog" && path.length === 2 && slug.test(path[1])) return "read"
@@ -58,11 +59,14 @@ export function parseConnectorBody(kind: string, input: unknown) {
   throw new Error("Unsupported connector operation")
 }
 
-export function parseConnectorQuery(query: URLSearchParams) {
+export function parseConnectorQuery(query: URLSearchParams, kind?: string) {
   if ([...new Set(query.keys())].some(key => query.getAll(key).length !== 1)) throw new Error("Duplicate query")
-  return z.object({
-    site_id: uuid, q: z.string().max(200).optional(), category: z.string().max(100).optional(),
-    tab: z.enum(["all", "connected"]).optional(), cursor: z.string().max(2048).optional(),
+  const scope = site.extend({ q: z.string().max(200).optional(), tab: z.enum(["all", "connected"]).optional() })
+  const schema = kind === "domain-counts" ? scope.extend({
+    q: z.string().trim().max(200).regex(/^[^\u0000-\u001f\u007f]*$/).optional(),
+  }) : scope.extend({
+    category: z.string().max(100).optional(), cursor: z.string().max(2048).optional(),
     page: z.string().regex(/^[1-9][0-9]{0,5}$/).refine(value => Number(value) <= 100_000).optional(),
-  }).strict().parse(Object.fromEntries(query))
+  })
+  return schema.parse(Object.fromEntries(query))
 }

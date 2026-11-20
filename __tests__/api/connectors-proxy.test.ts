@@ -50,6 +50,25 @@ it("validates route, site and unknown fields before any remote access", async ()
   expect(fetchMock).not.toHaveBeenCalled()
 })
 
+it("validates and forwards only workspace-scoped domain counts", async () => {
+  const path = ["domain-counts"]
+  const get = (extra = "") => proxyConnector(request(`domain-counts?site_id=${siteId}&tab=connected${extra}`), path)
+  expect((await get("&category=support")).status).toBe(400)
+  rpc.mockResolvedValueOnce({ data: [{ can_view: false, can_manage: false }], error: null })
+  expect((await get()).status).toBe(403)
+  expect(fetchMock).not.toHaveBeenCalled()
+  rpc.mockResolvedValueOnce({ data: [{ can_view: true, can_manage: false }], error: null })
+  const counts = { total: 3, counts: { support: 2, storage: 0 } }
+  fetchMock.mockResolvedValueOnce(Response.json({ ...counts, provider_metadata: credential }))
+  const response = await get("&q=mail")
+  expect(await response.json()).toEqual(counts)
+  expect(response.headers.get("cache-control")).toBe("private, no-store")
+  expect(fetchMock.mock.calls[0][0].pathname).toBe("/api/connectors/domain-counts")
+  expect(fetchMock.mock.calls[0][0].searchParams.get("q")).toBe("mail")
+  fetchMock.mockResolvedValueOnce(Response.json({ total: 3, counts: { support: -1 } }))
+  expect((await get()).status).toBe(502)
+})
+
 it('reads only the requested account summary, removes private fields and rejects a substituted ID', async () => {
   const path = ['connections', attemptId]
   const get = (extra = '') => proxyConnector(request(`${path.join('/')}?site_id=${siteId}${extra}`), path)

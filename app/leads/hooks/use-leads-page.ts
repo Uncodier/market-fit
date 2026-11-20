@@ -20,6 +20,7 @@ import { useLeadsBulkActions } from "./use-leads-bulk-actions"
 export function useLeadsPage() {
   const searchParams = useSearchParams()
   const urlSort = searchParams ? searchParams.get('sort') : null
+  const segmentId = searchParams?.get('segment_id') ?? undefined
   const defaultSort = getDefaultLeadSort(urlSort)
   const router = useRouter()
   const [currentPage, setCurrentPage] = useState(1)
@@ -38,11 +39,11 @@ export function useLeadsPage() {
   const [sortBy, setSortBy] = useState<LeadSortOption>(defaultSort)
   const [expandedCompanies, setExpandedCompanies] = useState<Record<string, boolean>>({})
 
-  const data = useLeadsData(currentSite)
+  const data = useLeadsData(currentSite, segmentId)
   const { dbLeads, loading, mutateLeads, searchQuery, setSearchQuery } = data
   const journey = useLeadJourneyStages(dbLeads, currentSite)
   const { leadJourneyStages } = journey
-  const kanban = useLeadsKanban(currentSite, viewType, loading, mutateLeads)
+  const kanban = useLeadsKanban(currentSite, viewType, loading, mutateLeads, segmentId)
   const operations = useLeadOperations(currentSite, dbLeads, mutateLeads)
   const bulk = useLeadsBulkActions(currentSite, user, dbLeads, mutateLeads)
 
@@ -68,7 +69,7 @@ export function useLeadsPage() {
 
   useEffect(() => {
     setCurrentPage(1)
-  }, [activeTab])
+  }, [activeTab, segmentId])
 
   function handleItemsPerPageChange(value: string) {
     setItemsPerPage(Number(value))
@@ -117,6 +118,7 @@ export function useLeadsPage() {
 
   return {
     ...data, ...journey, ...kanban, ...operations, ...bulk,
+    segmentName: data.segments.find(segment => segment.id === segmentId)?.name,
     currentPage, itemsPerPage, activeTab, setActiveTab, viewType, setViewType,
     isFilterModalOpen, setIsFilterModalOpen, filters, sortBy,
     handleSortChange: (value: string) => setSortBy(value as LeadSortOption),

@@ -5,11 +5,13 @@ import type { KeyedMutator } from "swr"
 import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
 import { normalizeOrigin } from "../list-helpers"
+import { isLeadSegmentId } from "../segment-scope"
 import type { Lead } from "../types"
 import type { ViewType } from "@/app/components/view-selector"
 import type { LeadsData } from "./use-leads-data"
 
-export function useLeadsKanban(currentSite: { id: string } | null, viewType: ViewType, loading: boolean, mutateLeads: KeyedMutator<LeadsData>) {
+export function useLeadsKanban(currentSite: { id: string } | null, viewType: ViewType, loading: boolean, mutateLeads: KeyedMutator<LeadsData>, segmentId?: string) {
+  const siteId = currentSite?.id
   // Kanban pagination state for leads
   const [kanbanPagination, setKanbanPagination] = useState<Record<string, { page: number; hasMore: boolean; isLoading: boolean }>>({
     new: { page: 1, hasMore: true, isLoading: false },
@@ -34,7 +36,7 @@ export function useLeadsKanban(currentSite: { id: string } | null, viewType: Vie
 
   // Function to load total counts for kanban view
   const loadTotalCounts = React.useCallback(async () => {
-    if (!currentSite?.id) return
+    if (!siteId || (segmentId !== undefined && !isLeadSegmentId(segmentId))) return
 
     try {
       const supabase = createClient()
@@ -43,11 +45,12 @@ export function useLeadsKanban(currentSite: { id: string } | null, viewType: Vie
 
       // Fetch count for each status
       for (const status of statuses) {
-        const { count, error } = await supabase
+        const query = supabase
           .from('leads')
           .select('*', { count: 'exact', head: true })
-          .eq('site_id', currentSite.id)
+          .eq('site_id', siteId)
           .eq('status', status)
+        const { count, error } = await (segmentId === undefined ? query : query.eq('segment_id', segmentId))
 
         if (error) {
           console.error(`Error fetching count for ${status}:`, error)
@@ -72,14 +75,14 @@ export function useLeadsKanban(currentSite: { id: string } | null, viewType: Vie
     } catch (error) {
       console.error("Error loading total counts:", error)
     }
-  }, [currentSite?.id])
+  }, [siteId, segmentId])
 
   // Handle load more for kanban columns
   const handleLoadMoreKanban = async (status: string) => {
     const currentPagination = kanbanPagination[status]
     if (currentPagination.isLoading || !currentPagination.hasMore) return
 
-    if (!currentSite) return
+    if (!currentSite || (segmentId !== undefined && !isLeadSegmentId(segmentId))) return
 
     // Set loading state
     setKanbanPagination(prev => ({
@@ -93,7 +96,7 @@ export function useLeadsKanban(currentSite: { id: string } | null, viewType: Vie
       const offset = currentPagination.page * itemsPerPage
 
       // Fetch more leads for this specific status
-      const { data: moreLeads, error } = await supabase
+      const query = supabase
         .from('leads')
         .select(`
           id,
@@ -124,6 +127,9 @@ export function useLeadsKanban(currentSite: { id: string } | null, viewType: Vie
         `)
         .eq('site_id', currentSite.id)
         .eq('status', status)
+      if (segmentId !== undefined) query.eq('segment_id', segmentId)
+
+      const { data: moreLeads, error } = await query
         .order('created_at', { ascending: false })
         .range(offset, offset + itemsPerPage - 1)
 

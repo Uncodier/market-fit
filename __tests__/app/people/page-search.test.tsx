@@ -32,6 +32,19 @@ afterEach(() => {
   jest.restoreAllMocks()
 })
 
+it('places the Clear and Search actions in equal-width columns', () => {
+  render(<PeopleSearchPage />)
+  const clear = screen.getByRole('button', { name: 'Clear' })
+  const search = screen.getByRole('button', { name: 'Search' })
+  const searchWell = search.closest('.btn-primary-well')
+
+  expect(clear.parentElement).toHaveClass('grid', 'grid-cols-2')
+  expect(searchWell?.parentElement).toBe(clear.parentElement)
+  expect(clear).toHaveClass('w-full')
+  expect(searchWell).toHaveClass('w-full')
+  expect(search).toHaveClass('w-full')
+})
+
 it('keeps descriptive Finder toolbar actions text-only when idle', () => {
   render(<PeopleSearchPage />)
   const enrich = screen.getByRole('button', { name: /^Create list$/ })

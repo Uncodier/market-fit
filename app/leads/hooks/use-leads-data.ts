@@ -8,6 +8,7 @@ import { getCampaigns } from "@/app/campaigns/actions/campaigns/read"
 import { createClient } from "@/lib/supabase/client"
 import { useUserData } from "@/app/hooks/use-user-data"
 import { normalizeOrigin } from "../list-helpers"
+import { isLeadSegmentId } from "../segment-scope"
 import type { Lead, Segment } from "../types"
 
 const EMPTY_LEADS: Lead[] = []
@@ -19,7 +20,7 @@ export interface LeadsData {
   isSearch: boolean
 }
 
-export function useLeadsData(currentSite: { id: string } | null) {
+export function useLeadsData(currentSite: { id: string } | null, segmentId?: string) {
   // Debounced search query for SWR
   const [searchQuery, setSearchQuery] = useState("")
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("")
@@ -36,10 +37,14 @@ export function useLeadsData(currentSite: { id: string } | null) {
     isLoading: isLeadsLoading, 
     mutate: mutateLeads 
   } = useSWR<LeadsData>(
-    currentSite?.id ? ['leads', currentSite.id, debouncedSearchQuery] : null,
-    async ([, siteId, q]: [string, string, string]) => {
+    currentSite?.id ? ['leads', currentSite.id, debouncedSearchQuery, ...(segmentId === undefined ? [] : [segmentId])] : null,
+    async ([, siteId, q, segment]: [string, string, string, string?]) => {
+      if (segment !== undefined && !isLeadSegmentId(segment)) {
+        return { leads: [], totalCount: 0, isSearch: Boolean(q) }
+      }
+      const segmentArgs: [string?] = segment === undefined ? [] : [segment]
       if (q) {
-        const result = await searchLeadsWithCount(siteId, q, 200, 0)
+        const result = await searchLeadsWithCount(siteId, q, 200, 0, ...segmentArgs)
         if (result.error) throw new Error(result.error)
         return {
           leads: result.leads?.map(lead => ({
@@ -51,14 +56,15 @@ export function useLeadsData(currentSite: { id: string } | null) {
           isSearch: true
         }
       } else {
-        const result = await getLeads(siteId)
+        const result = await getLeads(siteId, ...segmentArgs)
         if (result.error) throw new Error(result.error)
         
         const supabase = createClient()
-        const { count } = await supabase
+        const countQuery = supabase
           .from('leads')
           .select('*', { count: 'exact', head: true })
           .eq('site_id', siteId)
+        const { count } = await (segment === undefined ? countQuery : countQuery.eq('segment_id', segment))
           
         return {
           leads: result.leads?.map(lead => ({

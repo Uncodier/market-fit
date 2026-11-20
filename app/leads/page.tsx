@@ -32,7 +32,7 @@ const LeadsContext = React.createContext<LeadsContextType>({
 export default function LeadsPage() {
   const { t } = useLocalization()
   const {
-    segments, loading, searchTotalCount, allLeadsTotalCount, searchQuery, userData,
+    segments, segmentName, loading, searchTotalCount, allLeadsTotalCount, searchQuery, userData,
     currentPage, itemsPerPage, activeTab, setActiveTab, viewType, setViewType,
     isFilterModalOpen, setIsFilterModalOpen, filters, sortBy, handleSortChange,
     forceReload, leadJourneyStages, isLoadingJourneyStages, reloadingLeads,
@@ -71,6 +71,7 @@ export default function LeadsPage() {
       
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col w-full h-full min-h-0">
         <StickyHeader>
+          {segmentName && <Badge variant="secondary" className="mb-2">{segmentName}</Badge>}
           <div className="w-full pt-0">
             {selectedLeads.size > 0 ? (
               <LeadsBulkActions

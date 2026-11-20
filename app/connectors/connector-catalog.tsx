@@ -18,7 +18,7 @@ import { ConnectorDomainsSheet, ConnectorDomainsSidebar } from "./connector-doma
 import { ConnectorEmpty, ConnectorError, ConnectorSiteScope } from "./connector-feedback"
 import { ConnectorCatalogueSkeleton, connectorCatalogueBodyClassName, connectorGridClassName } from "./connector-skeletons"
 import { useConnectorResource } from "./use-connector-resource"
-import { catalogSchema } from "./types"
+import { catalogSchema, connectorDomainCountsSchema } from "./types"
 import { catalogFilters, catalogQuery } from "./catalog-state"
 
 export default function ConnectorCatalog() {
@@ -54,7 +54,11 @@ export function CatalogContent({ siteId }: { siteId: string }) {
   const metadata = data ?? previousData
   const domainLabels = Object.fromEntries((metadata?.domains || []).map(domain => [domain.id, domain.label]))
   const showDomains = !error && metadata?.configured !== false
-  const domainProps = { domains: metadata?.domains ?? [], loading: !metadata, selected: filters.category, onSelect: selectDomain }
+  const countsQuery = new URLSearchParams({ site_id: siteId, tab: filters.tab })
+  if (filters.q) countsQuery.set("q", filters.q)
+  const { data: domainCounts } = useConnectorResource(showDomains && metadata?.configured
+    ? `/api/connectors/domain-counts?${countsQuery}` : null, connectorDomainCountsSchema)
+  const domainProps = { domains: metadata?.domains ?? [], domainCounts, loading: !metadata, selected: filters.category, onSelect: selectDomain }
 
   return <div className="flex min-w-0 flex-1">
     {showDomains && !isMobile && !sidebarCollapsed && <ConnectorDomainsSidebar {...domainProps} />}

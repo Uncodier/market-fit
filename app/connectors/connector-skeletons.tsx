@@ -28,8 +28,10 @@ function ToolbarSkeleton({ catalogue = false }: { catalogue?: boolean }) {
 export function ConnectorDomainRowsSkeleton() {
   return <div aria-hidden="true" className="space-y-0.5">
     {["w-24", "w-20", "w-28", "w-16", "w-24", "w-20"].map((width, index) =>
-      <div key={index} className="flex min-h-11 items-center px-[10.8px] py-[7.2px] md:min-h-8">
+      <div key={index} className="grid min-h-11 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 px-[10.8px] py-[7.2px] md:min-h-8">
+        <Skeleton className="h-4 w-4" />
         <Skeleton className={`h-3 ${width}`} />
+        <Skeleton className="h-3 w-6 rounded-full" />
       </div>)}
   </div>
 }

@@ -46,6 +46,7 @@ const mockFrom = jest.fn(() => {
 jest.mock("@/lib/supabase/client", () => ({ createClient: () => ({ from: mockFrom }) }))
 
 const site = { id: "site-one" }
+const segmentId = "10000000-0000-4000-8000-000000000001"
 const first = { id: "one", name: "One", status: "new", origin: "lead_generation_workflow", personal_email: "" } as Lead
 const primary = () => mockSWRCalls.filter(call => call.key?.[0] === "leads").at(-1)!
 
@@ -102,6 +103,30 @@ describe("extracted lead data", () => {
     expect(await campaigns.fetcher(campaigns.key!)).toEqual([])
     expect(getSegments).toHaveBeenCalledWith(site.id)
     expect(getCampaigns).toHaveBeenCalledWith(site.id)
+  })
+
+  it("scopes the artifact list, count and search to the URL segment", async () => {
+    jest.useFakeTimers()
+    const lead = { ...first, segment_id: segmentId, site_id: site.id, user_id: "user" }
+    jest.mocked(getLeads).mockResolvedValue({ leads: [lead] })
+    jest.mocked(searchLeadsWithCount).mockResolvedValue({ leads: [lead], totalCount: 1 })
+    mockQueryResponse.count = 1
+    const { result, rerender } = renderHook(({ segment }) => useLeadsData(site, segment), { initialProps: { segment: segmentId } })
+    expect(primary().key).toEqual(["leads", site.id, "", segmentId])
+    expect(await primary().fetcher(primary().key!)).toMatchObject({ leads: [expect.objectContaining({ segment_id: segmentId })], totalCount: 1 })
+    expect(getLeads).toHaveBeenCalledWith(site.id, segmentId)
+    expect(mockEq).toHaveBeenCalledWith("site_id", site.id)
+    expect(mockEq).toHaveBeenCalledWith("segment_id", segmentId)
+
+    act(() => result.current.setSearchQuery("query"))
+    act(() => jest.advanceTimersByTime(350))
+    expect(await primary().fetcher(primary().key!)).toMatchObject({ totalCount: 1, isSearch: true })
+    expect(searchLeadsWithCount).toHaveBeenCalledWith(site.id, "query", 200, 0, segmentId)
+
+    rerender({ segment: "" })
+    expect(await primary().fetcher(primary().key!)).toEqual({ leads: [], totalCount: 0, isSearch: true })
+    expect(searchLeadsWithCount).toHaveBeenCalledTimes(1)
+    expect(getLeads).toHaveBeenCalledTimes(1)
   })
 })
 
@@ -160,5 +185,16 @@ describe("extracted kanban pagination", () => {
   it("does not load total counts for table view", () => {
     renderHook(() => useLeadsKanban(site, "table", false, jest.fn() as KeyedMutator<LeadsData>))
     expect(mockFrom).not.toHaveBeenCalled()
+  })
+
+  it("uses the artifact segment for kanban counts and subsequent pages", async () => {
+    const mutate = jest.fn() as KeyedMutator<LeadsData>
+    const { result } = renderHook(() => useLeadsKanban(site, "kanban", false, mutate, segmentId))
+    await waitFor(() => expect(result.current.totalCounts.new).toBe(151))
+    expect(mockEq.mock.calls.filter(([key, value]) => key === "segment_id" && value === segmentId)).toHaveLength(7)
+    mockEq.mockClear()
+    await act(() => result.current.handleLoadMoreKanban("new"))
+    expect(mockEq.mock.calls).toEqual([["site_id", site.id], ["status", "new"], ["segment_id", segmentId]])
+    expect(mockRange).toHaveBeenCalledWith(50, 99)
   })
 })

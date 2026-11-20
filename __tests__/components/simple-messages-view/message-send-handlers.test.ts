@@ -47,6 +47,12 @@ it('sends the account as a turn filter, not part of the prompt, message or selec
   expect(JSON.stringify([payload.system_prompt, payload.context])).not.toContain(id)
 })
 
+it('never falls back to an unscoped request when a connector has no destination', async () => {
+  await expect(sendAssistantMessage({ ...params, activeRobotInstance: undefined,
+    connectorIdHint: 'abc10000-0000-4000-8000-000000000001' })).resolves.toBe(false)
+  expect(postWithRetry).not.toHaveBeenCalled()
+})
+
 it('transports user-selected speech preferences in context and text-preparation instructions', async () => {
   await expect(sendAssistantMessage({
     ...params,

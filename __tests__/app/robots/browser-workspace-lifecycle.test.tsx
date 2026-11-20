@@ -166,25 +166,33 @@ describe('Robots browser workspace render lifecycle', () => {
     expect(view.result.current.activeBrowserTab).toEqual({ kind: 'preview' })
   })
 
-  it('selects a first artifact arriving after known absence and reloads only once per read snapshot', () => {
+  it('selects a newly published artifact without remounting it on visibility refetches', () => {
     previewKnown = true
     const view = renderHook(useBrowserWorkspace, { initialProps: input() })
-    artifacts = [{ ...artifact('orders'), should_reload: true }]
+    artifacts = [{ ...artifact('leads'), url: '/leads?segment_id=fixture&artifact=true', should_reload: true }]
     view.rerender(input())
-    expect(view.result.current.activeBrowserTab).toEqual({ kind: 'artifact', screen: 'orders' })
-    expect(view.result.current.mobileWorkspaceTab).toBe('artifact-orders')
+    expect(view.result.current.activeBrowserTab).toEqual({ kind: 'artifact', screen: 'leads' })
+    expect(view.result.current.mobileWorkspaceTab).toBe('artifact-leads')
     expect(view.result.current.artifactReloadCounter).toBe(1)
+    for (let read = 0; read < 3; read++) {
+      artifactsLoading = true
+      view.rerender(input())
+      artifacts = artifacts.map(row => ({ ...row }))
+      artifactsLoading = false
+      view.rerender(input())
+      expect(view.result.current.artifactReloadCounter).toBe(1)
+    }
+    // A new publication for the same screen and URL can still request a reload.
+    artifactsLoading = true
+    artifacts = [{ ...artifacts[0], id: 'second', created_at: new Date(2000).toISOString() }]
     view.rerender(input())
+    artifactsLoading = false
+    view.rerender(input())
+    expect(view.result.current.artifactReloadCounter).toBe(2)
     act(() => {
       view.result.current.setWorkspaceLayout('chat')
       view.result.current.setMobileWorkspaceTab('agent')
     })
-    expect(view.result.current.artifactReloadCounter).toBe(1)
-    // A visibility refetch returns a fresh read snapshot; should_reload retains
-    // its deliberate same-timestamp reload behavior without a render loop.
-    artifacts = artifacts.map(row => ({ ...row }))
-    view.rerender(input())
-    expect(view.result.current.artifactReloadCounter).toBe(2)
     view.rerender(input())
     expect(view.result.current.artifactReloadCounter).toBe(2)
   })

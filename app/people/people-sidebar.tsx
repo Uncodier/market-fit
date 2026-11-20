@@ -143,17 +143,17 @@ export function PeopleSidebar({ workspace }: { workspace: PeopleWorkspace }) {
             )}
             style={{ paddingLeft: '16px', paddingRight: '16px' }}
           >
-            <div className="h-full w-full flex items-center gap-2">
+            <div className="grid h-full w-full grid-cols-2 items-center gap-2">
               <Button
                 variant="outline"
-                className="flex-1 h-10"
+                className="h-10 w-full"
                 onClick={()=>{ setQuery(""); setIndustries([]); setPersonIndustriesExclude([]); setLocations([]); setEmployeeFrom(""); setEmployeeTo(""); setRevenueFrom(""); setRevenueTo(""); setPersonNameChips([]); setPersonNameInput(""); setPersonHeadlineChips([]); setPersonHeadlineInput(""); setJobTitleChips([]); setJobTitleInput(""); setSkills([]); setCompanies([]); setKeywords([]); setTechnologies([]); setJobPostingTitleChips([]); setJobPostingTitleInput(""); setJobPostingDescriptionChips([]); setJobPostingDescriptionInput(""); setJobFeaturedDateFrom(undefined); setJobFeaturedDateTo(undefined); setIncludeRemote(false); setIsJobActive(false); setJobLocations([]); setJobLocationsExclude([]); setFundingDateRange({}); setFundingType(""); setFundingRange([0, 0]); setFundingRangeTouched(false); setPersonLinkedinIds([]); setPersonLinkedinIdsInputText(""); setOrgDomains([]); setOrgDomainsInputText(""); setOrgBulkDomain(""); setOrgDescription(""); setOrgLocations([]); setOrgIndustries([]); setOrgIndustriesExclude([]); setOrgLinkedinIds([]); setOrgLinkedinIdsInputText(""); setOrgFoundedRange({}); setSimpleEventSource(null); setSimpleEventReason(null); setSimpleEventDateRange({}); setRequireDeal(false); setRequireSiteVisit(false); setRoleDateSince(undefined); setRoleDateUntil(undefined); setRoleYearsOnPositionStart(""); setRoleYearsOnPositionEnd(""); }}
               >
                 {t('people.search.clear') || 'Clear'}
               </Button>
-            <Button className="flex-1 h-10 gap-2 !min-w-0" onClick={onClickSearch} disabled={loading}>
+              <Button className="h-10 w-full gap-2 !min-w-0" onClick={onClickSearch} disabled={loading}>
                 <Search className="h-4 w-4" />
-              {loading ? (t('people.search.searching') || 'Searching…') : (t('people.search.btnShort') || 'Search')}
+                {loading ? (t('people.search.searching') || 'Searching…') : (t('people.search.btnShort') || 'Search')}
               </Button>
             </div>
           </div>

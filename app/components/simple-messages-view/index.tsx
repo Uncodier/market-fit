@@ -441,6 +441,9 @@ const { className, activeRobotInstance, isBrowserVisible, hasTopHeaderSpace, ski
           </div>
         )}
         <MessageInput
+          connectorSelector={{ scope: model.connectorSelection.scope, canSelect: model.connectorSelection.canSelect,
+            selectedId: model.connectorSelection.selectedId, selectedName: model.connector?.name, selectedToolkit: model.connector?.toolkit,
+            onChange: model.connectorSelection.selectConnector }}
           skillSelection={skillSelection}
           onSkillSelectionChange={setSkillSelection}
           message={message}

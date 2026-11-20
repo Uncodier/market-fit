@@ -45,6 +45,9 @@ it('mounts the real empty-instance model and composer without starting instance 
   const fetchMock = jest.mocked(fetch)
   fetchMock.mockReset()
   fetchMock.mockImplementation(async input => {
+    if (input === '/api/connectors/connections?site_id=smoke-site') {
+      return { ok: true, json: async () => ({ items: [] }) } as Response
+    }
     if (input !== '/api/skills?site_id=smoke-site') throw new Error(`Unexpected request: ${String(input)}`)
     return { ok: true, json: async () => ({ skills: [] }) } as Response
   })
@@ -75,7 +78,12 @@ it('mounts the real empty-instance model and composer without starting instance 
     expect(screen.getByRole('button', { name: 'Send' })).toBeEnabled()
     await waitFor(() => expect(window.localStorage.getItem('input-cache-chat-new')).toContain('Draft without starting an agent'))
 
-    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual(['/api/skills?site_id=smoke-site'])
+    fireEvent.click(screen.getByRole('button', { name: 'Select connector' }))
+    expect(screen.getByRole('link', { name: 'Add New Connector' })).toHaveAttribute('href', '/connectors')
+    expect(await screen.findByText('No usable connectors in this workspace.')).toBeInTheDocument()
+    expect(composer).toHaveValue('Draft without starting an agent')
+
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual(['/api/skills?site_id=smoke-site', '/api/connectors/connections?site_id=smoke-site'])
     expect(mockDatabaseRequest).not.toHaveBeenCalled()
     expect(mockToast).not.toHaveBeenCalled()
     expect(errors).not.toHaveBeenCalled()

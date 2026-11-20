@@ -36,6 +36,44 @@ it.each(['busy', 'unavailable', 'robot'])('does not downgrade a linked turn to u
   expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Connector request not sent' }))
 })
 
+it('passes the selected connector to Ask without changing the destination instance', async () => {
+  jest.mocked(sendAssistantMessage).mockResolvedValue(true)
+  const options = props()
+  const hook = renderHook(() => useMessageSending({ ...options, connector: { id: 'selected-account', notice: 'Selected' } }))
+  await act(async () => { await hook.result.current.handleSendMessage() })
+  expect(sendAssistantMessage).toHaveBeenCalledWith(expect.objectContaining({
+    connectorIdHint: 'selected-account', activeRobotInstance: options.activeRobotInstance, selectedActivity: 'ask',
+  }))
+  expect(enqueuePendingWork).not.toHaveBeenCalled()
+})
+
+it('creates a destination on the first connector send and passes the exact account', async () => {
+  const id = 'ab1a0a11-0000-4000-8000-000000000001'
+  const createConnectorInstance = jest.fn().mockResolvedValue(id)
+  const onNewInstanceCreated = jest.fn()
+  jest.mocked(sendAssistantMessage).mockResolvedValue(true)
+  const hook = renderHook(() => useMessageSending({ ...props(), activeRobotInstance: undefined,
+    connector: { id: 'selected-account', notice: 'Selected' }, createConnectorInstance, onNewInstanceCreated }))
+  expect(createConnectorInstance).not.toHaveBeenCalled()
+  await act(async () => { await hook.result.current.handleSendMessage() })
+  expect(createConnectorInstance).toHaveBeenCalledTimes(1)
+  expect(sendAssistantMessage).toHaveBeenCalledWith(expect.objectContaining({
+    connectorIdHint: 'selected-account', activeRobotInstance: { id }, selectedActivity: 'ask',
+  }))
+  expect(onNewInstanceCreated).toHaveBeenCalledWith(id, false)
+})
+
+it('does not send without the selected connector when instance creation fails', async () => {
+  const createConnectorInstance = jest.fn().mockResolvedValue(undefined)
+  const onClearMessage = jest.fn()
+  const hook = renderHook(() => useMessageSending({ ...props(), activeRobotInstance: undefined,
+    connector: { id: 'selected-account', notice: 'Selected' }, createConnectorInstance, onClearMessage }))
+  await act(async () => { await hook.result.current.handleSendMessage() })
+  expect(sendAssistantMessage).not.toHaveBeenCalled()
+  expect(onClearMessage).not.toHaveBeenCalled()
+  expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Connector request not sent' }))
+})
+
 it.each([false, true])('clears sending/thinking on terminal result %s without waiting for realtime', async result => {
   ;(sendAssistantMessage as jest.Mock).mockResolvedValue(result)
   const hook = renderHook(() => useMessageSending(props()))

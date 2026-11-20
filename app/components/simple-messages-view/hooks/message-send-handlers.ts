@@ -52,6 +52,10 @@ export async function sendAssistantMessage(params: {
   } = params
 
   const requestId = params.requestId ?? createRequestId()
+  if (params.connectorIdHint && !activeRobotInstance?.id) {
+    toast({ title: 'Connector request not sent', description: 'Could not start the conversation. Try again.' })
+    return false
+  }
   try {
     const contextData = await withTimeout(
       contextService.getContextData(selectedContext, siteId), 15_000,

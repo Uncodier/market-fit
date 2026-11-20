@@ -119,6 +119,11 @@ revision per distinct file and exposes read-only file tabs through the existing
 authenticated archive viewer. It does not fetch archive contents until opened,
 persist synthetic artifacts, or infer repository/database capabilities from files.
 
+Robots treats `should_reload` as a publication hint. Refetching the same
+artifact row must not remount the iframe. A Leads artifact with a `segment_id`
+query parameter scopes the list, search, counts, and Kanban page requests to
+that segment within the current site's existing RLS boundary.
+
 Temporal execution metadata supersedes the former per-activity `cron_status`
 debugging view. The unused `ActivitiesView` component and `/api/cron-status`
 endpoint are retired; do not reintroduce a parallel activity status API for this

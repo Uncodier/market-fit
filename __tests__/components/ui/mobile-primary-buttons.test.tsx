@@ -183,7 +183,7 @@ describe("mobile primary buttons", () => {
     ])
   })
 
-  it("replaces opaque desktop paint with tinted glass and removes Safari's hard-edged blobs", () => {
+  it("keeps tinted mobile glass and hides the inner lights only in the topbar or when disabled", () => {
     const css = postcss.parse(readFileSync(path.join(process.cwd(), "app/styles/mobile-primary-buttons.css"), "utf8"))
     const glass = css.nodes.flatMap((node) => node.type === "atrule" ? node.nodes ?? [] : [])
       .find((node) => node.type === "rule" && node.selector === 'html .btn-primary:not(:disabled):not([aria-disabled="true"])')
@@ -199,7 +199,9 @@ describe("mobile primary buttons", () => {
         if (decl.value === "none" && decl.important) hidden.push(...rule.selectors)
       })
     })
-    expect(hidden).toEqual(expect.arrayContaining([".btn-primary::before", ".btn-primary::after"]))
+    const scope = ":is([data-topbar], [data-page-primary-actions])"
+    const lights = hidden.filter(selector => /\.btn-primary::(before|after)$/.test(selector))
+    expect(lights).toEqual([`${scope} .btn-primary::before`, `${scope} .btn-primary::after`])
   })
 
   it("sizes mobile topbar primary icons to 28px without changing the button size", () => {

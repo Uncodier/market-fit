@@ -9,9 +9,11 @@ import { findRunningUserLog } from './useRunningWorkflow'
 import { shouldQueueCommand } from './command-queue'
 import { buildPendingWorkPayload, enqueuePendingWork } from './pending-work'
 import { createRequestId } from './send-message-reliability'
+import { isRobotConnectorId } from '@/lib/navigation/robot-connector-hint'
 
 interface UseMessageSendingProps {
   connector?: { id?: string; notice: string }
+  createConnectorInstance?: () => Promise<string | undefined>
   activeRobotInstance?: any
   selectedActivity: string
   selectedContext: SelectedContextIds
@@ -32,6 +34,7 @@ interface UseMessageSendingProps {
 
 export const useMessageSending = ({
   connector,
+  createConnectorInstance,
   activeRobotInstance,
   selectedActivity,
   selectedContext,
@@ -59,6 +62,7 @@ export const useMessageSending = ({
   const sendingLockRef = useRef(false)
   const sendingMessageRef = useRef<string | null>(null)
   const loadingInstanceIdRef = useRef<string | null>(null)
+  const draftConnectorInstanceRef = useRef<{ scope: string; id: string } | null>(null)
   const { currentSite } = useSite()
   const { toast } = useToast()
   const sendScope = `${currentSite?.id || ''}:${activeRobotInstance?.id || ''}`
@@ -120,6 +124,22 @@ export const useMessageSending = ({
 
   const handleAssistantMessage = useCallback(async (messageToSend: string, activity = selectedActivity, onAccepted?: () => void, requestId?: string) => {
     if (!currentSite?.id) return
+    let destination = activeRobotInstance
+    let createdInstanceId: string | undefined
+    if (connector?.id && !destination?.id) {
+      const cached = draftConnectorInstanceRef.current
+      const id = cached?.scope === sendScope ? cached.id : await createConnectorInstance?.()
+      if (sendScopeRef.current !== sendScope) return false
+      if (!isRobotConnectorId(id)) {
+        toast({ title: 'Connector request not sent', description: 'Could not start the conversation. Try again.' })
+        clearNewMakinaThinking()
+        return false
+      }
+      createdInstanceId = id
+      draftConnectorInstanceRef.current = { scope: sendScope, id }
+      destination = { id }
+    }
+    let accepted = false
     let unconfirmed = false
     const success = await sendAssistantMessage({
       connectorIdHint: connector?.id,
@@ -128,12 +148,12 @@ export const useMessageSending = ({
       selectedActivity: activity,
       selectedContext,
       skillSelection,
-      activeRobotInstance,
+      activeRobotInstance: destination,
       imageParameters,
       videoParameters,
       audioParameters,
       toast,
-      onAccepted,
+      onAccepted: createdInstanceId ? () => { accepted = true; onAccepted?.() } : onAccepted,
       onUnconfirmed: () => { unconfirmed = true },
       requestId,
     })
@@ -146,11 +166,17 @@ export const useMessageSending = ({
       clearThinkingState()
       clearNewMakinaThinking()
     }
+    if (createdInstanceId && (success || accepted || unconfirmed)) {
+      draftConnectorInstanceRef.current = null
+      onNewInstanceCreated?.(createdInstanceId, false)
+    }
     return unconfirmed ? null : success
   }, [
     currentSite?.id,
     selectedActivity,
     connector?.id,
+    createConnectorInstance,
+    onNewInstanceCreated,
     selectedContext,
     skillSelection,
     activeRobotInstance,
@@ -249,9 +275,9 @@ export const useMessageSending = ({
     const durableLogs = (logsRef?.current || []).filter(log => !log.details?.temp_message)
     const isBusy = shouldQueueCommand(Boolean(findRunningUserLog(durableLogs)) || sendingLockRef.current || isSendingMessage)
 
-    if (connector && (!connector.id || !activeRobotInstance?.id || selectedActivity !== 'ask' || isBusy)) {
+    if (connector && (!connector.id || (!activeRobotInstance?.id && !createConnectorInstance) || selectedActivity !== 'ask' || isBusy)) {
       toast({ title: 'Connector request not sent', description: !connector.id ? connector.notice :
-        'Use Ask in an idle instance. Connector selections cannot be queued or sent to another activity.' })
+        'Use Ask in a ready conversation. Connector selections cannot be queued or sent to another activity.' })
       return
     }
 
@@ -359,6 +385,7 @@ export const useMessageSending = ({
     currentSite?.id,
     isSendingMessage,
     connector,
+    createConnectorInstance,
     isWaitingForResponse,
     activeRobotInstance,
     selectedActivity,

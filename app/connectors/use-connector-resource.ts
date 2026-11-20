@@ -4,12 +4,13 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { z } from "zod"
 import { connectorRequest, ConnectorRequestError } from "./connector-request"
 
-export function useConnectorResource<T>(path: string, schema: z.ZodType<T>) {
+export function useConnectorResource<T>(path: string | null, schema: z.ZodType<T>) {
   const [version, setVersion] = useState(0)
   const key = `${path}:${version}`
   const [state, setState] = useState<{ key: string; data?: T; error?: unknown }>({ key: "" })
   const reload = useCallback(() => setVersion(value => value + 1), [])
   useEffect(() => {
+    if (!path) return
     const controller = new AbortController()
     let live = true
     connectorRequest(path, schema, { signal: controller.signal }).then(

@@ -35,6 +35,7 @@ const fixture = renderToStaticMarkup(<main>
       <span>Use Makinari on WhatsApp</span>
     </Button>
     <Button>Sign In</Button>
+    <Button aria-disabled="true">Unavailable</Button>
   </section>
   <div data-page-primary-actions>
     <Button disabled>Save</Button>
@@ -132,13 +133,21 @@ describe.each([
           background: style.backgroundColor,
           shadow: style.boxShadow,
           glass: glass ? getComputedStyle(glass).display : null,
+          lights: ["::before", "::after"].map(pseudo => {
+            const light = getComputedStyle(button, pseudo)
+            return { display: light.display, filter: light.filter, background: light.backgroundImage }
+          }),
         }
       })
       const transparent = "rgba(0, 0, 0, 0)"
       if (width < 768) {
         await page.getByRole("button", { name: "Create deal" }).hover()
-        expect(await paint("Create deal")).toEqual({ background: transparent, shadow: "none", glass: "none" })
-        expect(await paint("Save")).toEqual({ background: transparent, shadow: "none", glass: "none" })
+        for (const label of ["Create deal", "Save"]) {
+          const style = await paint(label)
+          expect(style).toMatchObject({ background: transparent, shadow: "none", glass: "none" })
+          expect(style.lights.map(light => light.display)).toEqual(["none", "none"])
+        }
+        expect((await paint("Unavailable")).lights.map(light => light.display)).toEqual(["none", "none"])
       } else {
         expect((await paint("Create deal")).background).not.toBe(transparent)
         expect((await paint("Save")).background).not.toBe(transparent)
@@ -148,6 +157,13 @@ describe.each([
         const style = await paint(label)
         expect(style.background).not.toBe(transparent)
         expect(style.glass).not.toBe("none")
+        if (width < 768) {
+          for (const light of style.lights) {
+            expect(light.display).not.toBe("none")
+            expect(light.filter).toBe("blur(12px)")
+            expect(light.background).toContain("radial-gradient")
+          }
+        }
       }
       const whatsapp = page.getByRole("button", { name: "Use Makinari on WhatsApp" })
       expect((await whatsapp.boundingBox())?.width).toBeGreaterThan(240)

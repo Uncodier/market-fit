@@ -15,7 +15,11 @@ The observations below describe current code. The routing rules and rollout gate
 | [`POST /api/workflow/agentMessage`](../../API/src/app/api/workflow/agentMessage/route.ts) | Requires `message`, `agentId` and `site_id`; waits for `agentMessageWorkflow` and returns its result. | Keep explicit authorized targeting and synchronous result/error semantics. Never retry a failed agent workflow by calling Customer Support. Verify worker registration before relying on it (below). |
 | [`POST /api/agents/sales/message`](../../API/src/app/api/agents/sales/message/route.ts) and [`POST /api/agents/cmo/message`](../../API/src/app/api/agents/cmo/message/route.ts) | These are role-specific commands, with their own role lookup when `agentId` is absent. | Keep direct requests role-specific; neither role lookup nor a placeholder ID may determine which agent serves a channel. If several instances of a role qualify, require an explicit authorized target or a documented deterministic role default. |
 
-`agent/message` is shorthand here: the direct chat and workflow paths above were found in source, not a literal `/api/agent/message` handler. Inventory any externally configured alias before changing a caller; do not invent a redirect.
+`POST /api/agent/message` is the proposed channel message endpoint, not an existing handler or an alias for direct chat. Inventory externally configured callers before cutover.
+
+**Cutover decision (2026-11-20):** Bind the selected agent's context, background and authorized tools in the existing responder, then expose it at `POST /api/agent/message`. After parity tests, change the [shared channel activity](../../Workflows/src/temporal/activities/sendCustomerSupportMessageActivity.ts) and the separate [Outstand activity](../../Workflows/src/temporal/activities/outstandActivities.ts) to POST there directly. The old Support message route delegates internally for legacy callers; it is not the target for migrated channels.
+
+The widget keeps posting to `/api/workflow/customerSupport` and polling its status endpoint. It does **not** call either message handler directly: its admitted web turn reaches the new endpoint through the worker. Provider webhooks likewise keep their authenticated ingress. Workspace direct chat and provider-side Voice calls are not redirected into the channel message endpoint.
 
 ## How a channel turn reaches delivery
 
@@ -36,6 +40,8 @@ The observations below describe current code. The routing rules and rollout gate
 | [Zavu Voice](../../API/src/lib/services/zavu/voice-agent.ts) configures the provider agent by a Support role lookup; the inbound text handler explicitly ignores `voice`. | Verify sender-to-agent configuration and tool authorization at the provider before showing Voice reassigned. Call echoes must never start a text responder. |
 
 ## Rollout gates
+
+- **Destination and parity.** Assert that each migrated channel generation activity (including web and Outstand) posts to the new endpoint, never the old message URL. Compare equivalent turns through the new endpoint and the legacy adapter: same sender, persistence, reply or suppression, and retry outcome. Separately verify the widget's unchanged POST/status contract.
 
 - **Unchanged-caller test (AC-31).** Send an event to number A with the existing webhook and no `agentId` after migration: canonical Support responds from A. Reassign A to Sales; send a distinct event in a fresh conversation with the same payload format: Sales responds from A, while B remains on Support. Replay the first event: recover its original outcome, not a Sales turn. Repeat with two mailboxes. Test missing inbox/number identity with both present: no guessed send.
 - **Transport gaps.** The worker's generic dispatch condition does not include `sms`; unmatched inputs fall through to the email branch. Require an explicit verified adapter and original-channel delivery test for SMS and every enabled transport. Never treat unknown origins as email or switch transport to recover a failure.

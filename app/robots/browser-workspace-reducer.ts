@@ -22,6 +22,7 @@ export interface BrowserWorkspaceState {
   artifactReloadCounter: number
   initialPreselectDone: boolean
   hasObservedArtifacts: boolean
+  settledArtifacts: InstanceArtifact[]
   observation: BrowserObservation | null
 }
 
@@ -56,7 +57,7 @@ export function createBrowserWorkspaceState(
   return {
     scopeKey, activeBrowserTab, workspaceLayout, mobileWorkspaceTab,
     artifactReloadCounter: 0, initialPreselectDone: false,
-    hasObservedArtifacts: false, observation: null,
+    hasObservedArtifacts: false, settledArtifacts: [], observation: null,
   }
 }
 
@@ -71,14 +72,14 @@ function sameTab(a: BrowserTab, b: BrowserTab): boolean {
   return a.kind === b.kind && (a.kind !== "artifact" || (b.kind === "artifact" && a.screen === b.screen))
 }
 
-// Reconcile incoming data, not user events. A should_reload snapshot is consumed
-// once, so selecting a tab or an unrelated render cannot remount the iframe again.
+// Reload hints belong to newly published rows, not to read snapshots. Compare
+// settled reads so a row received during a refetch is not consumed prematurely.
 export function reconcileBrowserWorkspace(
   state: BrowserWorkspaceState,
   observation: BrowserObservation,
 ): BrowserWorkspaceState {
   const { artifacts, isArtifactsLoading, isRequirementPreviewStatusKnown, hasRequirementPreview } = observation
-  const previous = state.observation?.artifacts ?? []
+  const previous = state.settledArtifacts
   const screens = [...new Set(artifacts.map(artifact => artifact.screen))]
   let activeBrowserTab = state.activeBrowserTab
   let mobileWorkspaceTab = state.mobileWorkspaceTab
@@ -97,29 +98,25 @@ export function reconcileBrowserWorkspace(
     initialPreselectDone = true
   }
   const newest = artifacts[0]
-  const artifactSnapshotChanged = state.observation?.artifacts !== artifacts
   if (!isArtifactsLoading && newest) {
     const initialLoad = previous.length === 0
-    const newlyCreated = !initialLoad && Date.parse(newest.created_at) > Date.parse(previous[0].created_at)
+    const newlyPublished = !previous.some(artifact => artifact.id === newest.id) &&
+      (initialLoad || Date.parse(newest.created_at) >= Date.parse(previous[0].created_at))
     if (!initialPreselectDone && isRequirementPreviewStatusKnown) {
       initialPreselectDone = true
       // Initial selection honors saved/URL choices, including source and database.
-    } else if (artifactSnapshotChanged && (newlyCreated || (
-      initialLoad && initialPreselectDone && !hasRequirementPreview &&
+    } else if (newlyPublished && (!initialLoad || (
+      initialPreselectDone && !hasRequirementPreview &&
       (state.activeBrowserTab.kind !== "artifact" || !screens.includes(state.activeBrowserTab.screen))
     ))) {
       activeBrowserTab = { kind: "artifact", screen: newest.screen }
       mobileWorkspaceTab = `artifact-${newest.screen}`
       reload = newest.should_reload
-    } else if (artifactSnapshotChanged && !initialLoad && activeBrowserTab.kind === "artifact" &&
-      newest.screen === activeBrowserTab.screen && newest.should_reload) {
-      const previousForScreen = previous.find(artifact => artifact.screen === newest.screen)
-      reload = !previousForScreen || Date.parse(newest.created_at) >= Date.parse(previousForScreen.created_at)
     }
   }
   return {
     ...state, activeBrowserTab, mobileWorkspaceTab, initialPreselectDone,
-    hasObservedArtifacts, observation,
+    hasObservedArtifacts, observation, settledArtifacts: isArtifactsLoading ? previous : artifacts,
     artifactReloadCounter: state.artifactReloadCounter + (reload ? 1 : 0),
   }
 }

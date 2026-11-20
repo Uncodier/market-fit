@@ -18,6 +18,12 @@ export const connectorSchema = z.object({
   revision: z.number().int(), verified_at: z.string().nullable(), can_use: z.boolean(),
   access_mode: accessMode,
 })
+export const connectionsSchema = z.object({ items: z.array(connectorSchema) })
+const integrationCount = z.number().int().nonnegative()
+export const connectorDomainCountsSchema = z.object({
+  total: integrationCount,
+  counts: z.record(z.string().regex(/^[a-z0-9_-]{1,80}$/), integrationCount),
+})
 export const catalogSchema = z.object({
   items: z.array(toolkitSchema),
   domains: z.array(z.object({ id: z.string(), label: z.string(), skill_slugs: strings })),
@@ -52,6 +58,10 @@ export const accessSchema = z.object({
 export const authAttemptSchema = z.object({ attempt_id: z.string(), redirect_url: z.string().url() })
 export type Toolkit = z.infer<typeof toolkitSchema>
 export type Connector = z.infer<typeof connectorSchema>
+
+export function isUsableConnector(connector: Connector) {
+  return connector.can_use && connector.enabled && !connector.revocation_pending && connector.provider_status === 'ACTIVE'
+}
 export type Catalog = z.infer<typeof catalogSchema>
 export type ConnectorDetail = z.infer<typeof detailSchema>
 export type ConnectorAccess = z.infer<typeof accessSchema>

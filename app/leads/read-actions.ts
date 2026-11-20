@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server"
 import type { LeadResponse, SingleLeadResponse } from "./action-schemas"
 import { normalizeOrigin } from "./normalize-origin"
+import { isLeadSegmentId } from "./segment-scope"
 
 /**
  * Search leads on the server using ilike across key fields
@@ -90,8 +91,12 @@ export async function searchLeadsWithCount(
   site_id: string,
   query: string,
   limit = 500,
-  offset = 0
+  offset = 0,
+  segmentId?: string
 ): Promise<{ leads: Array<any>; totalCount: number; error?: string }> {
+  if (segmentId !== undefined && !isLeadSegmentId(segmentId)) {
+    return { leads: [], totalCount: 0 }
+  }
   try {
     const supabase = await createClient()
 
@@ -111,7 +116,7 @@ export async function searchLeadsWithCount(
       `company->>name.ilike.${quoteLogicValue(pattern)}`
     ].join(',')
 
-    const { data, error, count } = await supabase
+    const leadsQuery = supabase
       .from("leads")
       .select(`
         id,
@@ -142,6 +147,9 @@ export async function searchLeadsWithCount(
       `, { count: 'exact' })
       .eq('site_id', site_id)
       .or(orClause)
+    if (segmentId !== undefined) leadsQuery.eq('segment_id', segmentId)
+
+    const { data, error, count } = await leadsQuery
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1)
 
@@ -222,11 +230,12 @@ export async function getLeadById(id: string, site_id: string): Promise<SingleLe
   }
 }
 
-export async function getLeads(site_id: string): Promise<LeadResponse> {
+export async function getLeads(site_id: string, segmentId?: string): Promise<LeadResponse> {
+  if (segmentId !== undefined && !isLeadSegmentId(segmentId)) return { leads: [] }
   try {
     const supabase = await createClient()
     
-    const { data, error } = await supabase
+    const leadsQuery = supabase
       .from("leads")
       .select(`
         id,
@@ -257,6 +266,9 @@ export async function getLeads(site_id: string): Promise<LeadResponse> {
         companies(name)
       `)
       .eq('site_id', site_id)
+    if (segmentId !== undefined) leadsQuery.eq('segment_id', segmentId)
+
+    const { data, error } = await leadsQuery
       .order("created_at", { ascending: false })
 
     if (error) throw error

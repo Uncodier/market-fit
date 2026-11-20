@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto"
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { approvalInboxSchema, approvalReceipt } from "@/app/connectors/approval-contract"
-import { connectorSchema } from '@/app/connectors/types'
+import { connectorDomainCountsSchema, connectorSchema } from '@/app/connectors/types'
 import { createClient } from "@/lib/supabase/server"
 import { configuredApiUrl, isSameOriginApiRequest } from "@/lib/http/api-proxy-security"
 import { decodeRequestBody, readLimitedRequestBody, RequestBodyTooLargeError } from "@/lib/http/read-limited-request-body"
@@ -25,7 +25,7 @@ export async function proxyConnector(request: NextRequest, path: string[]): Prom
     let siteId: string
     const attempt = kind === "complete" ? readAttemptCookie(request, path[1]) : null
     if (request.method === "GET") {
-      query = parseConnectorQuery(request.nextUrl.searchParams) as Record<string, string>
+      query = parseConnectorQuery(request.nextUrl.searchParams, kind) as Record<string, string>
       if (kind === 'connection-summary' && Object.keys(query).length !== 1) return connectorProxyFailure(400, 'INVALID_REQUEST')
       siteId = query.site_id
     } else {
@@ -84,6 +84,10 @@ export async function proxyConnector(request: NextRequest, path: string[]): Prom
     if (kind === 'connection-summary') {
       const summary = connectorSchema.safeParse(payload)
       return summary.success && summary.data.id === path[1] ? NextResponse.json(summary.data, { headers }) : connectorProxyFailure(502, 'INVALID_RESPONSE')
+    }
+    if (kind === "domain-counts") {
+      const counts = connectorDomainCountsSchema.safeParse(payload)
+      return counts.success ? NextResponse.json(counts.data, { headers }) : connectorProxyFailure(502, "INVALID_RESPONSE")
     }
     if (!payload || typeof payload !== "object" || Array.isArray(payload)) return connectorProxyFailure(502, "INVALID_RESPONSE")
     if (kind === "approval-inbox" || kind === "approval-decision") {

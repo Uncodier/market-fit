@@ -75,9 +75,11 @@ For an existing active PAT account, a manager can use **Verify and bind this
 project** in its connection card. This checks the entered reference via a pinned
 project-metadata read using the existing provider account. Only a confirmed
 match is saved, for that connector, once. No new token or account is required.
-Open `/robots?connector=<local-connector-uuid>`, choose the instance, and submit
-the request in **Ask**. The link narrows the turn to that one visible account;
-it does not switch tenants, select a different account or run the tool itself.
+In Robots, choose a connected account beside Skills, or open
+`/robots?connector=<local-connector-uuid>`, then submit the request in **Ask**.
+You can select an account before opening an instance. The first send in a new
+conversation creates the session before submitting the scoped request. Selecting
+an account does not switch tenants, create a session, or run a tool by itself.
 An unbound account cannot advertise or execute the project-specific tool. The
 PAT needs Database Read for enumeration; Project Settings Read verifies project
 access at setup but does not grant database access. Deployments using human
@@ -156,6 +158,15 @@ The migration was applied to Makinari and verified at 2026-11-20 01:26:55 UTC.
 The one existing account retained explicit access; its grants and policy were
 unchanged. New connections were paused for the migration. The API and web were
 not deployed as part of this operation.
+
+## Catalogue domain counts
+
+Desktop and mobile domain filters display counts from the authenticated
+`GET /api/connectors/domain-counts` endpoint. Counts cover all pages for the
+current search and tab, regardless of the selected domain. A toolkit can appear
+in multiple domains but counts only once in All domains. If the summary is
+unavailable, the catalogue remains usable and shows domain labels without counts.
+The web and API changes require a coordinated rollout; no migration is needed.
 
 ## Standard numbered pagination — 2026-11-19
 

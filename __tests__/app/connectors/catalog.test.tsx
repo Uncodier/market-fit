@@ -11,12 +11,15 @@ jest.mock("@/app/components/auth/auth-context", () => ({ useAuthContext: () => (
 jest.mock("@/app/context/LocalizationContext", () => ({ useLocalization: () => ({ t: translate }) }))
 jest.mock("@/app/components/ui/sticky-header", () => ({ StickyHeader: ({ children }: { children: React.ReactNode }) => <header>{children}</header> }))
 jest.mock("@/app/hooks/use-mobile-view", () => ({ useIsMobile: () => mockMobile }))
-const fetchMock = jest.mocked(fetch)
+const fetchMock = jest.fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>()
+const countsMock = jest.fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>()
 const push = jest.fn()
 beforeEach(() => {
   window.history.replaceState(null, "", "/connectors")
   mockSite = "site-1"; mockUser = "user-1"; mockMobile = false
   fetchMock.mockReset(); push.mockReset()
+  countsMock.mockReset().mockResolvedValue(jsonResponse({ error: { code: "NOT_FOUND" } }, 404))
+  jest.mocked(fetch).mockImplementation((...args) => String(args[0]).startsWith("/api/connectors/domain-counts?") ? countsMock(...args) : fetchMock(...args))
   jest.mocked(useSearchParams).mockReturnValue(new URLSearchParams() as ReturnType<typeof useSearchParams>)
   jest.mocked(useRouter).mockReturnValue({ push } as unknown as ReturnType<typeof useRouter>)
 })
@@ -84,6 +87,37 @@ test("desktop keeps domains in a collapsible sidebar before the catalogue", asyn
   expect(screen.getByRole("complementary", { name: "Domains" })).toBeVisible()
 })
 
+test("shows complete category totals, including zero counts, and refreshes them for a different search and tab", async () => {
+  const pending = deferred<Response>()
+  const domains = [...catalog.domains, { id: "calendar", label: "Calendar", skill_slugs: [] }]
+  fetchMock.mockResolvedValue(jsonResponse({ ...catalog, domains }))
+  countsMock.mockResolvedValueOnce(jsonResponse({ total: 120, counts: { messaging: 61, calendar: 0 } })).mockReturnValueOnce(pending.promise)
+  const view = render(<ConnectorCatalog />)
+  await screen.findByRole("link", { name: "Mail toolkit" })
+  const collapsedToggle = screen.queryByRole("button", { name: "Show domains" })
+  if (collapsedToggle) fireEvent.click(collapsedToggle)
+  const messaging = await screen.findByRole("button", { name: "Messaging 61" })
+  const all = screen.getByRole("button", { name: "All domains 120" })
+  const calendar = screen.getByRole("button", { name: "Calendar 0" })
+  const icons = [messaging, all, calendar].map(row => {
+    const group = row.firstElementChild?.firstElementChild
+    const iconWrapper = group?.firstElementChild
+    expect(iconWrapper).toHaveAttribute("aria-hidden", "true")
+    expect(group?.nextElementSibling).toHaveClass("text-right")
+    const icon = iconWrapper?.querySelector("svg")
+    expect(icon).toBeInTheDocument()
+    return icon?.innerHTML
+  })
+  expect(new Set(icons).size).toBe(3)
+
+  jest.mocked(useSearchParams).mockReturnValue(new URLSearchParams("tab=connected&q=mail&category=messaging&page=2") as ReturnType<typeof useSearchParams>)
+  view.rerender(<ConnectorCatalog />)
+  expect(screen.queryByRole("button", { name: "Messaging 61" })).not.toBeInTheDocument()
+  expect(countsMock.mock.calls[1][0]).toBe("/api/connectors/domain-counts?site_id=site-1&tab=connected&q=mail")
+  await act(async () => pending.resolve(jsonResponse({ total: 1, counts: { messaging: 1, calendar: 0 } })))
+  expect(screen.getByRole("button", { name: "Messaging 1" })).toHaveAttribute("aria-pressed", "true")
+})
+
 test("changing domains updates only the results and keeps the catalogue controls mounted", async () => {
   jest.mocked(useSearchParams).mockReturnValue(new URLSearchParams("tab=connected&q=mail&cursor=old") as ReturnType<typeof useSearchParams>)
   const pending = deferred<Response>()
@@ -123,6 +157,7 @@ test("mobile opens domains in a sheet and closes it after selecting a filter", a
   mockMobile = true
   jest.mocked(useSearchParams).mockReturnValue(new URLSearchParams("tab=connected&q=mail&page=2") as ReturnType<typeof useSearchParams>)
   fetchMock.mockResolvedValue(jsonResponse(catalog))
+  countsMock.mockResolvedValue(jsonResponse({ total: 5, counts: { messaging: 3 } }))
   render(<ConnectorCatalog />)
   await screen.findByRole("link", { name: "Mail toolkit" })
   expect(screen.queryByRole("complementary", { name: "Domains" })).not.toBeInTheDocument()
@@ -130,7 +165,9 @@ test("mobile opens domains in a sheet and closes it after selecting a filter", a
   fireEvent.click(trigger)
   const sheet = screen.getByRole("dialog", { name: "Domains" })
   expect(within(sheet).getByRole("heading", { name: "Domains" })).toBeVisible()
-  fireEvent.click(within(sheet).getByRole("button", { name: "Messaging" }))
+  const messaging = await within(sheet).findByRole("button", { name: "Messaging 3" })
+  expect(messaging.firstElementChild?.querySelector("svg")).toBeInTheDocument()
+  fireEvent.click(messaging)
   expect(push).not.toHaveBeenCalled()
   expect(window.location.search).toBe("?tab=connected&q=mail&category=messaging")
   expect(screen.queryByRole("dialog", { name: "Domains" })).not.toBeInTheDocument()
