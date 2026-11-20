@@ -145,7 +145,7 @@ it('does not run an unfiltered search when loading a selected-person list', asyn
   await act(async () => { fireEvent.click(selectedList) })
   expect(apiClient.post).not.toHaveBeenCalled()
   expect(toast.info).not.toHaveBeenCalled()
-  expect(screen.getByRole('heading', { name: 'Saved list' })).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Back to search' })).not.toBeInTheDocument()
 })
 
 it('opens a completed selected-person list without rerunning search or enrichment', async () => {
@@ -162,7 +162,8 @@ it('opens a completed selected-person list without rerunning search or enrichmen
   const savedList = await screen.findByText('List 11111111…')
   await act(async () => { fireEvent.click(savedList) })
   expect(await screen.findByText('Processed person')).toBeInTheDocument()
-  expect(screen.getByRole('status')).toHaveTextContent('List status: Completed')
+  expect(screen.getByRole('status', { name: 'Status' })).toHaveTextContent('Completed')
+  expect(screen.getByRole('progressbar', { name: 'Processing' })).toHaveAttribute('aria-valuenow', '100')
   for (const name of ['Person Name', 'Role Title', 'Company', 'Processing', 'Outcome', 'Lead']) {
     expect(screen.getByRole('columnheader', { name })).toBeInTheDocument()
   }
@@ -209,6 +210,25 @@ async function openMembershipList(query?: Record<string, unknown>) {
   const person = await screen.findByText('Alice')
   return { ...view, person }
 }
+
+it('automatically runs an empty filter-based list once using its original filters', async () => {
+  mockSiteId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+  const snapshot = savedSnapshot({ id: pendingList.id, siteId: mockSiteId, members: [], total: 0, completed: 0 })
+  ;(fetch as jest.Mock).mockResolvedValue({ ok: true, json: async () => snapshot })
+  const query = { site_id: 'ignored', page: 4, provider_only_field: 'kept' }
+  ;(apiClient.get as jest.Mock).mockResolvedValue({ success: true, data: { role_query: { query } } })
+  ;(apiClient.post as jest.Mock).mockResolvedValue({ success: true, data: { search_results: [], total_persons: 0 } })
+  const breadcrumb = jest.spyOn(window, 'dispatchEvent')
+  render(<PeopleSearchPage />)
+  fireEvent.mouseDown(screen.getByRole('tab', { name: 'Saved lists' }))
+  fireEvent.click(await screen.findByText('List 11111111…'))
+  expect(await screen.findByText('No people match this saved search.')).toBeInTheDocument()
+  expect(apiClient.post).toHaveBeenCalledTimes(2)
+  expect(apiClient.post).toHaveBeenCalledWith('/api/finder/person_role_search',
+    { ...query, site_id: mockSiteId, page: 0 }, { includeAuth: true })
+  expect(breadcrumb).toHaveBeenCalledWith(expect.objectContaining({ type: 'people:list-breadcrumb', detail: snapshot.name }))
+  expect(screen.queryByRole('button', { name: 'Run saved search' })).not.toBeInTheDocument()
+})
 
 it('shows members of a mixed list in one table and only runs its exact saved filters on demand', async () => {
   const query = { site_id: 'ignored', page: 12, organizations: [42], provider_only_field: 'kept' }

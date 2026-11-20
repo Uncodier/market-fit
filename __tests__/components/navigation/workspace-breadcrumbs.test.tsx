@@ -107,3 +107,18 @@ test('keeps breadcrumbs on desktop for non-Robots details', () => {
   render(<TopBarTitle title="Customers" isCollapsed onCollapse={() => {}} />)
   expect(screen.getByRole('navigation', { name: 'Breadcrumb' })).not.toHaveClass('md:hidden')
 })
+
+test('shows the saved list after the localized people root and clears it on close', () => {
+  setRoute('/people')
+  mockLocale = 'es'
+  render(<TopBarTitle title="People" isCollapsed onCollapse={() => {}} />)
+  act(() => window.dispatchEvent(new CustomEvent('people:list-breadcrumb', { detail: 'Directivos Agencias' })))
+  expect(screen.getByRole('navigation', { name: 'Breadcrumb' })).toHaveTextContent(workspaceScreenTitle('/people', translate)!)
+  expect(screen.getByRole('heading', { name: 'Directivos Agencias' })).toHaveAttribute('aria-current', 'page')
+  const onReturn = jest.fn()
+  window.addEventListener('people:return-to-search', onReturn, { once: true })
+  fireEvent.click(screen.getByRole('button', { name: workspaceScreenTitle('/people', translate)! }))
+  expect(onReturn).toHaveBeenCalledTimes(1)
+  act(() => window.dispatchEvent(new CustomEvent('people:list-breadcrumb', { detail: null })))
+  expect(screen.queryByRole('navigation', { name: 'Breadcrumb' })).not.toBeInTheDocument()
+})

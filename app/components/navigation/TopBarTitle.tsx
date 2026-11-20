@@ -7,6 +7,7 @@ import { workspaceScreenTitle } from '@/lib/navigation/workspace-screen'
 import { usePathname, useSearchParams } from "next/navigation"
 import { Button } from "../ui/button"
 import { NavigationLink } from "./NavigationLink"
+import { SavedListBreadcrumb } from "@/app/people/saved-list-breadcrumb"
 import { 
   ChevronRight,
   PanelLeftClose,
@@ -53,6 +54,18 @@ export function TopBarTitle({
     : null
   const [customTitle, setCustomTitle] = useState<{ path: string; title: string } | null>(null)
   
+  const [peopleListName, setPeopleListName] = useState<string | null>(null)
+  useEffect(() => {
+    if (pathname !== '/people') return
+    const update = (event: Event) => setPeopleListName((event as CustomEvent<string | null>).detail)
+    window.addEventListener('people:list-breadcrumb', update)
+    return () => {
+      window.removeEventListener('people:list-breadcrumb', update)
+      setPeopleListName(null)
+    }
+  }, [pathname])
+  const listTitle = pathname === '/people' ? peopleListName : null
+
   // Use navigation history hook
   const { items: historyItems, navigateTo, hasHistory } = useNavigationHistory()
   
@@ -187,7 +200,9 @@ export function TopBarTitle({
         </Button>
       )}
       
-      {reportTitle ? (
+      {listTitle ? (
+        <SavedListBreadcrumb root={getDefaultTitle()} name={listTitle} onReturn={() => window.dispatchEvent(new Event('people:return-to-search'))} />
+      ) : reportTitle ? (
         <nav className="flex items-center min-w-0" aria-label="Breadcrumb">
           <ol className="flex items-center min-w-0">
             <li className="flex items-center shrink-0">

@@ -5,7 +5,16 @@ import { deleteRecordCategory, type RecordCategory } from "@/app/records/actions
 jest.mock("@/app/records/actions", () => ({ deleteRecordCategory: jest.fn() }))
 jest.mock("@/app/components/ui/emoji-picker", () => ({ EmojiPicker: () => null }))
 
-const category = { id: "collection", name: "Feedback", template_fields: [] } as RecordCategory
+const category: RecordCategory = {
+  id: "collection",
+  site_id: "site",
+  name: "Feedback",
+  description: null,
+  icon: null,
+  template_fields: [],
+  created_at: "2026-01-01",
+  updated_at: "2026-01-01",
+}
 
 it("places deletion last in the editor body, outside the footer, and retains confirmation", () => {
   render(<CategoryTemplateEditor isOpen onClose={jest.fn()} category={category}

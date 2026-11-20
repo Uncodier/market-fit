@@ -9,13 +9,13 @@ import { usePeopleLeadActions } from "./use-people-lead-actions"
 import { useSelectedListActions } from "./use-selected-list-actions"
 import { usePeopleSelectionEnrichment } from "./use-people-selection-enrichment"
 import type { FinderScopeCheck } from "./use-finder-session-scope"
-import type { FinderRequest } from "./finder-request-types"
+import type { SavedListReference } from "./saved-list-types"
 
 export function usePeopleWorkspace(state: PeopleSearchState, createQuery: typeof createFinderQuery, isSessionCurrent: FinderScopeCheck) {
   const filters = usePeopleFilters(state.currentSite)
   const mounted = useRef(false)
   const resultRevision = useRef(0)
-  const [activeSavedQuery, setActiveSavedQuery] = useState<FinderRequest | null>(null)
+  const [activeSavedQuery, setActiveSavedQuery] = useState<SavedListReference | null>(null)
   useLayoutEffect(() => {
     resultRevision.current++
     mounted.current = true
@@ -57,10 +57,8 @@ export function usePeopleWorkspace(state: PeopleSearchState, createQuery: typeof
     const list = state.selectedList
     if (!list?.query || list.siteId !== state.currentSite?.id || isSearchPending() || !isSessionCurrent()) return
     resetResultSelection()
-    state.setSelectedList(null)
-    setActiveSavedQuery(list.query)
+    setActiveSavedQuery(list)
     setCurrentPage(1)
-    state.setPeopleTab('search')
     setShowResultsOnMobile(true)
     const payload = { ...list.query, site_id: list.siteId, page: 0 }
     void executeSearch(payload)
@@ -76,14 +74,14 @@ export function usePeopleWorkspace(state: PeopleSearchState, createQuery: typeof
   const onPageChange = (page: number) => {
     if (isSearchPending() || !isSessionCurrent()) return
     setCurrentPage(page)
-    if (activeSavedQuery && state.currentSite?.id) {
+    if (activeSavedQuery?.query && state.currentSite?.id) {
       resetResultSelection()
-      const payload = { ...activeSavedQuery, site_id: state.currentSite.id, page: page - 1 }
+      const payload = { ...activeSavedQuery.query, site_id: state.currentSite.id, page: page - 1 }
       void executeSearch(payload)
     } else void handleSearch(page)
   }
   const isEmptyView = !state.loading && state.totalResults === 0
-  return { ...dependencies, ...savedLists, ...groups, ...leads, ...enrichment, selectionLists, handleSearch, runSavedSearch, onClickSearch, onPageChange, isEmptyView }
+  return { ...dependencies, ...savedLists, ...groups, ...leads, ...enrichment, selectionLists, showingSavedSearch: Boolean(state.selectedList && state.selectedList === activeSavedQuery), handleSearch, runSavedSearch, onClickSearch, onPageChange, isEmptyView }
 }
 export type PeopleSearchState = PeoplePageState & ReturnType<typeof useFinderSearch>
 export type PeopleWorkspace = ReturnType<typeof usePeopleWorkspace>

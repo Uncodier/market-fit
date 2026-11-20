@@ -1,4 +1,4 @@
-import { useMemo, type CSSProperties } from "react"
+import { useEffect, useMemo, type CSSProperties } from "react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
@@ -15,6 +15,8 @@ import { PeopleResultsTable } from "./people-results-table"
 import { useSavedListMembers } from "./use-saved-list-members"
 import { usePeopleResultGroups } from "./use-people-result-groups"
 import { SAVED_LIST_PAGE_SIZE } from "./saved-list-types"
+import { SavedListBreadcrumb } from "./saved-list-breadcrumb"
+import { SavedListStatus } from "./saved-list-status"
 export function PeopleResultsView({ workspace }: { workspace: PeopleWorkspace }) {
   const {
     isArtifact,
@@ -31,8 +33,21 @@ export function PeopleResultsView({ workspace }: { workspace: PeopleWorkspace })
     openEnrichConfirmation,
     selectionLists,
   } = workspace
-  const selectedList = workspace.selectedList?.siteId === workspace.currentSite?.id ? workspace.selectedList : null
-  const saved = useSavedListMembers(selectedList)
+  const openList = workspace.selectedList?.siteId === workspace.currentSite?.id ? workspace.selectedList : null
+  const saved = useSavedListMembers(openList)
+  const selectedList = workspace.showingSavedSearch ? null : openList
+  const autoRun = Boolean(selectedList?.query && saved.snapshot?.total === 0)
+  const { runSavedSearch } = workspace
+  useEffect(() => {
+    if (autoRun) runSavedSearch()
+  }, [autoRun, runSavedSearch])
+  const listName = openList && (workspace.availableIcps?.find(list => list.id === openList.id)?.name || saved.snapshot?.name || 'Saved list')
+  useEffect(() => {
+    if (!listName) return
+    const update = (name: string | null) => window.dispatchEvent(new CustomEvent('people:list-breadcrumb', { detail: name }))
+    update(listName)
+    return () => { update(null) }
+  }, [listName])
   const savedResults = useMemo(() => saved.snapshot?.members.map(member => member.result) ?? [], [saved.snapshot])
   const savedGroups = usePeopleResultGroups({ searchResults: savedResults, setExpandedGroups: workspace.setExpandedGroups })
   const processingByPerson = useMemo(() => selectedList ? new Map(saved.snapshot?.members.map(member => [member.personId, member])) : undefined,
@@ -41,7 +56,7 @@ export function PeopleResultsView({ workspace }: { workspace: PeopleWorkspace })
   const itemsPerPage = selectedList ? SAVED_LIST_PAGE_SIZE : workspace.itemsPerPage
   const searchResults = selectedList ? savedResults : workspace.searchResults
   const totalResults = selectedList ? saved.snapshot?.total ?? 0 : workspace.totalResults
-  const loading = selectedList ? saved.loading : workspace.loading
+  const loading = selectedList ? saved.loading || autoRun : workspace.loading
   const onPageChange = (page: number) => {
     if (selectedList) {
       if (page === currentPage) return
@@ -49,15 +64,22 @@ export function PeopleResultsView({ workspace }: { workspace: PeopleWorkspace })
       saved.onPageChange(page)
     } else workspace.onPageChange(page)
   }
-  const isEmptyView = !selectedList && workspace.isEmptyView
+  const isEmptyView = !openList && workspace.isEmptyView
   const tableWorkspace = selectedList ? { ...workspace, groupedResults: savedGroups.groupedResults,
     toggleGroup: savedGroups.toggleGroup, error: saved.error,
     addedPersonIds: new Set(saved.snapshot?.members.filter(member => member.lead).map(member => member.personId)) } : workspace
   const closeList = () => {
     workspace.setSelectedList(null)
     workspace.resetResultSelection()
+    workspace.setPeopleTab('search')
+    setIsSidebarCollapsed(false)
     setShowResultsOnMobile(false)
   }
+  useEffect(() => {
+    if (!openList || isArtifact) return
+    window.addEventListener('people:return-to-search', closeList)
+    return () => window.removeEventListener('people:return-to-search', closeList)
+  }, [openList, isArtifact, closeList])
   const resultsLeft = (isArtifact ? 0 : (isLayoutCollapsed ? 64 : 256)) + (isSidebarCollapsed ? 0 : 319)
   const sidebarToggle = <SidebarToggle
     isCollapsed={isSidebarCollapsed}
@@ -87,20 +109,16 @@ export function PeopleResultsView({ workspace }: { workspace: PeopleWorkspace })
               <div className="transition-all duration-300 ease-in-out w-full min-w-0 pr-4 md:pr-12 overflow-x-auto">
                 <div className="flex min-w-max items-center justify-between">
                   <div className="flex shrink-0 items-center gap-2">
-                  {selectedList && <>
-                    <h2 className="max-w-44 truncate font-semibold" title={saved.snapshot?.name}>{saved.snapshot?.name || 'Saved list'}</h2>
-                    <Button variant="outline" size="sm" onClick={() => { workspace.resetResultSelection(); saved.refresh() }} disabled={loading || saved.identityChanged}>Refresh</Button>
-                    <Button variant="ghost" size="sm" onClick={closeList}>Back to search</Button>
-                  </>}
-                  <Button
+                  {isArtifact && listName && <SavedListBreadcrumb root={t('people.tabs.search') || 'Search people'} name={listName} onReturn={closeList} />}
+                  {!openList && <Button
                     variant="ghost"
                     size="sm"
-                    className={cn("flex items-center gap-1.5 text-sm md:!hidden", selectedList && "!hidden")}
+                    className="flex items-center gap-1.5 text-sm md:!hidden"
                     onClick={() => setShowResultsOnMobile(false)}
                   >
                     <ChevronLeft className="h-4 w-4" />
                     Back
-                  </Button>
+                  </Button>}
                 </div>
                 <div className="flex items-center gap-2" data-toolbar-icon-actions="off">
                   <Button variant="secondary" className="h-9 gap-2 px-4 !hidden md:!flex"
@@ -142,10 +160,9 @@ export function PeopleResultsView({ workspace }: { workspace: PeopleWorkspace })
               />
             ) : (
             <Card>
-              {selectedList && saved.snapshot && <div className="border-b px-6 py-4 space-y-2">
-                <p role="status">List status: {({ pending: 'Pending', running: 'In Progress', mining: 'In Progress', completed: 'Completed', failed: 'Failed' } as Record<string, string>)[saved.snapshot.status] || 'Unknown'} · {saved.snapshot.total} selected people · {saved.snapshot.completed} processed</p>
-                <p className="text-sm text-muted-foreground">Processing and lead outcomes are shown alongside each person&apos;s profile. Opening this list does not start enrichment.</p>
-                {selectedList.query && <div className="flex flex-wrap items-center gap-2">
+              {selectedList && saved.snapshot && <div className="space-y-3 rounded-t-[inherit] border-b bg-muted/20 px-4 py-3 sm:px-6">
+                <SavedListStatus snapshot={saved.snapshot} t={t} />
+                {selectedList.query && !autoRun && <div className="flex flex-wrap items-center gap-2">
                   <Button variant="outline" size="sm" onClick={workspace.runSavedSearch}>Run saved search</Button>
                   <span className="text-xs text-muted-foreground">Runs the original filters and may use search credits.</span>
                 </div>}
@@ -178,7 +195,9 @@ export function PeopleResultsView({ workspace }: { workspace: PeopleWorkspace })
                         </div>
                       </div>
                     </>
-                  ) : selectedList && saved.error ? <div role="alert" className="p-6 space-y-3">
+                  ) : workspace.showingSavedSearch && !searchResults.length ? <div className="p-6 text-sm" role={workspace.error ? 'alert' : 'status'}>
+                    {workspace.error || 'No people match this saved search.'}
+                  </div> : selectedList && saved.error ? <div role="alert" className="p-6 space-y-3">
                     <p>{saved.error}</p>
                     {!saved.identityChanged && <div className="flex flex-wrap gap-2">
                       <Button variant="outline" onClick={saved.refresh}>Retry</Button>

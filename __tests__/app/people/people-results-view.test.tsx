@@ -34,6 +34,7 @@ function workspace(overrides: Partial<PeopleWorkspace> = {}) {
     peopleTab: 'saved',
     showResultsOnMobile: true,
     setShowResultsOnMobile: jest.fn(),
+    setPeopleTab: jest.fn(),
     currentPage: 1,
     itemsPerPage: 10,
     pageJump: '',
@@ -103,7 +104,8 @@ it.each([
 
   rerender(<PeopleResultsView workspace={{ ...state, selectedList: { id: 'list-a', siteId: 'site-a' } }} />)
   expect(screen.getByTestId('people-results')).toBe(frame)
-  expect(frame).toContainElement(screen.getByRole('heading', { name: 'Pregenerated list' }))
+  expect(Boolean(screen.queryByRole('heading', { name: 'Pregenerated list' }))).toBe(layout.isArtifact)
+  expect(screen.queryByRole('button', { name: 'Refresh' })).not.toBeInTheDocument()
   expect(frame.style.getPropertyValue('--people-results-left')).toBe(left)
   expect(frame).toContainElement(screen.getByText('People table'))
 })
@@ -114,7 +116,10 @@ it('preserves the mobile two-step view and restores the sidebar when closing a p
   expect(screen.getByTestId('people-results')).toHaveClass('hidden', 'md:flex')
   rerender(<PeopleResultsView workspace={{ ...state, showResultsOnMobile: true }} />)
   expect(screen.getByTestId('people-results')).not.toHaveClass('hidden')
-  fireEvent.click(screen.getByRole('button', { name: 'Back to search' }))
+  expect(screen.queryByRole('button', { name: /^Back/ })).not.toBeInTheDocument()
+  fireEvent(window, new Event('people:return-to-search'))
+  expect(state.setPeopleTab).toHaveBeenCalledWith('search')
+  expect(state.setIsSidebarCollapsed).toHaveBeenCalledWith(false)
   expect(state.setSelectedList).toHaveBeenCalledWith(null)
   expect(state.resetResultSelection).toHaveBeenCalledTimes(1)
   expect(state.setShowResultsOnMobile).toHaveBeenCalledWith(false)
@@ -131,4 +136,11 @@ it('never opens a pregenerated list belonging to the previous site', () => {
   render(<PeopleResultsView workspace={workspace({ selectedList: { id: 'list-a', siteId: 'site-b' } })} />)
   expect(screen.queryByRole('heading', { name: 'Pregenerated list' })).not.toBeInTheDocument()
   expect(screen.getByText('People table')).toBeInTheDocument()
+})
+
+it('provides the same breadcrumb inside an artifact without a global top bar', () => {
+  const state = workspace({ isArtifact: true, selectedList: { id: 'list-a', siteId: 'site-a' } })
+  render(<PeopleResultsView workspace={state} />)
+  fireEvent.click(screen.getByRole('button', { name: 'Search people' }))
+  expect(state.setSelectedList).toHaveBeenCalledWith(null)
 })
