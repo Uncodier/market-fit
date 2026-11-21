@@ -76,14 +76,60 @@ the latest 20 per owner are retained, with opportunistic cleanup on writes.
 Expiry of access is immediate even without a subsequent cleanup. Previously
 delivered output or historical chat content from older versions is not erased.
 
-### Supabase report lookup
+### Direct Supabase SQL
 
 Search for `SUPABASE_RUN_READ_ONLY_QUERY` on the selected Supabase connection.
-Its instance contract is a **published report reader**, not a SQL console. It
-binds the verified project on the server. Passing a SQL string, overriding the
-project or selecting an arbitrary relation is not supported. A project database
-administrator must deliberately publish aggregate views intended for this
-workspace in `makinari_reports_<lowercase site UUID without hyphens>`. Both the
+Use `describe`, then supply `query` to calculate figures instead of listing reports.
+No view per KPI is required. The description lists the actual logical tables
+and columns registered for that project. Model-supplied project references,
+credentials or site IDs are not accepted. Only the verified read-only action
+is used: no fallback to a SQL writer, direct admin client, or service key.
+
+For example, these are the **arguments** inside the normal version/hash envelope:
+
+```json
+{
+  "query": "SELECT currency, COUNT(DISTINCT site_id) AS accounts, SUM(amount) AS total FROM analytics.paid_sales WHERE sale_date < $1 GROUP BY currency ORDER BY total DESC",
+  "parameters": ["2026-10-01"],
+  "scope": "workspace"
+}
+```
+
+`workspace` is the default. `platform` requests aggregates across sites and needs
+a separate, current platform grant for this exact actor, agent, connector and
+project. It is not granted by the PAT, site ownership, catalog opt-in or tool
+selection. A denied platform query is not rerun against one site. The operator
+grant is also checked when storing and opening a private platform report;
+revocation, expiry or a replacement grant cannot resurrect an old result.
+
+The direct path accepts a single bounded SELECT over a declared fact source,
+typed literals or positional parameters, comparisons, filters, GROUP BY,
+COUNT (including distinct site count), SUM, AVG, MIN/MAX, ordering and limits.
+Workspace queries may also select the listed nonidentifying facts; platform
+queries must aggregate. UUIDs cannot be returned as raw identifiers. Native
+sources encode the authorized joins and tenant bounds before aggregation.
+System catalogs, arbitrary relations, routines, DML, DDL and multi-statement
+SQL are not executed. Output is a private table: up to five columns and 25 rows
+with an explicit truncation notice. Exact decimals and large integers are
+returned as text. An unverified scope or malformed provider response is not zero.
+These boundaries apply to the Makinari connector and private report UI. A
+database administrator, backup operator, or holder of an independent project-wide
+management credential is already a trusted database principal. The provider
+processes the query and its bound values; check its retention and logging policies
+before production use. The adapter never exposes a general SQL console.
+
+**Financial interpretation:** `paid_sales` represents completed sales with zero
+current recorded balance, filtered by **sale date**; it is not a payment-event
+ledger. Do not describe that result as cash collected on a historical date.
+`tender_awards` and `approved_orders` refer to materialized, approved procurement
+events; their amounts are in minor currency units and their dates are creation
+timestamps. Keep currencies separate and establish the requested cutoff timezone.
+
+### Existing published reports (optional)
+
+`{}` still lists published reports, **not** direct query sources or KPI totals.
+For this mode a database administrator publishes aggregate views intended for
+the workspace in `makinari_reports_<lowercase site UUID without hyphens>`. Both the
 schema and ordinary view must be owned by `postgres`; the existing
 `supabase_read_only_user` must already have USAGE on the schema and SELECT on
 the view. Only `label` (text) and `value` (numeric, smallint, integer or bigint)
@@ -120,6 +166,7 @@ route covering the same scope. Never switch credentials/accounts to evade a deni
 | Composio project credential rejected | Ask the manager to verify the workspace integration configuration, not every user's OAuth grant. |
 | Verified missing scope | Ask the connection owner to grant that permission if intended. Unreported/unsupported scopes are not proof permission is missing. |
 | Makinari cannot evaluate the catalog actor predicate | Fail closed. A database permission failure in that RPC is not an OAuth or member denial. Verify the actor-location ACL repair before asking anyone to reconnect. |
+| Analytics source or scope denied | Ask the operator to verify the dataset, procurement role or platform grant. Never present a workspace result as an all-account result. |
 | Application rejected a resource | Ask the user to check that specific resource; do not disable the tool for other resources. |
 | Rate limit or temporary outage | Explain the quota or outage and wait. No retry loop. |
 | Stale cursor or changed contract | Restart the search or describe the exact reference again. |
@@ -143,6 +190,13 @@ do not substitute a service-role reader if the target lacks these privileges.
 Validate discovery, real descriptor shapes, missing scopes, revocation and result projection on an
 explicitly approved disposable account before enabling a production connection.
 Disabling catalog reads stops new admissions; it cannot undo a dispatched call.
+
+**Direct SELECT rollout:** install `20261121020000_connector_analytics_authority.sql`
+after the private-result and actor-location migrations and before deploying the
+API that accepts `query`. It creates no platform grant or KPI view. Confirm the
+project binding and real role/column/ownership checks in an approved staging
+project; a custom Supabase domain requires an operator-attested binding. Keep
+private result delivery enabled. See the API [analytics dataset and grant guide](../../API/docs/CONNECTOR_ANALYTICS_DATASETS.md).
 
 **Production table privileges:** `20261121013000_connector_catalog_actor_location_acl.sql`
 preserves the original admission predicate and its service-only callers. It lets

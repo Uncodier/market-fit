@@ -163,7 +163,7 @@
   "connectors.errors.catalogOptOutSeparate": "Save the catalogue opt-out separately. Undo the other policy edits, turn off catalogue reads and save. You can make the other edits afterward.",
   "connectors.catalogReadsAll": "When enabled, an instance can discover tools in this account’s catalogue, including future entries, and run compatible reads that pass safety checks.",
   "connectors.catalogReadsSelected": "When enabled, an instance can discover only the selected catalogue tools. Only compatible reads among those exact IDs can run.",
-  "connectors.catalogReadsLimits": "Catalogue reads require direct member and agent access and unrestricted workspace data access. This does not enable Support or approval requests for new tools. Writes, arbitrary SQL and unsupported actions must be handled manually.",
+  "connectors.catalogReadsLimits": "Catalogue reads require direct member and agent access and unrestricted workspace data access. Robots can run read-only SELECT queries on authorized analytics sources. Queries across all Makinari accounts require a separate platform grant. Writes and unsupported actions are not enabled.",
   "connectors.catalogReadsUnavailable": "Catalogue reads need a verified, enabled account with interactive assistant access.",
   "connectors.exactTools": "Allowed tools",
   "connectors.searchToolsHeader": "Search tools",

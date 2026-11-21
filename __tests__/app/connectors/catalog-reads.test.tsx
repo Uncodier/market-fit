@@ -19,7 +19,7 @@ test.each(["all", "selected"] as const)("an existing disabled policy stays off u
   const onSave = editor(mode, { catalog_reads: false })
   expect(toggle()).not.toBeChecked(); expect(save()).toBeDisabled()
   expect(screen.getByText(mode === "all" ? /including future entries/ : /among those exact IDs/)).toBeVisible()
-  expect(screen.getByText(/Writes, arbitrary SQL and unsupported actions must be handled manually/)).toBeVisible()
+  expect(screen.getByText(/read-only SELECT queries on authorized analytics sources.*separate platform grant.*Writes and unsupported actions are not enabled/)).toBeVisible()
   fireEvent.click(toggle()); fireEvent.click(save())
   expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ catalog_reads: true, tool_access_mode: mode, allowed_tools: ["MAIL_GET_LABEL"], allowed_hosts: ["assistant"] }))
   fireEvent.click(toggle()); expect(save()).toBeDisabled()

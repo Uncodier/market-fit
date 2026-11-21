@@ -9,7 +9,7 @@ export const indexSchema = z.array(z.object({ id: resultId, tool: z.string().reg
   created_at: z.string().datetime({ offset: true }) }).strict()).max(20)
 
 const escape = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!)
-const privateCopy = 'Only you can open these results while your workspace, connector and agent access remains active. Robots receives a receipt, not these rows, and cannot summarize them automatically.'
+const privateCopy = 'In Makinari, only the person who requested the report can open it while their access remains active. Robots receives a receipt, not these rows, and cannot summarize them automatically.'
 export const privateHeaders = {
   'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'private, no-store, max-age=0',
   'Vary': 'Cookie, Authorization', 'Referrer-Policy': 'no-referrer', 'X-Content-Type-Options': 'nosniff',
