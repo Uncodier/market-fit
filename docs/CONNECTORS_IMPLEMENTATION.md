@@ -93,12 +93,14 @@ error as a complete table list.
 
 ## Per-account tool access (local; not deployed)
 
-New verified accounts use **All compatible tools** on the assistant host. Existing
-policies keep **Only selected tools**, their exact IDs and their existing hosts.
-Only in selected mode does an empty selection deny every tool. Without the separate
-[instance catalog opt-in](CONNECTORS_INSTANCE_CATALOG.md), the resolver intersects the toolkit's current reviewed runtime inventory with the
-usual account, host, agent, member, screen, scope and approval checks. Catalog membership alone never authorizes execution. Supabase table discovery also
-requires the verified project binding described above.
+Newly verified accounts use **All compatible tools** on the assistant host. After
+the [creation-default migration](CONNECTORS_INSTANCE_CATALOG.md#rollout), they also
+start with compatible instance catalog reads enabled. Existing policies retain
+their mode, tool IDs, hosts and read setting. In selected mode an empty selection
+denies every tool. With catalog reads off, Robots uses only the reviewed runtime
+inventory. Account, host, agent, member, screen, scope and approval checks still
+apply; catalog membership alone never authorizes execution. Supabase table
+discovery also requires the verified project binding described above.
 
 Apply `20261120030000_connector_tool_access_mode.sql` before deploying the
 matching API and web client. Older policy writers that omit the mode save

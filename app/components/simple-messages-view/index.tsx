@@ -81,7 +81,7 @@ const { className, activeRobotInstance, isBrowserVisible, hasTopHeaderSpace, ski
           <div className={cn("h-[135px] shrink-0", !hasTopHeaderSpace && "hidden lg:block")} aria-hidden="true" />
           <div className="space-y-6 pt-6 pb-6">
             {props.conversationContext}
-            {model.connector && <p role="status" className="rounded border p-3 text-sm">{model.connector.notice}</p>}
+            {model.connector?.notice && <p role="status" className="rounded border p-3 text-sm">{model.connector.notice}</p>}
             {latestRequirementStatus?.stage === 'blocked' && (
               <RequirementStatusCard status={latestRequirementStatus} />
             )}

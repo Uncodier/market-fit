@@ -119,12 +119,11 @@ The account's access mode determines what an **absent** member or agent row mean
   unsuccessful lookup is not an absent row.
 
 Tool permission is separate from workspace membership. New verified connections
-use `tool_access_mode = 'all'`: the account permits all runtime-compatible tools
-for its own toolkit, including tools supported later. This is not a wildcard
-over the provider catalogue. Existing policies remain `selected`, where only
-saved IDs are permitted and an empty selection means none. In either mode a
-toolkit without a reviewed action has nothing executable. Host, scopes, effective
-access and human approval remain independent gates.
+use `tool_access_mode = 'all'`. The [creation default](CONNECTORS_INSTANCE_CATALOG.md#rollout)
+also enables compatible read-only catalog tools in private Robots sessions. This
+is not a wildcard over the provider catalogue. Existing accounts retain their
+saved settings. In `selected` mode only saved IDs are eligible; an empty list
+means none. Host, scopes, effective access and human approval remain independent gates.
 
 Check the same effective access during account-aware discovery, schema description
 and dispatch. The last check occurs immediately before the external effect, with

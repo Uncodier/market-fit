@@ -54,6 +54,21 @@ describe('SimpleMessagesView', () => {
     expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled()
   })
 
+  it('shows a verified connector in the composer without a status banner', () => {
+    const id = 'ab1a0a11-0000-4000-8000-000000000001'
+    model.connector = { id, name: 'Reporting', toolkit: 'supabase' }
+    model.connectorSelection = { ...model.connectorSelection, connector: model.connector, selectedId: id, canSelect: true }
+    render(<SimpleMessagesView />)
+    expect(screen.getByRole('button', { name: 'Select connector: Reporting' })).toBeEnabled()
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  })
+
+  it('still displays a status message when a connector link is unavailable', () => {
+    model.connector = { notice: 'This connector link is unavailable.' }
+    render(<SimpleMessagesView />)
+    expect(screen.getByRole('status')).toHaveTextContent('This connector link is unavailable.')
+  })
+
   it('applies the custom className to the conversation shell', () => {
     const { container } = render(<SimpleMessagesView className="custom-class" />)
     expect(container.firstElementChild).toHaveClass('custom-class', 'flex', 'flex-col')

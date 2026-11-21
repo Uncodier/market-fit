@@ -1,8 +1,9 @@
 /** @jest-environment node */
 import { isolatedPostgres, postgresAvailable, uuid } from '../security/isolated-postgres'
-import { finalizeSql, id, insertAttempt, installConnectorFixture, policySql, sqlSource } from './connector-postgres-fixture'
+import { finalizeSql, id, insertAttempt, installConnectorFixture, memberRow, policySql, sqlSource } from './connector-postgres-fixture'
 
 const migration = '20261120235000_connector_catalog_reads.sql'
+const actorRepair = '20261121013000_connector_catalog_actor_location_acl.sql'
 const actorRpc = (user: string, instance: string, agent = id.agent, site = id.site) =>
   `SELECT public.connector_catalog_read_actor('${site}','${user}','${instance}','${agent}')`
 const optOut = (rev: number, actor = id.admin, connector = id.connector) =>
@@ -93,7 +94,7 @@ const save = (rev: number, flag: string, actor = id.admin, connector = id.connec
   })
 
   it('requires an owned instance, live prompt agent, active site and unscoped actor; the predicate is not browser-callable', () => {
-    migrate(); const instance = uuid(301), owned = actorRpc(id.member, instance)
+    migrate(); db(sqlSource(actorRepair)); const instance = uuid(301), owned = actorRpc(id.member, instance)
     db(`INSERT INTO remote_instances VALUES ('${instance}','${id.site}','${id.member}')`)
     expect(service(owned)).toBe('t')
     db(`UPDATE remote_instances SET is_archived=true WHERE id='${instance}'`); expect(service(owned)).toBe('f')
@@ -111,8 +112,40 @@ const save = (rev: number, flag: string, actor = id.admin, connector = id.connec
     }
     db(`UPDATE sites SET archived_at=now() WHERE id='${id.site}'`); expect(service(actorRpc(id.coowner, instance))).toBe('f')
   })
+
+  it('evaluates the same actor predicate with production location ACLs, without opening any table or RPC', () => {
+    migrate()
+    const instance = uuid(302), rpc = 'public.connector_catalog_read_actor(uuid,uuid,uuid,uuid)'
+    const table = 'public.site_member_location_restrictions'
+    // Production's service role bypasses RLS but has no SELECT grant on this table.
+    db(`REVOKE ALL ON ${table} FROM service_role; INSERT INTO remote_instances VALUES ('${instance}','${id.site}','${id.owner}')`)
+    const fingerprint = () => db(`SELECT oid, proowner, proacl, md5(prosrc) FROM pg_proc WHERE oid='${rpc}'::regprocedure`)
+    const before = fingerprint()
+    expect(() => service(actorRpc(id.owner, instance))).toThrow(/permission denied for table site_member_location_restrictions/)
+    db(sqlSource(actorRepair))
+    expect(fingerprint()).toBe(before)
+    expect(service(actorRpc(id.owner, instance))).toBe('t')
+    expect(() => service(`SELECT site_member_id FROM ${table} LIMIT 0`)).toThrow(/permission denied/)
+    for (const role of ['anon', 'authenticated']) expect(() => pg.call(actorRpc(id.owner, instance), id.owner, role)).toThrow(/permission denied/)
+    db(`UPDATE remote_instances SET user_id='${id.admin}' WHERE id='${instance}'`)
+    expect(service(actorRpc(id.admin, instance))).toBe('t')
+    db(`INSERT INTO ${table} VALUES ('${id.site}','${memberRow(id.admin)}','${uuid(303)}')`)
+    expect(service(actorRpc(id.admin, instance))).toBe('f')
+    expect(service(actorRpc(id.owner, instance))).toBe('f')
+    expect(service(actorRpc(id.admin, instance, id.agent, id.otherSite))).toBe('f')
+  })
+
+  it('refuses to elevate a predicate with an unexpected execution grant', () => {
+    migrate()
+    const rpc = 'public.connector_catalog_read_actor(uuid,uuid,uuid,uuid)'
+    db(`GRANT EXECUTE ON FUNCTION ${rpc} TO authenticated`)
+    expect(() => db(sqlSource(actorRepair))).toThrow(/Unexpected connector catalog actor/)
+    expect(db(`SELECT prosecdef FROM pg_proc WHERE oid='${rpc}'::regprocedure`)).toBe('f')
+  })
 })
 
 test('catalogue permission migration matches the canonical schema and both mirrors', () => {
-  for (const repo of ['market-fit', 'API']) expect(sqlSource(migration, repo)).toBe(sqlSource(migration, 'makinari-db-scheme'))
+  for (const name of [migration, actorRepair]) {
+    for (const repo of ['market-fit', 'API']) expect(sqlSource(name, repo)).toBe(sqlSource(name, 'makinari-db-scheme'))
+  }
 })

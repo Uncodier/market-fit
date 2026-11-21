@@ -32,7 +32,7 @@ it('waits for an instance in the active site and never reuses a verified selecti
     { initialProps: { site: 'site-A', actor: 'actor-A', instanceSite: 'site-B' } })
   expect(request).not.toHaveBeenCalled()
   hook.rerender({ site: 'site-A', actor: 'actor-A', instanceSite: 'site-A' })
-  await waitFor(() => expect(hook.result.current).toMatchObject({ id, notice: expect.stringContaining('Reporting') }))
+  await waitFor(() => expect(hook.result.current).toEqual({ id, name: 'Reporting', toolkit: 'supabase' }))
   expect(request).toHaveBeenCalledWith(`/api/connectors/connections/${id}?site_id=site-A`, expect.anything(), expect.anything())
   hook.rerender({ site: 'site-B', actor: 'actor-A', instanceSite: 'site-B' })
   expect(hook.result.current?.id).toBeUndefined()

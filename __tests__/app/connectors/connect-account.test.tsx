@@ -45,6 +45,7 @@ test("Gmail discloses default workspace mailbox sharing before the OAuth request
   const dialog = screen.getByRole("dialog")
   expect(dialog).toHaveAccessibleDescription(/shared with eligible workspace members and agents by default/)
   expect(dialog).toHaveAccessibleDescription(/reading messages from the connected mailbox/)
+  expect(dialog).toHaveAccessibleDescription(/new connections allow compatible read-only catalogue tools in Robots by default/i)
   expect(fetchMock).not.toHaveBeenCalled()
 })
 
@@ -57,7 +58,8 @@ test("connects Supabase via a masked token and refreshes only after server verif
   const dialog = screen.getByRole("dialog")
   expect(dialog).toHaveTextContent("personal access token (PAT) starting with sbp_")
   expect(dialog).toHaveAccessibleDescription(/shared with eligible workspace members and agents by default/)
-  expect(dialog).toHaveAccessibleDescription(/all compatible tools.*in the future.*Instance catalogue reads are off unless you enable them for this account/)
+  expect(dialog).toHaveAccessibleDescription(/once verified, new connections allow compatible read-only catalogue tools in Robots by default/i)
+  expect(dialog).toHaveAccessibleDescription(/turn off instance catalogue reads or select individual tools in Tools & permissions/i)
   expect(screen.getByRole("link", { name: "Open Supabase Access Tokens" })).toHaveAttribute("href", "https://supabase.com/dashboard/account/tokens")
   const button = screen.getByRole("button", { name: "Connect with API token" })
   const tokenField = screen.getByLabelText("Personal access token")

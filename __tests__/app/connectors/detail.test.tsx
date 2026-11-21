@@ -1,12 +1,16 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
-import { useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { DetailContent } from "@/app/connectors/connector-detail"
+import ConnectorDetailLoading from "@/app/connectors/[slug]/loading"
 import { connector, deferred, detail, jsonResponse, translate } from "./fixtures"
 
 jest.mock("@/app/context/LocalizationContext", () => ({ useLocalization: () => ({ t: translate }) }))
 jest.mock("@/app/components/ui/sticky-header", () => ({ StickyHeader: ({ children }: { children: React.ReactNode }) => <header>{children}</header> }))
 jest.mock("@/app/connectors/connector-access", () => ({ ConnectorAccessPanel: () => <div>Account permissions</div> }))
 const fetchMock = jest.mocked(fetch)
+const push = jest.fn()
+const active = { ...connector, enabled: true }
+const newestActive = { ...active, id: "connector-2", display_name: "Support mailbox", verified_at: "2026-11-02T12:00:00Z" }
 // jsdom has no scrolling implementation for Radix's keyboard-opened listbox.
 beforeAll(() => {
   HTMLElement.prototype.scrollIntoView ??= jest.fn()
@@ -17,16 +21,74 @@ function selectAccountByUrl() {
 }
 beforeEach(() => {
   fetchMock.mockReset()
+  push.mockReset()
+  jest.mocked(useRouter).mockReturnValue({
+    push, back: jest.fn(), forward: jest.fn(), refresh: jest.fn(), replace: jest.fn(), prefetch: jest.fn(), bfcacheId: "test",
+  })
   jest.mocked(useSearchParams).mockReturnValue(new URLSearchParams() as ReturnType<typeof useSearchParams>)
 })
 
-test("requires explicit account selection when several are visible", async () => {
-  fetchMock.mockResolvedValue(jsonResponse({ ...detail, connections: [connector, { ...connector, id: "connector-2", display_name: "Support mailbox" }] }))
+test("the route fallback mirrors the summary sections and keeps the account placeholder out of the body", () => {
+  render(<ConnectorDetailLoading />)
+  const loading = screen.getByRole("status")
+  expect(loading).toHaveTextContent("Loading connectors…")
+  const placeholder = within(loading).getByTestId("connector-account-skeleton")
+  const summary = within(loading).getByTestId("connector-summary-skeleton")
+  expect(placeholder).toHaveAttribute("aria-hidden", "true")
+  expect(summary).not.toContainElement(placeholder)
+  expect(Array.from(summary.children, section => section.getAttribute("data-skeleton-section"))).toEqual([
+    "overview", "connection", "access", "related-skills", "activity",
+  ])
+  expect(screen.queryByRole("combobox", { name: "Connected account" })).not.toBeInTheDocument()
+})
+
+test("reserves the account selector in the sticky header while detail fetches", async () => {
+  const pending = deferred<Response>()
+  fetchMock.mockReturnValueOnce(pending.promise)
   render(<DetailContent slug="mail" siteId="site-1" />)
-  await screen.findByText("Mail toolkit")
-  expect(screen.queryByText("Account permissions")).not.toBeInTheDocument()
-  expect(screen.getByRole("combobox", { name: "Connected account" })).toBeVisible()
-  expect(screen.queryByRole("button", { name: "Verify provider status" })).not.toBeInTheDocument()
+  const toolbar = within(screen.getByRole("banner"))
+  expect(toolbar.getByTestId("connector-account-skeleton")).toBeVisible()
+  expect(toolbar.queryByRole("combobox", { name: "Connected account" })).not.toBeInTheDocument()
+  expect(screen.getByText("Loading connectors…")).toBeInTheDocument()
+  expect(screen.getByTestId("connector-summary-skeleton")).toBeVisible()
+
+  await act(async () => pending.resolve(jsonResponse({ ...detail, connections: [active] })))
+  expect(toolbar.getByRole("combobox", { name: "Connected account" })).toHaveTextContent(active.display_name)
+  expect(toolbar.queryByTestId("connector-account-skeleton")).not.toBeInTheDocument()
+  expect(screen.queryByTestId("connector-summary-skeleton")).not.toBeInTheDocument()
+  expect(screen.queryByText("Loading connectors…")).not.toBeInTheDocument()
+})
+
+test("defaults to the most recently verified active account in the sticky header", async () => {
+  const later = { ...active, verified_at: "2026-11-03T12:00:00Z" }
+  fetchMock.mockResolvedValue(jsonResponse({ ...detail, connections: [
+    active, { ...later, id: "expired", provider_status: "EXPIRED" }, newestActive,
+    { ...later, id: "disabled", enabled: false }, { ...later, id: "disconnecting", revocation_pending: true },
+    { ...active, id: "unverified", verified_at: null },
+  ] }))
+  render(<DetailContent slug="mail" siteId="site-1" />)
+  const picker = await within(screen.getByRole("banner")).findByRole("combobox", { name: "Connected account" })
+  expect(picker).toHaveTextContent("Support mailbox")
+  expect(screen.getByText("Account permissions")).toBeVisible()
+  expect(screen.getByRole("button", { name: "Verify provider status" })).toBeVisible()
+  expect(push).not.toHaveBeenCalled()
+  expect(fetchMock).toHaveBeenCalledTimes(1)
+})
+
+test("switching accounts in the header pins the exact account in the URL without dropping other parameters", async () => {
+  jest.mocked(useSearchParams).mockReturnValue(new URLSearchParams("source=catalog") as ReturnType<typeof useSearchParams>)
+  fetchMock.mockResolvedValue(jsonResponse({ ...detail, connections: [connector, newestActive] }))
+  const { rerender } = render(<DetailContent slug="mail" siteId="site-1" />)
+  const picker = await screen.findByRole("combobox", { name: "Connected account" })
+  expect(picker).toHaveTextContent("Support mailbox")
+  fireEvent.keyDown(picker, { key: "ArrowDown" })
+  fireEvent.click(await screen.findByRole("option", { name: /Sales mailbox.*Disabled/ }))
+  expect(push).toHaveBeenCalledWith("/connectors/mail?source=catalog&connector=connector-1", { scroll: false })
+
+  jest.mocked(useSearchParams).mockReturnValue(new URLSearchParams("source=catalog&connector=connector-1") as ReturnType<typeof useSearchParams>)
+  rerender(<DetailContent slug="mail" siteId="site-1" />)
+  expect(picker).toHaveTextContent(/Sales mailbox.*Disabled/)
+  expect(screen.getByText("Connected · locally disabled")).toBeVisible()
   expect(fetchMock).toHaveBeenCalledTimes(1)
 })
 
@@ -61,10 +123,19 @@ test("labels a disabled account without selecting it even when it is the only op
   render(<DetailContent slug="mail" siteId="site-1" />)
   const picker = await screen.findByRole("combobox", { name: "Connected account" })
   expect(picker).toHaveTextContent("Select an account")
+  expect(screen.getByText("No active accounts. Select an account in the header to review its status.")).toBeVisible()
   expect(screen.queryByText("Account permissions")).not.toBeInTheDocument()
   fireEvent.keyDown(picker, { key: "ArrowDown" })
   const option = await screen.findByRole("option", { name: /Sales mailbox.*Disabled/ })
   expect(option).not.toHaveAttribute("aria-disabled", "true")
+})
+
+test("hides the account selector when no accounts are visible", async () => {
+  fetchMock.mockResolvedValue(jsonResponse({ ...detail, connections: [] }))
+  render(<DetailContent slug="mail" siteId="site-1" />)
+  expect(await screen.findByText("There are no accounts available to you for this toolkit.")).toBeVisible()
+  expect(screen.queryByRole("combobox", { name: "Connected account" })).not.toBeInTheDocument()
+  expect(screen.queryByText("Account permissions")).not.toBeInTheDocument()
 })
 
 test("groups the selected account actions in the connection card footer", async () => {
@@ -77,7 +148,7 @@ test("groups the selected account actions in the connection card footer", async 
   expect(connection).toBeInTheDocument()
   expect(disconnect.parentElement).toBe(connection?.lastElementChild)
   expect(verify.parentElement).toBe(connection?.lastElementChild)
-  expect(connection?.lastElementChild).not.toContainElement(screen.getByRole("combobox", { name: "Connected account" }))
+  expect(connection).not.toContainElement(screen.getByRole("combobox", { name: "Connected account" }))
 })
 
 test("replaces back action with Summary/Tools and loads real tool pages only on selection", async () => {
@@ -90,6 +161,7 @@ test("replaces back action with Summary/Tools and loads real tool pages only on 
   fetchMock.mockResolvedValueOnce(jsonResponse({ items: [{ slug: "MAIL_LIST", name: "List messages", description: "Read messages", reviewed: false }], next_cursor: "page2", total: 21 }))
   fireEvent.mouseDown(screen.getByRole("tab", { name: "Tools" }), { button: 0, ctrlKey: false })
   expect(await screen.findByText("List messages")).toBeVisible()
+  expect(within(screen.getByRole("banner")).getByRole("combobox", { name: "Connected account" })).toBeVisible()
   expect(screen.getByText("21 provider tools")).toBeVisible()
   expect(screen.getByText("Provider-listed · not reviewed")).toBeVisible()
   expect(fetchMock.mock.calls[1][0]).toBe("/api/connectors/catalog/mail/tools?site_id=site-1&page=1")
@@ -116,6 +188,7 @@ test("opens Tools from the sticky header and searches the toolkit across pages",
   const search = within(screen.getByRole("banner")).getByRole("search", { name: "Search tools" })
   fireEvent.click(within(search).getByRole("button", { name: "Search tools" }))
   expect(screen.getByRole("tab", { name: "Tools" })).toHaveAttribute("aria-selected", "true")
+  expect(within(screen.getByRole("region", { name: "Tools" })).getByRole("status")).toHaveTextContent("Loading tools…")
   const input = within(search).getByRole("textbox", { name: "Search tools" })
   fireEvent.change(input, { target: { value: "  invoices & mail  " } })
   expect(await screen.findByRole("heading", { name: "Read invoices" })).toBeVisible()
@@ -127,6 +200,9 @@ test("opens Tools from the sticky header and searches the toolkit across pages",
   fireEvent.click(screen.getByRole("button", { name: "Next" }))
   expect(await screen.findByRole("heading", { name: "Read archived invoices" })).toBeVisible()
   fireEvent.change(input, { target: { value: "unknown" } })
+  const pendingTools = within(screen.getByRole("region", { name: "Tools" }))
+  expect(pendingTools.getByRole("heading", { name: "Tools" })).toBeVisible()
+  expect(pendingTools.getByRole("status")).toHaveTextContent("Loading tools…")
   expect(screen.queryByRole("heading", { name: "Read archived invoices" })).not.toBeInTheDocument()
   expect(screen.queryByText("21 matching tools")).not.toBeInTheDocument()
   fireEvent.submit(search)
@@ -142,7 +218,7 @@ test("opens Tools from the sticky header and searches the toolkit across pages",
 
 test("a hidden URL account never falls back to another account", async () => {
   jest.mocked(useSearchParams).mockReturnValue(new URLSearchParams("connector=hidden-account") as ReturnType<typeof useSearchParams>)
-  fetchMock.mockResolvedValue(jsonResponse(detail))
+  fetchMock.mockResolvedValue(jsonResponse({ ...detail, connections: [active, newestActive] }))
   render(<DetailContent slug="mail" siteId="site-1" />)
   expect(await screen.findByRole("alert")).toHaveTextContent("not available to you")
   expect(screen.queryByText("Account permissions")).not.toBeInTheDocument()

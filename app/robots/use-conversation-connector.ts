@@ -20,6 +20,5 @@ export function useConversationConnector(hint: string | null | undefined, siteId
   if (hint === undefined) return undefined
   if (key && state?.key !== key) return { notice: 'Checking the linked connector account…' }
   if (!key || !hint || !state?.toolkit) return { notice: 'This connector link is unavailable. Open a visible account from Connectors to try again.' }
-  return { id: hint, name: state.name || state.toolkit, toolkit: state.toolkit, notice: `Selected connector: ${state.name || state.toolkit}. ${state.toolkit === 'supabase'
-    ? 'Use Ask to request, for example, “List the tables in this project.”' : 'Use Ask to request an action for this account.'} Available actions depend on the instance’s permissions.` }
+  return { id: hint, name: state.name || state.toolkit, toolkit: state.toolkit }
 }

@@ -15,7 +15,7 @@ function editor(mode: ToolAccessMode, policy: Partial<ConnectorAccess["policy"]>
   return onSave
 }
 
-test.each(["all", "selected"] as const)("only an explicit toggle opts the connection into reads (%s)", mode => {
+test.each(["all", "selected"] as const)("an existing disabled policy stays off until explicitly changed (%s)", mode => {
   const onSave = editor(mode, { catalog_reads: false })
   expect(toggle()).not.toBeChecked(); expect(save()).toBeDisabled()
   expect(screen.getByText(mode === "all" ? /including future entries/ : /among those exact IDs/)).toBeVisible()

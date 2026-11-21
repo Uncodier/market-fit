@@ -35,6 +35,8 @@ const ready = (binding = args) => `SELECT public.connector_private_result_ready(
       CREATE POLICY instance_fixture_read ON remote_instances FOR SELECT TO authenticated USING (visible_in_workspace);
       ALTER TABLE site_members ADD COLUMN restrict_to_assigned_only boolean DEFAULT false;`)
     db(sqlSource('20261120235000_connector_catalog_reads.sql')); db(sqlSource(migration))
+    db('REVOKE ALL ON public.site_member_location_restrictions FROM service_role')
+    db(sqlSource('20261121013000_connector_catalog_actor_location_acl.sql'))
     db(`UPDATE connectors SET enabled=true WHERE id='${id.connector}';
       INSERT INTO connector_members(site_id,connector_id,user_id,granted_by,can_view,can_use)
         VALUES ('${id.site}','${id.connector}','${id.member}','${id.owner}',true,true);

@@ -1,18 +1,18 @@
 # Robots: on-demand connector catalog reads
 
-This is an opt-in extension to the private interactive instance assistant. It does
+This is a per-connection setting for the private interactive instance assistant. It does
 not change the Customer Support, public chat, voice, workflow or legacy MCP
 permissions. Browsing an integration, saving a tool ID or selecting an account
 in Robots is not a grant.
 
 ## Setup and discovery
 
-1. In **Connectors**, a manager selects the intended verified account. Enable
-   interactive assistant use and **Allow instance catalogue reads**, then save.
-   **All compatible tools** includes future eligible actions on that account;
-   **Only selected tools** restricts candidates to the exact saved IDs. Both
-   new and existing accounts default to catalog reads **off**. Unrelated and
-   older policy saves do not opt accounts in.
+1. After the creation-default migration below, newly verified OAuth and Supabase
+   token connections start with **Allow instance catalogue reads** on and **All
+   compatible tools** selected. No second policy save is needed. Existing accounts
+   keep their saved settings. In **Connectors → Tools & permissions**, a manager
+   can turn reads off or choose **Only selected tools** to restrict candidates to
+   exact tool IDs. Replaying an authorization callback never resets that choice.
 2. The instance turn must originate in a verified human user's direct Ask session. An
    owner-bound API key, background job, Plan step or resumed workflow does not supply
    that admission. The member and prompt agent must each have direct use of this connection.
@@ -51,7 +51,7 @@ in Robots is not a grant.
   returns only generated labels, not calendar addresses, names or events.
 - `readOnlyHint` alone is not proof. Writes, mixed/unknown effects, credential
   overrides, proxy/file/code execution, shared or Instant accounts and arbitrary
-  SQL are not enabled. A manager's opt-in cannot override these boundaries.
+  SQL are not enabled. The creation default cannot override these boundaries.
 - Use the exact described tool version and schema hash. Neither credentials nor
   account/project selectors are model inputs. A standalone plan runs as a background
   host even if its parent was a human turn. A new user session cannot elevate a
@@ -119,6 +119,7 @@ route covering the same scope. Never switch credentials/accounts to evade a deni
 | Connection inactive or application authentication rejected | Ask its owner to verify/reconnect the selected account in Connectors. Never request tokens in chat. |
 | Composio project credential rejected | Ask the manager to verify the workspace integration configuration, not every user's OAuth grant. |
 | Verified missing scope | Ask the connection owner to grant that permission if intended. Unreported/unsupported scopes are not proof permission is missing. |
+| Makinari cannot evaluate the catalog actor predicate | Fail closed. A database permission failure in that RPC is not an OAuth or member denial. Verify the actor-location ACL repair before asking anyone to reconnect. |
 | Application rejected a resource | Ask the user to check that specific resource; do not disable the tool for other resources. |
 | Rate limit or temporary outage | Explain the quota or outage and wait. No retry loop. |
 | Stale cursor or changed contract | Restart the search or describe the exact reference again. |
@@ -142,3 +143,16 @@ do not substitute a service-role reader if the target lacks these privileges.
 Validate discovery, real descriptor shapes, missing scopes, revocation and result projection on an
 explicitly approved disposable account before enabling a production connection.
 Disabling catalog reads stops new admissions; it cannot undo a dispatched call.
+
+**Production table privileges:** `20261121013000_connector_catalog_actor_location_acl.sql`
+preserves the original admission predicate and its service-only callers. It lets
+the predicate evaluate the protected location ACL without granting the runtime
+role direct access to that table. It does not depend on the creation-default change.
+
+**Creation default:** `20261121012000_connector_creation_catalog_reads.sql`
+changes only the policy inserted by `connector_finalize_auth` for a newly verified
+account. The column default stays `false`, including for older policy writers
+creating a missing policy. No existing accounts, grants or public-channel settings
+are updated. Coordinate the cutover with the updated onboarding disclosure: pause
+new authorizations, drain or expire pending attempts started under the old notice,
+and reopen onboarding once both the migration and the new web copy are in place.

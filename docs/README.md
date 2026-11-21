@@ -168,7 +168,7 @@ environment variables before changing production configuration.
 
 ## Product designs
 
-- [Robots connector catalog reads](CONNECTORS_INSTANCE_CATALOG.md) — opt-in discovery, execution limits, agent recovery and rollout order.
+- [Robots connector catalog reads](CONNECTORS_INSTANCE_CATALOG.md) — new connection defaults, per-account controls, execution limits, agent recovery and rollout order.
 - [Connector validation archive](CONNECTORS_VALIDATION_HISTORY.md) — historical offline test results for the initial connector release, not live provider acceptance.
 - [Connectors implementation and rollout](CONNECTORS_IMPLEMENTATION.md) — local implementation boundaries, provider attestation/configuration, version-pinned REST execution, migrations and remaining live/deployment gates.
 - [Connectors and skill-aware discovery](CONNECTORS_ARCHITECTURE.md) — approved target architecture for the native catalogue, connector resources, domain/skill registry and phased rollout; current local coverage is in the implementation guide.

@@ -12,7 +12,7 @@ import { createRequestId } from './send-message-reliability'
 import { isRobotConnectorId } from '@/lib/navigation/robot-connector-hint'
 
 interface UseMessageSendingProps {
-  connector?: { id?: string; notice: string }
+  connector?: { id?: string; notice?: string }
   createConnectorInstance?: () => Promise<string | undefined>
   activeRobotInstance?: any
   selectedActivity: string
@@ -276,7 +276,7 @@ export const useMessageSending = ({
     const isBusy = shouldQueueCommand(Boolean(findRunningUserLog(durableLogs)) || sendingLockRef.current || isSendingMessage)
 
     if (connector && (!connector.id || (!activeRobotInstance?.id && !createConnectorInstance) || selectedActivity !== 'ask' || isBusy)) {
-      toast({ title: 'Connector request not sent', description: !connector.id ? connector.notice :
+      toast({ title: 'Connector request not sent', description: !connector.id ? (connector.notice ?? 'This connector link is unavailable.') :
         'Use Ask in a ready conversation. Connector selections cannot be queued or sent to another activity.' })
       return
     }

@@ -7,7 +7,7 @@ import { Badge } from "@/app/components/ui/badge"
 import { QuickNav } from "@/app/components/ui/quick-nav"
 import { useToolCatalog, type CatalogTool } from "./use-tool-catalog"
 import { ConnectorEmpty, ConnectorError } from "./connector-feedback"
-import { ConnectorToolsSkeleton } from "./connector-skeletons"
+import { ConnectorToolsNavSkeleton, ConnectorToolsSkeleton } from "./connector-skeletons"
 import { primaryToolAction, toolActionTypes } from "./tool-action-types"
 
 const actionGroups = [...toolActionTypes, "unclassified"] as const
@@ -29,26 +29,35 @@ export function ConnectorTools({ siteId, slug, search = "" }: { siteId: string; 
       return items ? [{ id: `connector-tools-${group}`, title: t(`connectors.toolAction.${group}`), items }] : []
     })
   }, [data, t])
-  return (
-    <div className="flex gap-8">
-      <section className="min-w-0 flex-1 space-y-4" aria-label={t("connectors.tools")}>
-        <h2 className="text-xl font-semibold">{t("connectors.tools")}</h2>
-        <p className="text-sm text-muted-foreground">{t("connectors.toolsHelp")}</p>
-        {error ? <ConnectorError error={error} retry={reload} /> : !data ? <ConnectorToolsSkeleton /> : <>
-          <p className="text-sm text-muted-foreground" aria-live="polite">{t(data.total === null ? "connectors.toolsPageCount" : search ? "connectors.toolsMatching" : "connectors.toolsTotal", { count: data.total ?? data.items.length })}</p>
-          {!groups.length && <ConnectorEmpty title={t(search ? "connectors.noToolMatches" : "connectors.noTools")} description={t("connectors.toolsHelp")} />}
-          {groups.map(group => <section key={group.id} id={group.id} aria-labelledby={`${group.id}-title`}
-            className="scroll-mt-[calc(var(--topbar-height,64px)+76px)] space-y-3">
-            <h3 id={`${group.id}-title`} className="font-semibold">{group.title}</h3>
-            <ul className="space-y-3">{group.items.map(tool => <ToolCard key={tool.slug} tool={tool} />)}</ul>
-          </section>)}
-          <ConnectorPagination page={currentPage} totalPages={totalPages}
-            hasNext={!!data.next_cursor} onPageChange={setPage} />
-        </>}
-      </section>
-      <QuickNav sections={groups} />
-    </div>
-  )
+  if (error) return <ConnectorToolsLayout><ConnectorError error={error} retry={reload} /></ConnectorToolsLayout>
+  if (!data) return <ConnectorToolsLoading />
+  return <ConnectorToolsLayout navigation={<QuickNav sections={groups} />}>
+    <p className="text-sm text-muted-foreground" aria-live="polite">{t(data.total === null ? "connectors.toolsPageCount" : search ? "connectors.toolsMatching" : "connectors.toolsTotal", { count: data.total ?? data.items.length })}</p>
+    {!groups.length && <ConnectorEmpty title={t(search ? "connectors.noToolMatches" : "connectors.noTools")} description={t("connectors.toolsHelp")} />}
+    {groups.map(group => <section key={group.id} id={group.id} aria-labelledby={`${group.id}-title`}
+      className="scroll-mt-[calc(var(--topbar-height,64px)+76px)] space-y-3">
+      <h3 id={`${group.id}-title`} className="font-semibold">{group.title}</h3>
+      <ul className="space-y-3">{group.items.map(tool => <ToolCard key={tool.slug} tool={tool} />)}</ul>
+    </section>)}
+    <ConnectorPagination page={currentPage} totalPages={totalPages}
+      hasNext={!!data.next_cursor} onPageChange={setPage} />
+  </ConnectorToolsLayout>
+}
+
+export function ConnectorToolsLoading() {
+  return <ConnectorToolsLayout navigation={<ConnectorToolsNavSkeleton />}><ConnectorToolsSkeleton /></ConnectorToolsLayout>
+}
+
+function ConnectorToolsLayout({ children, navigation }: { children: React.ReactNode; navigation?: React.ReactNode }) {
+  const { t } = useLocalization()
+  return <div className="flex gap-8">
+    <section className="min-w-0 flex-1 space-y-4" aria-label={t("connectors.tools")}>
+      <h2 className="text-xl font-semibold">{t("connectors.tools")}</h2>
+      <p className="text-sm text-muted-foreground">{t("connectors.toolsHelp")}</p>
+      {children}
+    </section>
+    {navigation}
+  </div>
 }
 
 function ToolCard({ tool }: { tool: CatalogTool }) {
