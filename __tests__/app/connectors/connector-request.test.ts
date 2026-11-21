@@ -37,6 +37,9 @@ test.each([[401, "unauthorized"], [403, "forbidden"], [404, "notFound"], [409, "
 
 test.each([
   ["PROVIDER_AUTH_FAILED", 502, "providerAuth"],
+  ["PROVIDER_SETUP_REQUIRED", 503, "projectVerification"],
+  ["PROVIDER_PROJECT_CHANGED", 409, "projectVerification"],
+  ["PROVIDER_REVALIDATION_REQUIRED", 409, "projectVerification"],
   ["STORAGE_UNAVAILABLE", 503, "storage"],
   ["API_NOT_CONFIGURED", 503, "apiUnavailable"],
   ["UPSTREAM_UNAVAILABLE", 502, "apiUnavailable"],

@@ -51,6 +51,7 @@ export function connectorErrorKey(error: unknown): string {
   if (error.code === "supabase_bind_identity") return "supabaseBindIdentity"
   if (error.code === "supabase_token_check_unavailable") return "supabaseTokenCheckUnavailable"
   if (error.code === "composio_project_setup_required") return "composioProjectSetup"
+  if (["provider_setup_required", "provider_project_changed", "provider_revalidation_required"].includes(error.code)) return "projectVerification"
   if (error.status === 401) return "unauthorized"
   if (error.status === 403) return "forbidden"
   if (error.status === 404) return "notFound"

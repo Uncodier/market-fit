@@ -24,7 +24,7 @@ in Robots is not a grant.
    terms or an exact slug. Only server-owned public search terms or previously
    saved catalog IDs are sent to Composio, not the user's free text. `connector_id` narrows results;
    it never expands visibility. Continue an empty page if it has a cursor. A
-   partial provider failure preserves native and already available results. To
+   partial provider failure preserves native and already available results. In selected mode only saved tool IDs are looked up, including on keyword searches. To
    disable catalog reads, save the opt-out by itself. If the upstream catalog
    is unavailable, **Manage local catalogue access** on Connectors or on the
    account's detail page lets its manager disable the grant. This requires the
@@ -37,7 +37,7 @@ in Robots is not a grant.
 ## Execution boundaries
 
 - Existing reviewed operations retain their previous policies. The new ordinary
-  read path is for bounded native API list operations with a recognized
+  read path is for bounded native API collection operations (`LIST`, `GET`, or `FETCH`, optionally `ALL`) with a recognized
   read-only contract, an isolated OAuth account, verifiable resource-specific
   read grants and safe input/output projections. It does not require adding a
   tool slug for every compatible provider operation. It does not support every
@@ -81,7 +81,7 @@ delivered output or historical chat content from older versions is not erased.
 Search for `SUPABASE_RUN_READ_ONLY_QUERY` on the selected Supabase connection.
 Use `describe`, then supply `query` to calculate figures instead of listing reports.
 No view per KPI is required. The description lists the actual logical tables
-and columns registered for that project. Model-supplied project references,
+and columns registered for that workspace and project. The local database is recognized automatically from an authorized request, including verified custom domains. A list of report names must not be substituted for a KPI or a different tool capability. Model-supplied project references,
 credentials or site IDs are not accepted. Only the verified read-only action
 is used: no fallback to a SQL writer, direct admin client, or service key.
 
@@ -195,7 +195,7 @@ Disabling catalog reads stops new admissions; it cannot undo a dispatched call.
 after the private-result and actor-location migrations and before deploying the
 API that accepts `query`. It creates no platform grant or KPI view. Confirm the
 project binding and real role/column/ownership checks in an approved staging
-project; a custom Supabase domain requires an operator-attested binding. Keep
+project. Custom domains need consistent Supabase DNS and gateway identity on the existing server authorization read, not an account environment variable. External facts use the private workspace/project registry (`20261121024000_connector_external_analytics_registry.sql`); import any reviewed legacy mappings before switching runtimes. Keep
 private result delivery enabled. See the API [analytics dataset and grant guide](../../API/docs/CONNECTOR_ANALYTICS_DATASETS.md).
 
 **Production table privileges:** `20261121013000_connector_catalog_actor_location_acl.sql`

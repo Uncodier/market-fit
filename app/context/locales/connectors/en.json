@@ -72,6 +72,7 @@
   "connectors.errors.expired": "This authorization attempt has expired. Return to the catalogue to start a new attempt.",
   "connectors.errors.cancelled": "Authorization was cancelled or denied. No successful connection has been confirmed.",
   "connectors.errors.setup": "Provider setup or project verification is incomplete. Ask an administrator to review Integrations.",
+  "connectors.errors.projectVerification": "Ask the platform administrator to verify the Composio project, credential binding and callback for this workspace. Reconnecting the external account will not fix this check.",
   "connectors.errors.unknown": "The outcome is not confirmed. Refresh status before starting another action; do not assume the operation failed or succeeded.",
   "connectors.errors.unavailable": "Connector information is unavailable. No change has been confirmed. Refresh status before trying again.",
   "connectors.errors.providerAuth": "Composio rejected the configured API key. An administrator must update the workspace key in Integrations or, when no workspace key is configured, the platform key on the API server. Signing in again will not fix this provider credential error.",

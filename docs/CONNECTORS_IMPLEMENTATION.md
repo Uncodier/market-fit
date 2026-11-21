@@ -361,15 +361,35 @@ On the **API server**, configure:
   for OAuth/execution binding, not catalogue reads. Configure its exact callback
   verifier in the Composio dashboard; this variable does not perform introspection.
 - `CONNECTORS_WEB_ORIGIN`: trusted HTTPS web origin, without path/query/credentials.
-- `CONNECTOR_PROVIDER_BINDINGS`: BYOK-only JSON array of deployment-reviewed records with
-  `site_id`, `project_id`, `credential_revision` and `oauth_verifier_url`.
 
-`credential_revision` is the SHA-256 digest of the stored encrypted site credential,
-not the raw key and not a substitute for project identity. The verifier URL must
-equal the configured web origin plus `/connectors/callback`. An operator must
-verify that the saved key belongs to that project and that the project's Composio
-callback identity verifier is configured to this exact URL before installing the
-binding. This is **explicit operator attestation**, not automatic provider inspection.
+**BYOK cutover (`20261121031200_connector_provider_attestations.sql`).** Obtain approval for the
+exact database target and migration; this is not a backfill. Before cutover, inventory the
+existing BYOK connections and any historical `CONNECTOR_PROVIDER_BINDINGS` entries privately.
+For each retained binding, independently verify the site, actual Composio project that owns
+its saved key, and exact OAuth identity verifier in that project's dashboard. The URL must be
+the trusted deployment origin plus `/connectors/callback`. Verify the revision is SHA-256 of
+the **stored ciphertext** of that site's current Composio `integrations` credential (no instance),
+not of the plaintext key. Do not output either value, infer ownership from a saved connection,
+or import a stale, ambiguous or unverified tuple. Platform connections need no registry row.
+
+Pause BYOK operations and notify affected users before applying the migration: **from migration
+commit**, existing BYOK private receipts cannot open until their exact proof has been imported.
+Using the approved operator SQL connection, immediately import only the reviewed tuples using
+bound parameters (order: site UUID, ciphertext revision, Composio project ID, exact callback):
+
+```sql
+INSERT INTO connector_result_private.provider_attestations
+  (site_id, credential_revision, project_id, oauth_verifier_url) VALUES ($1, $2, $3, $4);
+```
+
+Stop on conflicts and reconcile privately; do not overwrite a different project. Verify exact
+lookup positives/negatives and browser denial; switch **all** API/worker instances to the new
+reader and retire the old environment list before reopening. Do not roll back to a reader that
+still trusts the list. There is no runtime import, fallback, cache, or provider-side mutation.
+To withdraw proof, delete the exact site/revision row. This blocks subsequent BYOK account use
+and hides saved receipts for that revision; it does not cancel an already dispatched operation,
+change grants or disconnect the provider. Reinsert only after fresh approval and verification:
+while other grants remain current, restoring the same tuple also restores unexpired receipts.
 
 Platform revisions use `platform:` plus SHA-256 of the key, and remain server-only.
 BYOK read/decrypt errors never fall back. Provider user identity remains the site
