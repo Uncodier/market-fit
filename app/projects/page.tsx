@@ -44,6 +44,17 @@ function clearCookieEverywhere(name: string) {
   }
 }
 
+function exitDemoMode() {
+  clearCookieEverywhere("market_fit_demo_site_id")
+  localStorage.removeItem("currentSiteId")
+  localStorage.removeItem("market_fit_manual_demo")
+  const origin = window.location.hostname.startsWith("www.")
+    ? window.location.origin.replace("www.", "app.")
+    : window.location.origin
+  // Reload to discard the demo-bound client and in-memory site state.
+  window.location.assign(new URL("/projects", origin).href)
+}
+
 export default function ProjectsPage() {
   const { t } = useLocalization()
   useEffect(() => {
@@ -59,15 +70,14 @@ export default function ProjectsPage() {
     rememberBillingInterval(requestedBillingInterval)
   }, [requestedBillingInterval])
 
-  const realSites = (sites || []).filter((site) => !isDemoSiteId(site.id))
-  const hasSites = (isManageMode ? realSites : sites)?.length > 0
-
   const [demoSiteIdFromCookie] = useState<string | null>(() => getCookieValue("market_fit_demo_site_id"))
   const [manualDemoEnabled] = useState(() =>
     typeof window !== "undefined" && localStorage.getItem("market_fit_manual_demo") === "true")
 
   const isDemoMode =
     !!demoSiteIdFromCookie || manualDemoEnabled || (currentSite?.id?.startsWith("demo-") ?? false)
+
+  const visibleSites = isDemoMode && !isManageMode ? sites : sites.filter(site => !isDemoSiteId(site.id))
 
   // If a current site is selected, go to AI Agents (robots)
   useEffect(() => {
@@ -103,9 +113,10 @@ export default function ProjectsPage() {
   }
 
   const Content = (() => {
-    if (isLoading) {
+    // List visibility does not depend on the workspace/settings loading gate.
+    if (isLoading && visibleSites.length === 0) {
       return (
-        <div className="w-full max-w-2xl mx-auto space-y-3">
+        <div aria-busy="true" className="w-full max-w-2xl mx-auto space-y-3">
           {Array.from({ length: 4 }).map((_, idx) => (
             <Card key={idx} className="border border-border overflow-hidden">
               <CardContent className="p-4">
@@ -124,40 +135,17 @@ export default function ProjectsPage() {
       )
     }
 
-    if (!hasSites) {
-      return (
-        <div className="w-full max-w-2xl mx-auto space-y-3">
-          {error ? (
-            <Card className="border-destructive/40 bg-destructive/5">
-              <CardContent className="p-4 text-sm text-destructive">
-                {t("account.projects.loadError", { error: error.message })}
-              </CardContent>
-            </Card>
-          ) : null}
-          <Card className="border border-border hover:border-foreground/20 transition-colors cursor-pointer" onClick={() => router.push("/create-site") }>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-4">
-                <div className="h-10 w-10 rounded-md bg-muted flex items-center justify-center">
-                  <span className="text-lg">+</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold truncate">{t("account.projects.createProject")}</h3>
-                  <p className="text-sm text-muted-foreground truncate">{t("account.projects.createHelp")}</p>
-                </div>
-                <Button variant="secondary" onClick={(e) => { e.stopPropagation(); router.push("/create-site") }}>{t("common.create")}</Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )
-    }
-
-    const filteredSites = isDemoMode && !isManageMode ? sites : realSites;
-
     return (
       <div className="w-full max-w-2xl mx-auto space-y-3">
-        {filteredSites.map(site => (
-          <Card key={site.id} className="border border-border hover:border-foreground/20 transition-colors cursor-pointer" onClick={() => handleSelectSite(site.id)}>
+        {error && (
+          <Card className="border-destructive/40 bg-destructive/5">
+            <CardContent role="status" className="p-4 text-sm text-destructive">
+              {t("account.projects.loadError", { error: error.message })}
+            </CardContent>
+          </Card>
+        )}
+        {visibleSites.map(site => (
+          <Card key={site.id} className={`border border-border transition-colors ${isLoading ? "" : "hover:border-foreground/20 cursor-pointer"}`} onClick={isLoading ? undefined : () => handleSelectSite(site.id)}>
             <CardContent className="p-4">
               <div className="flex items-center gap-4">
                 <div className="h-10 w-10 rounded-md bg-muted overflow-hidden flex items-center justify-center">
@@ -179,6 +167,7 @@ export default function ProjectsPage() {
                 </div>
                 <Button
                   variant="secondary"
+                  disabled={isLoading}
                   aria-label={t("account.projects.selectAria", { name: site.name })}
                   onClick={(e) => {
                     e.stopPropagation()
@@ -207,14 +196,8 @@ export default function ProjectsPage() {
           </CardContent>
         </Card>
 
-        {isDemoMode && (
-          <Card className="border border-amber-200 bg-amber-50 hover:border-amber-300 transition-colors cursor-pointer" onClick={() => {
-            clearCookieEverywhere("market_fit_demo_site_id")
-            localStorage.removeItem('currentSiteId');
-            localStorage.removeItem('market_fit_manual_demo');
-            const baseUrl = window.location.hostname.startsWith('www.') ? window.location.origin.replace('www.', 'app.') : '';
-            window.location.href = `${baseUrl}/projects`;
-          }}>
+        {visibleSites.length > 0 && isDemoMode && (
+          <Card className="border border-amber-200 bg-amber-50 hover:border-amber-300 transition-colors cursor-pointer" onClick={exitDemoMode}>
             <CardContent className="p-4">
               <div className="flex items-center gap-4">
                 <div className="h-10 w-10 rounded-md bg-amber-100 flex items-center justify-center text-amber-700">
@@ -224,20 +207,16 @@ export default function ProjectsPage() {
                   <h3 className="font-semibold text-amber-900 truncate">{t("account.projects.exitMode")}</h3>
                   <p className="text-sm text-amber-700/80 truncate">{t("account.projects.exitHelp")}</p>
                 </div>
-                <Button variant="outline" className="border-amber-300 text-amber-700 hover:bg-amber-100" onClick={(e) => { 
-                  e.stopPropagation(); 
-                  clearCookieEverywhere("market_fit_demo_site_id")
-                  localStorage.removeItem('currentSiteId');
-                  localStorage.removeItem('market_fit_manual_demo');
-                  const baseUrl = window.location.hostname.startsWith('www.') ? window.location.origin.replace('www.', 'app.') : '';
-                  window.location.href = `${baseUrl}/projects`;
+                <Button variant="outline" className="border-amber-300 text-amber-700 hover:bg-amber-100" onClick={(e) => {
+                  e.stopPropagation()
+                  exitDemoMode()
                 }}>{t("account.projects.exit")}</Button>
               </div>
             </CardContent>
           </Card>
         )}
 
-        {!isDemoMode && !isManageMode && (
+        {visibleSites.length > 0 && !isDemoMode && !isManageMode && (
           <Card className="border border-border hover:border-foreground/20 transition-colors cursor-pointer" onClick={() => router.push("/demo") }>
             <CardContent className="p-4">
               <div className="flex items-center gap-4">
@@ -268,7 +247,7 @@ export default function ProjectsPage() {
               width={48}
               height={48}
               className="h-12 w-12 object-contain"
-              priority
+              loading="eager"
             />
           </div>
         </div>

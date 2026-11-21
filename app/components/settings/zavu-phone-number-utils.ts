@@ -158,8 +158,10 @@ export function hasPhoneCapability(
 
 export function canAssignPhoneNumber(
   phoneNumber: ZavuPhoneNumber,
-  capability: ZavuPhoneCapability
+  capability: ZavuPhoneCapability,
+  newAccountOnly = false,
 ): boolean {
+  if (newAccountOnly && phoneNumber.senderId) return false
   const hasRequiredCapability =
     !phoneNumber.capabilities || hasPhoneCapability(phoneNumber, capability)
   const hasUsableBillingStatus =

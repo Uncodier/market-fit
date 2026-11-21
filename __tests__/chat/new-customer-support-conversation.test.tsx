@@ -5,6 +5,7 @@ const mockPush = jest.fn()
 const mockCreateConversation = jest.fn()
 const mockSingle = jest.fn()
 const mockEq = jest.fn()
+const mockOr = jest.fn()
 const mockError = jest.fn()
 let mockUser: { id: string } | null = { id: "user-1" }
 let mockSite: { id: string } | null = { id: "site-1" }
@@ -31,7 +32,8 @@ describe("new Customer Support conversation", () => {
     jest.clearAllMocks()
     mockUser = { id: "user-1" }
     mockSite = { id: "site-1" }
-    mockEq.mockReturnValue({ eq: mockEq, single: mockSingle })
+    mockEq.mockReturnValue({ eq: mockEq, or: mockOr })
+    mockOr.mockReturnValue({ single: mockSingle })
     mockSingle.mockResolvedValue({ data: { id: "support-1", name: "Customer Support" }, error: null })
     mockCreateConversation.mockResolvedValue({ id: "conversation-1" })
   })
@@ -42,6 +44,7 @@ describe("new Customer Support conversation", () => {
 
     expect(mockEq).toHaveBeenCalledWith("site_id", "site-1")
     expect(mockEq).toHaveBeenCalledWith("role", "Customer Support")
+    expect(mockOr).toHaveBeenCalledWith("configuration->>agentOrigin.is.null,configuration->>agentOrigin.neq.independent")
     expect(mockCreateConversation).toHaveBeenCalledWith(
       "site-1", "user-1", "support-1", "Direct chat with Customer Support",
       { is_agent_conversation: true }

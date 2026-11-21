@@ -1,10 +1,9 @@
-"use server"
-
+import { notFound } from "next/navigation"
 import { getCommandById } from "@/app/agents/actions"
-import { Command } from "@/app/agents/types"
+import type { Command } from "@/app/agents/types"
+import { Alert } from "@/app/components/ui/alert"
 import CommandDetail from "./command-detail"
 import { createClient } from "@/lib/supabase/server"
-import { CommandDetailSkeleton } from "./command-detail-skeleton"
 
 // Función específica para obtener el nombre del agente por ID
 async function resolveAgentName(agentId: string): Promise<string> {
@@ -47,41 +46,16 @@ async function resolveAgentName(agentId: string): Promise<string> {
 
 export default async function CommandDetailPage(props: { params: Promise<{ id: string; commandId: string }> }) {
   const { id: agentId, commandId } = await props.params
-  let commandData = null
-  let agentName = ""
-  
-  try {
-    // Obtenemos el comando
-    const response = await getCommandById(commandId)
-    commandData = response.command as Command | null
-    
-    // Intentamos obtener el nombre del agente
-    if (commandData?.agent_id) {
-      // Usamos prioritariamente el agent_id del comando
-      agentName = await resolveAgentName(commandData.agent_id);
-    } else if (agentId) {
-      // Si el comando no tiene agent_id, usamos el ID de la URL
-      agentName = await resolveAgentName(agentId);
-    }
-  } catch (error) {
-    console.error('Error loading command:', error)
+  const { command, error } = await getCommandById(commandId)
+  if (error && error !== "Command not found") {
+    return (
+      <div className="px-4 py-6 md:px-16">
+        <Alert variant="destructive">Unable to load this command. Refresh the page to try again.</Alert>
+      </div>
+    )
   }
-  
-  // Asegurarnos de que siempre tenemos un nombre, usando el ID como fallback
-  if (!agentName) {
-    agentName = commandData?.agent_id || agentId || "Unknown Agent";
-  }
-  
-  // Show skeleton while data is being fetched or if no data was found
-  if (!commandData) {
-    return <CommandDetailSkeleton />
-  }
-  
-  return (
-    <CommandDetail 
-      command={commandData} 
-      commandId={commandId} 
-      agentName={agentName} 
-    />
-  )
-} 
+  if (!command) notFound()
+
+  const agentName = await resolveAgentName(command.agent_id || agentId)
+  return <CommandDetail command={command as Command} commandId={commandId} agentName={agentName || "Unknown Agent"} />
+}

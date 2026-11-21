@@ -9,13 +9,17 @@ response. The selector path does not query billing or tracking/details. Auth and
 the existing unrestricted-location gate are freshly verified once per request;
 only then may a server-only client read the actor's own/licensed-member list.
 The redundant ownership lookup is removed. Ordered, count-checked pagination and
-bounded ID batches reject failures or incomplete results rather than publishing a
+bounded ID batches (at most three concurrent batches of 100 IDs) reject failures or incomplete results rather than publishing a
 partial list as a revocation. Ordinary Auth outages return 503, not logout/401.
 
 The existing `REDIS_URL` transport caches only basic selector metadata for 60
 seconds, scoped by Supabase environment and authenticated actor. Redis commands
 have a 250 ms budget; missing/broken Redis falls back to the database. In-process
 pending requests for the same scope are coalesced, with independent result copies.
+An ordinary lookup can join an in-flight authoritative fill. A fresh request does
+not reuse an earlier cache-miss scan: it supersedes that scan, and process-local
+write ordering keeps its replacement from being overwritten by the older fill.
+This is not a distributed lease or cross-instance ordering guarantee.
 There is no cached role, billing, settings, credential or mutation authorization.
 Hits are marked `authoritative: false`; `fresh=1` bypasses the cache for current
 membership reconciliation. A cache miss reads the complete list before writing.
@@ -24,8 +28,9 @@ revalidation (at most the 60-second Redis entry lifetime for cache-only callers)
 No cross-service invalidation or instant revocation of cached labels is claimed.
 
 The browser publishes a cache hit immediately. Versioned Redis entries retain
-their original timestamp and return the remaining freshness budget; a hit does
-not extend that budget or trigger a DB query. One `fresh=1` read runs at expiry,
+their original scan-start timestamp and return the remaining freshness budget; a hit does
+not extend that budget or trigger a DB query. Settings hydration does not renew the
+budget. One `fresh=1` read runs at expiry,
 unless a newer load, selection or auth change cancels it. Missing selected IDs,
 explicit refreshes, and local site/settings mutations revalidate immediately.
 Cached absence never revokes the active selection. Retiring a generation aborts selector HTTP and releases pending
@@ -48,8 +53,12 @@ has a six-second response deadline within the client's eight-second read budget.
 The route has an 8-second response deadline; cache-fill database transport has a
 5-second deadline and is independent of any single coalesced caller disconnect.
 `Cache-Control: private, no-store` prevents shared HTTP caching. `Server-Timing`
-reports location/list/total timings, and `X-Sites-Cache` reports hit/miss without
-logging tokens or customer payloads. The legacy enriched endpoint remains for
+reports auth/location/list/total and performed Redis I/O timings. `X-Sites-Cache`
+reports hit/miss; `X-Sites-Cache-Reason` distinguishes bypass, unavailable/disabled
+Redis, expired/invalid entries, empty cache and coalesced work.
+`X-Sites-Timeout-Stage` identifies the stage active at the eight-second deadline.
+None contain tokens, keys, actor IDs or customer payloads. Authentication and the
+location gate remain fresh and sequential, even on a cache hit. The legacy enriched endpoint remains for
 compatibility and is not stored in Redis.
 
 The browser keeps a 24-hour, actor-bound identity hint in `mf_site_selection_v1`,
@@ -75,10 +84,17 @@ prevention for this recovery; same-site settings and POS state remain mounted.
 
 Successful settings hydration releases the workspace loading gate even while the
 list is pending. List failures and deadlines preserve the hydrated selection;
-successful removal, repeated authentication denial, sign-out and identity changes
+successful removal, repeated authentication denial, location denial, sign-out and identity changes
 invalidate it. Late responses cannot republish a retired scope. The list is not
 reported as loaded until it actually succeeds, preventing empty-list redirects
 during recovery. A fresh browser or expired hint still requires the normal list.
+
+`/projects` retains its current actor's in-memory cards during revalidation or
+settings hydration, showing a skeleton only while no displayable rows exist.
+The settings selection gate and automatic redirect still wait for hydration.
+Refresh failures remain visible; confirmed 401/403 denial retires parallel
+hydration before clearing the list. No project-list browser persistence, stale
+authorization, or automatic mutation retry is introduced.
 
 This cache is not authorization or complete offline startup. Settings remain a
 network dependency and failed recovery does not supply invented checkout defaults.

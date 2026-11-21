@@ -52,7 +52,7 @@ it.each([
 ])("rejects invalid persisted selections %j before admission or forwarding", async parameters => {
   maybeSingle.mockResolvedValue({ data: { ...snapshot, settings: { parameters } }, error: null })
   const response = await POST(new NextRequest("https://app.example.invalid/api/robots/instance/assistant", {
-    method: "POST", headers: { "content-type": "application/json" },
+    method: "POST", headers: { "content-type": "application/json", origin: "https://app.example.invalid" },
     body: JSON.stringify({
       site_id: "site", instance_node_id: "node", instance_id: "instance",
       context: { parameters: { voice: "nova", language: "es" } },

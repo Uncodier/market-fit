@@ -35,6 +35,7 @@ jest.mock("@/app/components/ui/date-picker", () => ({
 }))
 
 const site = {
+  id: "site",
   name: "Clemente",
   settings: {
     shop: {
@@ -46,6 +47,7 @@ const site = {
 describe("ShopHeroTrust search visibility", () => {
   it.each([true, false])("hides the order bar during search and restores it (configured hero=%s)", (hasHero) => {
     const searchSite = {
+      ...site,
       settings: {
         shop: {
           ...(hasHero ? site.settings.shop : {}),
@@ -120,4 +122,17 @@ describe("ShopHeroTrust status chips", () => {
     fireEvent.click(screen.getByRole("button", { name: /Unavailable in your area/i }))
     expect(onUnavailableClick).toHaveBeenCalledTimes(1)
   })
+})
+
+it("preserves the regular Shop hero's configured external action", () => {
+  const open = jest.spyOn(window, "open").mockImplementation(() => null)
+  try {
+    render(<ShopHeroTrust site={{ ...site, settings: { shop: {
+      ...site.settings.shop, hero_cta_label: "Visit our website", hero_cta_destination_type: "url", hero_cta_destination_value: "https://example.com/",
+    } } }} searchQuery="" />)
+    fireEvent.click(screen.getByRole("button", { name: "Visit our website" }))
+    expect(open).toHaveBeenCalledWith("https://example.com/", "_blank")
+  } finally {
+    open.mockRestore()
+  }
 })

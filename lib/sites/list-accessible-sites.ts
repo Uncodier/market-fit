@@ -27,6 +27,7 @@ export type SitesAdminClient = {
 const PAGE_SIZE = 500
 const MAX_PAGES = 20
 const ID_BATCH_SIZE = 100
+const ID_BATCH_CONCURRENCY = 3
 
 function select(admin: SitesAdminClient, table: string, columns: string): SitesQuery {
   // Keep Supabase's recursive select-result types at this boundary; structurally
@@ -107,14 +108,24 @@ export async function listAccessibleSitesForUser(
     const extraIds = [...new Set(memberships.map((row) => row.site_id))]
       .filter((id) => id && !ownedIds.has(id))
     const extra: SiteRow[] = []
-    // Bound IN URLs as well as each query's pagination.
-    for (let offset = 0; offset < extraIds.length; offset += ID_BATCH_SIZE) {
-      const ids = extraIds.slice(offset, offset + ID_BATCH_SIZE)
-      extra.push(...await readPages<SiteRow>(
-        () => select(admin, "sites", SITE_LIST_COLUMNS)
-          .in("id", ids).is("archived_at", null),
-        "id", signal
-      ))
+    // Bound URLs, pagination and concurrent transport. Complete each wave before
+    // starting another, and never publish an earlier wave after any read fails.
+    for (let offset = 0; offset < extraIds.length; offset += ID_BATCH_SIZE * ID_BATCH_CONCURRENCY) {
+      checkCancellation(signal)
+      const wave: Array<Promise<SiteRow[]>> = []
+      for (let index = 0; index < ID_BATCH_CONCURRENCY; index++) {
+        const from = offset + index * ID_BATCH_SIZE
+        const ids = extraIds.slice(from, from + ID_BATCH_SIZE)
+        if (ids.length === 0) break
+        wave.push(readPages<SiteRow>(
+          () => select(admin, "sites", SITE_LIST_COLUMNS)
+            .in("id", ids).is("archived_at", null),
+          "id", signal
+        ))
+      }
+      const groups = await Promise.all(wave)
+      checkCancellation(signal)
+      extra.push(...groups.flat())
     }
     checkCancellation(signal)
     return { sites: mergeAccessibleSites(owned, extra), error: null }

@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { supportPublication } from "@/app/connectors/support-publication"
+import { toolActionFilterSchema } from "@/app/connectors/tool-action-types"
 
 const uuid = z.string().uuid()
 const expires = z.string().datetime({ offset: true }).nullable().optional()
@@ -18,7 +19,7 @@ export function connectorRoute(path: string[], method: string) {
     if (path.length === 1 && ["catalog", "connections"].includes(path[0])) return "read"
     if (path[0] === "connections" && path.length === 2 && uuid.safeParse(path[1]).success) return "connection-summary"
     if (path[0] === "catalog" && path.length === 2 && slug.test(path[1])) return "read"
-    if (path[0] === "catalog" && path.length === 3 && slug.test(path[1]) && path[2] === "tools") return "read"
+    if (path[0] === "catalog" && path.length === 3 && slug.test(path[1]) && path[2] === "tools") return "tool-catalog"
     if (path[0] === "connections" && path.length === 3 && uuid.safeParse(path[1]).success && path[2] === "access") return "read"
     if (path[0] === "auth-attempts" && path.length === 2 && uuid.safeParse(path[1]).success) return "attempt"
   }
@@ -49,24 +50,29 @@ export function parseConnectorBody(kind: string, input: unknown) {
   if (kind === "complete") return z.object({ session_uri: z.string().min(1).max(4096) }).strict().parse(input)
   if (kind === "disconnect") return versioned.parse(input)
   if (kind === "access") return versioned.extend({ members: z.array(member).max(100).default([]), agents: z.array(agent).max(100).default([]) }).strict().parse(input)
-  if (kind === "policy") return versioned.extend({
+  if (kind === "policy") return z.union([versioned.extend({ catalog_reads: z.literal(false) }).strict(), versioned.extend({
+    catalog_reads: z.boolean().optional(),
     tool_access_mode: z.enum(["all", "selected"]).optional(),
     support_publication: supportPublication.nullable().optional(),
     allowed_tools: z.array(z.string().regex(/^[A-Z0-9][A-Z0-9_]{0,149}$/)).max(100),
     allowed_hosts: z.array(z.enum(["assistant", "direct"])).max(2),
     require_approval: z.boolean(), enabled: z.boolean(),
-  }).strict().parse(input)
+  }).strict()]).parse(input)
   throw new Error("Unsupported connector operation")
 }
 
 export function parseConnectorQuery(query: URLSearchParams, kind?: string) {
   if ([...new Set(query.keys())].some(key => query.getAll(key).length !== 1)) throw new Error("Duplicate query")
+  const page = z.string().regex(/^[1-9][0-9]{0,5}$/).refine(value => Number(value) <= 100_000).optional()
+  if (kind === "tool-catalog") return site.extend({
+    q: z.string().max(200).optional(), cursor: z.string().max(2048).optional(), page, action: toolActionFilterSchema.optional(),
+  }).refine(value => !(value.cursor && value.page), "Choose a page or cursor, not both").parse(Object.fromEntries(query))
   const scope = site.extend({ q: z.string().max(200).optional(), tab: z.enum(["all", "connected"]).optional() })
   const schema = kind === "domain-counts" ? scope.extend({
     q: z.string().trim().max(200).regex(/^[^\u0000-\u001f\u007f]*$/).optional(),
   }) : scope.extend({
     category: z.string().max(100).optional(), cursor: z.string().max(2048).optional(),
-    page: z.string().regex(/^[1-9][0-9]{0,5}$/).refine(value => Number(value) <= 100_000).optional(),
+    page,
   })
   return schema.parse(Object.fromEntries(query))
 }

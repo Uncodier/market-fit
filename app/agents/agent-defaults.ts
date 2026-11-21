@@ -102,7 +102,7 @@ export function resolveTemplateRole(
     if (byRole) return byRole.role
 
     const mappedRole = AGENT_ROLE_KEY_MAPPING[agentId]
-    if (mappedRole) return mappedRole
+    if (typeof mappedRole === "string") return mappedRole
   }
 
   if (roleParam) {
@@ -110,10 +110,10 @@ export function resolveTemplateRole(
     if (byParam) return byParam.role
 
     const mappedParam = AGENT_ROLE_KEY_MAPPING[roleParam]
-    if (mappedParam) return mappedParam
+    if (typeof mappedParam === "string") return mappedParam
   }
 
-  return "Customer Support"
+  return isNewAgent ? "" : "Customer Support"
 }
 
 export function getDefaultAgentTemplate(
@@ -122,13 +122,17 @@ export function getDefaultAgentTemplate(
   roleParam?: string | null
 ): AgentTemplate {
   const role = resolveTemplateRole(agentId, isNewAgent, roleParam)
-  return (
-    DEFAULT_AGENT_TEMPLATES.find((template) => template.role === role) ||
-    DEFAULT_AGENT_TEMPLATES[5]
-  )
+  const selected = DEFAULT_AGENT_TEMPLATES.find((template) => template.role === role)
+  if (isNewAgent) {
+    return {
+      role, type: selected?.type || "marketing",
+      name: "", description: "", promptTemplate: "", backstory: "",
+    }
+  }
+  return selected || DEFAULT_AGENT_TEMPLATES[5]
 }
 
-export function getDefaultToolsForRole(_role: string = "") {
+export function getDefaultToolsForRole() {
   return [
     { id: "search", name: "Web Search", description: "Search the web for real-time information", enabled: false },
     { id: "code", name: "Code Interpreter", description: "Execute code and analyze data", enabled: false },

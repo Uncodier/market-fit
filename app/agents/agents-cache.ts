@@ -1,19 +1,19 @@
 let cachedAgents: unknown[] | null = null
-let cachedSiteId: string | null = null
+let cachedScope: string | null = null
 
-export function getCachedAgents<T>(siteId: string | undefined): T[] | null {
-  if (cachedAgents && cachedSiteId === siteId) {
+export function getCachedAgents<T>(scope: string | undefined): T[] | null {
+  if (cachedAgents && cachedScope === scope) {
     return cachedAgents as T[]
   }
   return null
 }
 
-export function setCachedAgents<T>(agents: T[], siteId: string | null) {
+export function setCachedAgents<T>(agents: T[], scope: string) {
   cachedAgents = agents
-  cachedSiteId = siteId
+  cachedScope = scope
 }
 
 export function invalidateAgentsCache() {
   cachedAgents = null
-  cachedSiteId = null
+  cachedScope = null
 }

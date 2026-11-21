@@ -3,26 +3,33 @@ import { createServiceSupabase, createUserSupabase } from "@/lib/auth/site-membe
 import { listAccessibleSitesForUser } from "@/lib/sites/list-accessible-sites"
 import { readSiteBilling } from "@/app/context/read-site-billing"
 import { selectorResponse } from './selector-response'
+import { SitesRequestTiming } from './request-timing'
 
 export async function GET(request: Request) {
   const controller = new AbortController()
   const signal = AbortSignal.any([request.signal, controller.signal])
-  const start = performance.now()
+  const timing = new SitesRequestTiming()
+  let timedOut = false
   let timer: ReturnType<typeof setTimeout> | undefined
   const unavailable = () => NextResponse.json({ success: false, error: 'Project loading is temporarily unavailable' }, { status: 503 })
   const deadline = new Promise<NextResponse>(resolve => {
-    timer = setTimeout(() => { controller.abort(); resolve(unavailable()) }, 8_000)
+    timer = setTimeout(() => {
+      timedOut = true
+      timing.markTimeout()
+      controller.abort()
+      resolve(unavailable())
+    }, 8_000)
   })
   try {
-    const response = await Promise.race([loadSitesResponse(request, signal), deadline])
+    const response = await Promise.race([loadSitesResponse(request, signal, timing), deadline])
     response.headers.set('Cache-Control', 'private, no-store')
-    response.headers.append('Server-Timing', `total;dur=${(performance.now() - start).toFixed(1)}`)
+    timing.apply(response.headers, timedOut)
     if (response.status === 503) response.headers.set('Retry-After', '2')
     return response
   } finally { clearTimeout(timer); controller.abort() }
 }
 
-async function loadSitesResponse(request: Request, signal: AbortSignal) {
+async function loadSitesResponse(request: Request, signal: AbortSignal, timing: SitesRequestTiming) {
   try {
     const { searchParams } = new URL(request.url)
     const detailId = searchParams.get('detail')
@@ -32,11 +39,14 @@ async function loadSitesResponse(request: Request, signal: AbortSignal) {
     if (view !== null && view !== 'selector') return NextResponse.json({ success: false, error: 'Invalid view' }, { status: 400 })
     if (view === 'selector' && detailId !== null) return NextResponse.json({ success: false, error: 'Selector requests do not accept detail' }, { status: 400 })
     
-    const supabase = await createUserSupabase(signal)
+    const { supabase, auth } = await timing.measure('auth', async () => {
+      const supabase = await createUserSupabase(signal)
+      return { supabase, auth: await supabase.auth.getUser() }
+    })
     const {
       data: { user },
       error: userError,
-    } = await supabase.auth.getUser()
+    } = auth
 
     if (userError || !user) {
       const denied = !userError || userError.status === 401 || userError.status === 403 ||
@@ -45,17 +55,17 @@ async function loadSitesResponse(request: Request, signal: AbortSignal) {
       return NextResponse.json({ success: false, error: denied ? "Not authenticated" : 'Authentication is temporarily unavailable' }, { status: denied ? 401 : 503 })
     }
     if (signal.aborted) throw new Error('Aborted')
-    if (view === 'selector') return await selectorResponse(supabase, user.id, signal, fresh === '1')
+    if (view === 'selector') return await selectorResponse(supabase, user.id, signal, fresh === '1', timing)
 
     const admin = createServiceSupabase()
-    const { sites, error } = await listAccessibleSitesForUser(admin, user.id, signal)
+    const { sites, error } = await timing.measure('list', () => listAccessibleSitesForUser(admin, user.id, signal))
     if (error) {
       return NextResponse.json({ success: false, error: 'The complete project list is temporarily unavailable' }, { status: 503 })
     }
 
     const siteIds = sites.map(s => s.id)
     
-    const [billingResponse, detailResponse] = await Promise.all([
+    const [billingResponse, detailResponse] = await timing.measure('enrichment', () => Promise.all([
       siteIds.length > 0 
         ? readSiteBilling<Record<string, unknown>[]>(fields =>
           admin.from('billing').select(`site_id, ${fields}`).in('site_id', siteIds)
@@ -65,7 +75,7 @@ async function loadSitesResponse(request: Request, signal: AbortSignal) {
       detailId && siteIds.includes(detailId)
         ? admin.from('sites').select('id, logo_url, tracking, resource_urls').eq('id', detailId).is('archived_at', null).single()
         : Promise.resolve({ data: null, error: null })
-    ])
+    ]))
     
     const billingMap = new Map((billingResponse.error ? [] : billingResponse.data ?? []).map(b => [b.site_id, b]))
     for (const site of sites) {

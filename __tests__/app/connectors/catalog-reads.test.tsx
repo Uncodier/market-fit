@@ -1,0 +1,64 @@
+import { fireEvent, render, screen } from "@testing-library/react"
+import { ConnectorPolicyEditor } from "@/app/connectors/connector-policy-editor"
+import { access, connector, translate } from "./fixtures"
+import type { Connector, ConnectorAccess, ToolAccessMode } from "@/app/connectors/types"
+
+jest.mock("@/app/context/LocalizationContext", () => ({ useLocalization: () => ({ t: translate }) }))
+const toggle = () => screen.getByRole("checkbox", { name: "Allow instance catalogue reads" })
+const save = () => screen.getByRole("button", { name: "Save policy" })
+function editor(mode: ToolAccessMode, policy: Partial<ConnectorAccess["policy"]>, account: Partial<Connector> = {}, manage = true) {
+  const onSave = jest.fn()
+  render(<ConnectorPolicyEditor siteId="site-1" canManage={manage} pending={false} save={onSave}
+    connector={{ ...connector, enabled: true, ...account }} access={{ ...access, policy: {
+      ...access.policy, tool_access_mode: mode, allowed_tools: ["MAIL_GET_LABEL"], ...policy,
+    } }} />)
+  return onSave
+}
+
+test.each(["all", "selected"] as const)("only an explicit toggle opts the connection into reads (%s)", mode => {
+  const onSave = editor(mode, { catalog_reads: false })
+  expect(toggle()).not.toBeChecked(); expect(save()).toBeDisabled()
+  expect(screen.getByText(mode === "all" ? /including future entries/ : /among those exact IDs/)).toBeVisible()
+  expect(screen.getByText(/Writes, arbitrary SQL and unsupported actions must be handled manually/)).toBeVisible()
+  fireEvent.click(toggle()); fireEvent.click(save())
+  expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ catalog_reads: true, tool_access_mode: mode, allowed_tools: ["MAIL_GET_LABEL"], allowed_hosts: ["assistant"] }))
+  fireEvent.click(toggle()); expect(save()).toBeDisabled()
+})
+
+test("explicit revocation works; unrelated edits never resubmit or infer consent", () => {
+  const onSave = editor("selected", { catalog_reads: true, allowed_hosts: ["direct", "assistant"] })
+  expect(toggle()).toBeChecked()
+  fireEvent.click(screen.getByRole("checkbox", { name: "Allow requests for access" })); fireEvent.click(save())
+  expect(onSave.mock.calls[0][0]).not.toHaveProperty("catalog_reads")
+  expect(onSave.mock.calls[0][0].allowed_hosts).toEqual(["direct", "assistant"])
+  fireEvent.click(toggle()); expect(save()).toBeDisabled(); expect(screen.getByRole("alert")).toHaveTextContent("Save the catalogue opt-out separately")
+  fireEvent.click(save()); expect(onSave).toHaveBeenCalledTimes(1)
+  fireEvent.click(screen.getByRole("checkbox", { name: "Allow requests for access" })); fireEvent.click(save())
+  expect(onSave.mock.calls[1][0]).toEqual({ catalog_reads: false })
+})
+
+test("can revoke locally even with a delisted ID, stale publication selection and a revoked account", () => {
+  const onSave = editor("selected", { catalog_reads:true, allowed_tools:["REMOVED_TOOL"], support_publication:{audience:"verified", label_id:"Label_15"} },
+    { toolkit_slug:"gmail", verified_at:null, revocation_pending:true, provider_status:"REVOKED" })
+  fireEvent.click(toggle()); expect(save()).toBeEnabled(); fireEvent.click(save()); expect(onSave).toHaveBeenCalledWith({catalog_reads:false})
+})
+
+test("never enables the instance host as a side effect of a policy save", () => {
+  const onSave = editor("all", { catalog_reads: false, allowed_hosts: ["direct"] })
+  expect(toggle()).toBeDisabled()
+  fireEvent.click(screen.getByRole("checkbox", { name: "Allow requests for access" })); fireEvent.click(save())
+  expect(onSave.mock.calls[0][0].allowed_hosts).toEqual(["direct"])
+  expect(onSave.mock.calls[0][0]).not.toHaveProperty("catalog_reads")
+  fireEvent.click(screen.getByRole("checkbox", { name: "Allow the interactive assistant" }))
+  expect(toggle()).toBeEnabled(); expect(toggle()).not.toBeChecked()
+})
+
+test.each([{}, { enabled: false }, { revocation_pending: true }, { verified_at: null }])("requires API support and an available connection (%j)", override => {
+  editor("all", Object.keys(override).length ? { catalog_reads: false } : {}, override)
+  expect(toggle()).not.toBeChecked(); expect(toggle()).toBeDisabled()
+})
+
+test("members cannot change this setting", () => {
+  editor("all", { catalog_reads: true }, {}, false)
+  expect(toggle()).toBeChecked(); expect(toggle()).toBeDisabled(); expect(screen.queryByRole("button", { name: "Save policy" })).not.toBeInTheDocument()
+})

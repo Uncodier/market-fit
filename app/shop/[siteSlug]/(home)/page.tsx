@@ -81,8 +81,7 @@ async function ShopCatalogPage({
 
   if (selfService) return <SelfServiceShopClient
     initialCatalog={catalogItems as CatalogItem[]} initialCount={count || 0} initialCategoryOffsets={categoryOffsets}
-    generalPromos={merchandising.allPromos} promoBadgesByItemId={merchandising.byItemId}
-    categoryPromosByName={merchandising.categoryPromosByName} />
+    promos={merchandising.allPromos} promoBadgesByItemId={merchandising.byItemId} />
 
   return (
     <ShopClient

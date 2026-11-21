@@ -32,10 +32,12 @@ import { normalizeSmsSetupResponse } from "./sms-setup-readiness"
 export function SmsChannelSetup({ 
   siteId, 
   channel, 
+  newAccountOnly = false,
   onConnected 
 }: { 
   siteId: string, 
   channel: Parameters<typeof buildPhoneSetupSteps>[0] & { id?: string; name?: string },
+  newAccountOnly?: boolean,
   onConnected: (payload: ReturnType<typeof normalizeSmsSetupResponse>) => void | Promise<void>
 }) {
   const [tab, setTab] = useState<"existing" | "new">("existing")
@@ -54,7 +56,7 @@ export function SmsChannelSetup({
 
   const [selectedNumber, setSelectedNumber] = useState("")
   const [isConnecting, setIsConnecting] = useState(false)
-  const eligibleOwnedNumbers = ownedNumbers.filter((number) => canAssignPhoneNumber(number, "sms"))
+  const eligibleOwnedNumbers = ownedNumbers.filter((number) => canAssignPhoneNumber(number, "sms", newAccountOnly))
   const setupSteps = buildPhoneSetupSteps(channel)
 
   useEffect(() => {
@@ -103,7 +105,7 @@ export function SmsChannelSetup({
       }
       
       const numbers = unwrapZavuItems<ZavuPhoneNumber>(response.data)
-        .filter((number) => canAssignPhoneNumber(number, "sms"))
+        .filter((number) => canAssignPhoneNumber(number, "sms", newAccountOnly))
       if (numbers.length === 0) {
         toast.info("No phone numbers found for the selected criteria")
         return

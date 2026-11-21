@@ -143,11 +143,13 @@ it("requires manager access and forwards only workspace and toolkit for OAuth se
 
 it("forwards tool searches and exact catalogue policy IDs without granting execution", async () => {
   const tools = ["catalog", "supabase", "tools"]
-  const response = await proxyConnector(request(`${tools.join("/")}?site_id=${siteId}&page=2&q=list+tables`), tools)
+  const response = await proxyConnector(request(`${tools.join("/")}?site_id=${siteId}&page=2&q=list+tables&action=read`), tools)
   expect(response.status).toBe(200)
   const url: URL = fetchMock.mock.calls[0][0]
   expect(url.pathname).toBe("/api/connectors/catalog/supabase/tools")
-  expect(Object.fromEntries(url.searchParams)).toEqual({ site_id: siteId, page: "2", q: "list tables" })
+  expect(Object.fromEntries(url.searchParams)).toEqual({ site_id: siteId, page: "2", q: "list tables", action: "read" })
+  expect((await proxyConnector(request(`${tools.join("/")}?site_id=${siteId}&action=readOnlyHint`), tools)).status).toBe(400)
+  expect((await proxyConnector(request(`catalog?site_id=${siteId}&action=read`), ["catalog"])).status).toBe(400)
 
   const path = ["connections", attemptId, "policy"]
   const update = { site_id: siteId, expected_revision: 1, allowed_tools: ["SUPABASE_LIST_TABLES", "A".repeat(150)], allowed_hosts: ["assistant"], require_approval: false, enabled: false }
@@ -167,6 +169,30 @@ it.each(["all", "selected"])("forwards an explicit %s tool mode with an empty ID
   expect(fetchMock).not.toHaveBeenCalled()
   expect((await submit(update)).status).toBe(200)
   expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual(update)
+})
+
+it("forwards only explicit boolean catalogue consent and rejects non-booleans before forwarding", async () => {
+  const path = ["connections", attemptId, "policy"]
+  const update = { site_id: siteId, expected_revision: 1, tool_access_mode: "selected", allowed_tools: ["MAIL_LIST"], allowed_hosts: ["assistant"], require_approval: false, enabled: true }
+  const submit = (catalog_reads: unknown) => proxyConnector(request(path.join("/"), "PATCH", { ...update, catalog_reads }), path)
+  for (const value of [null, 1, "false"]) expect((await submit(value)).status).toBe(400)
+  expect(fetchMock).not.toHaveBeenCalled()
+  for (const value of [false, true]) {
+    fetchMock.mockResolvedValueOnce(Response.json({ revision: 2 }))
+    expect((await submit(value)).status).toBe(200)
+    expect(JSON.parse(fetchMock.mock.calls.at(-1)![1].body)).toEqual({ ...update, catalog_reads: value })
+  }
+})
+
+it("accepts a standalone opt-out, never an abbreviated opt-in or a mixed partial policy", async () => {
+  const path = ["connections", attemptId, "policy"], base = { site_id: siteId, expected_revision: 1 }
+  const submit = (body: unknown) => proxyConnector(request(path.join("/"), "PATCH", body), path)
+  for (const bad of [{ catalog_reads:true }, {catalog_reads:false, enabled:true}, {catalog_reads:false, allowed_tools:["NEW"]}]) {
+    expect((await submit({...base, ...bad})).status).toBe(400)
+  }
+  expect(fetchMock).not.toHaveBeenCalled()
+  expect((await submit({...base, catalog_reads:false})).status).toBe(200)
+  expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({...base, catalog_reads:false})
 })
 
 it("never reflects token fields or provider error messages from token setup", async () => {

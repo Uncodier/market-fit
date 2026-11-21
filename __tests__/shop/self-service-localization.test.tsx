@@ -4,6 +4,7 @@ import { rawLocaleMessages } from "@/app/context/locale-catalog"
 import { selfServiceMessages } from "@/app/context/locales/self-service"
 import { selfServiceHeaderMessages } from "@/app/context/locales/self-service/header"
 import { SelfServiceHeader } from "@/app/shop/[siteSlug]/self-service/SelfServiceHeader"
+import { SelfServiceHero } from "@/app/shop/[siteSlug]/self-service/SelfServiceHero"
 import { SelfServiceShopSkeleton } from "@/app/shop/[siteSlug]/self-service/SelfServiceShopSkeleton"
 import { useSelfService } from "@/app/shop/[siteSlug]/self-service/SelfServiceProvider"
 
@@ -36,17 +37,18 @@ it("switches header, offers and loading labels without resetting the order or ch
   }
   render(<LocalizationProvider preferredLocale="en">
     <LocaleSwitch />
-    <SelfServiceHeader onSearchChange={jest.fn()} promos={[{ id: "offer", name: "Coffee deal", discount_type: "percent", discount_value: 10, catalog_item_ids: [], category_ids: [] }]} />
+    <SelfServiceHeader onSearchChange={jest.fn()} />
+    <SelfServiceHero site={{ id: "site", name: "Coffee Shop" }} locationId="branch" searchQuery=""
+      promos={[{ id: "offer", name: "Coffee deal", discount_type: "percent", discount_value: 10, catalog_item_ids: [], category_ids: [] }]} />
     <SelfServiceShopSkeleton />
   </LocalizationProvider>)
-  expect(screen.getByRole("region", { name: "Offers" })).toBeInTheDocument()
+  expect(screen.getByRole("region", { name: "Featured banners" })).toBeInTheDocument()
   fireEvent.click(screen.getByRole("button", { name: "Español" }))
-  expect(screen.getByRole("region", { name: "Ofertas" })).toHaveAttribute("aria-roledescription", "carrusel")
-  expect(screen.getByText("Ver oferta y elegir artículos")).toBeInTheDocument()
+  expect(screen.getByRole("region", { name: "Banners destacados" })).toBeInTheDocument()
+  expect(screen.getByRole("link", { name: /Ver oferta.*Coffee deal/ })).toHaveAttribute("href", "/shop/branch/promo/offer")
   expect(screen.getByRole("textbox", { name: "Buscar en el menú" })).toHaveAttribute("placeholder", "Buscar en el menú…")
   expect(screen.getByRole("button", { name: "¿No eres Alex? Quitar" })).toBeInTheDocument()
   expect(screen.getByRole("link", { name: "Carrito, 2 artículos" })).toHaveAttribute("href", "/shop/branch?cart=1")
   expect(screen.getByRole("status", { name: "Cargando menú" })).toBeInTheDocument()
-  expect(screen.getByRole("link", { name: /Coffee deal/ })).toHaveAttribute("href", "/shop/branch/promo/offer")
   expect(startNewOrder).not.toHaveBeenCalled()
 })

@@ -3,6 +3,7 @@ import {
   snapshotPostgrestError,
   type PostgrestErrorSnapshot,
 } from "@/lib/supabase/postgrest-error"
+import type { Site } from "@/app/context/site-types"
 
 type SitesClient = {
   rpc?: (
@@ -12,18 +13,22 @@ type SitesClient = {
   _isDemo?: boolean
 }
 
+type SiteListRow = Site & { focus_mode?: number }
+type SiteListDetail = Pick<Site, "id" | "logo_url" | "tracking" | "resource_urls">
+
 export type FetchAccessibleSitesResult = {
-  sites: any[]
-  detail?: any
+  sites: SiteListRow[]
+  detail?: SiteListDetail | null
   error: PostgrestErrorSnapshot | null
   aborted: boolean
   unauthorized: boolean
+  forbidden?: boolean
   authoritative?: boolean
   revalidateAfterMs?: number
 }
 
 function sitesResult(
-  partial: Partial<FetchAccessibleSitesResult> & { sites: any[] }
+  partial: Partial<FetchAccessibleSitesResult> & Pick<FetchAccessibleSitesResult, "sites">
 ): FetchAccessibleSitesResult {
   return {
     error: null,
@@ -34,7 +39,7 @@ function sitesResult(
   }
 }
 
-function isSiteList(value: unknown): value is Array<{ id: string }> {
+function isSiteList(value: unknown): value is SiteListRow[] {
   return Array.isArray(value) && value.every(site => site && typeof site === "object" &&
     typeof site.id === "string" && site.id.length > 0)
 }
@@ -60,7 +65,7 @@ export async function fetchAccessibleSitesClient(
     const { data, error } = await client.rpc("get_my_accessible_sites")
     if (error) {
       return sitesResult({
-        sites: Array.isArray(data) ? data : [],
+        sites: isSiteList(data) ? data : [],
         error: snapshotPostgrestError(error),
         aborted: isAbortError(error),
       })
@@ -79,9 +84,10 @@ export async function fetchAccessibleSitesClient(
       return sitesResult({
         sites: [],
         error: snapshotPostgrestError(
-          payload.error || new Error(`Failed to load sites (${response.status})`)
+          payload?.error || new Error(`Failed to load sites (${response.status})`)
         ),
         unauthorized: response.status === 401,
+        ...(response.status === 403 ? { forbidden: true } : {}),
       })
     }
     if (!payload || !isSiteList(payload.sites)) return invalidSitesResult()

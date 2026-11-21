@@ -20,6 +20,8 @@ import { ColorInput } from "../ui/color-input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 import { toast } from "sonner"
 import { SupportChannelsSection } from "./SupportChannelsSection"
+import { SettingsChannelAgentAssignmentsProvider } from "./channel-agent-assignments-provider"
+import { ChannelAgentRow } from "./channel-agent-row"
 import { createTrackingSnippet } from "./tracking-snippet"
 
 export interface ChannelsSectionProps {
@@ -126,7 +128,7 @@ export function ChannelsSection({
   if (!active) return null
 
   return (
-    <>
+    <SettingsChannelAgentAssignmentsProvider siteId={siteId}>
       <SupportChannelsSection active={active} siteId={siteId} onSave={onSave} />
 
       {!excludeWebsite && (
@@ -140,6 +142,7 @@ export function ChannelsSection({
             Configure how your site tracks visitor behavior
           </p>
         </SectionCardHeader>
+        <ChannelAgentRow type="website" connectionId="website" label={siteName || "Website"} />
         <SectionCardContent className="space-y-4">
           <FormField
             control={form.control}
@@ -336,7 +339,7 @@ export function ChannelsSection({
                     />
                   </FormControl>
                   <FormDescription>
-                    Initial message visitors see when the chat widget opens. Default: "Welcome to our website! How can we assist you today?"
+                    Initial message visitors see when the chat widget opens. Default: &quot;Welcome to our website! How can we assist you today?&quot;
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -447,6 +450,6 @@ export function ChannelsSection({
         </SectionCardFooter>
       </SectionCard>
       )}
-    </>
+    </SettingsChannelAgentAssignmentsProvider>
   )
 }

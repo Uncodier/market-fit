@@ -8,6 +8,7 @@ import {
   timingSafeEqual,
 } from "node:crypto"
 import { requireSiteAccess } from "@/lib/auth/api-site-access"
+import { isSameOriginApiRequest } from "@/lib/http/api-proxy-security"
 import { isRobotConnectorId } from '@/lib/navigation/robot-connector-hint'
 import {
   strengthenImprentaAssistantPayload,
@@ -73,6 +74,13 @@ function getServerApiUrl(): string {
 }
 
 export async function POST(request: NextRequest) {
+  const serviceRequest = hasValidServiceApiKey(request)
+  if (!isSameOriginApiRequest(request) || (!serviceRequest && !request.headers.get("origin"))) {
+    return NextResponse.json({ success: false, execution_started: false, error: { code: "ORIGIN_DENIED" } }, { status: 403 })
+  }
+  if (request.headers.get("content-type")?.split(";")[0].trim().toLowerCase() !== "application/json") {
+    return NextResponse.json({ success: false, execution_started: false, error: { code: "JSON_REQUIRED" } }, { status: 415 })
+  }
   const deadline = Date.now() + RESPONSE_BUDGET_MS
   const leases: OperationLease[] = []
   let upstreamController: AbortController | undefined
@@ -121,13 +129,13 @@ export async function POST(request: NextRequest) {
     }
     let verifiedUserAuthorization: string | null = null
     if (parsedBody.connector_id_hint !== undefined && (!isRobotConnectorId(parsedBody.connector_id_hint) ||
-      !isRobotConnectorId(parsedBody.instance_id) || parsedBody.instance_node_id !== undefined || hasValidServiceApiKey(request))) {
+      !isRobotConnectorId(parsedBody.instance_id) || parsedBody.instance_node_id !== undefined || serviceRequest)) {
       return NextResponse.json({ error: { message: 'Invalid connector selection for this conversation' } }, { status: 400 })
     }
     // Older assistant APIs discard unknown fields. Never send a linked turn to
     // that endpoint: an API without the scoped route must reject it, not widen it.
     if (parsedBody.connector_id_hint !== undefined) targetUrl.pathname = `${ASSISTANT_PATH}/connector`
-    if (!hasValidServiceApiKey(request)) {
+    if (!serviceRequest) {
       const access = await requireSiteAccess(request, siteId)
       if (access.error) return access.error
       parsedBody.user_id = access.userId

@@ -26,7 +26,10 @@ cart control, configured hero/trust content, fulfillment segments, footer and
 mobile cart action. The location remains fixed and visible; QR identification
 and starting a new order replace account navigation. Fulfillment segments show
 only the configured pickup/dine-in choices, including a sole available choice,
-without scheduling. External hero links fall back to browsing the menu. Coupon
+without scheduling. The kiosk hero uses the same full-width cover as Shop,
+starting with the configured storefront hero and rotating through available
+offers. Search hides the cover, and visitors can pause rotation or navigate
+manually. External storefront hero links fall back to browsing the menu. Offer
 actions retain their location-specific flow rather than applying to the normal
 Shop cart. Starting a new order also clears the menu search.
 

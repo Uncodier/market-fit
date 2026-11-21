@@ -1,69 +1,39 @@
-"use client"
-
-import React from "react"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
+import { AgentLoadingRegion, AgentSkeletonToolbar } from "@/app/components/agents/agent-loading-region"
 import { Card, CardContent } from "@/app/components/ui/card"
-import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { ChevronLeft } from "@/app/components/ui/icons"
-import { Button } from "@/app/components/ui/button"
 import { Skeleton } from "@/app/components/ui/skeleton"
-import { PageTransition } from "@/app/components/ui/page-transition"
 
 export function CommandDetailSkeleton() {
   return (
-    <PageTransition>
-      <div className="flex min-h-screen flex-col">
-        <StickyHeader>
-          <div className="container py-2 max-w-screen-2xl">
-            <div className="flex items-center">
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1 mr-4"
-                disabled
-              >
-                <ChevronLeft className="h-4 w-4" />
-                Back
-              </Button>
-              <div className="flex-1 min-w-0">
-                <Skeleton className="h-6 w-52" />
-              </div>
-            </div>
+    <AgentLoadingRegion>
+      <div data-skeleton-shape="command-detail" className="flex min-h-screen flex-col">
+        <AgentSkeletonToolbar>
+          <Skeleton className="h-9 w-96 max-w-full rounded-full" />
+          <div className="ml-auto hidden gap-2 sm:flex">
+            {[1, 2, 3].map(i => <Skeleton key={i} className="h-8 w-8" />)}
           </div>
-        </StickyHeader>
+        </AgentSkeletonToolbar>
 
         <div className="container flex-1 items-start py-6 max-w-screen-2xl">
           <div className="flex flex-col space-y-6 lg:flex-row lg:space-x-6 lg:space-y-0">
             {/* Left Column: Command Details */}
             <div className="space-y-6 lg:flex-1">
-              <Tabs defaultValue="details">
-                <TabsList className="mb-4">
-                  <TabsTrigger value="details">Details</TabsTrigger>
-                  <TabsTrigger value="context">Context</TabsTrigger>
-                  <TabsTrigger value="targets">Targets</TabsTrigger>
-                  <TabsTrigger value="toolCalls">Tool Calls</TabsTrigger>
-                  <TabsTrigger value="results">Results</TabsTrigger>
-                </TabsList>
-
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="space-y-4">
-                      {/* Loading skeletons for command details */}
-                      {[1, 2, 3, 4].map((i) => (
-                        <div key={i} className="bg-muted/40 rounded-lg p-4 border border-border/30">
-                          <div className="flex items-center gap-3">
-                            <Skeleton className="h-12 w-12 rounded-md" />
-                            <div className="flex-1">
-                              <Skeleton className="h-4 w-24 mb-2" />
-                              <Skeleton className="h-5 w-48" />
-                            </div>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="space-y-4">
+                    {[1, 2, 3, 4].map((i) => (
+                      <div key={i} className="bg-muted/40 rounded-lg p-4 border border-border/30">
+                        <div className="flex items-center gap-3">
+                          <Skeleton className="h-12 w-12 rounded-md" />
+                          <div className="flex-1">
+                            <Skeleton className="h-4 w-24 mb-2" />
+                            <Skeleton className="h-5 w-48" />
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </Tabs>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
             {/* Right Column: Overview Card */}
@@ -122,6 +92,6 @@ export function CommandDetailSkeleton() {
           </div>
         </div>
       </div>
-    </PageTransition>
+    </AgentLoadingRegion>
   )
 } 

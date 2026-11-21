@@ -124,7 +124,7 @@ export function VisitsSettingsSkeletonContent() {
 }
 
 export function VoiceOptionsLoading() {
-  return <SettingsLoading label="Loading voice options" className="space-y-3">
+  return <SettingsLoading label="Loading voice options" className="space-y-3 motion-reduce:[&_.animate-pulse]:animate-none">
     <div className="grid gap-3 sm:grid-cols-2"><Field /><Field /></div>
     <Skeleton className="h-3 w-full" />
   </SettingsLoading>

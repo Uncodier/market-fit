@@ -33,7 +33,7 @@ afterAll(() => {
 
 function request(body = JSON.stringify({ site_id: 'site', user_id: 'forged-user', message: 'hello' })) {
   return new NextRequest('http://localhost:3000/api/robots/instance/assistant', {
-    method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer test-token' }, body,
+    method: 'POST', headers: { 'content-type': 'application/json', origin: 'http://localhost:3000', authorization: 'Bearer test-token' }, body,
   })
 }
 
@@ -77,6 +77,18 @@ it('rejects malformed input before auth or upstream execution', async () => {
   expect((await POST(request('{'))).status).toBe(400)
   expect(fetch).not.toHaveBeenCalled()
   expect(requireSiteAccess).not.toHaveBeenCalled()
+})
+
+it.each([
+  [{ 'content-type': 'application/json' }, 403],
+  [{ 'content-type': 'application/json', origin: 'https://other.example.test' }, 403],
+  [{ 'content-type': 'application/json', origin: 'http://localhost:3000', 'sec-fetch-site': 'cross-site' }, 403],
+  [{ 'content-type': 'text/plain', origin: 'http://localhost:3000' }, 415],
+] as [Record<string, string>, number][])('rejects untrusted interactive admissions before using the cookie session', async (headers, status) => {
+  const req = new NextRequest('http://localhost:3000/api/robots/instance/assistant', { method: 'POST', headers, body: '{}' })
+  expect((await POST(req)).status).toBe(status)
+  expect(requireSiteAccess).not.toHaveBeenCalled()
+  expect(fetch).not.toHaveBeenCalled()
 })
 
 it.each([
@@ -162,7 +174,7 @@ it('includes authorization time in the overall response budget', async () => {
 it('derives upstream authentication for cookie-only browser requests and strips unverified keys', async () => {
   ;(fetch as jest.Mock).mockResolvedValue(new Response('done'))
   const input = new NextRequest('http://localhost:3000/api/robots/instance/assistant', {
-    method: 'POST', headers: { cookie: 'session', 'content-type': 'application/json', 'x-api-key': 'unverified-key' },
+    method: 'POST', headers: { cookie: 'session', origin: 'http://localhost:3000', 'content-type': 'application/json', 'x-api-key': 'unverified-key' },
     body: JSON.stringify({ site_id: 'site', message: 'hello' }),
   })
   const response = await POST(input)

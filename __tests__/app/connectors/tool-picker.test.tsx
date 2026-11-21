@@ -5,6 +5,7 @@ import { access, connector, deferred, jsonResponse, translate } from "./fixtures
 jest.mock("@/app/context/LocalizationContext", () => ({ useLocalization: () => ({ t: translate }) }))
 const fetchMock = jest.mocked(fetch)
 beforeEach(() => fetchMock.mockReset())
+beforeAll(() => { HTMLElement.prototype.scrollIntoView ??= jest.fn() })
 
 const reviewed = { slug: "MAIL_READ", name: "Read messages", description: "Read a message", reviewed: true }
 const catalogOnly = { slug: "2MAIL_LIST", name: "List messages", description: "List a folder", reviewed: false }
@@ -30,7 +31,7 @@ test("pages and searches the whole toolkit; only selected exact IDs go into the 
   fireEvent.click(screen.getByRole("button", { name: "Next" }))
   expect(await screen.findByRole("button", { name: "Previous" })).toBeEnabled()
   fireEvent.change(screen.getByRole("searchbox"), { target: { value: "  inbox & archive  " } })
-  const result = await screen.findByRole("button", { name: /2MAIL_LIST.*Catalogue only · cannot run/ })
+  const result = await screen.findByRole("button", { name: /2MAIL_LIST.*Provider-listed · not reviewed/ })
   expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([path + "1", path + "2", path + "1&q=inbox+%26+archive"])
   expect(save()).toBeDisabled()
   fireEvent.click(result)
@@ -60,6 +61,26 @@ test("loading, failed reads, retry and empty results leave the saved policy unch
   expect(await screen.findByText("No matching tools.")).toBeVisible()
   expect(screen.queryByRole("button", { name: /MAIL_\*/ })).not.toBeInTheDocument()
   expect(save()).toBeDisabled()
+})
+
+test("filters the full picker catalogue by action, retaining search and exact ID selection", async () => {
+  const tagged = { ...catalogOnly, action_types: ["update"] }
+  fetchMock.mockResolvedValueOnce(page([])).mockResolvedValueOnce(page([], 22)).mockResolvedValueOnce(page([], 22))
+    .mockResolvedValueOnce(page([tagged]))
+  const onSave = editor()
+  fireEvent.click(add())
+  await screen.findByText("No tools listed")
+  fireEvent.change(screen.getByRole("searchbox"), { target: { value: "labels" } })
+  fireEvent.click(await screen.findByRole("button", { name: "Next" }))
+  await screen.findByRole("button", { name: "Previous" })
+  fireEvent.keyDown(screen.getByRole("combobox", { name: "Tool action type" }), { key: "ArrowDown" })
+  fireEvent.click(await screen.findByRole("option", { name: "Update" }))
+  const result = await screen.findByRole("button", { name: /2MAIL_LIST.*Update.*Provider-listed · not reviewed/ })
+  expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([path + "1", path + "1&q=labels", path + "2&q=labels", path + "1&q=labels&action=update"])
+  fireEvent.click(result)
+  expect(onSave).not.toHaveBeenCalled()
+  fireEvent.click(save())
+  expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ allowed_tools: [catalogOnly.slug] }))
 })
 
 test("late responses cannot replace a newer search", async () => {

@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react'
 import { Skeleton } from '@/app/components/ui/skeleton'
+import { ChannelAgentRowShape, ChannelCardShape } from '@/app/components/agents/channel-skeletons'
 import { SectionCard, SectionCardContent, SectionCardFooter, SectionCardHeader } from '@/app/components/ui/section-card'
 import { SettingsCardsSkeletonContent, SettingsSecretsLoadingRows, VisitsSettingsSkeletonContent } from '@/app/components/settings/settings-loading'
 import { useProcurementI18n } from '@/app/purchases/procurement/i18n/use-procurement-i18n'
@@ -96,7 +97,9 @@ function Content({ segment }: { segment: string }) {
     case 'marketplace': return <Marketplace />
     case 'visits': return <VisitsSettingsSkeletonContent />
     case 'team': return <div data-settings-section="team-members" className="space-y-6"><Heading action /><SettingsCardsSkeletonContent kind="team" /></div>
-    case 'channels': return <><Summaries section="support-channels" /><Card section="website-channel" shape="website"><Choices /><Field /><Skeleton className="h-32 w-full" /></Card></>
+    case 'channels': return <><div data-settings-section="support-channels" className="space-y-6"><Heading action />
+      {[0, 1].map(i => <div key={i} data-settings-section={`support-channels-${i}`}><ChannelCardShape /></div>)}
+    </div><Card section="website-channel" shape="website"><ChannelAgentRowShape /><Choices /><Field /><Skeleton className="h-32 w-full" /></Card></>
     case 'calendar': return <Summaries section="calendars" />
     case 'social': return <Summaries section="social-networks-section" />
     case 'printers': return <div className="space-y-6" data-settings-section="printers"><Heading action /><div className="max-w-sm"><Field /></div>{[0, 1].map(index => <Card key={index} section={`printer-${index}`} shape="summary" footer={false} />)}</div>
@@ -119,6 +122,6 @@ export function SettingsFormSkeleton({ segment = 'general' }: { segment?: string
   if (segment === 'tenders' || segment === 'procurement') return <ProcurementSettingsSkeleton />
   const spacing = segment === 'general' ? 'space-y-12' : ['company', 'visits'].includes(segment) ? 'space-y-4' : 'space-y-6'
   return <div role="status" aria-label={t('procurement.common.loadingContent')} aria-busy="true" data-settings-skeleton={segment}>
-    <div aria-hidden="true" className={spacing}><Content segment={segment} /></div>
+    <div aria-hidden="true" className={`${spacing} motion-reduce:[&_.animate-pulse]:animate-none`}><Content segment={segment} /></div>
   </div>
 }

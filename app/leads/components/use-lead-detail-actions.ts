@@ -7,6 +7,7 @@ import { Lead } from "@/app/leads/types"
 import { useSite } from "@/app/context/SiteContext"
 import { useAuth } from "@/app/hooks/use-auth"
 import { createClient } from "@/utils/supabase/client"
+import { findSiteSupportAgent } from "@/lib/agents/find-site-support-agent"
 import { createConversation } from "@/app/services/chat-service"
 import { LeadDetailActionKind } from "./LeadActionsMenu"
 
@@ -66,12 +67,7 @@ export function useLeadDetailActions(lead: Lead) {
     setLoading("newConversation")
     try {
       const supabase = createClient()
-      const { data: agent, error: agentError } = await supabase
-        .from("agents")
-        .select("id, name")
-        .eq("site_id", currentSite.id)
-        .eq("role", "Customer Support")
-        .single()
+      const { data: agent, error: agentError } = await findSiteSupportAgent(supabase, currentSite.id)
 
       const supportAgent = agent as { id: string; name: string } | null
       if (agentError || !supportAgent) {

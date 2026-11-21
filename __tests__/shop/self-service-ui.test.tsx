@@ -5,7 +5,7 @@ import type { ComponentProps } from "react"
 import { BuyerIdentityScan, isSignedBuyerCode } from "@/app/shop/[siteSlug]/self-service/BuyerIdentityScan"
 import { SelfServiceConfirmation } from "@/app/shop/[siteSlug]/self-service/SelfServiceConfirmation"
 import { SelfServiceProductDetail } from "@/app/shop/[siteSlug]/self-service/SelfServiceProductDetail"
-import { SelfServiceCoupons } from "@/app/shop/[siteSlug]/self-service/SelfServiceCoupons"
+import { SelfServiceHero } from "@/app/shop/[siteSlug]/self-service/SelfServiceHero"
 import { SelfServiceCart } from "@/app/shop/[siteSlug]/self-service/SelfServiceCart"
 import { useSelfService } from "@/app/shop/[siteSlug]/self-service/SelfServiceProvider"
 import { useRouter } from "next/navigation"
@@ -202,7 +202,7 @@ it("disables the host and explains when required options cannot be supplied", ()
 })
 
 it("never quick-applies coupons into the normal storefront cart", () => {
-  render(<SelfServiceCoupons locationId="branch" promos={[{ id: "offer", site_id: "site", name: "Coffee deal", discount_type: "percent", discount_value: 10, catalog_item_ids: [], category_ids: [] }]} />)
+  render(<SelfServiceHero site={state.context.site} searchQuery="" locationId="branch" promos={[{ id: "offer", site_id: "site", name: "Coffee deal", discount_type: "percent", discount_value: 10, catalog_item_ids: [], category_ids: [] }]} />)
   expect(screen.getByRole("link")).toHaveAttribute("href", "/shop/branch/promo/offer")
   expect(screen.queryByRole("button", { name: "Apply" })).not.toBeInTheDocument()
 })

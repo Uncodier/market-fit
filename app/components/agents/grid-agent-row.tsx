@@ -1,38 +1,22 @@
 import React from "react"
 import { cn } from "@/lib/utils"
-import { Agent, AgentActivity } from "@/app/types/agents"
-import { Badge } from "@/app/components/ui/badge"
+import type { AgentActivity } from "@/app/types/agents"
 import { Button } from "@/app/components/ui/button"
 import { MessageSquare, Pencil, ChevronUp, ChevronDown, Bell, LogIn, LogOut } from "@/app/components/ui/icons"
-import * as Icons from "@/app/components/ui/icons"
-import { agentStatusVariants } from "./agent-card.styles"
-import { Skeleton } from "@/app/components/ui/skeleton"
 import { useSite } from "@/app/context/SiteContext"
 import { ActivityExecutionStatus } from "@/app/hooks/use-activity-execution"
 import { AgentActivityItem } from "./agent-activity-item"
 import { getEnabledSiteChannels } from "@/lib/site-channels"
 import { ChannelBadge } from "@/app/components/channels/channel-icon"
-import { TableCell, TableRow } from "@/app/components/ui/table"
+import { TableCell } from "@/app/components/ui/table"
 import { DocumentListRow, EntityCell, StatusDot } from "@/app/components/documents/document-list"
 
-// Extender el tipo Agent para incluir datos personalizados
-interface ExtendedAgent extends Agent {
-  dbData?: {
-    id: string;
-    name: string;
-    description: string;
-    status: string;
-    type: string;
-    conversations: number;
-    successRate: number;
-    lastActive: string;
-    role: string;
-  };
-  isDisabled?: boolean;
-}
+import type { ListedAgent as ExtendedAgent } from "@/app/agents/list/agent-list-model"
 
 interface GridAgentRowProps {
   agent: ExtendedAgent
+  reportingLabel?: string
+  showId?: boolean
   isExpanded: boolean
   onToggleExpand: (agent: ExtendedAgent) => void
   onManage: (agent: ExtendedAgent) => void
@@ -46,6 +30,8 @@ interface GridAgentRowProps {
 
 export function GridAgentRow({
   agent,
+  reportingLabel,
+  showId,
   isExpanded,
   onToggleExpand,
   onManage,
@@ -56,26 +42,9 @@ export function GridAgentRow({
   activityStates = {}
 }: GridAgentRowProps) {
   const { currentSite } = useSite()
-  // Si el agente está marcado como deshabilitado y no estamos forzando a mostrarlo, no renderizarlo
-  if (agent.isDisabled && !forceShow) {
-    console.log(`GridAgentRow: Ocultando agente ${agent.name} (${agent.id}) porque isDisabled=true`);
-    return null;
-  }
-  
-  // Determinar qué datos mostrar (DB o template)
+  if (agent.isDisabled && !forceShow) return null
   const hasCustomData = !!agent.dbData;
   
-  // Get the icon component for the agent
-  const getIconComponent = (iconName: string) => {
-    return Object.prototype.hasOwnProperty.call(Icons, iconName)
-      ? Icons[iconName as keyof typeof Icons]
-      : Icons.User;
-  };
-  
-  // Get the icon component
-  const IconComponent = getIconComponent(agent.icon);
-  
-  // Determinar nombre, rol y descripción a mostrar
   const displayName = hasCustomData ? agent.dbData!.name : agent.name;
   const displayDescription = hasCustomData ? agent.dbData!.description : agent.description;
   const displayStatus = hasCustomData ? agent.dbData!.status : "inactive";
@@ -83,20 +52,19 @@ export function GridAgentRow({
   const displayType = hasCustomData ? agent.dbData!.type : agent.type;
   const displayLastActive = hasCustomData ? agent.dbData!.lastActive : agent.lastActive;
   
-  // Determinar si mostrar el rol separadamente (si el nombre es diferente al rol)
-  const shouldShowRole = hasCustomData && displayName !== displayRole;
+  const shouldShowRole = hasCustomData && !!displayRole && displayName !== displayRole;
   
-  // Determinar si el botón de chat debe estar deshabilitado
   const isChatDisabled = !hasCustomData;
   
   // Communication icons logic (same as SimpleAgentCard)
   
   // Determine if this agent should have entry icons (Customer Support)
-  const shouldShowEntryIcons = agent.id === "7" && hasCustomData && displayStatus === "active"
+  const templateId = agent.templateId ?? agent.id
+  const shouldShowEntryIcons = templateId === "7" && hasCustomData && displayStatus === "active"
   
   // Determine which agents should show exit (reach out) icons
   const shouldShowExitIcons = (
-    (agent.id === "5" || agent.id === "7" || agent.id === "1") && 
+    (templateId === "5" || templateId === "7" || templateId === "1") &&
     hasCustomData && 
     displayStatus === "active"
   )
@@ -104,11 +72,11 @@ export function GridAgentRow({
   const enabledChannels = getEnabledSiteChannels(currentSite)
   
   // Format date consistently
-  const formattedDate = new Intl.DateTimeFormat("en-US", {
+  const formattedDate = displayLastActive ? new Intl.DateTimeFormat("en-US", {
     year: "numeric",
     month: "short",
     day: "numeric"
-  }).format(new Date(displayLastActive));
+  }).format(new Date(displayLastActive)) : "—";
 
   return (
     <React.Fragment>
@@ -131,6 +99,8 @@ export function GridAgentRow({
             meta={displayDescription}
             secondaryMono={false}
           />
+          {showId && <p className="mt-1 font-mono text-xs text-muted-foreground">{agent.id}</p>}
+          {reportingLabel && <p className="mt-1 text-xs text-muted-foreground">{reportingLabel}</p>}
         </TableCell>
         
         <TableCell className="py-3.5">

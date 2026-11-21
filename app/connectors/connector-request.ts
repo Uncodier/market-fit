@@ -4,6 +4,12 @@ export class ConnectorRequestError extends Error {
   constructor(public code: string, public status = 0) { super(code) }
 }
 
+/** A local account read has its own authorization. Do not mask a workspace access denial. */
+export function canRecoverLocalAccounts(error: unknown) {
+  return error instanceof ConnectorRequestError && (error.status === 0 || error.status >= 500 ||
+    error.status === 429 || /^(provider_|auth_config_|composio_project_setup_required$)/.test(error.code))
+}
+
 /** Browser calls stay on the authenticated BFF; writes are never automatically retried. */
 export async function connectorRequest<T>(path: string, schema: z.ZodType<T>, init: RequestInit = {}): Promise<T> {
   if (!path.startsWith("/api/connectors/")) throw new ConnectorRequestError("invalid_request")
@@ -32,6 +38,7 @@ export function connectorErrorKey(error: unknown): string {
   // Provider authentication is separate from the signed-in user's session.
   if (error.code === "provider_auth_failed") return "providerAuth"
   if (error.code === "storage_unavailable") return "storage"
+  if (error.code === "catalog_opt_out_separate") return "catalogOptOutSeparate"
   if (error.code === "api_not_configured" || error.code === "upstream_unavailable") return "apiUnavailable"
   if (error.code === "provider_invalid_response") return "providerResponse"
   if (error.code === "auth_config_pending") return "unknown"

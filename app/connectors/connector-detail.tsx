@@ -1,10 +1,12 @@
 "use client"
 
 import Link from "next/link"
-import { useState } from "react"
+import { useCallback, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
+import { useDebouncedCallback } from "use-debounce"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
+import { SearchInput } from "@/app/components/ui/search-input"
 import { Badge, badgeVariants } from "@/app/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Label } from "@/app/components/ui/label"
@@ -19,7 +21,8 @@ import { ConnectorDetailSkeleton, connectorDetailBodyClassName } from "./connect
 import { ConnectionActions } from "./connector-lifecycle"
 import { BindProject } from "./connector-bind-project"
 import { ConnectAccount } from "./connector-connect-account"
-import { ConnectorRequestError, scopedConnectorPath } from "./connector-request"
+import { canRecoverLocalAccounts, ConnectorRequestError, scopedConnectorPath } from "./connector-request"
+import { LocalAccountRecovery } from "./local-account-recovery"
 import { detailSchema, type Connector } from "./types"
 import { useConnectorResource } from "./use-connector-resource"
 
@@ -40,6 +43,13 @@ export function DetailContent({ siteId, slug }: { siteId: string; slug: string }
   const router = useRouter()
   const params = useSearchParams()
   const [tab, setTab] = useState("summary")
+  const [searchInput, setSearchInput] = useState("")
+  const [toolSearch, setToolSearch] = useState("")
+  const debounceToolSearch = useDebouncedCallback(setToolSearch, 250)
+  const onSearchExpanded = useCallback((expanded: boolean) => {
+    if (expanded) setTab("tools")
+  }, [])
+  const searchLabel = t("connectors.searchToolsHeader")
   const requestedAccount = params.get("connector")
   const { data, error, reload } = useConnectorResource(scopedConnectorPath(`catalog/${encodeURIComponent(slug)}`, siteId), detailSchema)
   const onlyAccount = data?.connections.length === 1 ? data.connections[0] : undefined
@@ -48,16 +58,38 @@ export function DetailContent({ siteId, slug }: { siteId: string; slug: string }
   const supabaseDisconnect = selected?.toolkit_slug === "supabase" && selected.revocation_pending && !selected.enabled
   return <div className="flex-1">
     <Tabs value={tab} onValueChange={setTab}>
-    <StickyHeader><div className="flex items-center py-3">
+    <StickyHeader><div className="flex w-full min-w-0 flex-wrap items-center gap-2 py-3 sm:gap-3">
       <TabsList className="h-8 rounded-full bg-muted/30 p-0.5">
         <TabsTrigger value="summary" className="rounded-full px-4 text-xs">{t("connectors.summary")}</TabsTrigger>
         <TabsTrigger value="tools" className="rounded-full px-4 text-xs">{t("connectors.tools")}</TabsTrigger>
       </TabsList>
+      <form role="search" aria-label={searchLabel} className="min-w-0 max-w-full" onSubmit={event => {
+        event.preventDefault()
+        setTab("tools")
+        debounceToolSearch.flush()
+      }}>
+        <SearchInput aria-label={searchLabel} placeholder={searchLabel} value={searchInput} maxLength={200}
+          containerClassName="w-64 max-w-full" enterKeyHint="search" onExpandedChange={onSearchExpanded}
+          onSearch={value => {
+            setTab("tools")
+            setSearchInput(value)
+            const query = value.trim().slice(0, 200)
+            if (query) debounceToolSearch(query)
+            else {
+              debounceToolSearch.cancel()
+              setToolSearch("")
+            }
+          }} />
+      </form>
     </div></StickyHeader>
     <div className={connectorDetailBodyClassName}>
-      <TabsContent value="tools"><ConnectorTools key={`${siteId}:${slug}`} siteId={siteId} slug={slug} /></TabsContent>
+      <TabsContent value="tools">{searchInput.trim().slice(0, 200) !== toolSearch
+        ? <p role="status" className="text-sm text-muted-foreground">{t("connectors.loadingTools")}</p>
+        : <ConnectorTools key={`${siteId}:${slug}:${toolSearch}`} siteId={siteId} slug={slug} search={toolSearch} />}</TabsContent>
       <TabsContent value="summary" className="space-y-6">
-      {error ? <ConnectorError error={error} retry={reload} /> : !data ? <ConnectorDetailSkeleton /> : <>
+      {error ? <><ConnectorError error={error} retry={reload} />
+        {canRecoverLocalAccounts(error) && <LocalAccountRecovery key={`${siteId}:${slug}:${requestedAccount ?? ""}`} siteId={siteId} slug={slug} requestedAccount={requestedAccount} />}
+      </> : !data ? <ConnectorDetailSkeleton /> : <>
         <ConnectAccount siteId={siteId} detail={data} onChanged={reload} />
         <SectionCard id="overview"><SectionCardHeader title={data.toolkit.name} description={data.toolkit.description} />
           <SectionCardContent>

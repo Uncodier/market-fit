@@ -61,6 +61,11 @@ export function useSiteLoadingLifecycle(deps: LifecycleDeps) {
     latest.current = { ...latest.current, currentSite: null, isInitialized: false }
   }
 
+  function retireDeniedScope() {
+    retire()
+    latest.current = { ...latest.current, currentSite: null }
+  }
+
   async function bounded(request: number, signal: AbortSignal, operation: () => Promise<void>, initial: boolean | (() => boolean)) {
     let timer: ReturnType<typeof setTimeout> | undefined
     let onAbort = () => {}
@@ -189,15 +194,21 @@ export function useSiteLoadingLifecycle(deps: LifecycleDeps) {
         currentSite: cached ?? state.currentSite,
         isInitialized: Boolean(cached) || (state.isInitialized && !hydrating.current),
         isCurrent, signal, fresh, selectSite: selectLoadedSite, reload: loadSites,
+        onAccessDenied: retireDeniedScope,
       }).then(async result => {
         const billingStarted = refreshBilling(result?.site, isCurrent)
         if (result?.authoritative === false && isCurrent()) {
-          if (!result.selectionMissing && result.revalidateAfterMs > 0) {
+          const remainingMs = result.revalidateAt - performance.now()
+          if (!result.selectionMissing && remainingMs > 0) {
             // A fresh cache hit should save DB work. Reconcile once at expiry,
-            // cancelled by any newer request, selection or auth generation.
+            // without adding time already spent hydrating settings to its budget.
             revalidationTimer.current = setTimeout(() => {
-              if (isCurrent()) void loadSites(true)
-            }, result.revalidateAfterMs)
+              const refresh = () => { if (isCurrent()) void loadSites(true) }
+              // The timer may expire while cached settings are still hydrating.
+              // Wait for that load to release deduplication instead of losing the refresh.
+              if (initialLoad.current) void initialLoad.current.then(refresh, () => {})
+              else refresh()
+            }, remainingMs)
             return
           }
           // Reconcile the hint once under the same cancellation/deadline scope.
@@ -206,6 +217,7 @@ export function useSiteLoadingLifecycle(deps: LifecycleDeps) {
             ...latest.current, supabase: state.supabaseRef.current, sessionUserId: userId,
             isInitialized: true, isCurrent, signal, fresh: true,
             selectSite: selectLoadedSite, reload: loadSites,
+            onAccessDenied: retireDeniedScope,
           })
           if (!billingStarted) refreshBilling(fresh?.site, isCurrent)
         }

@@ -19,9 +19,10 @@ test("an old Supabase policy stays selected until a mode-only change is saved", 
   expect(save).toBeDisabled()
   fireEvent.click(all)
   expect(save).toBeEnabled()
-  expect(screen.getByText("No executable tools for this connector yet.")).toBeVisible()
+  expect(screen.getByText("No reviewed tools for this connection yet.")).toBeVisible()
   expect(screen.getByText(/become compatible in the future/)).toBeVisible()
-  expect(screen.getByText(/Catalogue-only tools cannot run/)).toBeVisible()
+  expect(screen.getByText(/Selecting a catalogue entry does not by itself authorize execution/)).toBeVisible()
+  expect(screen.getByRole("checkbox", { name: "Allow instance catalogue reads" })).not.toBeChecked()
   expect(screen.queryByText("No tools allowed.")).not.toBeInTheDocument()
   expect(screen.queryByRole("button", { name: "Add tool" })).not.toBeInTheDocument()
   fireEvent.click(selected)
@@ -34,7 +35,7 @@ test("an old Supabase policy stays selected until a mode-only change is saved", 
   expect(url).toBe("/api/connectors/connections/connector-1/policy")
   expect(request?.method).toBe("PATCH")
   expect(JSON.parse(request?.body as string)).toEqual({ site_id: "site-1", expected_revision: 4,
-    tool_access_mode: "all", allowed_tools: ["SUPABASE_CATALOG_ENTRY"], allowed_hosts: ["assistant"], require_approval: true, enabled: false })
+    tool_access_mode: "all", allowed_tools: ["SUPABASE_CATALOG_ENTRY"], allowed_hosts: [], require_approval: true, enabled: false })
 })
 
 test.each([true, false])("shows API-provided all mode without interpreting an empty list as a denial (manager: %s)", async canManage => {
@@ -51,7 +52,7 @@ test.each([true, false])("shows API-provided all mode without interpreting an em
   } else {
     expect(screen.queryByRole("radio")).not.toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Save policy" })).not.toBeInTheDocument()
-    expect(screen.queryByText("No executable tools for this connector yet.")).not.toBeInTheDocument()
+    expect(screen.queryByText("No reviewed tools for this connection yet.")).not.toBeInTheDocument()
   }
   expect(screen.queryByText("No tools allowed.")).not.toBeInTheDocument()
   expect(fetchMock).toHaveBeenCalledTimes(1)

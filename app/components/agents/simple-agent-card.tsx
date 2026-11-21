@@ -1,11 +1,10 @@
 import { cn } from "@/lib/utils"
-import { Agent, AgentActivity } from "@/app/types/agents"
+import type { AgentActivity } from "@/app/types/agents"
 import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from "@/app/components/ui/card"
 import { Badge } from "@/app/components/ui/badge"
-import { Avatar, AvatarImage, AvatarFallback } from "@/app/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/app/components/ui/avatar"
 import { Pencil, MessageSquare, ChevronUp, ChevronDown, LogIn, LogOut, Bell } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
-import * as Icons from "@/app/components/ui/icons"
 import { agentStatusVariants, agentCardVariants } from "./agent-card.styles"
 import { AgentActivityList } from "./agent-activity-list"
 import { useSite } from "@/app/context/SiteContext"
@@ -13,21 +12,7 @@ import { ActivityExecutionStatus } from "@/app/hooks/use-activity-execution"
 import { getEnabledSiteChannels } from "@/lib/site-channels"
 import { ChannelBadge } from "@/app/components/channels/channel-icon"
 
-// Extender el tipo Agent para incluir datos personalizados
-interface ExtendedAgent extends Agent {
-  dbData?: {
-    id: string;
-    name: string;
-    description: string;
-    status: string;
-    type: string;
-    conversations: number;
-    successRate: number;
-    lastActive: string;
-    role: string;
-  };
-  isDisabled?: boolean;
-}
+import type { ListedAgent as ExtendedAgent } from "@/app/agents/list/agent-list-model"
 
 interface SimpleAgentCardProps {
   agent: ExtendedAgent
@@ -51,27 +36,12 @@ export function SimpleAgentCard({
   showActivities = false,
   onExecuteActivity,
   className,
-  selectedAgent,
   setSelectedAgent,
   forceShow = false,
   activityStates = {}
 }: SimpleAgentCardProps) {
   const { currentSite } = useSite()
-  // Si el agente está marcado como deshabilitado y no estamos forzando a mostrarlo, no renderizarlo
-  if (agent.isDisabled && !forceShow) {
-    console.log(`SimpleAgentCard: Ocultando agente ${agent.name} (${agent.id}) porque isDisabled=true`);
-    return null;
-  }
-
-  // Function to get the icon component based on the name
-  const getIconComponent = (iconName: string) => {
-    return Object.prototype.hasOwnProperty.call(Icons, iconName)
-      ? Icons[iconName as keyof typeof Icons]
-      : Icons.User;
-  };
-  
-  // Get the icon component
-  const IconComponent = getIconComponent(agent.icon);
+  if (agent.isDisabled && !forceShow) return null
 
   const handleCardClick = () => {
     if (setSelectedAgent) {
@@ -79,27 +49,24 @@ export function SimpleAgentCard({
     }
   };
   
-  // Determinar qué datos mostrar (DB o template)
   const hasCustomData = !!agent.dbData;
   
-  // Determinar nombre y descripción a mostrar
   const displayName = hasCustomData ? agent.dbData!.name : agent.name;
   const displayDescription = hasCustomData ? agent.dbData!.description : agent.description;
   const displayStatus = hasCustomData ? agent.dbData!.status : "inactive";
   const displayRole = hasCustomData ? agent.dbData!.role : (agent.role || agent.name);
   
-  // Determinar si mostrar el rol separadamente (si el nombre es diferente al rol)
-  const shouldShowRole = hasCustomData && displayName !== displayRole;
+  const shouldShowRole = hasCustomData && !!displayRole && displayName !== displayRole;
 
-  // Determinar si el botón de chat debe estar deshabilitado
   const isChatDisabled = !hasCustomData;
   
   // Determine if this agent should have entry icons (Customer Support)
-  const shouldShowEntryIcons = agent.id === "7" && hasCustomData && displayStatus === "active"
+  const templateId = agent.templateId ?? agent.id
+  const shouldShowEntryIcons = templateId === "7" && hasCustomData && displayStatus === "active"
   
   // Determine which agents should show exit (reach out) icons
   const shouldShowExitIcons = (
-    (agent.id === "5" || agent.id === "7" || agent.id === "1") && 
+    (templateId === "5" || templateId === "7" || templateId === "1") &&
     hasCustomData && 
     displayStatus === "active"
   )
@@ -151,7 +118,7 @@ export function SimpleAgentCard({
             <Badge 
               className={cn(
                 "flex-none mt-1",
-                agentStatusVariants({ status: displayStatus as any })
+                agentStatusVariants({ status: displayStatus })
               )}
               aria-label={`Agent status: ${displayStatus}`}
             >

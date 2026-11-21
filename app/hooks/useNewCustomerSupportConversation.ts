@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { useAuthContext } from "@/app/components/auth/auth-provider"
 import { useSite } from "@/app/context/SiteContext"
 import { createClient } from "@/lib/supabase/client"
+import { findSiteSupportAgent } from "@/lib/agents/find-site-support-agent"
 import { createConversation } from "@/app/services/chat-service"
 import { toast } from "react-hot-toast"
 
@@ -25,12 +26,7 @@ export function useNewCustomerSupportConversation() {
     creating.current = true
     setIsCreating(true)
     try {
-      const { data: agent, error } = await createClient()
-        .from("agents")
-        .select("id, name")
-        .eq("site_id", currentSite.id)
-        .eq("role", "Customer Support")
-        .single()
+      const { data: agent, error } = await findSiteSupportAgent(createClient(), currentSite.id)
 
       if (error || !agent) {
         toast.error("Customer Support agent not found for this site.")

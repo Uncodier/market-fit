@@ -51,7 +51,7 @@ export const accessSchema = z.object({
   connector_id: z.string(), revision: z.number().int(),
   access_mode: accessMode,
   members: z.array(memberSchema), agents: z.array(agentSchema),
-  policy: z.object({ tool_access_mode: toolAccessMode.optional(), allowed_tools: strings, allowed_hosts: strings, require_approval: z.boolean(), support_publication: supportPublication.nullable().optional() }),
+  policy: z.object({ tool_access_mode: toolAccessMode.optional(), catalog_reads: z.boolean().optional(), allowed_tools: strings, allowed_hosts: strings, require_approval: z.boolean(), support_publication: supportPublication.nullable().optional() }),
   member_options: z.array(optionSchema), agent_options: z.array(optionSchema), can_manage: z.boolean(),
   reviewed_tools: z.array(z.object({ slug: z.string(), description: z.string() })).optional(),
 })

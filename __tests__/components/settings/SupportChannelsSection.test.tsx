@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
-import { FormProvider, useForm } from "react-hook-form"
+import { FormProvider, useForm, useWatch } from "react-hook-form"
 import {
   SupportChannelsSection,
 } from "@/app/components/settings/SupportChannelsSection"
@@ -7,6 +7,7 @@ import type { SiteFormValues } from "@/app/components/settings/form-schema"
 import { apiClient } from "@/app/services/api-client-service"
 import type { ApiResponse } from "@/app/services/api-client-response"
 import { toast } from "sonner"
+import { createClient } from "@/lib/supabase/client"
 import { reconcileSupportConnectionById } from "@/app/components/settings/support-channel-connection-utils"
 
 const checkStatus = jest.fn()
@@ -114,7 +115,7 @@ function TestForm({
       },
     } as SiteFormValues,
   })
-  const connections = form.watch("channels.connections")
+  const connections = useWatch({ control: form.control, name: "channels.connections" })
 
   return (
     <FormProvider {...form}>
@@ -329,7 +330,7 @@ describe("SupportChannelsSection", () => {
 
     expect(screen.getByText("+1 (415) 555-0102")).toBeInTheDocument()
     expect(screen.getByText("+1 (415) 555-0103")).toBeInTheDocument()
-    expect(screen.getByText("Call language")).toBeInTheDocument()
+    expect(await screen.findByText("Call language")).toBeInTheDocument()
     expect(screen.getByText("Speaking voice")).toBeInTheDocument()
     await waitFor(() => {
       expect(screen.getByText("+1 (415) 555-0101")).toBeInTheDocument()
@@ -370,8 +371,12 @@ describe("SupportChannelsSection", () => {
     expect(get).not.toHaveBeenCalled()
   })
 
-  it("persists a reconciled email domain status", async () => {
+  it("refreshes the saved email domain without writing the channel array back", async () => {
     const onSave = jest.fn().mockResolvedValue(undefined)
+    const email = { id: "email-1", type: "email", name: "Email", status: "pending", metadata: { domain_status: "verified" } }
+    const query = { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(),
+      abortSignal: jest.fn().mockReturnThis(), maybeSingle: jest.fn(async () => ({ data: { channels: { connections: [email] } } })) }
+    jest.mocked(createClient).mockReturnValueOnce({ from: () => query } as unknown as ReturnType<typeof createClient>)
     render(
       <TestForm
         onSave={onSave}
@@ -387,15 +392,9 @@ describe("SupportChannelsSection", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Reconcile email domain" }))
 
-    await waitFor(() => {
-      expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
-        channels: expect.objectContaining({
-          connections: [expect.objectContaining({
-            metadata: { domain_status: "verified" },
-          })],
-        }),
-      }))
-    })
+    await waitFor(() => expect(JSON.parse(screen.getByTestId("connections").textContent || "[]")).toEqual([expect.objectContaining(email)]))
+    expect(query.eq).toHaveBeenCalledWith("site_id", "site-1")
+    expect(onSave).not.toHaveBeenCalled()
   })
 
   it("reconciles a delayed update by stable id after connections reorder", () => {

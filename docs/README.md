@@ -4,6 +4,11 @@ This directory contains operational documentation for the Makinari application.
 Use the guides below before relying on older implementation notes.
 
 ## Start here
+
+- [Agents and channels review — 2026-11-20](MULTI_AGENT_REVIEW_2026-11-20.md) — original delivery failures, local repairs, offline evidence and the required rollout checks before live routing.
+
+- [Agent reporting hierarchy](AGENT_REPORTING_HIERARCHY.md) — the Supervisor field in agent profiles, ID-based diagram, hierarchy validation and rollout boundaries.
+- [Projects performance and contention audit — 2026-11-20](PROJECTS_PERFORMANCE_2026-11-20.md) — selector visibility, bounded cache/query work, timing diagnostics, index evidence and rollout boundaries.
 - [Finder selected-person lists](FINDER_SELECTED_LISTS.md) — add selected people,
   create a selected-only list, immediate enrichment and coordinated rollout.
 
@@ -163,10 +168,12 @@ environment variables before changing production configuration.
 
 ## Product designs
 
+- [Robots connector catalog reads](CONNECTORS_INSTANCE_CATALOG.md) — opt-in discovery, execution limits, agent recovery and rollout order.
+- [Connector validation archive](CONNECTORS_VALIDATION_HISTORY.md) — historical offline test results for the initial connector release, not live provider acceptance.
 - [Connectors implementation and rollout](CONNECTORS_IMPLEMENTATION.md) — local implementation boundaries, provider attestation/configuration, version-pinned REST execution, migrations and remaining live/deployment gates.
 - [Connectors and skill-aware discovery](CONNECTORS_ARCHITECTURE.md) — approved target architecture for the native catalogue, connector resources, domain/skill registry and phased rollout; current local coverage is in the implementation guide.
 - [Connector resources and delegated access](CONNECTORS_ACCESS_MODEL.md) — per-account resources, member/agent grants and policy intersection; background delegation remains a target contract, not implemented execution.
-- [Multiple channels and multiple agents](MULTI_CHANNEL_MULTI_AGENT_REQUIREMENTS.md) — connection assignments, agent Channels tab, Customer Support fallback and [legacy route compatibility](MULTI_CHANNEL_ROUTE_COMPATIBILITY.md), including worker handoffs and rollout gates; requirements only.
+- [Multiple channels and multiple agents](MULTI_CHANNEL_MULTI_AGENT_REQUIREMENTS.md) — independent agent creation, a Channels tab per saved profile and shared assignments in Settings. The [channel integration contract](MULTI_CHANNEL_ROUTE_COMPATIBILITY.md#integration-contract-migrate-callers-before-changing-the-responder) distinguishes saved assignments from live routing and tracks the remaining rollout gates.
 - [Procurement implementation](PROCUREMENT_IMPLEMENTATION.md) — local operational routes, security, migration prerequisites, validation and remaining workflows.
 - [Inventory replenishment](PROCUREMENT_REPLENISHMENT.md) — SKU/location minimums, draft requisitions, duplicate guards and deployment-gated inventory worker.
 - [Procurement repair validation](PROCUREMENT_REPAIR_VALIDATION.md) — review regressions, local PostgreSQL/PostgREST checks and rollout prerequisites.

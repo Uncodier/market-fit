@@ -81,7 +81,7 @@ export function SupportChannelHeader({
 }: {
   label: string
   type?: string
-  onRemove: () => void
+  onRemove?: () => void
   activation?: { active: boolean; busy: boolean; canManage: boolean; onChange: (enabled: boolean) => void }
 }) {
   return (
@@ -97,7 +97,7 @@ export function SupportChannelHeader({
           <Switch aria-label={`Activate ${label}`} checked={activation.active}
             disabled={!activation.canManage || activation.busy} onCheckedChange={activation.onChange} />
         </label>}
-        <Button
+        {onRemove && <Button
           size="icon"
           variant="ghost"
           type="button"
@@ -106,7 +106,7 @@ export function SupportChannelHeader({
           title="Remove Channel"
         >
           <Trash2 className="h-5 w-5" />
-        </Button>
+        </Button>}
         </div>
       </div>
     </SectionCardHeader>
@@ -159,6 +159,7 @@ export function SupportChannelTypeSelector({
             <FormControl>
               <PopoverTrigger asChild>
                 <Button
+                  type="button"
                   variant="outline"
                   className="flex h-10 w-full min-w-0 items-center justify-between overflow-hidden rounded-md border border-input bg-background px-3 py-2 text-left font-inter text-sm font-normal"
                 >
@@ -179,14 +180,14 @@ export function SupportChannelTypeSelector({
               </PopoverTrigger>
             </FormControl>
             <PopoverContent
-              className="z-[50] w-[var(--radix-popover-trigger-width)] min-w-[200px] p-1"
+              className="w-[var(--radix-popover-trigger-width)] min-w-[200px] p-1"
               align="start"
             >
               {CHANNEL_TYPES.map((item) => {
                 const Icon = item.icon
                 return (
                   <PopoverClose asChild key={item.value}>
-                    <div
+                    <button type="button"
                       onClick={() => {
                         field.onChange(item.value)
                         form.setValue(
@@ -205,7 +206,7 @@ export function SupportChannelTypeSelector({
                           Partner Link
                         </div>
                       )}
-                    </div>
+                    </button>
                   </PopoverClose>
                 )
               })}

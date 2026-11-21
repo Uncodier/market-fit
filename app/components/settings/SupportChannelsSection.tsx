@@ -8,7 +8,7 @@ import {
   SectionCardContent,
 } from "@/app/components/ui/section-card"
 import { Button } from "@/app/components/ui/button"
-import { Bot, PlusCircle } from "@/app/components/ui/icons"
+import { PlusCircle } from "@/app/components/ui/icons"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { GlobeIcon } from "@/app/components/ui/social-icons"
 import { ConfirmDialog } from "@/app/components/ui/confirm-dialog"
@@ -36,8 +36,7 @@ import { effectiveBillingPlan } from "@/lib/billing/startup-trial"
 import { useSite } from "@/app/context/SiteContext"
 import { useBillingLimit } from "@/app/context/BillingLimitContext"
 import { disconnectZavuChannel, shouldDeleteZavuSender } from "./disconnect-remote-accounts"
-import { useRouter } from "next/navigation"
-import { createClient } from "@/lib/supabase/client"
+import { ChannelAgentRow } from "./channel-agent-row"
 import { buildSupportChannelNavigation } from "./support-channel-navigation"
 import { useEmailConnectionReconciliation } from "./use-email-connection-reconciliation"
 import { useAgentChannelActivation } from "./use-agent-channel-activation"
@@ -46,39 +45,23 @@ import { PartnerSupportChannelSetup } from "./PartnerSupportChannelSetup"
 import { PARTNER_LINK_TYPES } from "./zavu-invitation-helpers"
 import { closePartnerSetupWindow, getPartnerSetupUrl, navigatePartnerSetupWindow, reservePartnerSetupWindow } from "./partner-setup-window"
 import { ZavuChannelActivationRecovery, canRecoverZavuActivation } from "./ZavuChannelActivationRecovery"
-interface SupportChannelsSectionProps {
+type SupportChannelsSectionProps = {
   active: boolean
   siteId?: string
+} & ({
   onSave?: (data: SiteFormValues) => void
-}
+  standalone?: never
+} | {
+  standalone: { draftId: string; receiptError: string }
+  onSave?: never
+})
 const EMPTY_CONNECTIONS: SiteFormValues["channels"]["connections"] = []
-export function SupportChannelsSection({ active, siteId, onSave }: SupportChannelsSectionProps) {
+export function SupportChannelsSection({ active, siteId, onSave, standalone }: SupportChannelsSectionProps) {
   const form = useFormContext<SiteFormValues>()
   const { currentSite } = useSite()
-  const activation = useAgentChannelActivation(siteId)
+  const activation = useAgentChannelActivation(standalone ? undefined : siteId)
   const reconcileEmailConnection = useEmailConnectionReconciliation(siteId)
-  const router = useRouter()
   const { showBillingLimit, showBillingLimitFromError } = useBillingLimit()
-  const handleConfigureAgent = async () => {
-    if (!currentSite?.id) return
-    try {
-      const supabase = createClient()
-      const { data: agent } = await supabase
-        .from("agents")
-        .select("id, name")
-        .eq("site_id", currentSite.id)
-        .eq("role", "Customer Support")
-        .single()
-      if (agent?.id) {
-        router.push(`/agents/${agent.id}`)
-      } else {
-        toast.error("Customer Support agent not found")
-      }
-    } catch (err) {
-      console.error(err)
-      toast.error("Error finding Customer Support agent")
-    }
-  }
   const openAccountLimit = () => {
     showBillingLimit({
       kind: "accounts",
@@ -90,19 +73,22 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
     control: form.control,
     name: "channels.connections",
   })
-  const connections = useWatch({ control: form.control, name: "channels.connections" }) || EMPTY_CONNECTIONS
+  const watched = useWatch({ control: form.control, name: "channels.connections" }) || EMPTY_CONNECTIONS
+  // The scoped form must never poll invitations, reconcile, or render controls for another account.
+  const inScope = !standalone || (currentSite?.id === siteId && watched.length === 1 && watched[0].id === standalone.draftId)
+  const connections = inScope ? watched : EMPTY_CONNECTIONS
   const [connectingIndex, setConnectingIndex] = useState<number | null>(null)
   const [checkingIndex, setCheckingIndex] = useState<number | null>(null)
   const [channelToDelete, setChannelToDelete] = useState<number | null>(null)
   useEffect(() => {
-    if (!active) return
+    if (!active || standalone) return
     const timer = window.setTimeout(() => {
       window.dispatchEvent(new CustomEvent("supportChannelsUpdated", {
         detail: buildSupportChannelNavigation(connections),
       }))
     }, 0)
     return () => window.clearTimeout(timer)
-  }, [active, connections])
+  }, [active, connections, standalone])
   const persistConnections = useCallback(async (nextConnections: unknown[]) => {
     form.setValue("channels.connections", channelsSchema.removeDefault().unwrap().shape.connections.parse(nextConnections), { shouldDirty: true })
     if (onSave) {
@@ -113,19 +99,19 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
   const { checkStatus } = useZavuInvitationSync({
     siteId: siteId || currentSite?.id,
     connections,
-    enabled: active,
+    enabled: active && inScope,
     update: (index, value) => update(index, channelsSchema.removeDefault().unwrap().shape.connections.parse([value])[0]),
     getValues: form.getValues,
     onSave,
   })
   useZavuPhoneStatusSync({
     connections,
-    enabled: active,
+    enabled: active && inScope,
     onConnectionsChange: persistConnections,
   })
   const senderPhoneNumbers = useZavuSenderPhoneNumbers({
     connections,
-    enabled: active,
+    enabled: active && inScope,
   })
 
   const addChannel = useCallback(() => {
@@ -148,16 +134,20 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
     index: number,
     payload: Record<string, unknown>,
   ) => {
-    const nextConnections = channelsSchema.removeDefault().unwrap().shape.connections.parse(reconcilePhoneConnections(
+    const reconciled = reconcilePhoneConnections(
       form.getValues("channels.connections") || [],
       index,
       payload,
-    ))
+    )
+    const scoped = standalone ? reconciled.filter(row => row.id === standalone.draftId) : reconciled
+    if (standalone && (payload.channelId !== standalone.draftId || scoped.length !== 1 ||
+      scoped[0].type !== form.getValues(`channels.connections.${index}.type`))) throw new Error(standalone.receiptError)
+    const nextConnections = channelsSchema.removeDefault().unwrap().shape.connections.parse(scoped)
     replace(nextConnections)
     form.setValue("channels.connections", nextConnections, {
       shouldDirty: false,
     })
-  }, [form, replace])
+  }, [form, replace, standalone])
 
   const handleConnect = async (index: number) => {
     const channel = form.getValues(`channels.connections.${index}`)
@@ -201,6 +191,7 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
       }
 
       const payload = response.data || {}
+      if (standalone && payload.channelId !== standalone.draftId) throw new Error(standalone.receiptError)
       const invitation = payload.invitation || {}
       const setupUrl = getPartnerSetupUrl(invitation.url)
       if (!invitation.id || !setupUrl) throw new Error("The server did not return a valid setup link. Please try again.")
@@ -250,11 +241,11 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
     }
   }
 
-  if (!active) return null
+  if (!active || !inScope) return null
 
   return (
-    <div id="support-channels" className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div id={standalone ? undefined : "support-channels"} className="space-y-6">
+      {!standalone && <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Support Channels</h2>
           <p className="text-xs text-muted-foreground mt-1">
@@ -262,20 +253,17 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" type="button" onClick={handleConfigureAgent}>
-            <Bot className="mr-2 h-4 w-4" />
-            Edit Agent
-          </Button>
           <Button variant="outline" size="sm" type="button" onClick={addChannel}>
             <PlusCircle className="mr-2 h-4 w-4" />
             Add Channel
           </Button>
         </div>
-      </div>
+      </div>}
 
       <div className="space-y-6">
         {fields.map((field, index) => {
           const channel = connections[index] || field
+          if (standalone && channel.id !== standalone.draftId) return null
           const type = channel.type
           const hasType = !!type
           const recoverActivation = canRecoverZavuActivation(channel)
@@ -296,13 +284,15 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
               <SupportChannelHeader
                 label={label}
                 type={type}
-                onRemove={() => setChannelToDelete(index)}
-                activation={channel.id && (paused || isActiveAgentChannel(channel)) ? {
+                onRemove={standalone ? undefined : () => setChannelToDelete(index)}
+                activation={!standalone && channel.id && (paused || isActiveAgentChannel(channel)) ? {
                   active: isActiveAgentChannel(channel), busy: activation.updatingId !== null,
                   canManage: activation.canManage,
                   onChange: enabled => { if (channel.id) void activation.setEnabled(channel.id, enabled) },
                 } : undefined}
               />
+
+              {!standalone && hasType && <ChannelAgentRow connectionId={channel.id} type={type} label={accountLabel === label ? label : `${label} · ${accountLabel}`} />}
 
                 {!hasType && (
                   <SectionCardContent className="pt-0">
@@ -317,7 +307,7 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
                       accountLabel={accountLabel}
                       inactiveReason={paused ? channel.status === "license_suspended" ? "Inactive · plan limit" : "Inactive · manually disabled" : undefined}
                     />
-                    {channel.status === "license_suspended" && channel.id && activation.canManage && (
+                    {!standalone && channel.status === "license_suspended" && channel.id && activation.canManage && (
                       <Button type="button" variant="outline" size="sm" className="mt-3"
                         disabled={activation.updatingId !== null}
                         onClick={() => { if (channel.id) void activation.setEnabled(channel.id, false) }}>
@@ -338,7 +328,7 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
                     }} />
                 )}
 
-                {isConnected && !paused && type === "voice" && siteId && (
+                {!standalone && isConnected && !paused && type === "voice" && siteId && (
                   <VoiceChannelSettings
                     siteId={siteId}
                     channel={channel}
@@ -354,7 +344,7 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
                     key={`${siteId}:${channel.id}`}
                     siteId={siteId}
                     channel={{ ...channel, id: channel.id }}
-                    connections={connections}
+                    connections={standalone ? currentSite?.settings?.channels?.connections : connections}
                     onUpdated={() => reconcileEmailConnection(channel.id!)}
                   />
                   ) : (
@@ -371,6 +361,7 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
                   <VoiceChannelSetup
                     siteId={siteId}
                     channel={channel}
+                    newAccountOnly={!!standalone}
                     onConnected={async (payload) => {
                       await persistPhoneConnection(index, payload)
                     }}
@@ -389,6 +380,7 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
                   <SmsChannelSetup
                     siteId={siteId}
                     channel={channel}
+                    newAccountOnly={!!standalone}
                     onConnected={async (payload) => {
                       await persistPhoneConnection(index, payload)
                     }}
@@ -408,6 +400,7 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
                     siteId={siteId}
                     channel={channel}
                     onConnected={(payload) => {
+                      if (standalone && (payload?.channelId !== standalone.draftId || !payload.senderId)) throw new Error(standalone.receiptError)
                       if (!canConnectAgentChannel(currentSite)) {
                         openAccountLimit()
                         return
@@ -450,7 +443,7 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
           )
         })}
 
-        {fields.length === 0 && (
+        {!standalone && fields.length === 0 && (
           <EmptyCard
             icon={<GlobeIcon size={40} />}
             title="No channels connected"
@@ -460,7 +453,7 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
         )}
       </div>
 
-      <ConfirmDialog
+      {!standalone && <ConfirmDialog
         open={channelToDelete !== null}
         onOpenChange={(open) => {
           if (!open) setChannelToDelete(null)
@@ -472,7 +465,7 @@ export function SupportChannelsSection({ active, siteId, onSave }: SupportChanne
         onConfirm={async () => {
           if (channelToDelete !== null) await handleRemove(channelToDelete)
         }}
-      />
+      />}
     </div>
   )
 }

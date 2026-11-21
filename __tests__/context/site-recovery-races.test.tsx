@@ -137,6 +137,30 @@ it.each([false, true])("requires explicit selection after removal with the real 
   expect(result.current.currentSite?.id).toBe(second.id)
 })
 
+it('clears previously published projects immediately on a fresh location denial', async () => {
+  const { result } = mount(true)
+  await waitFor(() => expect(result.current.sites).toHaveLength(2))
+  jest.mocked(fetchAccessibleSitesClient).mockResolvedValueOnce({ ...response([]), forbidden: true })
+  await act(async () => { await result.current.refreshSites() })
+  expect(result.current.sites).toEqual([])
+  expect(result.current.currentSite).toBeNull()
+  expect(result.current.error?.message).toContain('not permitted')
+  expect(localStorage.getItem(SITE_SELECTION_CACHE_KEY)).toBeNull()
+  expect(localStorage.getItem('currentSiteId')).toBeNull()
+})
+
+it('retires slow settings with a definitive location denial', async () => {
+  const settings = deferred<{ data: { about: string }; error: null }>()
+  mockSettings.mockReturnValueOnce(settings.promise)
+  jest.mocked(fetchAccessibleSitesClient).mockResolvedValue({ ...response([]), forbidden: true })
+  const { result } = mount()
+  await waitFor(() => expect(result.current.error?.message).toContain('not permitted'))
+  await act(async () => settings.resolve({ data: { about: 'Old settings' }, error: null }))
+  expect(result.current.currentSite).toBeNull()
+  expect(result.current.sites).toEqual([])
+  expect(result.current.isLoading).toBe(false)
+})
+
 it.each(["success", "denial", "signout"])("retries the list independently of slow settings: %s", async outcome => {
   jest.useFakeTimers()
   try {

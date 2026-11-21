@@ -88,6 +88,25 @@ Document the exact deployment command only after the repository has a canonical,
 checked-in workflow. Until then, do not copy ad hoc dashboard or CLI commands
 into automation.
 
+## November 20, 2026 contention candidates
+
+The two contention changes have different rollout states:
+
+- **Blocked, not applied:** `20261120232000_records_lock_concurrency.sql` proposes replacing site-wide serialization
+  of ordinary Records writes with a shared lifecycle fence and a per-record
+  content fence. Preserve worker retries and paired revisions; see the
+  [Records compatibility gates](RECORDS_LOCK_CONCURRENCY_REPORT.md).
+- **Applied to Makinari on November 20 at 22:28:56 UTC:**
+  `20261120232100_messages_lock_order.sql` orders parent locks before inheritance
+  and summary writes. Its exact-source history and installation were verified
+  independently; see the [message locking report](MESSAGES_LOCK_ORDER_REPORT.md).
+
+Both pin audited baselines. The Records candidate failed broader scalability and
+caller-compatibility review and must not be applied unchanged. New
+`40001`/`55P03` conflicts are intentional, not evidence that writes succeeded;
+callers must roll back and retry safely. Do not apply them merely to deploy the
+independent [Projects cache/UI changes](PROJECTS_PERFORMANCE_2026-11-20.md).
+
 ## Private instance approval conversations (not applied)
 
 `20261120060000_connector_review_conversations.sql` adds a review destination;

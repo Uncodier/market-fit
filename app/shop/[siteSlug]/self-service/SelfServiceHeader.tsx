@@ -10,8 +10,6 @@ import { CartButton } from "@/app/components/commerce/CartButton"
 import { MobileShellSearchExpanded, MobileShellSearchIconButton } from "@/app/components/commerce/MobileShellSearch"
 import { BuyerIdentityScan } from "./BuyerIdentityScan"
 import { useSelfService } from "./SelfServiceProvider"
-import { SelfServiceCoupons } from "./SelfServiceCoupons"
-import type { StorefrontPromoCard } from "@/app/promotions/promotion-merchandising"
 import { useLocalization } from "@/app/context/LocalizationContext"
 
 type Props = {
@@ -19,10 +17,9 @@ type Props = {
   onOpenCart?: () => void
   searchQuery?: string
   onSearchChange?: (value: string) => void
-  promos?: StorefrontPromoCard[]
 }
 
-export function SelfServiceHeader({ backHref, onOpenCart, searchQuery = "", onSearchChange, promos = [] }: Props) {
+export function SelfServiceHeader({ backHref, onOpenCart, searchQuery = "", onSearchChange }: Props) {
   const router = useRouter()
   const { t } = useLocalization()
   const { context, cart, identity, setIdentity, startNewOrder } = useSelfService()
@@ -62,7 +59,6 @@ export function SelfServiceHeader({ backHref, onOpenCart, searchQuery = "", onSe
         </div>
       </div>}
     />
-    {!searchQuery.trim() && <SelfServiceCoupons promos={promos} locationId={context.location.id} />}
     <BuyerIdentityScan open={scanOpen} onOpenChange={setScanOpen} />
   </>
 }

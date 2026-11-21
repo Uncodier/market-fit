@@ -58,6 +58,14 @@ describe("fetchAccessibleSitesClient", () => {
     expect(result.unauthorized).toBe(false)
   })
 
+  it.each([403, 503])('distinguishes a location denial from a temporary failure (%s)', async status => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: false, status, json: async () => null })
+    const result = await fetchAccessibleSitesClient({})
+    expect(result.forbidden).toBe(status === 403 ? true : undefined)
+    expect(result.unauthorized).toBe(false)
+    expect(result.error?.message).toContain(String(status))
+  })
+
   it("treats 401 from /api/sites as unauthorized instead of a load failure", async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: false,

@@ -1,14 +1,17 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import { useSearchParams } from "next/navigation"
 import { DetailContent } from "@/app/connectors/connector-detail"
-import { connector, detail, jsonResponse, translate } from "./fixtures"
+import { connector, deferred, detail, jsonResponse, translate } from "./fixtures"
 
 jest.mock("@/app/context/LocalizationContext", () => ({ useLocalization: () => ({ t: translate }) }))
 jest.mock("@/app/components/ui/sticky-header", () => ({ StickyHeader: ({ children }: { children: React.ReactNode }) => <header>{children}</header> }))
 jest.mock("@/app/connectors/connector-access", () => ({ ConnectorAccessPanel: () => <div>Account permissions</div> }))
 const fetchMock = jest.mocked(fetch)
 // jsdom has no scrolling implementation for Radix's keyboard-opened listbox.
-beforeAll(() => { HTMLElement.prototype.scrollIntoView ??= jest.fn() })
+beforeAll(() => {
+  HTMLElement.prototype.scrollIntoView ??= jest.fn()
+  global.IntersectionObserver ??= jest.fn(() => ({ observe: jest.fn(), disconnect: jest.fn() })) as unknown as typeof IntersectionObserver
+})
 function selectAccountByUrl() {
   jest.mocked(useSearchParams).mockReturnValue(new URLSearchParams({ connector: connector.id }) as ReturnType<typeof useSearchParams>)
 }
@@ -88,7 +91,7 @@ test("replaces back action with Summary/Tools and loads real tool pages only on 
   fireEvent.mouseDown(screen.getByRole("tab", { name: "Tools" }), { button: 0, ctrlKey: false })
   expect(await screen.findByText("List messages")).toBeVisible()
   expect(screen.getByText("21 provider tools")).toBeVisible()
-  expect(screen.getByText("Catalogue only")).toBeVisible()
+  expect(screen.getByText("Provider-listed · not reviewed")).toBeVisible()
   expect(fetchMock.mock.calls[1][0]).toBe("/api/connectors/catalog/mail/tools?site_id=site-1&page=1")
   fetchMock.mockResolvedValueOnce(jsonResponse({ items: [{ slug: "MAIL_GET", name: "Get message", description: "Read one", reviewed: true }], next_cursor: null, total: 21 }))
   fireEvent.click(screen.getByRole("button", { name: "Next" }))
@@ -97,6 +100,44 @@ test("replaces back action with Summary/Tools and loads real tool pages only on 
   fireEvent.mouseDown(screen.getByRole("tab", { name: "Summary" }), { button: 0, ctrlKey: false })
   expect(screen.getByText("Mail toolkit")).toBeVisible()
   expect(screen.queryByText("Get message")).not.toBeInTheDocument()
+})
+
+test("opens Tools from the sticky header and searches the toolkit across pages", async () => {
+  const tool = { slug: "MAIL_LIST", name: "List messages", description: "Read messages", reviewed: true, action_types: ["read"] }
+  const results = (name: string, total: number, next_cursor: string | null = null) => jsonResponse({ items: [{ ...tool, name }], total, next_cursor })
+  const oldResults = deferred<Response>()
+  fetchMock.mockResolvedValueOnce(jsonResponse(detail)).mockReturnValueOnce(oldResults.promise)
+    .mockResolvedValueOnce(results("Read invoices", 21, "page-two")).mockResolvedValueOnce(results("Read archived invoices", 21))
+    .mockResolvedValueOnce(jsonResponse({ items: [], total: 0, next_cursor: null })).mockResolvedValueOnce(results(tool.name, 1))
+  render(<DetailContent slug="mail" siteId="site-1" />)
+  await screen.findByText("Mail toolkit")
+  expect(fetchMock).toHaveBeenCalledTimes(1)
+
+  const search = within(screen.getByRole("banner")).getByRole("search", { name: "Search tools" })
+  fireEvent.click(within(search).getByRole("button", { name: "Search tools" }))
+  expect(screen.getByRole("tab", { name: "Tools" })).toHaveAttribute("aria-selected", "true")
+  const input = within(search).getByRole("textbox", { name: "Search tools" })
+  fireEvent.change(input, { target: { value: "  invoices & mail  " } })
+  expect(await screen.findByRole("heading", { name: "Read invoices" })).toBeVisible()
+  await act(async () => oldResults.resolve(results("Stale tool", 1)))
+  expect(screen.queryByText("Stale tool")).not.toBeInTheDocument()
+  expect(screen.getByText("21 matching tools")).toBeVisible()
+  expect(screen.getByRole("heading", { name: "On this page" })).toBeInTheDocument()
+
+  fireEvent.click(screen.getByRole("button", { name: "Next" }))
+  expect(await screen.findByRole("heading", { name: "Read archived invoices" })).toBeVisible()
+  fireEvent.change(input, { target: { value: "unknown" } })
+  expect(screen.queryByRole("heading", { name: "Read archived invoices" })).not.toBeInTheDocument()
+  expect(screen.queryByText("21 matching tools")).not.toBeInTheDocument()
+  fireEvent.submit(search)
+  expect(await screen.findByText("No matching tools.")).toBeVisible()
+  fireEvent.click(within(search).getByRole("button", { name: "Clear search" }))
+  expect(await screen.findByRole("heading", { name: tool.name })).toBeVisible()
+  expect(screen.getByRole("tab", { name: "Tools" })).toHaveAttribute("aria-selected", "true")
+  const path = "/api/connectors/catalog/mail/tools?site_id=site-1&page="
+  expect(fetchMock.mock.calls.slice(1).map(([url]) => url)).toEqual([
+    path + "1", path + "1&q=invoices+%26+mail", path + "2&q=invoices+%26+mail", path + "1&q=unknown", path + "1",
+  ])
 })
 
 test("a hidden URL account never falls back to another account", async () => {

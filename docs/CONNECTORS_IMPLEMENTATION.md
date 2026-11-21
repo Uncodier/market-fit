@@ -55,11 +55,10 @@ Use `tools` search with a phrase such as **lista todas las tablas**. Instance
 search can rank already-authorized connector candidates semantically, with a
 lexical fallback when embeddings are unavailable. `SUPABASE_LIST_TABLES` is a
 reviewed metadata operation; it is not a SQL console or the native Apps database
-inspector. For directly authorized instance calls, the connector returns the
-successful provider JSON envelope (including discovery metadata and diagnostics)
-after credential redaction, within existing transport and tool-context limits.
-The agent interprets the tool data; it need not match a local table-list format.
-Discovery can be partial. This does not expand channel publication or approval receipts.
+inspector. With the [private result destination](CONNECTORS_INSTANCE_CATALOG.md#private-delivery),
+a direct authorized Ask read delivers a bounded table/schema projection to its
+owner, never a provider envelope or rows to the model. Discovery can be partial.
+This does not expand channel publication or approval receipts.
 
 The assistant cannot supply a project, query, schema or URL. The server supplies
 the verified account's project and checks the exact provider account before
@@ -96,10 +95,9 @@ error as a complete table list.
 
 New verified accounts use **All compatible tools** on the assistant host. Existing
 policies keep **Only selected tools**, their exact IDs and their existing hosts.
-Only in selected mode does an empty selection deny every tool. In all mode the
-resolver intersects the toolkit's current reviewed runtime inventory with the
-usual account, host, agent, member, screen, scope and approval checks. It never
-promotes a catalogue entry to an executable tool. Supabase table discovery also
+Only in selected mode does an empty selection deny every tool. Without the separate
+[instance catalog opt-in](CONNECTORS_INSTANCE_CATALOG.md), the resolver intersects the toolkit's current reviewed runtime inventory with the
+usual account, host, agent, member, screen, scope and approval checks. Catalog membership alone never authorizes execution. Supabase table discovery also
 requires the verified project binding described above.
 
 Apply `20261120030000_connector_tool_access_mode.sql` before deploying the
@@ -188,6 +186,15 @@ test.
 
 ## Detail Summary / Tools — 2026-11-19
 
+The Tools tab groups the current page by Composio action hint and uses the shared
+**On this page** navigation without a separate action filter. Opening search in the
+connector detail header switches directly to Tools. Searches cover the full toolkit
+before pagination; changing or clearing a query returns to page one. In Add tool,
+the action filter combines with search across the full toolkit before pagination. Tools
+without a recognized hint appear as **Unclassified**. Hints are display metadata
+only and do not change review, approval, or execution requirements. Deploy the
+matching API before the workspace and Commercial clients; no migration is needed.
+
 **Tools** and **Add tool** use the same paginated, non-deprecated inventory for
 the selected toolkit and workspace credential. Managers can save exact catalogue
 IDs in an account policy, including actions not yet supported by the runtime.
@@ -200,7 +207,7 @@ versions, not a migration or a change to existing saved policies.
 Detail navigation now uses Summary / Tools tabs instead of a duplicate back action.
 Tools loads a 20-item provider metadata page on demand through the authenticated
 `GET /api/connectors/catalog/[slug]/tools` BFF/API route. It exposes only names,
-slugs, descriptions and reviewed-inventory labels, not execution authority or input
+slugs, descriptions, normalized action types and reviewed-inventory labels, not execution authority or input
 schemas. Every page rechecks site access and uses the selected server credential.
 Live Gmail reads returned 61 total tools, with two distinct 20-item pages. Provider
 calls were metadata-only; no tool execution or OAuth effects occurred.
@@ -464,49 +471,6 @@ no automatic replay. Manager authority rows stay locked through mutations.
 
 ## Validation
 
-Repair validation (offline, after the changes above):
-
-| Check | Result |
-| --- | --- |
-| API connector suites, including real host call flow | 22 suites, 245 tests passed. |
-| Web connector UI/BFF/secrets and disposable PostgreSQL | 15 suites, 153 tests passed. |
-| Additional assistant route/context/recovery and pending-work regressions | 127 + 13 tests passed. |
-| Final API and web `tsc --noEmit --pretty false` | Both passed. |
-| Focused web ESLint and both repositories' `git diff --check` | Passed. |
-| Eight connector migration copies in canonical/API/web | Byte-identical; no remote application. |
-
-The SQL suite includes authenticated instance-agent/queue/recovery spoof denial,
-manager-removal serialization and single-claim revocation dispatch. Browser UI
-tests are component tests, not an authenticated live-browser acceptance session.
-
-Focused Jest suites cover web UI/BFF, credential boundaries, API provider transport,
-OAuth correlation, access checks, runtime discovery and schema validation. Separate
-socket-only PostgreSQL tests exercise actual constraints, RLS, grant races and
-finalization, with fixture site/plan data rather than a complete billing bootstrap.
-Offline provider fixtures are test evidence only; production routes call real
-provider adapters and never substitute mock accounts or tool responses.
-
-Initial-increment validation (before the repairs above) ran with Node 25.9.0:
-
-| Check | Result |
-| --- | --- |
-| API focused connectors: `npm test -- --config jest.connectors.config.js --runInBand --silent` | 19 suites, 223 tests passed. |
-| Web UI/BFF/secrets plus isolated connector SQL suites | 14 suites, 122 tests passed. |
-| Web callback/login and existing middleware regressions | 3 suites, 32 tests passed. |
-| API existing router/screen, MCP/document routing, skill and context regressions | 9 suites, 179 tests passed. |
-| `tsc --noEmit --pretty false`, API and web | Both passed. No Next build or typegen run. |
-| Focused web ESLint, touched connector source/tests and credential/callback boundaries | Passed. |
-| Migration copies, document links/line budgets, `git diff --check` | Passed. Five migrations are byte-identical across three repositories. |
-
-The broader API run also exercised the old
-`src/lib/agentbase/agents/toolEvaluator/executor/__tests__/executeTools.test.ts`:
-five tests failed (four invalid `process.env` getter spies and one timeout/open
-handle). All five failures reproduced against the unchanged HEAD implementation
-using temporary baseline files outside the repositories. They are not counted as
-passing or repaired; known native MCP/document paths and the new legacy-default
-execution-denial regression passed separately.
-
-No authenticated browser, real OAuth, remote migration, production build, commit,
-push or deployment was performed. Unrelated Finder and assistant test edits were
-preserved. This increment does not complete the background workflow/delegation
-phase of the target plan.
+The [validation archive](CONNECTORS_VALIDATION_HISTORY.md) records the initial
+release evidence. See the [current instance catalog guide](CONNECTORS_INSTANCE_CATALOG.md)
+for private delivery, migration order and provider acceptance gates.

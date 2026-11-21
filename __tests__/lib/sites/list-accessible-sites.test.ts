@@ -251,6 +251,51 @@ describe("listAccessibleSitesForUser", () => {
     expect(await listAccessibleSitesForUser(admin, "user-1")).toEqual({ sites: [], error: "Batch failed" })
   })
 
+  it("runs at most three ID batches concurrently and preserves deterministic output", async () => {
+    const tables = fixtures(601)
+    const calls: Call[] = []
+    let running = 0
+    let peak = 0
+    const release: Array<() => void> = []
+    const admin = fakeAdmin(tables, [], { calls, async respond(call, response) {
+      if (call.stage !== "extra") return response
+      peak = Math.max(peak, ++running)
+      await new Promise<void>(resolve => { release.push(() => { running--; resolve() }) })
+      return response
+    } })
+    const pending = listAccessibleSitesForUser(admin, "user-1")
+    const flush = () => new Promise(resolve => setImmediate(resolve))
+    await flush()
+    expect(release).toHaveLength(3)
+    expect(calls.filter(call => call.stage === "extra")).toHaveLength(3)
+    // Completing two requests must not start a new wave or reorder the results.
+    release[2]()
+    release[1]()
+    await flush()
+    expect(release).toHaveLength(3)
+    release[0]()
+    await flush()
+    expect(release).toHaveLength(6)
+    release.slice(3, 6).reverse().forEach(finish => finish())
+    await flush()
+    expect(release).toHaveLength(7)
+    release[6]()
+    expect(await pending).toEqual({ sites: tables.sites, error: null })
+    expect(peak).toBe(3)
+  })
+
+  it("does not schedule later ID waves or publish a partial list after a batch error", async () => {
+    const calls: Call[] = []
+    const result = await listAccessibleSitesForUser(fakeAdmin(fixtures(601), [], {
+      calls, respond(call, response) {
+        return call.stage === "extra" && call.ids?.includes("site-00100")
+          ? { ...response, error: { message: "Parallel batch failed" } } : response
+      },
+    }), "user-1")
+    expect(result).toEqual({ sites: [], error: "Parallel batch failed" })
+    expect(calls.filter(call => call.stage === "extra")).toHaveLength(3)
+  })
+
   it.each<Stage>(["owned", "memberships", "extra"])("fails explicitly at the %s pagination bound", async stage => {
     const tables = fixtures(21)
     if (stage === "owned") tables.sites.forEach(site => { site.user_id = "user-1" })

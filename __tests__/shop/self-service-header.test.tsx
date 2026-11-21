@@ -1,10 +1,16 @@
 import { useState } from "react"
 import { fireEvent, render, screen, within } from "@testing-library/react"
 import { SelfServiceHeader } from "@/app/shop/[siteSlug]/self-service/SelfServiceHeader"
+import { SelfServiceShopClient } from "@/app/shop/[siteSlug]/self-service/SelfServiceShopClient"
 import { ShopFulfillmentHeader } from "@/app/shop/[siteSlug]/ShopFulfillmentHeader"
 import { useSelfService } from "@/app/shop/[siteSlug]/self-service/SelfServiceProvider"
 
 jest.mock("@/app/shop/[siteSlug]/self-service/SelfServiceProvider", () => ({ useSelfService: jest.fn() }))
+jest.mock("@/app/shop/[siteSlug]/self-service/SelfServiceCart", () => ({ SelfServiceCart: () => null }))
+jest.mock("@/app/shop/[siteSlug]/self-service/SelfServiceConfirmation", () => ({ SelfServiceConfirmation: () => null }))
+jest.mock("@/app/shop/[siteSlug]/ShopCatalogMain", () => ({ ShopCatalogMain: () => null }))
+jest.mock("@/app/shop/[siteSlug]/ShopSiteFooter", () => ({ ShopSiteFooter: () => null }))
+jest.mock("@/app/shop/[siteSlug]/useShopCatalog", () => ({ useShopCatalog: () => ({ catalogItems: [], categoryOffsets: [] }) }))
 jest.mock("@/app/shop/[siteSlug]/self-service/BuyerIdentityScan", () => ({
   BuyerIdentityScan: ({ open }: { open: boolean }) => open ? <div role="dialog" aria-label="Scan buyer QR" /> : null,
 }))
@@ -52,14 +58,20 @@ it("keeps the logo, back link and cart link in the location flow on detail pages
   expect(screen.getByRole("link", { name: "Cart, 2 items" })).toHaveAttribute("href", "/shop/branch?cart=1")
 })
 
-it("places offers directly after the toolbar and hides them during search", () => {
+it("places the kiosk hero directly after the toolbar and hides it when the customer searches", () => {
+  jest.mocked(useSelfService).mockReturnValue({ ...state, cart: [], fulfillment: "pickup",
+    context: { ...state.context, fulfillmentOptions: ["pickup"] },
+  } as unknown as ReturnType<typeof useSelfService>)
   const promos = [{ id: "offer", name: "Coffee deal", catalog_item_ids: [], category_ids: [] }]
-  const { rerender } = render(<SelfServiceHeader promos={promos} />)
-  const offers = screen.getByRole("region", { name: "Offers" })
-  expect(screen.getByRole("banner").closest(".sticky")?.nextElementSibling).toBe(offers)
+  render(<SelfServiceShopClient initialCatalog={[]} initialCount={0} initialCategoryOffsets={[]} promos={promos} promoBadgesByItemId={{}} />)
+  const hero = screen.getByRole("region", { name: "Featured banners" })
+  expect(screen.getByRole("banner").closest(".sticky")?.nextElementSibling).toBe(hero)
   expect(screen.getByRole("link", { name: /Coffee deal/ })).toHaveAttribute("href", "/shop/branch/promo/offer")
-  rerender(<SelfServiceHeader promos={promos} searchQuery="coffee" />)
-  expect(screen.queryByRole("region", { name: "Offers" })).not.toBeInTheDocument()
+  const search = screen.getByRole("textbox", { name: "Search menu" })
+  fireEvent.change(search, { target: { value: "coffee" } })
+  expect(screen.queryByRole("region", { name: "Featured banners" })).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole("button", { name: "Clear search" }))
+  expect(screen.getByRole("region", { name: "Featured banners" })).toBeInTheDocument()
 })
 
 it("matches Shop and Marketplace's centered search geometry and action spacing", () => {

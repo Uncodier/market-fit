@@ -14,7 +14,7 @@ export function TelegramChannelSetup({
 }: { 
   siteId: string, 
   channel: { id?: string; name?: string },
-  onConnected: (payload: { senderId?: string; telegram?: { botUsername?: string; botId?: string } }) => void
+  onConnected: (payload: { channelId?: string; senderId?: string; telegram?: { botUsername?: string; botId?: string } }) => void
 }) {
   const [botToken, setBotToken] = useState("")
   const [isConnecting, setIsConnecting] = useState(false)

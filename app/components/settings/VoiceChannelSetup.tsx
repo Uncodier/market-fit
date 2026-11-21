@@ -41,10 +41,12 @@ import { useCanManageVoiceChannel } from "./use-can-manage-voice-channel"
 export function VoiceChannelSetup({ 
   siteId, 
   channel, 
+  newAccountOnly = false,
   onConnected 
 }: { 
   siteId: string, 
   channel: any, 
+  newAccountOnly?: boolean,
   onConnected: (payload: any) => void | Promise<void>
 }) {
   const [tab, setTab] = useState<"existing" | "new">("existing")
@@ -67,9 +69,9 @@ export function VoiceChannelSetup({
     () => readVoiceAgentSettings(channel)
   )
   const [voiceSettingsTouched, setVoiceSettingsTouched] = useState(false)
-  const voiceOptions = useZavuVoiceOptions(siteId)
+  const voiceOptions = useZavuVoiceOptions(newAccountOnly ? "" : siteId)
   const canManageVoice = useCanManageVoiceChannel()
-  const eligibleOwnedNumbers = ownedNumbers.filter((number) => canAssignPhoneNumber(number, "voice"))
+  const eligibleOwnedNumbers = ownedNumbers.filter((number) => canAssignPhoneNumber(number, "voice", newAccountOnly))
   const setupSteps = buildPhoneSetupSteps(channel)
 
   useEffect(() => {
@@ -130,7 +132,7 @@ export function VoiceChannelSetup({
       }
       
       const numbers = unwrapZavuItems<ZavuPhoneNumber>(response.data)
-        .filter((number) => canAssignPhoneNumber(number, "voice"))
+        .filter((number) => canAssignPhoneNumber(number, "voice", newAccountOnly))
       if (numbers.length === 0) {
         toast.info("No phone numbers found for the selected criteria")
         return
@@ -186,7 +188,7 @@ export function VoiceChannelSetup({
         name: channel.name,
         phoneNumber: selectedNumber,
         active: true,
-        ...(voiceSettingsTouched
+        ...(!newAccountOnly && voiceSettingsTouched
           ? {
               language: voiceSettings.language,
               ttsVoiceId: voiceSettings.ttsVoiceId || null,
@@ -236,7 +238,7 @@ export function VoiceChannelSetup({
           </p>
         </div>
 
-        <div className="rounded-lg border border-black/5 bg-muted/20 p-4 dark:border-white/5">
+        {!newAccountOnly && <div className="rounded-lg border border-black/5 bg-muted/20 p-4 dark:border-white/5">
           <VoiceAgentSettingsFields
             value={voiceSettings}
             onChange={(value) => {
@@ -254,7 +256,7 @@ export function VoiceChannelSetup({
               Only site owners and administrators can change Voice settings.
             </p>
           )}
-        </div>
+        </div>}
 
         <Tabs value={tab} onValueChange={(v) => { setTab(v as any); setSelectedNumber(""); }}>
           <TabsList className="grid w-full grid-cols-2">

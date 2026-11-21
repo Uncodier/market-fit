@@ -20,7 +20,8 @@ function deferred<T>() {
   const promise = new Promise<T>(done => { resolve = done })
   return { promise, resolve }
 }
-function mount(initialized = true, initialSite: Site | null = first) {
+function mount(initialized = true, initialSite: Site | null = first,
+  readSettings = async (): Promise<{ data: Site['settings']; error: null }> => ({ data: first.settings, error: null })) {
   return renderHook(() => {
     const [currentSite, setCurrentSite] = useState<Site | null>(initialSite)
     const [sites, setSites] = useState<Site[]>([first])
@@ -32,7 +33,7 @@ function mount(initialized = true, initialSite: Site | null = first) {
       currentSite, setCurrentSite,
       setSites, isInitialized, setIsInitialized, isMounted: true,
       supabaseRef: useRef({ auth: { getSession: async () => ({ data: { session: null } }) },
-        from: () => ({ select: () => ({ eq: () => ({ single: async () => ({ data: first.settings, error: null }) }) }) }) }),
+        from: () => ({ select: () => ({ eq: () => ({ single: readSettings }) }) }) }),
       authUserIdRef, unauthorizedRetryRef: useRef(0), setIsLoading,
       setSitesLoaded, setSitesLoadAttempted: jest.fn(),
       setError: jest.fn(), setHasValidSession: jest.fn(),
@@ -82,6 +83,26 @@ it('uses a fresh cache hit without querying again until its freshness budget exp
     expect(result.current.currentSite?.id).toBe(first.id)
     await act(async () => jest.advanceTimersByTime(120_000))
     expect(fetchAccessibleSitesClient).toHaveBeenCalledTimes(2)
+  } finally { jest.useRealTimers() }
+})
+
+it('does not restart the Redis freshness budget after selected-site settings hydrate', async () => {
+  jest.useFakeTimers()
+  try {
+    const settings = deferred<{ data: Site['settings']; error: null }>()
+    jest.mocked(fetchAccessibleSitesClient).mockResolvedValueOnce({
+      ...response([{ ...first, settings: undefined }], false), revalidateAfterMs: 3000,
+    })
+    const { result } = mount(false, null, () => settings.promise)
+    let pending!: Promise<void>
+    await act(async () => { pending = result.current.loadSites() })
+    expect(result.current.sites).toHaveLength(1)
+    await act(async () => jest.advanceTimersByTime(2000))
+    await act(async () => { settings.resolve({ data: first.settings, error: null }); await pending })
+    expect(fetchAccessibleSitesClient).toHaveBeenCalledTimes(1)
+    await act(async () => jest.advanceTimersByTime(1000))
+    expect(fetchAccessibleSitesClient).toHaveBeenCalledTimes(2)
+    expect(fetchAccessibleSitesClient).toHaveBeenLastCalledWith(expect.anything(), first.id, expect.any(AbortSignal), true)
   } finally { jest.useRealTimers() }
 })
 

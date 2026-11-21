@@ -1,0 +1,144 @@
+# Robots: on-demand connector catalog reads
+
+This is an opt-in extension to the private interactive instance assistant. It does
+not change the Customer Support, public chat, voice, workflow or legacy MCP
+permissions. Browsing an integration, saving a tool ID or selecting an account
+in Robots is not a grant.
+
+## Setup and discovery
+
+1. In **Connectors**, a manager selects the intended verified account. Enable
+   interactive assistant use and **Allow instance catalogue reads**, then save.
+   **All compatible tools** includes future eligible actions on that account;
+   **Only selected tools** restricts candidates to the exact saved IDs. Both
+   new and existing accounts default to catalog reads **off**. Unrelated and
+   older policy saves do not opt accounts in.
+2. The instance turn must originate in a verified human user's direct Ask session. An
+   owner-bound API key, background job, Plan step or resumed workflow does not supply
+   that admission. The member and prompt agent must each have direct use of this connection.
+   Restricted business screens, location/assigned-resource access or a public
+   context cannot be broadened by a connector. An access request is not a
+   grant to run an unreviewed catalog action.
+3. `tools search` / `list` returns bounded summaries, not the full provider
+   catalog. `catalog_query` narrows candidates locally: use short public action
+   terms or an exact slug. Only server-owned public search terms or previously
+   saved catalog IDs are sent to Composio, not the user's free text. `connector_id` narrows results;
+   it never expands visibility. Continue an empty page if it has a cursor. A
+   partial provider failure preserves native and already available results. To
+   disable catalog reads, save the opt-out by itself. If the upstream catalog
+   is unavailable, **Manage local catalogue access** on Connectors or on the
+   account's detail page lets its manager disable the grant. This requires the
+   Makinari API and database, but not Composio or the old selected tool IDs.
+4. `manual_only` means the provider lists the action but Robots cannot execute
+   it. `describe_required` means *candidate*, not *granted*. Describe checks the
+   live action and exact account; execution checks again. Cursors and old
+   successes never authorize future use.
+
+## Execution boundaries
+
+- Existing reviewed operations retain their previous policies. The new ordinary
+  read path is for bounded native API list operations with a recognized
+  read-only contract, an isolated OAuth account, verifiable resource-specific
+  read grants and safe input/output projections. It does not require adding a
+  tool slug for every compatible provider operation. It does not support every
+  provider schema, grant type or possible read operation.
+- External account credentials are not evidence that an unsupported action is safe.
+  A limited published list profile can fix optional provider fields on the server
+  and return a smaller projection; reauthorization is not the fix for a schema
+  the adapter cannot verify. The pinned HubSpot company/deal profiles read the
+  first bounded page of active IDs and short names without associations or
+  history. The Google Calendar list profile requires a verified read grant and
+  returns only generated labels, not calendar addresses, names or events.
+- `readOnlyHint` alone is not proof. Writes, mixed/unknown effects, credential
+  overrides, proxy/file/code execution, shared or Instant accounts and arbitrary
+  SQL are not enabled. A manager's opt-in cannot override these boundaries.
+- Use the exact described tool version and schema hash. Neither credentials nor
+  account/project selectors are model inputs. A standalone plan runs as a background
+  host even if its parent was a human turn. A new user session cannot elevate a
+  stored checkpoint to interactive authority.
+
+### Private delivery
+
+Instance connector reads return a **private receipt**, not the response payload,
+to the model. The assistant cannot automatically summarize those rows. Its own
+history, follow-up turns, shared instance logs and recovery therefore receive
+only the receipt and instructions to open it. The original user opens the link
+or **Connectors → Private reports** in their authenticated browser. The URL
+alone is not a credential. Other workspace members who can view the instance
+do not gain access to the report. Do not paste private rows into a shared chat.
+
+The private page checks ownership, parent instance visibility and current local
+account, agent, workspace and tool grants on every read. A provider-only revocation
+is known locally only after verification or sync; viewing a saved report does not
+contact the provider. Locally revoked or expired reports cannot be reopened. No service
+role or model tool is offered a read-back route. Reports expire after one hour;
+the latest 20 per owner are retained, with opportunistic cleanup on writes.
+Expiry of access is immediate even without a subsequent cleanup. Previously
+delivered output or historical chat content from older versions is not erased.
+
+### Supabase report lookup
+
+Search for `SUPABASE_RUN_READ_ONLY_QUERY` on the selected Supabase connection.
+Its instance contract is a **published report reader**, not a SQL console. It
+binds the verified project on the server. Passing a SQL string, overriding the
+project or selecting an arbitrary relation is not supported. A project database
+administrator must deliberately publish aggregate views intended for this
+workspace in `makinari_reports_<lowercase site UUID without hyphens>`. Both the
+schema and ordinary view must be owned by `postgres`; the existing
+`supabase_read_only_user` must already have USAGE on the schema and SELECT on
+the view. Only `label` (text) and `value` (numeric, smallint, integer or bigint)
+are returned. Decimal values are delivered as unrounded text (up to 32 characters,
+including sign and decimal point); published labels must be short nonsecret text.
+Define each view with the exact metric, currency, distinct-account
+and period semantics required. Use `{}` to list published report names. While
+`has_more` is true, pass the returned `next_after` as `after` to continue listing.
+The cursor applies to names, not rows; a result page or an empty page is never a sales total. Use
+`{"view":"sales_by_currency","limit":10}` to read that named report. A bounded
+sample is not a substitute for a total. In the private results page the user
+can select a report or the next page there, without putting view names in chat.
+Publication is a separate data
+authorization decision: an account connected to
+a shared project does not automatically gain access to reports for all tenants.
+If nothing is published, ask the authorized owner for the report or an export;
+do not interpret this as zero sales or zero accounts. No external views or DB
+privileges are provisioned by this feature. The read adapter is checked against the
+[published versioned schema](https://docs.composio.dev/api/tools/SUPABASE_RUN_READ_ONLY_QUERY?version=20261116_00),
+including its `data.result` row array. Offline contract tests are not evidence of
+the grants or connectivity of a particular external account.
+
+## Agent recovery
+
+Use the returned `code` and `recovery`, not provider prose. When a report is
+unavailable, say what is missing; do not substitute a partial report without
+explaining its scope or claim no data exists. Ask the user to perform a manual
+step, provide a limited export, or explicitly choose an independently authorized
+route covering the same scope. Never switch credentials/accounts to evade a denial.
+
+| Signal | Action |
+| --- | --- |
+| Connection inactive or application authentication rejected | Ask its owner to verify/reconnect the selected account in Connectors. Never request tokens in chat. |
+| Composio project credential rejected | Ask the manager to verify the workspace integration configuration, not every user's OAuth grant. |
+| Verified missing scope | Ask the connection owner to grant that permission if intended. Unreported/unsupported scopes are not proof permission is missing. |
+| Application rejected a resource | Ask the user to check that specific resource; do not disable the tool for other resources. |
+| Rate limit or temporary outage | Explain the quota or outage and wait. No retry loop. |
+| Stale cursor or changed contract | Restart the search or describe the exact reference again. |
+| Unconfirmed outcome after dispatch | Reconcile in the original system before any retry or alternate execution. |
+
+There is no background permission probe and no persisted connection-by-tool
+matrix. Account state and grants are checked when needed; a tool receipt is a
+record of one call, not permanent authorization.
+
+## Rollout
+
+Apply `20261120235000_connector_catalog_reads.sql`, then
+`20261121002000_connector_private_results.sql`, through the approved migration
+process **before** deploying the matching API and web versions. The latter
+adds the private delivery destination, not external reporting views or provider
+grants. Do not enable production accounts until both applications are updated.
+The private-result migration needs a database migration administrator that can
+create a non-login, non-RLS-bypass role, grant membership in `authenticated` to
+that role and transfer function ownership. Validate this in staging first;
+do not substitute a service-role reader if the target lacks these privileges.
+Validate discovery, real descriptor shapes, missing scopes, revocation and result projection on an
+explicitly approved disposable account before enabling a production connection.
+Disabling catalog reads stops new admissions; it cannot undo a dispatched call.

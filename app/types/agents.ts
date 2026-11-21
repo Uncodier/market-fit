@@ -12,7 +12,7 @@ export interface Agent {
   tools?: Record<string, any>
   activities?: Record<string, any> | AgentActivity[]
   integrations?: Record<string, any>
-  supervisor?: string  // UUID of another agent
+  supervisor?: string | null  // Persisted supervisor UUID, or null when unassigned
   files?: string[]     // Array of asset IDs
 }
 

@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { SocialSection } from "@/app/components/settings/SocialSection"
 import { SupportChannelsSection } from "@/app/components/settings/SupportChannelsSection"
 import SocialNetworkCallbackPage from "@/app/settings/social_network/page"
+import { LocalizationProvider } from "@/app/context/LocalizationContext"
 import type { SiteFormValues } from "@/app/components/settings/form-schema"
 import type { Site } from "@/app/context/site-types"
 import { useSite } from "@/app/context/SiteContext"
@@ -198,7 +199,7 @@ describe("social OAuth callback batch admission", () => {
 
   it("admits both selected pages within Foundry capacity and retains server rejection handling", async () => {
     setSite({ social: 4, agent: 3 })
-    render(<SocialNetworkCallbackPage />)
+    render(<LocalizationProvider><SocialNetworkCallbackPage /></LocalizationProvider>)
     fireEvent.click(await screen.findByRole("button", { name: "Connect 2 Page(s)" }))
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
       "/api/social/accounts/pending/test-session/finalize", expect.objectContaining({
@@ -216,7 +217,7 @@ describe("social OAuth callback batch admission", () => {
   ])("blocks %s before finalize with the full selected count", async (_label, now, social, billing, limit) => {
     jest.mocked(Date.now).mockReturnValue(now)
     setSite({ social, billing })
-    render(<SocialNetworkCallbackPage />)
+    render(<LocalizationProvider><SocialNetworkCallbackPage /></LocalizationProvider>)
     fireEvent.click(await screen.findByRole("button", { name: "Connect 2 Page(s)" }))
     expect(showBillingLimit).toHaveBeenCalledWith({ kind: "accounts", current: social + 2, limit })
     expect(fetchMock).toHaveBeenCalledTimes(1)

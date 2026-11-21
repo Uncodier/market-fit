@@ -1,0 +1,1 @@
+export { CommandDetailSkeleton as default } from "./command-detail-skeleton"

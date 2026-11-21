@@ -8,6 +8,7 @@ import { useSite } from "@/app/context/SiteContext"
 import { useAuth } from "@/app/hooks/use-auth"
 import { assignLeadToUser, updateLead } from "@/app/leads/actions"
 import { createClient } from "@/utils/supabase/client"
+import { findSiteSupportAgent } from "@/lib/agents/find-site-support-agent"
 import { createConversation } from "@/app/services/chat-service"
 
 export type LeadActionKind = "research" | "followup" | "invalidation" | "newConversation"
@@ -117,12 +118,7 @@ export function useLeadTableActions({
     setLoadingActions((prev) => ({ ...prev, [leadId]: "newConversation" }))
     try {
       const supabase = createClient()
-      const { data: agent, error: agentError } = await supabase
-        .from("agents")
-        .select("id, name")
-        .eq("site_id", currentSite.id)
-        .eq("role", "Customer Support")
-        .single()
+      const { data: agent, error: agentError } = await findSiteSupportAgent(supabase, currentSite.id)
 
       if (agentError || !agent) {
         toast.error("Customer Support agent not found for this site")

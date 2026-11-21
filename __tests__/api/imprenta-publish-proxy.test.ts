@@ -18,7 +18,7 @@ const node = {
   settings: { publish_destinations: ["whatsapp:connection:wa-2"] }, updated_at: "2026-10-16T00:00:00Z",
 }
 const request = (body: Record<string, unknown> = {}) => new NextRequest("https://app.example.invalid/api/robots/instance/assistant", {
-  method: "POST", headers: { "content-type": "application/json" },
+  method: "POST", headers: { "content-type": "application/json", origin: "https://app.example.invalid" },
   body: JSON.stringify({ site_id: "site", instance_node_id: "node", instance_id: "instance", ...body }),
 })
 

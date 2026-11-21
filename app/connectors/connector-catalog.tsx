@@ -20,6 +20,8 @@ import { ConnectorCatalogueSkeleton, connectorCatalogueBodyClassName, connectorG
 import { useConnectorResource } from "./use-connector-resource"
 import { catalogSchema, connectorDomainCountsSchema } from "./types"
 import { catalogFilters, catalogQuery } from "./catalog-state"
+import { canRecoverLocalAccounts } from "./connector-request"
+import { LocalAccountRecovery } from "./local-account-recovery"
 
 export default function ConnectorCatalog() {
   return <ConnectorSiteScope loading={<ConnectorCatalogueSkeleton fullPage />}>{(siteId, scope) => <CatalogContent key={scope} siteId={siteId} />}</ConnectorSiteScope>
@@ -82,6 +84,9 @@ export function CatalogContent({ siteId }: { siteId: string }) {
                 if (!event.target.value) update({ q: "" })
               }} />
           </form>
+          <form action="/connectors/results" method="get">
+            <Button type="submit" variant="outline" size="sm">{t("connectors.privateReports")}</Button>
+          </form>
         </div>
       </StickyHeader>
       <div className={`${connectorCatalogueBodyClassName} space-y-6`}>
@@ -95,6 +100,7 @@ export function CatalogContent({ siteId }: { siteId: string }) {
             <ConnectorPagination page={data.current_page ?? filters.page} totalPages={data.total_pages ?? null}
               hasNext={!!data.next_cursor} onPageChange={page => update({ page })} />
           </div>}
+        {(canRecoverLocalAccounts(error) || data?.configured === false) && <LocalAccountRecovery siteId={siteId} />}
         <footer className="space-y-1 text-sm text-muted-foreground">
           <p>{t("connectors.description")}</p>
           {metadata?.configured && <ConnectorProviderMode source={metadata.credential_source} />}

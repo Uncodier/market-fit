@@ -209,7 +209,10 @@ test("shows the tabs before search and the platform notices after the catalogue"
   expect(screen.queryByRole("link", { name: "Open Integrations" })).not.toBeInTheDocument()
   expect(screen.queryByRole("heading", { name: "Connectors" })).not.toBeInTheDocument()
   expect(screen.getAllByRole("button", { name: /Search/ })).toHaveLength(1)
-  expect(container.querySelector('form button[type="submit"]')).toBeNull()
+  expect(container.querySelector('form[role="search"] button[type="submit"]')).toBeNull()
+  const privateNavigation = screen.getByRole("button", { name: "Private reports" }).closest("form")
+  expect(privateNavigation).toHaveAttribute("method", "get")
+  expect(privateNavigation).toHaveAttribute("action", "/connectors/results")
   expect(screen.getByRole("tablist").compareDocumentPosition(screen.getByRole("search")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 })
 

@@ -2,7 +2,10 @@
 
 Date: 2026-11-11 (channel execution plan revised 2026-11-20).
 
-Status: Requirements and proposed design; not an implementation or rollout claim.
+Status: Settings now displays the serving agent and can save an assignment per
+connection locally. Multi-agent execution remains pending. Zavu admission
+and original-sender routing for immediate saved replies are implemented locally;
+see the [integration checkpoint](MULTI_CHANNEL_ROUTE_COMPATIBILITY.md#integration-contract-migrate-callers-before-changing-the-responder). Not deployed.
 
 ## 1. Goal and agreed scope
 
@@ -74,14 +77,8 @@ Inspected local code provides reusable foundations, not complete support:
 - [Site channel utilities](/Users/prado/Desktop/Proyectos/Uncodie/Code/market-fit/lib/site-channels.ts)
   expose availability and connection routing metadata. Type-only selection cannot
   safely distinguish multiple active connections without a trusted connection ID.
-- [Agent detail](/Users/prado/Desktop/Proyectos/Uncodie/Code/market-fit/app/agents/[id]/page.tsx)
-  has no Channels tab at the time of this review.
-- [Agent persistence](/Users/prado/Desktop/Proyectos/Uncodie/Code/market-fit/app/agents/save-agent.ts)
-  has a new-agent path, but it looks up an existing agent by role, user and site
-  and updates it when found. Additional-agent creation must not reuse this
-  role-based update behavior; multiple matching agents can also invalidate its
-  single-row lookup assumption. Review list/detail consumers and database
-  constraints for similar one-agent-per-role assumptions before implementation.
+- [Agent profiles](../app/components/agents/agent-channels-tab.tsx) show saved assignments separately from current/default routes. Settings and profiles use the same site-authorized directory and revision-checked mutation; drafts cannot own connections.
+- [Create agent](../app/api/agents/create/route.ts) creates a separate, initially inactive profile from `/agents/new`. Its retry identity is scoped to the authenticated actor and site. No tool grants, channel connections or provider registrations are created. Matching names or roles never replace another profile.
 - [Internal agent message proxy](/Users/prado/Desktop/Proyectos/Uncodie/Code/market-fit/app/api/agents/chat/message/route.ts)
   resolves the agent from the persisted conversation and rejects external-channel
   conversations. It must not become an unrestricted external delivery endpoint.
@@ -101,7 +98,7 @@ Inspected local code provides reusable foundations, not complete support:
   current HTTP modes and provider paths, see the [route compatibility review](MULTI_CHANNEL_ROUTE_COMPATIBILITY.md).
 
 **Implementation decision:** Reuse the `customerSupport/message` implementation,
-not its URL. The target for channel message generation is `POST /api/agent/message`;
+not its URL. Verified webhook adapters submit messages to `POST /api/agent/message`;
 do not build a responder per channel or move channel traffic to direct chat. The
 [context builder](../../API/src/app/api/agents/customerSupport/message/context.ts) mixes
 conversation history and channel guidance with Support policies. The [command builder](../../API/src/app/api/agents/customerSupport/message/generate.ts)
@@ -109,7 +106,8 @@ also sets the Support role and tool list. At this shared boundary, load the
 effective same-site agent's role, instructions and background by ID, combine them
 with the original conversation and channel context, and pass that agent's already
 authorized tools. Keep Support-specific defaults for Support, not for every agent.
-This centralizes reply generation, not provider ingress, delivery or Voice setup.
+This centralizes admission after provider verification and reuses one responder;
+provider callbacks, delivery and Voice setup keep their existing contracts.
 
 ## 4. Assignment storage and mutation contract
 
@@ -196,8 +194,8 @@ Any migration must be timestamped and forward-only, with explicit remote approva
 
 Blank/custom initialization is required; a template is not mandatory. The outcome
 is an independent agent, not a renamed default. Optional template UX, creation
-roles, initial agent activation state and capacity policy remain to be specified;
-initial tool state is confirmed as disabled for every tool.
+roles beyond existing site insert permissions and future capacity policy remain to be specified;
+independent agents currently start inactive with no enabled tools.
 
 ### Dynamic MCP catalog and owner-backed preauthorization
 
@@ -234,6 +232,8 @@ integration, not a second catalog, grant system or editor for channel assignment
 
 ### Settings > Agent Channels
 
+**Local UI, applied storage:** Each connection and the website card show an **Edit agent** profile link and a separate **Change agent** action for authorized managers. The latter updates only the connection's saved preference, not provider configuration or runtime routing. The card distinguishes the currently responding agent (last recorded binding for Voice; no automated responder for SMS) from the saved choice. The [assignment migration](../supabase/migrations/20261120231000_channel_agent_assignments.sql) was [applied and verified on Makinari](../../makinari-db-scheme/supabase/validation/20261120_channel_agent_assignments.md) on 2026-11-20. Environments without it remain read-only. A conflict requires reviewing the latest selection; clearing returns the preference to the site default.
+
 - Show an Assigned agent selector per connection, with agents from the current site.
 - Distinguish configured assignment from connection activation and readiness.
 - For no explicit assignment, show `Customer Support (default)`; if the fallback
@@ -243,6 +243,8 @@ integration, not a second catalog, grant system or editor for channel assignment
 - Show pending, success, conflict and failure states without false saved feedback.
 
 ### Agent detail > Channels
+
+**Local UI:** Saved profiles expose a responsive Channels tab. Existing connections are grouped by explicit assignment versus observed routing, with the website represented once. Site managers can assign a persisted connection or start provider setup from the tab. Setup and assignment are separate confirmations: no provider call is made just by viewing the directory, and an incomplete draft never becomes an assignment.
 
 - List the agent's explicitly assigned connections and their account/number,
   type, status and readiness.
@@ -421,8 +423,10 @@ delivery, live RLS, Temporal availability or provider-side Voice configuration.
 
 ## 10. Workstreams and rollout
 
-1. Confirm which ingress and delivery paths carry the verified connection and
-   effective agent identity. Keep the provider exceptions in the compatibility review visible.
+1. Introduce `POST /api/agent/message` as a thin adapter to existing Customer
+   Support admission, before changing agent behavior. Migrate verified webhook
+   adapters to it and track caller parity, including documented integration paths,
+   using the [integration contract](MULTI_CHANNEL_ROUTE_COMPATIBILITY.md#integration-contract-migrate-callers-before-changing-the-responder).
 2. Define the shared assignment schema, authorization and atomic mutation contract.
 3. Enable independent additional-agent creation, remove role-based identity
    assumptions, and implement Settings selectors, embedded connection setup and
@@ -436,11 +440,9 @@ delivery, live RLS, Temporal availability or provider-side Voice configuration.
    before exposing reassignment; keep already admitted turns on their original execution.
 6. Coordinate approved database, API, worker and frontend rollout; monitor routing
    reasons, missing fallback, ambiguous identity and delivery errors.
-7. Extract the verified executor at `POST /api/agent/message` and switch every
-   channel message-generation caller to that endpoint, including the worker turn
-   behind the chat widget. The widget keeps its public workflow POST and status
-   endpoints. Keep the old message URL only for legacy callers; leaving channel
-   activities pointed at that adapter does not complete the migration.
+7. After consumer parity, the shared executor may move out of Customer Support
+   without another caller migration. Preserve the widget's public workflow POST
+   and status endpoints; workers execute admitted turns without resubmitting them.
 
 Do not ship UI assignment as operational before backend consumers honor it.
 Preserve existing settings and unrelated working-tree changes. Do not deploy,
@@ -474,8 +476,8 @@ apply remote migrations, commit or run production builds without explicit approv
   state and applicable capacity rules. Tool activation is already defined as off.
 - Verify that the channel command consumes existing tool grants for the effective
   agent; track any catalog or delegation gaps with the tool-management workstream.
-- Specify supervisor identity and relationship storage, takeover/release/resume
-  controls, and whether channel reassignment changes already-open conversations.
+- The [reporting relationship](AGENT_REPORTING_HIERARCHY.md) uses `agents.supervisor`.
+  Specify takeover authorization, release/resume controls and whether channel reassignment changes open conversations; a reporting line is not takeover permission.
 - Audit all provider adapters and define verification for all-channel support,
   including Voice synchronization and web's single-agent invariant. Unsupported
   runtime paths are delivery gaps, not permission to silently narrow the scope.
