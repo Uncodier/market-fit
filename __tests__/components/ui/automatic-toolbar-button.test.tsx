@@ -3,11 +3,10 @@ import Link from "next/link"
 import { createPortal } from "react-dom"
 import { act, fireEvent, render, screen } from "@testing-library/react"
 import { Button } from "@/app/components/ui/button"
-import { Loader, Pencil, SaveIcon } from "@/app/components/ui/icons"
+import { Download, Loader, Pencil, Plus, SaveIcon } from "@/app/components/ui/icons"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
 import { useOptionalPermissions } from "@/app/context/PermissionContext"
 import { notifyPermissionDenied } from "@/lib/permissions/notify"
-import { extractToolbarIcons, toolbarActionChildren } from "@/app/components/ui/automatic-toolbar-presentation"
 
 jest.mock("@/app/context/PermissionContext", () => ({ useOptionalPermissions: jest.fn(() => null) }))
 jest.mock("@/lib/permissions/notify", () => ({ notifyPermissionDenied: jest.fn() }))
@@ -77,7 +76,7 @@ describe("automatic shared toolbar Button", () => {
 
   it("makes disabled action tooltips keyboard accessible without enabling the button", async () => {
     const onClick = jest.fn()
-    render(scope(<Button disabled onClick={onClick}>Download report</Button>))
+    render(scope(<Button disabled onClick={onClick}><Download />Download report</Button>))
     const button = screen.getByRole("button", { name: "Download report" })
     expect(button).toBeDisabled()
     const trigger = button.closest("[data-automatic-toolbar-tooltip]")!
@@ -119,9 +118,9 @@ describe("automatic shared toolbar Button", () => {
 
   it("uses the nearest off/on scope and responds to scope changes without replacing refs", () => {
     const ref = React.createRef<HTMLButtonElement>()
-    const view = render(<div data-toolbar-icon-actions="off">{scope(<Button ref={ref}>Save changes</Button>)}</div>)
+    const view = render(<div data-toolbar-icon-actions="off">{scope(<Button ref={ref}><SaveIcon />Save changes</Button>)}</div>)
     expect(ref.current!).not.toHaveTextContent("Save changes")
-    view.rerender(<div data-toolbar-icon-actions="off"><div data-toolbar-icon-actions="off"><Button ref={ref}>Save changes</Button></div></div>)
+    view.rerender(<div data-toolbar-icon-actions="off"><div data-toolbar-icon-actions="off"><Button ref={ref}><SaveIcon />Save changes</Button></div></div>)
     expect(ref.current).toBe(screen.getByRole("button", { name: "Save changes" }))
     expect(ref.current).toHaveTextContent("Save changes")
   })
@@ -136,7 +135,7 @@ describe("automatic shared toolbar Button", () => {
   })
 
   it("allows tooltip presentation on popup triggers without overwriting their state", async () => {
-    render(scope(<Button variant="ghost" aria-haspopup="dialog" data-state="closed">Open editor</Button>))
+    render(scope(<Button variant="ghost" aria-haspopup="dialog" data-state="closed"><Pencil />Open editor</Button>))
     const button = screen.getByRole("button", { name: "Open editor" })
     expect(button).toHaveAttribute("data-state", "closed")
     fireEvent.focus(button)
@@ -148,7 +147,7 @@ describe("automatic shared toolbar Button", () => {
     const can = jest.fn(() => false)
     jest.mocked(useOptionalPermissions).mockReturnValue({ can } as unknown as NonNullable<ReturnType<typeof useOptionalPermissions>>)
     const onClick = jest.fn()
-    render(scope(<Button onClick={onClick}>Save changes</Button>))
+    render(scope(<Button onClick={onClick}><SaveIcon />Save changes</Button>))
     const button = screen.getByRole("button", { name: "Save changes" })
     expect(can).toHaveBeenCalledWith("update")
     expect(button).toHaveAttribute("aria-disabled", "true")
@@ -166,13 +165,29 @@ describe("automatic shared toolbar Button", () => {
     expect(screen.getByRole("button", { name: "Archive" })).toHaveAttribute("aria-disabled", "true")
   })
 
-  it("retains dynamic loading icons and selects meaningful then generic existing fallback icons", () => {
-    const view = render(scope(<Button><Pencil />Edit</Button>))
+  it("retains explicit icons during loading without guessing from a label", () => {
+    const view = render(scope(<Button><><span><Pencil /></span><SaveIcon /></>Save</Button>))
+    expect(screen.getByRole("button", { name: "Save" }).querySelectorAll("svg")).toHaveLength(2)
     view.rerender(scope(<Button><Loader className="mr-2" />Saving</Button>))
-    expect(screen.getByRole("button", { name: "Saving" }).querySelector(".animate-spin")).toBeInTheDocument()
-    expect(extractToolbarIcons(<><span><Pencil /></span><SaveIcon /></>)).toHaveLength(2)
-    expect((toolbarActionChildren("Save", "Save", false) as React.ReactElement).type).toBe(SaveIcon)
-    expect(React.isValidElement(toolbarActionChildren("Unusual action", "Unusual action", false))).toBe(true)
+    const button = screen.getByRole("button", { name: "Saving" })
+    expect(button.querySelector(".animate-spin")).toBeInTheDocument()
+    expect(button).not.toHaveTextContent("Saving")
+  })
+
+  it("leaves text-only buttons and links intact even in a compact toolbar", () => {
+    render(scope(<>
+      <Button variant="outline" size="sm" className="w-full">Save changes</Button>
+      <Button asChild variant="outline" size="sm"><Link href="/connectors/results">Private reports</Link></Button>
+    </>))
+    const save = screen.getByRole("button", { name: "Save changes" })
+    expect(save).toHaveClass("w-full", "px-3")
+    const reports = screen.getByRole("link", { name: "Private reports" })
+    expect(reports).toHaveAttribute("href", "/connectors/results")
+    for (const [control, label] of [[save, "Save changes"], [reports, "Private reports"]] as const) {
+      expect(control).toHaveTextContent(label)
+      expect(control.querySelector("svg")).toBeNull()
+      expect(control.closest("[data-automatic-toolbar-tooltip]")).toBeNull()
+    }
   })
 
   it("preserves a filter-count adornment alongside the icon-only action", () => {
@@ -189,13 +204,13 @@ describe("automatic shared toolbar Button", () => {
 
   it("settles under strict mode without a DOM-detection render loop", async () => {
     await act(async () => {
-      render(<React.StrictMode>{scope(<Button>New record</Button>)}</React.StrictMode>)
+      render(<React.StrictMode>{scope(<Button><Plus />New record</Button>)}</React.StrictMode>)
     })
     expect(screen.getByRole("button", { name: "New record" })).toHaveClass("w-10")
   })
 
   it("keeps toolbar margin/visibility placement on its outer flex child", () => {
-    render(scope(<Button className="ml-auto md:hidden">Save changes</Button>))
+    render(scope(<Button className="ml-auto md:hidden"><SaveIcon />Save changes</Button>))
     const button = screen.getByRole("button", { name: "Save changes" })
     expect(button.closest("[data-automatic-toolbar-tooltip]")).toHaveClass("ml-auto", "md:hidden")
     expect(button).not.toHaveClass("ml-auto", "md:hidden")

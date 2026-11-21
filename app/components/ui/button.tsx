@@ -101,9 +101,10 @@ export interface ButtonProps
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, tint, children, onClick, adornment, ...props }, ref) => {
     const toolbar = useAutomaticToolbarHost()
-    const toolbarLabel = toolbarActionLabel(children, props["aria-label"], props.title)
-    const automatic = toolbar.active && Boolean(toolbarLabel)
-    const presentedChildren = automatic ? toolbarActionChildren(children, toolbarLabel, asChild) : children
+    const toolbarLabel = toolbar.active ? toolbarActionLabel(children, props["aria-label"], props.title) : ""
+    const compactChildren = toolbarLabel ? toolbarActionChildren(children, asChild) : null
+    const automatic = compactChildren !== null
+    const presentedChildren = compactChildren ?? children
     const presentedSize = automatic ? "icon" : size
     const tooltipEnabled = automatic && !toolbar.existingTooltip
     const toolbarLayout = splitToolbarLayoutClasses(className)

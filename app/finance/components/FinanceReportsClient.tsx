@@ -82,7 +82,7 @@ function SiteFinanceReports({ siteId, defaultCurrency }: { siteId?: string; defa
             </TabsList>
           </div>
           <div className="ml-auto flex flex-wrap items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={report.refresh} disabled={!siteId || !currency}>
+            <Button data-toolbar-icon-actions variant="ghost" size="sm" onClick={report.refresh} disabled={!siteId || !currency}>
               <RotateCw className="h-4 w-4" />Refresh
             </Button>
             <Button variant="ghost" size="sm" className="flex items-center gap-1" onClick={exportReport}

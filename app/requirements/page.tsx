@@ -187,7 +187,7 @@ export default function RequirementsPage() {
               
               <div className="flex items-center gap-2 md:gap-4 flex-shrink-0">
                 {activeFilterCount > 0 ? (
-                  <Button variant="ghost" size="sm" onClick={handleClearFilters} className="relative hidden md:flex"
+                  <Button data-toolbar-icon-actions variant="ghost" size="sm" onClick={handleClearFilters} className="relative hidden md:flex"
                     aria-label={`${t("requirements.clearFilters") || "Clear"} (${activeFilterCount})`}
                     adornment={<Badge variant="outline" className="pointer-events-none absolute -right-1 -top-1 rounded-full px-1.5 py-0 text-[10px]">{activeFilterCount}</Badge>}>
                     <XCircle className="h-4 w-4" />

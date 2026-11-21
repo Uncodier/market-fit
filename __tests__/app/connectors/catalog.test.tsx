@@ -9,7 +9,7 @@ let mockMobile = false
 jest.mock("@/app/context/SiteContext", () => ({ useSite: () => ({ currentSite: mockSite ? { id: mockSite } : null, isLoading: false }) }))
 jest.mock("@/app/components/auth/auth-context", () => ({ useAuthContext: () => ({ user: { id: mockUser }, isLoading: false }) }))
 jest.mock("@/app/context/LocalizationContext", () => ({ useLocalization: () => ({ t: translate }) }))
-jest.mock("@/app/components/ui/sticky-header", () => ({ StickyHeader: ({ children }: { children: React.ReactNode }) => <header>{children}</header> }))
+jest.mock("@/app/context/LayoutContext", () => ({ useLayout: () => ({ isLayoutCollapsed: false }) }))
 jest.mock("@/app/hooks/use-mobile-view", () => ({ useIsMobile: () => mockMobile }))
 const fetchMock = jest.fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>()
 const countsMock = jest.fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>()
@@ -210,10 +210,28 @@ test("shows the tabs before search and the platform notices after the catalogue"
   expect(screen.queryByRole("heading", { name: "Connectors" })).not.toBeInTheDocument()
   expect(screen.getAllByRole("button", { name: /Search/ })).toHaveLength(1)
   expect(container.querySelector('form[role="search"] button[type="submit"]')).toBeNull()
-  const privateNavigation = screen.getByRole("button", { name: "Private reports" }).closest("form")
+  expect(screen.getByRole("tablist").compareDocumentPosition(screen.getByRole("search")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+})
+
+test.each([false, true])("keeps Private reports visibly labeled in the real toolbar (mobile: %s)", async mobile => {
+  mockMobile = mobile
+  fetchMock.mockResolvedValue(jsonResponse(catalog))
+  render(<ConnectorCatalog />)
+  await screen.findByRole("link", { name: "Mail toolkit" })
+
+  const reports = screen.getByRole("button", { name: "Private reports" })
+  expect(within(reports).getByText("Private reports")).toBeVisible()
+  expect(reports).toHaveClass("h-10", "ring-input", "gap-2")
+  expect(reports).not.toHaveClass("!w-10")
+  expect(reports.querySelector("[aria-hidden='true'] svg path")).toBeInTheDocument()
+  expect(reports.querySelector("svg circle")).toBeNull()
+  expect(reports).toHaveAttribute("type", "submit")
+  const privateNavigation = reports.closest("form")
   expect(privateNavigation).toHaveAttribute("method", "get")
   expect(privateNavigation).toHaveAttribute("action", "/connectors/results")
-  expect(screen.getByRole("tablist").compareDocumentPosition(screen.getByRole("search")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  const search = screen.getByRole("button", { name: "Search connectors" })
+  expect(search).toHaveClass("h-10", "w-10")
+  expect(search.querySelector("svg")).toBeInTheDocument()
 })
 
 test("clearing search removes the query and cursor without changing the selected tab", async () => {

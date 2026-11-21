@@ -7,6 +7,7 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { SearchInput } from "@/app/components/ui/search-input"
 import { Button } from "@/app/components/ui/button"
+import { FileText } from "@/app/components/ui/icons"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { SidebarToggle } from "@/app/control-center/components/SidebarToggle"
 import { useAutoCollapseSidebar } from "@/app/hooks/use-auto-collapse-sidebar"
@@ -85,7 +86,10 @@ export function CatalogContent({ siteId }: { siteId: string }) {
               }} />
           </form>
           <form action="/connectors/results" method="get">
-            <Button type="submit" variant="outline" size="sm">{t("connectors.privateReports")}</Button>
+            <Button type="submit" variant="outline" size="sm" className="h-10 gap-2">
+              <FileText className="h-4 w-4" aria-hidden />
+              {t("connectors.privateReports")}
+            </Button>
           </form>
         </div>
       </StickyHeader>

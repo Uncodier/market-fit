@@ -204,7 +204,7 @@ export default function ModifierGroupDetailPage(props: {
       <StickyHeader>
         <div className="w-full pt-0 flex justify-between items-center">
           <h1 className="text-lg font-semibold">{name}</h1>
-          <Button variant="outline" onClick={handleSave} disabled={saving}>
+          <Button variant="outline" className="gap-2" onClick={handleSave} disabled={saving}>
             {saving ? <Loader className="h-4 w-4" /> : <Save className="h-4 w-4" />}
             {saving
               ? t("common.saving") || "Saving..."

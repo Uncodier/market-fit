@@ -62,7 +62,7 @@ function stripIconMargins(props: ChildProps) {
   return { className, style, "aria-hidden": true as const }
 }
 
-export function extractToolbarIcons(children: React.ReactNode): React.ReactNode[] {
+function extractToolbarIcons(children: React.ReactNode): React.ReactNode[] {
   const result: React.ReactNode[] = []
   React.Children.forEach(children, child => {
     if (!React.isValidElement<ChildProps>(child)) return
@@ -77,31 +77,13 @@ export function extractToolbarIcons(children: React.ReactNode): React.ReactNode[
   return result.map((icon, key) => React.isValidElement(icon) ? React.cloneElement(icon, { key }) : icon)
 }
 
-const fallbackCategories: [RegExp, Icons.LucideIcon][] = [
-  [/\b(save|update)\b/i, Icons.SaveIcon],
-  [/\b(delete|remove)\b/i, Icons.Trash2],
-  [/\b(create|add|new)\b/i, Icons.Plus],
-  [/\b(edit|rename)\b/i, Icons.Pencil],
-  [/\b(download|export)\b/i, Icons.Download],
-  [/\b(upload|import)\b/i, Icons.UploadCloud],
-  [/\b(filter)\b/i, Icons.Filter],
-  [/\b(search|find)\b/i, Icons.Search],
-  [/\b(print)\b/i, Icons.Printer],
-  [/\b(copy|duplicate)\b/i, Icons.Copy],
-  [/\b(send|share)\b/i, Icons.Send],
-  [/\b(back|previous)\b/i, Icons.ArrowLeft],
-  [/\b(cancel|close)\b/i, Icons.X],
-  [/\b(confirm|apply|approve|submit)\b/i, Icons.Check],
-]
-
-export function toolbarActionChildren(children: React.ReactNode, label: string, asChild: boolean) {
+export function toolbarActionChildren(children: React.ReactNode, asChild: boolean) {
   const icons = extractToolbarIcons(children)
-  const Fallback = fallbackCategories.find(([pattern]) => pattern.test(label))?.[1] || Icons.MoreHorizontal
-  const content = icons.length ? icons : <Fallback aria-hidden />
+  if (!icons.length) return null
   if (asChild && React.isValidElement<ChildProps>(children)) {
-    return React.cloneElement(children, { children: content })
+    return React.cloneElement(children, { children: icons })
   }
-  return content
+  return icons
 }
 
 export function splitToolbarLayoutClasses(className?: string) {

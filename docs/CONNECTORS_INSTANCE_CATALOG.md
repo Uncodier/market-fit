@@ -34,6 +34,18 @@ in Robots is not a grant.
    live action and exact account; execution checks again. Cursors and old
    successes never authorize future use.
 
+### Correcting tool arguments
+
+In Robots, a verified **pre-dispatch** argument error identifies the first
+actionable schema field and rule, for example `arguments.limit`, `maximum: 25`.
+The assistant can correct the value on the same tool and account. The response
+does not echo submitted values or unknown keys, and the runtime does not replay
+the call. A stale descriptor must be described again; an unsupported operation,
+missing permission, quota or unconfirmed outcome is not a field to fix. Do not
+substitute a different scope, reconnect an account, or claim that no data exists.
+Provider-specific semantics still need their own validated adapter. Customer
+Support does not disclose a private schema or its errors to public audiences.
+
 ## Execution boundaries
 
 - Existing reviewed operations retain their previous policies. The new ordinary
@@ -105,6 +117,12 @@ revocation, expiry or a replacement grant cannot resurrect an old result.
 The direct path accepts a single bounded SELECT over a declared fact source,
 typed literals or positional parameters, comparisons, filters, GROUP BY,
 COUNT (including distinct site count), SUM, AVG, MIN/MAX, ordering and limits.
+For monthly summaries use `date_trunc('month', sale_date) AS period` (or a listed
+timestamp column). It returns a month-start date; timestamps are grouped in UTC.
+`GROUP BY 1,2 ORDER BY 1,2` refers to the first two SELECT items, e.g. period
+and currency. A currency subtotal's distinct site count is not additive across
+months or currencies. If validation rejects a clause, correct it without
+changing the account or scope; a validation failure does not mean access was denied.
 Workspace queries may also select the listed nonidentifying facts; platform
 queries must aggregate. UUIDs cannot be returned as raw identifiers. Native
 sources encode the authorized joins and tenant bounds before aggregation.

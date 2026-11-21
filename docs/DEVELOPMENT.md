@@ -205,6 +205,14 @@ Shiplight CRUD suites create, update, and delete real records. Run E2E or agent
 verification only against an explicitly approved disposable target. Generated
 `*.yaml.spec.ts` files should not be edited by hand.
 
+## Toolbar buttons
+
+`StickyHeader` handles layout, not whether a button's label is visible.
+Use `Button` for labeled actions and `ToolbarIconButton` for individual icon-only
+actions with a tooltip. For a whole contextual group, use `ToolbarActionGroups`
+or a deliberate `data-toolbar-icon-actions` scope. That scope compacts only
+named buttons that already supply an icon; it does not guess icons from labels.
+
 ## Change workflow
 
 1. Inspect adjacent implementations and tests before editing.
