@@ -9,7 +9,7 @@ export const indexSchema = z.array(z.object({ id: resultId, tool: z.string().reg
   created_at: z.string().datetime({ offset: true }) }).strict()).max(20)
 
 const escape = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!)
-const privateCopy = 'In Makinari, only the person who requested the report can open it while their access remains active. Robots receives a receipt, not these rows, and cannot summarize them automatically.'
+const privateCopy = 'Only the person who requested the report can open this saved copy while their access remains active. Saving a copy is separate from what Ask receives during a turn.'
 export const privateHeaders = {
   'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'private, no-store, max-age=0',
   'Vary': 'Cookie, Authorization', 'Referrer-Policy': 'no-referrer', 'X-Content-Type-Options': 'nosniff',
@@ -30,7 +30,7 @@ export function unavailable(status: number) {
 }
 export function resultPage(id: string, r: z.infer<typeof reportSchema>) {
   const button = (choice: number, label: string) => `<form method="post" action="/connectors/results/${escape(id)}/open"><button type="submit" name="choice" value="${choice}">${label}</button></form>`
-  const table = !r.rows.length ? (r.columns.length ? '<p>No rows were returned on this page.</p>' : '') : `<table><thead><tr>${r.columns.map(c => `<th scope="col">${escape(c)}</th>`).join('')}${r.published ? '<th>Action</th>' : ''}</tr></thead><tbody>${r.rows.map((row,i) => `<tr>${row.map(cell => `<td>${escape(cell)}</td>`).join('')}${r.published ? `<td>${button(i, 'Open private report')}</td>` : ''}</tr>`).join('')}</tbody></table>`
+  const table = !r.rows.length ? (r.columns.length ? '<p>No rows to display.</p>' : '') : `<table><thead><tr>${r.columns.map(c => `<th scope="col">${escape(c)}</th>`).join('')}${r.published ? '<th>Action</th>' : ''}</tr></thead><tbody>${r.rows.map((row,i) => `<tr>${row.map(cell => `<td>${escape(cell)}</td>`).join('')}${r.published ? `<td>${button(i, 'Open private report')}</td>` : ''}</tr>`).join('')}</tbody></table>`
   return page(r.title, `<p>${privateCopy}</p><p>${escape(r.note)}</p>${table}${r.published && r.next_after ? button(-1, 'Next page of published reports') : ''}`)
 }
 export function indexPage(items: z.infer<typeof indexSchema>) {

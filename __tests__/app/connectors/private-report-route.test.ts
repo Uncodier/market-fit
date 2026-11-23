@@ -26,7 +26,7 @@ it('reads using only the real user client and opaque ID; renders an escaped, scr
   const response = await show(new Request(path),params), body = await response.text()
   expect(createClient).toHaveBeenCalledWith(true); expect(rpc).toHaveBeenCalledWith('read_connector_private_result',{p_id:id})
   expect(response.status).toBe(200); expect(body).toContain('&lt;script&gt;private result&lt;/script&gt;'); expect(body).not.toContain('<script')
-  expect(body).toContain('cannot summarize'); expect(response.headers.get('cache-control')).toMatch(/private, no-store/)
+  expect(body).toContain('Saving a copy is separate'); expect(response.headers.get('cache-control')).toMatch(/private, no-store/)
   expect(response.headers.get('content-security-policy')).toContain("default-src 'none'"); expect(response.headers.get('referrer-policy')).toBe('no-referrer')
   expect(getSession).not.toHaveBeenCalled(); expect(fetchMock).not.toHaveBeenCalled()
 })
