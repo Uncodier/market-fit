@@ -1,6 +1,6 @@
 # Historical Robots catalogue reads and reporting adapters
 
-The sections below describe the earlier read-only path, not the provider-direct Ask gateway. Its saved settings, reviewed inventory and project-specific reporting examples do not establish current execution authority. For the new private Ask path, see [Provider-direct execution](CONNECTORS_PROVIDER_DIRECT.md): it requires independent verification of the external account and a separate manager opt-in, and it does not offer these SQL/report adapters as a fallback.
+The sections below describe the earlier read-only path, not the private Ask gateway. Its saved settings, reviewed inventory and project-specific reporting examples do not establish current execution authority. See [Connected accounts in Robots Ask](CONNECTORS_PROVIDER_DIRECT.md) for the proposed default on new, verified connections and the separate rules for historical accounts. Ask does not offer these SQL/report adapters as a fallback.
 
 This is a per-connection setting for the private interactive instance assistant. It does
 not change the Customer Support, public chat, voice, workflow or legacy MCP

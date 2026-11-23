@@ -7,7 +7,7 @@ import { TopBarPrimaryActions } from "@/app/components/navigation/topbar-primary
 import { Button } from "@/app/components/ui/button"
 import { Label } from "@/app/components/ui/label"
 import { Input } from "@/app/components/ui/input"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/app/components/ui/dialog"
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/app/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { ConnectorError } from "./connector-feedback"
 import { ConnectorRequestError, safeAuthorizationUrl } from "./connector-request"
@@ -62,7 +62,8 @@ export function ConnectAccount({ siteId, detail, onChanged }: { siteId: string; 
       if (result) onChanged()
       return
     }
-    const result = await mutation.run("/api/connectors/auth-attempts", { ...scope, auth_config_id: configId }, authAttemptSchema)
+    // Only this notice-bearing OAuth flow starts a new Ask-aware attempt.
+    const result = await mutation.run("/api/connectors/auth-attempts/ask", { ...scope, auth_config_id: configId }, authAttemptSchema)
     if (!result) return
     const url = safeAuthorizationUrl(result.redirect_url)
     if (!url) { setRedirectError(new ConnectorRequestError("unavailable")); return }
@@ -85,14 +86,18 @@ export function ConnectAccount({ siteId, detail, onChanged }: { siteId: string; 
         setInvalid({ project: false, token: false })
       }
     }}>
-      <DialogContent>
-        <DialogHeader><DialogTitle>{label}</DialogTitle><DialogDescription>
+      <DialogContent busy={mutation.pending || redirecting}>
+        <DialogHeader><DialogTitle>{label}</DialogTitle></DialogHeader>
+        <DialogBody className="space-y-4"><DialogDescription>
           {t(configs.length ? "connectors.connectHelp" : canCreate ? "connectors.managedOAuthHelp"
             : supabase ? "connectors.supabaseTokenHelp" : hasApiKey ? "connectors.apiKeyUnavailable" : "connectors.noAuthConfig")}
-          {(configs.length > 0 || tokenMode) && <span className="mt-2 block font-medium text-foreground">
-            {t("connectors.workspaceSharingDisclosure")}{slug === "gmail" && ` ${t("connectors.gmailSharingDisclosure")}`}
-          </span>}
-        </DialogDescription></DialogHeader>
+          {(configs.length > 0 || tokenMode) && <>
+            <span className="mt-2 block font-medium text-foreground">{t(tokenMode ? "connectors.tokenAskDisclosure" : "connectors.askOnConnect")}</span>
+            {configs.length > 0 && <span className="mt-2 block">{t("connectors.askOnConnectEffects")}
+              {slug === "supabase" && ` ${t("connectors.supabaseAskLimit")}`}</span>}
+            <span className="mt-2 block">{t("connectors.workspaceSharingDisclosure")}{slug === "gmail" && ` ${t("connectors.gmailSharingDisclosure")}`}</span>
+          </>}
+        </DialogDescription>
         {configs.length > 0 && <div className="space-y-2"><Label>{t("connectors.authConfig")}</Label>
           <Select value={configId} onValueChange={setSelected} disabled={mutation.pending}>
             <SelectTrigger aria-label={t("connectors.authConfig")}><SelectValue placeholder={t("connectors.selectAuthConfig")} /></SelectTrigger>
@@ -120,7 +125,8 @@ export function ConnectAccount({ siteId, detail, onChanged }: { siteId: string; 
           <a className="underline" href="https://supabase.com/dashboard/account/tokens" target="_blank" rel="noopener noreferrer">{t("connectors.supabaseTokenLink")}</a>
         </div>}
         {!!error && <ConnectorError error={error} retry={retryableTokenError ? undefined : onChanged} />}
-        {actionable && <p className="text-xs text-muted-foreground">{t("connectors.providerCosts")}</p>}
+        {actionable && !configs.length && <p className="text-xs text-muted-foreground">{t("connectors.providerCosts")}</p>}
+        </DialogBody>
         <DialogFooter>{actionable ? <Button disabled={(!tokenMode && !canCreate && !configId) || mutation.pending || redirecting || (!!error && !retryableTokenError)} onClick={() => void start()}>
           {t(tokenMode ? (mutation.pending ? "connectors.supabaseVerifying" : "connectors.supabaseConnect")
             : canCreate ? (mutation.pending ? "connectors.creatingOAuth" : "connectors.createOAuth")

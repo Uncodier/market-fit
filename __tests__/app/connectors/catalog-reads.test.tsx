@@ -4,6 +4,7 @@ import { access, connector, translate } from "./fixtures"
 import type { Connector, ConnectorAccess, ToolAccessMode } from "@/app/connectors/types"
 
 jest.mock("@/app/context/LocalizationContext", () => ({ useLocalization: () => ({ t: translate }) }))
+jest.mock("@/app/connectors/provider-direct-settings", () => ({ AskAccessSection: () => null }))
 const toggle = () => screen.getByRole("checkbox", { name: "Allow instance catalogue reads" })
 const save = () => screen.getByRole("button", { name: "Save policy" })
 function editor(mode: ToolAccessMode, policy: Partial<ConnectorAccess["policy"]>, account: Partial<Connector> = {}, manage = true) {
@@ -12,6 +13,11 @@ function editor(mode: ToolAccessMode, policy: Partial<ConnectorAccess["policy"]>
     connector={{ ...connector, enabled: true, ...account }} access={{ ...access, policy: {
       ...access.policy, tool_access_mode: mode, allowed_tools: ["MAIL_GET_LABEL"], ...policy,
     } }} />)
+  if (policy.catalog_reads !== undefined) {
+    const summary = screen.getByText("Legacy catalogue reads")
+    expect(summary.closest("details")).not.toHaveAttribute("open")
+    fireEvent.click(summary)
+  }
   return onSave
 }
 
@@ -19,7 +25,7 @@ test.each(["all", "selected"] as const)("an existing disabled policy stays off u
   const onSave = editor(mode, { catalog_reads: false })
   expect(toggle()).not.toBeChecked(); expect(save()).toBeDisabled()
   expect(screen.getByText(mode === "all" ? /including future entries/ : /among those exact IDs/)).toBeVisible()
-  expect(screen.getByText(/legacy read-only setting.*does not enable or revoke provider-direct execution.*authorize writes/)).toBeVisible()
+  expect(screen.getByText(/legacy setting does not turn Robots Ask access on or off.*authorize writes/)).toBeVisible()
   fireEvent.click(toggle()); fireEvent.click(save())
   expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ catalog_reads: true, tool_access_mode: mode, allowed_tools: ["MAIL_GET_LABEL"], allowed_hosts: ["assistant"] }))
   fireEvent.click(toggle()); expect(save()).toBeDisabled()
@@ -53,8 +59,14 @@ test("never enables the instance host as a side effect of a policy save", () => 
   expect(toggle()).toBeEnabled(); expect(toggle()).not.toBeChecked()
 })
 
-test.each([{}, { enabled: false }, { revocation_pending: true }, { verified_at: null }])("requires API support and an available connection (%j)", override => {
-  editor("all", Object.keys(override).length ? { catalog_reads: false } : {}, override)
+test("does not offer legacy controls when the server does not report a legacy setting", () => {
+  editor("all", {})
+  expect(screen.queryByText("Legacy catalogue reads")).not.toBeInTheDocument()
+  expect(screen.queryByRole("checkbox", { name: "Allow instance catalogue reads" })).not.toBeInTheDocument()
+})
+
+test.each([{ enabled: false }, { revocation_pending: true }, { verified_at: null }])("requires an available connection (%j)", override => {
+  editor("all", { catalog_reads: false }, override)
   expect(toggle()).not.toBeChecked(); expect(toggle()).toBeDisabled()
 })
 

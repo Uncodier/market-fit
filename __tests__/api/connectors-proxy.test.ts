@@ -163,6 +163,20 @@ describe("provider-direct manager opt-in", () => {
     }
   })
 
+  it("projects only reported setup state and the trusted shared-project reason, never browser assertions", async () => {
+    const pending = { ...dto, enabled: false, attested: false, setup_pending: true, unsupported_reason: "shared_makinari_project" }
+    fetchMock.mockResolvedValueOnce(Response.json({ ...pending, supabase_project_ref: credential }))
+    expect(await (await get()).json()).toEqual(pending)
+    expect((await patch({ ...input, setup_pending: true })).status).toBe(400)
+    expect((await patch({ ...input, unsupported_reason: "shared_makinari_project" })).status).toBe(400)
+    for (const extra of [{ setup_pending: true }, { unsupported_reason: "shared_makinari_project" }, { setup_pending: "false" }]) {
+      fetchMock.mockResolvedValueOnce(Response.json({ ...dto, ...extra }))
+      expect((await get()).status).toBe(502)
+    }
+    fetchMock.mockResolvedValueOnce(Response.json(pending))
+    expect(await (await patch({ ...input, enabled: false })).json()).toMatchObject({ error: { code: "OUTCOME_UNKNOWN" } })
+  })
+
   it("rejects a substituted account, wrong revision, wrong state, inconsistent proof or ambiguous success", async () => {
     fetchMock.mockResolvedValueOnce(Response.json({ ...dto, connector_id: userId }))
     expect((await get()).status).toBe(502)
@@ -320,9 +334,12 @@ it("forwards only the authenticated actor credential and scoped query", async ()
   expect(await result.text()).not.toContain(credential)
 })
 
-it("keeps an actor/site-bound OAuth nonce in an HttpOnly attempt cookie", async () => {
+it.each(["auth-attempts", "auth-attempts/ask"])("keeps an actor/site-bound OAuth nonce in an HttpOnly attempt cookie on %s", async path => {
   fetchMock.mockResolvedValue(Response.json({ attempt_id: attemptId, redirect_url: "https://connect.composio.dev/link" }))
-  const response = await proxyConnector(request("auth-attempts", "POST", { site_id: siteId, toolkit_slug: "gmail", auth_config_id: "ac_test" }), ["auth-attempts"])
+  const input = { site_id: siteId, toolkit_slug: "gmail", auth_config_id: "ac_test" }
+  expect((await proxyConnector(request(path, "POST", {...input,ask_on_connect:true}),path.split("/"))).status).toBe(400)
+  const response = await proxyConnector(request(path, "POST", input), path.split("/"))
+  expect(fetchMock.mock.calls[0][0].pathname).toBe(`/api/connectors/${path}`)
   const cookie = response.headers.get("set-cookie")!
   expect(cookie).toContain("HttpOnly")
   expect(cookie).toContain("SameSite=lax")

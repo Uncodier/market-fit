@@ -3,6 +3,7 @@ import { ConnectorAccessPanel } from "@/app/connectors/connector-access"
 import { access, connector, jsonResponse, translate } from "./fixtures"
 
 jest.mock("@/app/context/LocalizationContext", () => ({ useLocalization: () => ({ t: translate }) }))
+jest.mock("@/app/connectors/provider-direct-settings", () => ({ AskAccessSection: () => null }))
 const fetchMock = jest.mocked(fetch)
 beforeEach(() => fetchMock.mockReset())
 
@@ -20,9 +21,10 @@ test("an old Supabase policy stays selected until a mode-only change is saved", 
   fireEvent.click(all)
   expect(save).toBeEnabled()
   expect(screen.getByText("No tools in the separate reviewed inventory.")).toBeVisible()
-  expect(screen.getByText(/become compatible in the future/)).toBeVisible()
+  expect(screen.getByText(/including future tools.*provider decides.*read-only credential stays read-only/i)).toBeVisible()
+  expect(screen.getByText(/without permission to use the connection can request approval instead of running the action/i)).toBeVisible()
   expect(screen.getByText(/Selecting a catalogue entry does not by itself authorize execution/)).toBeVisible()
-  expect(screen.getByRole("checkbox", { name: "Allow instance catalogue reads" })).not.toBeChecked()
+  expect(screen.queryByRole("checkbox", { name: "Allow instance catalogue reads" })).not.toBeInTheDocument()
   expect(screen.queryByText("No tools allowed.")).not.toBeInTheDocument()
   expect(screen.queryByRole("button", { name: "Add tool" })).not.toBeInTheDocument()
   fireEvent.click(selected)

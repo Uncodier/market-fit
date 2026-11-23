@@ -7,7 +7,7 @@ import { Input } from "@/app/components/ui/input"
 import { publicationLabel, type SupportPublication } from "./support-publication"
 import { RadioGroup, RadioGroupItem } from "@/app/components/ui/radio-group"
 import { ConnectorToolPicker } from "./connector-tool-picker"
-import { ProviderDirectSection } from "./provider-direct-settings"
+import { AskAccessSection } from "./provider-direct-settings"
 import { SectionCard, SectionCardHeader, SectionCardContent, SectionCardFooter } from "@/app/components/ui/section-card"
 import type { Connector, ConnectorAccess, ToolAccessMode } from "./types"
 
@@ -48,7 +48,10 @@ export function ConnectorPolicyEditor({ siteId, access, connector, canManage, pe
       ...(showPublication ? { support_publication: audience === "off" ? null : { audience, label_id: labelId } } : {}),
     })
   }
-  return <><SectionCard id="tools-permissions">
+  return <>
+    <AskAccessSection key={`${siteId}:${connector.id}:${access.revision}`} siteId={siteId} connector={connector} canManage={canManage}
+      policy={access.policy} blockEnable={dirty || blocked || pending} onChanged={onChanged} />
+    <SectionCard id="tools-permissions">
     <SectionCardHeader title={t("connectors.policy")} description={t("connectors.policyHelp")} />
     <SectionCardContent>
       {canManage ? <RadioGroup aria-label={t("connectors.toolMode")} value={mode} disabled={blocked || pending} onValueChange={value => { if (value === "all" || value === "selected") setMode(value) }}>
@@ -63,14 +66,6 @@ export function ConnectorPolicyEditor({ siteId, access, connector, canManage, pe
       </div> : <ConnectorToolPicker siteId={siteId} slug={connector.toolkit_slug} selected={tools} onChange={setTools} canManage={canManage} disabled={blocked || pending} />}
       <label className="flex items-center gap-2 text-sm"><Checkbox checked={assistant} disabled={!canManage || blocked || pending} onCheckedChange={value => setAssistant(value === true)} />{t("connectors.allowAssistant")}</label>
       <p className="text-xs text-muted-foreground">{t("connectors.hostAssistant")}</p>
-      <label className="flex items-center gap-2 text-sm"><Checkbox checked={catalogReads}
-        disabled={!canManage || blocked || pending || access.policy.catalog_reads === undefined || (!catalogReads && !catalogReady)}
-        onCheckedChange={value => setCatalogReads(value === true)} />{t("connectors.catalogReads")}</label>
-      <p className="text-xs text-muted-foreground">{t(mode === "all" ? "connectors.catalogReadsAll" : "connectors.catalogReadsSelected")}</p>
-      <p className="text-xs text-muted-foreground">{t("connectors.catalogReadsLimits")}</p>
-      {optingOut && otherChanges && <p role="alert" className="text-sm">{t("connectors.errors.catalogOptOutSeparate")}</p>}
-      {canManage && !catalogReady && <p className="text-xs text-muted-foreground">{t("connectors.catalogReadsUnavailable")}</p>}
-      <p className="text-xs text-muted-foreground">{t("connectors.versionedExecutionBilling")}</p>
       <label className="flex items-center gap-2 text-sm"><Checkbox checked={approval} disabled={!canManage || pending} onCheckedChange={value => setApproval(value === true)} />{t("connectors.requireApproval")}</label>
       <p className="text-xs text-muted-foreground">{t("connectors.approvalHelp")}</p>
       {showPublication && <fieldset className="space-y-2" disabled={blocked || pending}>
@@ -84,10 +79,17 @@ export function ConnectorPolicyEditor({ siteId, access, connector, canManage, pe
       </fieldset>}
       <label className="flex items-center gap-2 text-sm"><Checkbox checked={enabled} disabled={!canManage || pending || (!enabled && !activatable)} onCheckedChange={value => setEnabled(value === true)} />{t("connectors.enabled")}</label>
       <p className="text-xs text-muted-foreground">{t("connectors.enableHelp")}</p>
+      {access.policy.catalog_reads !== undefined && <details className="space-y-2 text-sm">
+        <summary className="w-fit cursor-pointer font-medium">{t("connectors.legacyReadsTitle")}</summary>
+        <label className="flex items-center gap-2"><Checkbox checked={catalogReads}
+          disabled={!canManage || blocked || pending || (!catalogReads && !catalogReady)}
+          onCheckedChange={value => setCatalogReads(value === true)} />{t("connectors.catalogReads")}</label>
+        <p className="text-xs text-muted-foreground">{t(mode === "all" ? "connectors.catalogReadsAll" : "connectors.catalogReadsSelected")} {t("connectors.catalogReadsLimits")}</p>
+        {canManage && !catalogReady && <p className="text-xs text-muted-foreground">{t("connectors.catalogReadsUnavailable")}</p>}
+      </details>}
+      {optingOut && otherChanges && <p role="alert" className="text-sm">{t("connectors.errors.catalogOptOutSeparate")}</p>}
     </SectionCardContent>
     {canManage && <SectionCardFooter onSave={savePolicy} dirty={dirty} saving={pending} saveDisabled={blocked || pending || !dirty || invalidDraft} saveLabel={t("connectors.savePolicy")} savingLabel={t("connectors.saving")} />}
   </SectionCard>
-    <ProviderDirectSection key={`${siteId}:${connector.id}:${access.revision}`} siteId={siteId} connector={connector} canManage={canManage}
-      policy={access.policy} blockEnable={dirty || blocked || pending} onChanged={onChanged} />
   </>
 }

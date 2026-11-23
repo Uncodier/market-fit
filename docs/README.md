@@ -168,7 +168,7 @@ environment variables before changing production configuration.
 
 ## Product designs
 
-- [Provider-direct execution in private Robots Ask](CONNECTORS_PROVIDER_DIRECT.md) — external account verification, explicit per-connection opt-in, real writes and fees, private receipts and provider-independent revocation.
+- [Connected accounts in private Robots Ask](CONNECTORS_PROVIDER_DIRECT.md) — default Ask setup for eligible new connections, external verification, saved tool permissions, private receipts and revocation. Existing accounts are not silently upgraded.
 - [Historical Robots connector catalog reads](CONNECTORS_INSTANCE_CATALOG.md) — saved read-only policies, earlier reporting adapters and rollout history; not provider-direct authority.
 - [Connector validation archive](CONNECTORS_VALIDATION_HISTORY.md) — historical offline test results for the initial connector release, not live provider acceptance.
 - [Connectors implementation and rollout](CONNECTORS_IMPLEMENTATION.md) — local implementation boundaries, provider attestation/configuration, version-pinned REST execution, migrations and remaining live/deployment gates.

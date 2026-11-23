@@ -23,6 +23,7 @@ test("creates OAuth only after confirmation and refreshes rather than claiming a
   show(calendar, changed)
   fireEvent.click(screen.getByRole("button", { name: "Set up OAuth" }))
   expect(screen.getByRole("dialog", { name: "Set up OAuth" })).toHaveTextContent("read-only access")
+  expect(screen.getByRole("dialog")).not.toHaveTextContent("By continuing, you allow private Robots Ask")
   expect(fetchMock).not.toHaveBeenCalled()
   fireEvent.click(screen.getByRole("button", { name: "Create OAuth configuration" }))
   expect(screen.getByRole("button", { name: /Creating OAuth/ })).toBeDisabled()
@@ -39,13 +40,30 @@ test("prefers an existing OAuth configuration and does not offer creation", () =
   expect(screen.queryByRole("button", { name: "Create OAuth configuration" })).not.toBeInTheDocument()
 })
 
-test("Gmail discloses default workspace mailbox sharing before the OAuth request", () => {
-  show({ ...detail, toolkit: { ...detail.toolkit, slug: "gmail" }, connections: [] })
-  fireEvent.click(screen.getByRole("button", { name: "Connect account" }))
+test.each([false, true])("explains Ask before OAuth and starts only the notice-aware attempt (additional account: %s)", async additional => {
+  fetchMock.mockResolvedValueOnce(jsonResponse({ error: { code: "API_NOT_CONFIGURED" } }, 503))
+  show({ ...detail, toolkit: { ...detail.toolkit, slug: "gmail" }, connections: additional ? detail.connections : [] })
+  fireEvent.click(screen.getByRole("button", { name: additional ? "Connect another account" : "Connect account" }))
   const dialog = screen.getByRole("dialog")
   expect(dialog).toHaveAccessibleDescription(/shared with eligible workspace members and agents by default/)
   expect(dialog).toHaveAccessibleDescription(/reading messages from the connected mailbox/)
-  expect(dialog).toHaveAccessibleDescription(/legacy catalogue-read setting on.*Provider-direct execution starts off/i)
+  expect(dialog).toHaveAccessibleDescription(/allow private Robots Ask to use the account you select.*eligible tools become available automatically after independent verification/)
+  expect(dialog).toHaveAccessibleDescription(/saved member, agent and tool permissions.*provider enforces the permissions of the connected token or API key.*read-only credential stays read-only.*change or delete real data.*provider or Composio fees/i)
+  expect(fetchMock).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole("button", { name: "Continue to authorization" }))
+  await screen.findByRole("alert")
+  expect(fetchMock.mock.calls).toHaveLength(1)
+  expect(fetchMock).toHaveBeenCalledWith("/api/connectors/auth-attempts/ask", expect.objectContaining({ method: "POST",
+    body: JSON.stringify({ site_id: "site-1", toolkit_slug: "gmail", auth_config_id: "auth-1" }) }))
+})
+
+test("dismissal before authorization creates neither an attempt nor a grant", () => {
+  show({ ...detail, toolkit: { ...detail.toolkit, slug: "supabase" } })
+  fireEvent.click(screen.getByRole("button", { name: "Connect another account" }))
+  const dialog = screen.getByRole("dialog")
+  expect(dialog).toHaveAccessibleDescription(/shared Supabase project and broad management tokens are not supported/)
+  fireEvent.keyDown(dialog, { key: "Escape" })
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
   expect(fetchMock).not.toHaveBeenCalled()
 })
 
@@ -58,8 +76,9 @@ test("connects Supabase via a masked token and refreshes only after server verif
   const dialog = screen.getByRole("dialog")
   expect(dialog).toHaveTextContent("personal access token (PAT) starting with sbp_")
   expect(dialog).toHaveAccessibleDescription(/shared with eligible workspace members and agents by default/)
-  expect(dialog).toHaveAccessibleDescription(/legacy catalogue-read setting on.*requires independent verification and a separate manager opt-in/i)
-  expect(dialog).toHaveTextContent(/broad management token is not eligible.*does not authorize raw SQL/)
+  expect(dialog).toHaveAccessibleDescription(/Management token does not enable its provider tools in private Robots Ask.*shared Supabase project is not supported/)
+  expect(dialog).not.toHaveAccessibleDescription(/tools become available automatically/)
+  expect(dialog).toHaveTextContent(/does not limit the token’s permissions or authorize raw SQL/)
   expect(screen.getByRole("link", { name: "Open Supabase Access Tokens" })).toHaveAttribute("href", "https://supabase.com/dashboard/account/tokens")
   const button = screen.getByRole("button", { name: "Connect with API token" })
   const tokenField = screen.getByLabelText("Personal access token")
@@ -78,6 +97,7 @@ test("connects Supabase via a masked token and refreshes only after server verif
   expect(changed).not.toHaveBeenCalled()
   response.resolve(jsonResponse({ status: "completed", connector_id: "11111111-1111-4111-8111-111111111111" }))
   await waitFor(() => expect(changed).toHaveBeenCalledTimes(1))
+  expect(fetchMock).toHaveBeenCalledTimes(1)
 })
 
 test("explains which Supabase fields are invalid and never submits a project API key", () => {

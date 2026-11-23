@@ -3,6 +3,7 @@ import { ConnectorPolicyEditor } from "@/app/connectors/connector-policy-editor"
 import { access, connector, deferred, jsonResponse, translate } from "./fixtures"
 
 jest.mock("@/app/context/LocalizationContext", () => ({ useLocalization: () => ({ t: translate }) }))
+jest.mock("@/app/connectors/provider-direct-settings", () => ({ AskAccessSection: () => null }))
 const fetchMock = jest.mocked(fetch)
 beforeEach(() => fetchMock.mockReset())
 beforeAll(() => { HTMLElement.prototype.scrollIntoView ??= jest.fn() })

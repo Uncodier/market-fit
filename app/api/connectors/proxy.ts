@@ -30,7 +30,7 @@ export async function proxyConnector(request: NextRequest, path: string[]): Prom
       if (kind === 'connection-summary' && Object.keys(query).length !== 1) return connectorProxyFailure(400, 'INVALID_REQUEST')
       siteId = query.site_id
     } else {
-      if ((kind === "bind-project" || kind === "provider-direct") && request.nextUrl.search) return connectorProxyFailure(400, "INVALID_REQUEST")
+      if ((kind === "start" || kind === "bind-project" || kind === "provider-direct") && request.nextUrl.search) return connectorProxyFailure(400, "INVALID_REQUEST")
       if (request.headers.get("content-type")?.split(";")[0].trim() !== "application/json") return connectorProxyFailure(415, "JSON_REQUIRED")
       body = parseConnectorBody(kind, JSON.parse(decodeRequestBody(await readLimitedRequestBody(request, kind === "provider-direct" ? 2048 : 32_768))))
       if (kind === "complete") {

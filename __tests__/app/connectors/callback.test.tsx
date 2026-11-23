@@ -36,8 +36,7 @@ test("missing attempt requires explicit selection even when there is only one pe
   expect(fetchMock.mock.calls[0][0]).toBe("/api/connectors/pending-auth")
   fireEvent.click(verify)
   await screen.findByRole("link", { name: "Review account access" })
-  expect(screen.getByRole("status")).toHaveTextContent(/shared with eligible workspace members and agents by default/)
-  expect(screen.getByRole("status")).toHaveTextContent(/does not enable provider-direct execution/)
+  expect(screen.getByRole("status")).toHaveTextContent(/Account authorization verified. This does not confirm Ask access/)
   expect(fetchMock).toHaveBeenCalledTimes(2)
 })
 

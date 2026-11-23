@@ -10,23 +10,26 @@ jest.mock("@/app/hooks/use-mobile-view", () => ({ useIsMobile: () => false }))
 const http = jest.mocked(fetch)
 const local = { ...connector, id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" }
 
-function offline(canManage: boolean, selected?: string, wrongReceipt = false, legacyAccessUnavailable = false) {
+function offline(canManage: boolean, selected?: string, wrongReceipt = false, legacyAccessUnavailable = false, pendingSetup = false) {
   let revision = local.revision
   let directRevision = 7
   let reads = true
-  let direct = true
+  let direct = !pendingSetup
+  let setup = pendingSetup
+  const attested = !pendingSetup
   jest.mocked(useSearchParams).mockReturnValue(new URLSearchParams(selected ? { connector: selected } : {}) as ReturnType<typeof useSearchParams>)
   http.mockImplementation(async (input, init) => {
     const path = String(input)
     if (path.startsWith("/api/connectors/catalog")) return jsonResponse({ error: { code: "PROVIDER_UNAVAILABLE" } }, 503)
     if (path === "/api/connectors/connections?site_id=site-1") return jsonResponse({ can_manage: canManage, items: [{ ...local, enabled: true, revision }] })
     if (path === `/api/connectors/connections/${local.id}/provider-direct?site_id=site-1`) {
-      return jsonResponse({ connector_id: local.id, revision, direct_revision: directRevision, attested: true, enabled: direct })
+      return jsonResponse({ connector_id: local.id, revision, direct_revision: directRevision, attested, enabled: direct, setup_pending: setup })
     }
     if (path === `/api/connectors/connections/${local.id}/provider-direct` && init?.method === "PATCH") {
       expect(JSON.parse(String(init.body))).toEqual({ site_id: "site-1", expected_revision: revision, expected_direct_revision: directRevision, enabled: false })
       direct = false
-      return jsonResponse({ connector_id: local.id, revision, direct_revision: ++directRevision, attested: true, enabled: direct })
+      setup = false
+      return jsonResponse({ connector_id: local.id, revision, direct_revision: ++directRevision, attested, enabled: direct, setup_pending: setup })
     }
     if (path === `/api/connectors/connections/${local.id}/access?site_id=site-1`) return legacyAccessUnavailable
       ? jsonResponse({ error: { code: "STORAGE_UNAVAILABLE" } }, 503) : jsonResponse({ ...access,
@@ -54,14 +57,23 @@ test.each(["detail", "catalog"])("cold %s page can revoke and confirm the settin
 test.each(["detail", "catalog"])("cold %s page revokes direct access even if both metadata and old policy reads are unavailable", async page => {
   offline(true, page === "detail" ? local.id : undefined, false, true)
   render(page === "detail" ? <DetailContent siteId="site-1" slug="mail" /> : <CatalogContent siteId="site-1" />)
-  const revoke = await screen.findByRole("button", { name: "Revoke provider-direct access" })
-  expect(screen.getByText(/Active for the current verification/)).toBeVisible()
+  const revoke = await screen.findByRole("button", { name: "Turn off Ask access" })
+  expect(screen.getByText("Ask access is on")).toBeVisible()
   fireEvent.click(revoke)
-  expect(await screen.findByText("Inactive — no effective opt-in")).toBeVisible()
-  expect(screen.queryByRole("button", { name: "Enable provider-direct execution" })).not.toBeInTheDocument()
+  expect(await screen.findByText("Off")).toBeVisible()
+  expect(screen.queryByRole("button", { name: "Turn on Ask access" })).not.toBeInTheDocument()
   const writes = http.mock.calls.filter(([, init]) => init?.method === "PATCH")
   expect(writes.map(([url]) => url)).toEqual([`/api/connectors/connections/${local.id}/provider-direct`])
   expect(http.mock.calls.filter(([url]) => String(url).startsWith("/api/connectors/catalog"))).toHaveLength(1)
+})
+
+test("cancels automatic first setup locally with no proof or provider catalogue", async () => {
+  offline(true, local.id, false, true, true)
+  render(<DetailContent siteId="site-1" slug="mail" />)
+  fireEvent.click(await screen.findByRole("button", { name: "Cancel automatic setup" }))
+  expect(await screen.findByText("Off · not verified")).toBeVisible()
+  expect(screen.queryByRole("button", { name: "Turn on Ask access" })).not.toBeInTheDocument()
+  expect(http.mock.calls.filter(([, init]) => init?.method === "PATCH").map(([url]) => url)).toEqual([`/api/connectors/connections/${local.id}/provider-direct`])
 })
 
 test("the local fallback does not request direct status for a nonmanager", async () => {
@@ -69,7 +81,7 @@ test("the local fallback does not request direct status for a nonmanager", async
   render(<DetailContent siteId="site-1" slug="mail" />)
   await screen.findByRole("alert")
   expect(http.mock.calls.some(([url]) => String(url).includes("/provider-direct"))).toBe(false)
-  expect(screen.queryByRole("button", { name: "Revoke provider-direct access" })).not.toBeInTheDocument()
+  expect(screen.queryByRole("button", { name: "Turn off Ask access" })).not.toBeInTheDocument()
 })
 
 test("a hidden or foreign deep link never falls back to a visible account", async () => {

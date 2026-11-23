@@ -24,7 +24,7 @@ export function connectorRoute(path: string[], method: string) {
     if (path[0] === "connections" && path.length === 3 && uuid.safeParse(path[1]).success && path[2] === "access") return "read"
     if (path[0] === "auth-attempts" && path.length === 2 && uuid.safeParse(path[1]).success) return "attempt"
   }
-  if (method === "POST" && path.length === 1 && path[0] === "auth-attempts") return "start"
+  if (method === "POST" && path[0] === "auth-attempts" && (path.length === 1 || (path.length === 2 && path[1] === "ask"))) return "start"
   if (method === "POST" && path.length === 1 && path[0] === "managed-oauth") return "managed-oauth"
   if (method === "POST" && path.length === 1 && path[0] === "supabase-token") return "supabase-token"
   if (path.length === 3 && uuid.safeParse(path[1]).success) {
