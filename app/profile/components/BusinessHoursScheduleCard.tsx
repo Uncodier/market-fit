@@ -24,20 +24,30 @@ import { TimeRangeSelect } from "@/app/components/ui/time-select"
 import { Plus, Trash2, ChevronDown, ChevronRight } from "@/app/components/ui/icons"
 import { CalendarSettings } from "@/app/services/profile.service"
 
-export const DAYS = [
-  { id: "monday", label: "Monday" },
-  { id: "tuesday", label: "Tuesday" },
-  { id: "wednesday", label: "Wednesday" },
-  { id: "thursday", label: "Thursday" },
-  { id: "friday", label: "Friday" },
-  { id: "saturday", label: "Saturday" },
-  { id: "sunday", label: "Sunday" },
-]
+const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const
+
+type DayId = (typeof DAYS)[number]
+type Availability = NonNullable<CalendarSettings["availability"]>
+
+function getScheduleDay(availability: CalendarSettings["availability"], day: DayId): Availability[string] {
+  const stored = availability?.[day]
+  return {
+    ...stored,
+    // Missing days in an existing schedule are closed; defaults are for a new schedule.
+    enabled: stored?.enabled ?? (availability == null && day !== "saturday" && day !== "sunday"),
+    start: stored?.start ?? "09:00",
+    end: stored?.end ?? "17:00",
+  }
+}
+
+function createDefaultAvailability(): Availability {
+  return Object.fromEntries(DAYS.map((day) => [day, getScheduleDay(undefined, day)]))
+}
 
 interface BusinessHoursScheduleCardProps {
   formData: CalendarSettings
   onChange: (updater: (prev: CalendarSettings) => CalendarSettings) => void
-  onSave: () => Promise<void>
+  onSave: (settings: CalendarSettings) => Promise<void>
   isUpdating: boolean
 }
 
@@ -50,22 +60,12 @@ export function BusinessHoursScheduleCard({
   const { t } = useLocalization()
   const [isExpanded, setIsExpanded] = useState(false)
 
-  const handleToggleDay = (dayId: string) => {
+  const updateDay = (dayId: DayId, update: (day: Availability[string]) => Availability[string]) => {
     onChange((prev) => ({
       ...prev,
       availability: {
-        ...prev.availability,
-        [dayId]: { ...prev.availability[dayId], enabled: !prev.availability[dayId].enabled },
-      },
-    }))
-  }
-
-  const handleTimeChange = (dayId: string, field: "start" | "end", value: string) => {
-    onChange((prev) => ({
-      ...prev,
-      availability: {
-        ...prev.availability,
-        [dayId]: { ...prev.availability[dayId], [field]: value },
+        ...(prev.availability ?? createDefaultAvailability()),
+        [dayId]: update(getScheduleDay(prev.availability, dayId)),
       },
     }))
   }
@@ -140,32 +140,35 @@ export function BusinessHoursScheduleCard({
               </div>
 
               <div className="space-y-3">
-                {DAYS.map((day) => (
-                  <div key={day.id} className="flex items-center p-3 rounded-lg border border-border gap-8">
-                    <div className="flex items-center gap-4 w-32">
-                      <Switch
-                        aria-label={t("account.calendar.dayEnabled", { day: t("account.calendar." + day.id) })}
-                        checked={formData.availability[day.id]?.enabled}
-                        onCheckedChange={() => handleToggleDay(day.id)}
-                      />
-                      <span className="min-w-[80px] font-medium text-foreground">
-                        {t("account.calendar." + day.id)}
-                      </span>
-                    </div>
+                {DAYS.map((day) => {
+                  const { enabled, start, end } = getScheduleDay(formData.availability, day)
+                  return (
+                    <div key={day} className="flex items-center p-3 rounded-lg border border-border gap-8">
+                      <div className="flex items-center gap-4 w-32">
+                        <Switch
+                          aria-label={t("account.calendar.dayEnabled", { day: t("account.calendar." + day) })}
+                          checked={enabled}
+                          onCheckedChange={(checked) => updateDay(day, (current) => ({ ...current, enabled: checked }))}
+                        />
+                        <span className="min-w-[80px] font-medium text-foreground">
+                          {t("account.calendar." + day)}
+                        </span>
+                      </div>
 
-                    {formData.availability[day.id]?.enabled ? (
-                      <TimeRangeSelect
-                        start={formData.availability[day.id].start}
-                        end={formData.availability[day.id].end}
-                        onStartChange={(value) => handleTimeChange(day.id, "start", value)}
-                        onEndChange={(value) => handleTimeChange(day.id, "end", value)}
-                        triggerClassName="h-10 bg-background shadow-none"
-                      />
-                    ) : (
-                      <span className="text-sm text-muted-foreground italic">{t("booking.unavailable")}</span>
-                    )}
-                  </div>
-                ))}
+                      {enabled ? (
+                        <TimeRangeSelect
+                          start={start}
+                          end={end}
+                          onStartChange={(value) => updateDay(day, (current) => ({ ...current, start: value }))}
+                          onEndChange={(value) => updateDay(day, (current) => ({ ...current, end: value }))}
+                          triggerClassName="h-10 bg-background shadow-none"
+                        />
+                      ) : (
+                        <span className="text-sm text-muted-foreground italic">{t("booking.unavailable")}</span>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             </SectionCardContent>
             <ActionFooter>
@@ -181,7 +184,10 @@ export function BusinessHoursScheduleCard({
                 <Button
                   variant="outline"
                   type="button"
-                  onClick={onSave}
+                  onClick={() => onSave({
+                    ...formData,
+                    availability: formData.availability ?? createDefaultAvailability(),
+                  })}
                   disabled={isUpdating}
                   className="rounded-full px-6 border-foreground/20 font-medium"
                   size="sm"

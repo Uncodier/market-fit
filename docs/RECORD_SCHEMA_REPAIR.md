@@ -98,6 +98,21 @@ require explicit approval; do not replay applied migrations.
 7. Display-label adoption outside the form/editor is incremental; immutable names
    remain valid labels for existing graph/history consumers.
 
+## First-save version stability
+
+Previously, saving a regenerated summary and embedding also advanced
+`records.updated_at`. A background job could therefore invalidate the version
+loaded by the editor without changing its title, fields, relations, or status.
+The forward migration `20261123174000_records_document_modified_at.sql` keeps
+the editor's version stable for derived-only writes. Real document and
+lifecycle changes still advance the version. Save continues to compare the
+exact loaded timestamp and reject stale writes; no automatic retry or new
+database grants are introduced.
+
+`__tests__/records/record-document-version-postgres.test.ts` reproduces the
+false conflict and verifies the first conditional write after indexing, using
+an isolated PostgreSQL instance. The migration has not been applied remotely.
+
 ## Validation commands
 
 The dedicated [Records E2E suite](../specs/tests/records.md) covers real browser

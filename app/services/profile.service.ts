@@ -16,9 +16,9 @@ export interface EventType {
 
 export interface CalendarSettings {
   enabled: boolean
-  availability: {
+  availability?: {
     [key: string]: { enabled: boolean; start: string; end: string } // key: monday, tuesday, etc.
-  }
+  } | null
   event_types?: EventType[]
   respect_holidays?: boolean
   timezone?: string

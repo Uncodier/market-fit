@@ -2,7 +2,7 @@
 
 import { useLocalization } from "@/app/context/LocalizationContext"
 
-import React, { useState, useEffect } from "react"
+import React, { useState } from "react"
 import {
   SectionCard,
   SectionCardContent,
@@ -13,7 +13,7 @@ import { Switch } from "@/app/components/ui/switch"
 import { Label } from "@/app/components/ui/label"
 import { CalendarSettings, EventType } from "@/app/services/profile.service"
 import { useSite } from "@/app/context/SiteContext"
-import { DAYS, BusinessHoursScheduleCard } from "./BusinessHoursScheduleCard"
+import { BusinessHoursScheduleCard } from "./BusinessHoursScheduleCard"
 import { EventTypesSection } from "./EventTypesSection"
 
 interface CalendarPreferencesProps {
@@ -23,33 +23,26 @@ interface CalendarPreferencesProps {
   userEmail?: string
 }
 
-export function CalendarPreferences({ settings, onSave, isUpdating, userEmail }: CalendarPreferencesProps) {
-  const { t } = useLocalization()
-  const { sites } = useSite()
-
-  const [formData, setFormData] = useState<CalendarSettings>({
+function getFormData(settings?: CalendarSettings): CalendarSettings {
+  if (settings) return { ...settings, event_types: settings.event_types ?? [] }
+  return {
     enabled: false,
-    availability: DAYS.reduce((acc, day) => ({
-      ...acc,
-      [day.id]: { enabled: day.id !== "saturday" && day.id !== "sunday", start: "09:00", end: "17:00" }
-    }), {}),
     event_types: [],
     respect_holidays: false,
     timezone: "America/Mexico_City",
     schedule_name: "Sinergia México"
-  })
+  }
+}
 
-  useEffect(() => {
-    if (settings) {
-      setFormData({
-        ...settings,
-        event_types: settings.event_types || []
-      })
-    }
-  }, [settings])
+export function CalendarPreferences({ settings, onSave, isUpdating, userEmail }: CalendarPreferencesProps) {
+  const { t } = useLocalization()
+  const { sites } = useSite()
 
-  const handleSave = async () => {
-    await onSave(formData)
+  const [previousSettings, setPreviousSettings] = useState(settings)
+  const [formData, setFormData] = useState(() => getFormData(settings))
+  if (settings !== previousSettings) {
+    setPreviousSettings(settings)
+    setFormData(getFormData(settings))
   }
 
   const handleSaveEventTypes = async (eventTypes: EventType[]) => {
@@ -78,7 +71,7 @@ export function CalendarPreferences({ settings, onSave, isUpdating, userEmail }:
           <div className="flex items-center justify-end w-full">
             <Button variant="outline"
               type="button"
-              onClick={handleSave}
+              onClick={() => onSave(formData)}
               disabled={isUpdating}
               className="rounded-full px-6 border-foreground/20 font-medium" size="sm">
               {isUpdating ? t("common.saving") : t("account.preferences.save")}
@@ -90,7 +83,7 @@ export function CalendarPreferences({ settings, onSave, isUpdating, userEmail }:
       <BusinessHoursScheduleCard
         formData={formData}
         onChange={setFormData}
-        onSave={handleSave}
+        onSave={onSave}
         isUpdating={isUpdating}
       />
 

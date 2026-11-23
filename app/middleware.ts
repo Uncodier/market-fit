@@ -275,7 +275,7 @@ export async function middleware(request: NextRequest) {
     targetAlias = sitePatternMatch[1];
     targetId = sitePatternMatch[2];
     isAliasMatch = true;
-  } else {
+  } else if (pathname !== '/robots/private-answer' && !pathname.startsWith('/robots/private-answer/')) {
     // Check for /alias/id pattern (only if it's in our alias map to avoid intercepting actual routes)
     const directPatternMatch = pathname.match(/^\/([^\/]+)(?:\/(.*))?$/);
     if (directPatternMatch) {
