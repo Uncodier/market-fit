@@ -4,7 +4,7 @@ import { access, connector, jsonResponse, translate } from "./fixtures"
 
 jest.mock("@/app/context/LocalizationContext", () => ({ useLocalization: () => ({ t: translate }) }))
 // These tests isolate member/agent policy requests from the independent manager status read.
-jest.mock("@/app/connectors/provider-direct-settings", () => ({ AskAccessSection: () => null }))
+jest.mock("@/app/connectors/provider-direct-settings", () => ({ AskStatus: () => null, useAskStatus: () => ({ status: { enabled: false, attested: false } }) }))
 jest.mock("@/app/components/ui/select", () => ({
   Select: ({ children, value, onValueChange, disabled }: { children: React.ReactNode; value: string; onValueChange: (value: string) => void; disabled?: boolean }) => <select value={value} onChange={event => onValueChange(event.target.value)} disabled={disabled}><option value="">Choose</option>{children}</select>,
   SelectTrigger: () => null, SelectValue: () => null,

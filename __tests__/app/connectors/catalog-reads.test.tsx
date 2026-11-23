@@ -4,7 +4,7 @@ import { access, connector, translate } from "./fixtures"
 import type { Connector, ConnectorAccess, ToolAccessMode } from "@/app/connectors/types"
 
 jest.mock("@/app/context/LocalizationContext", () => ({ useLocalization: () => ({ t: translate }) }))
-jest.mock("@/app/connectors/provider-direct-settings", () => ({ AskAccessSection: () => null }))
+jest.mock("@/app/connectors/provider-direct-settings", () => ({ AskStatus: () => null, useAskStatus: () => ({ status: { enabled: false, attested: false } }) }))
 const toggle = () => screen.getByRole("checkbox", { name: "Allow instance catalogue reads" })
 const save = () => screen.getByRole("button", { name: "Save policy" })
 function editor(mode: ToolAccessMode, policy: Partial<ConnectorAccess["policy"]>, account: Partial<Connector> = {}, manage = true) {
@@ -55,7 +55,7 @@ test("never enables the instance host as a side effect of a policy save", () => 
   fireEvent.click(screen.getByRole("checkbox", { name: "Allow requests for access" })); fireEvent.click(save())
   expect(onSave.mock.calls[0][0].allowed_hosts).toEqual(["direct"])
   expect(onSave.mock.calls[0][0]).not.toHaveProperty("catalog_reads")
-  fireEvent.click(screen.getByRole("checkbox", { name: "Allow the interactive assistant" }))
+  fireEvent.click(screen.getByRole("checkbox", { name: /Allow the interactive assistant for legacy tools/ }))
   expect(toggle()).toBeEnabled(); expect(toggle()).not.toBeChecked()
 })
 

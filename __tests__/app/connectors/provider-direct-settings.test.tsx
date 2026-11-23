@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { toast } from "sonner"
 import { ConnectorAccessPanel } from "@/app/connectors/connector-access"
 import type { ConnectorAccess } from "@/app/connectors/types"
@@ -12,7 +12,8 @@ const account = { ...connector, enabled: true, id: "22222222-2222-4222-8222-2222
 const status = { connector_id: account.id, revision: account.revision, direct_revision: 4, attested: true, enabled: false }
 const base = `/api/connectors/connections/${account.id}`
 const accessDto: ConnectorAccess = { ...access, connector_id: account.id, policy: { ...access.policy, tool_access_mode: "all", catalog_reads: true } }
-const enable = () => screen.findByRole("button", { name: "Turn on Ask access" })
+const allow = () => screen.findByRole("checkbox", { name: "Allow Ask to use this account" })
+const save = () => screen.getByRole("button", { name: "Save policy" })
 const patchCalls = () => http.mock.calls.filter(([, init]) => init?.method === "PATCH")
 
 function show(dto = accessDto, manage = true, selected = account) {
@@ -24,11 +25,6 @@ function show(dto = accessDto, manage = true, selected = account) {
 async function load(data: unknown) {
   http.mockResolvedValueOnce(jsonResponse(data))
   await screen.findByRole("heading", { name: "Robots Ask access" })
-}
-async function confirmEnable() {
-  fireEvent.click(await enable())
-  const dialog = screen.getByRole("alertdialog", { name: `Allow Ask to use ${account.display_name}?` })
-  fireEvent.click(within(dialog).getByRole("button", { name: "Turn on Ask access" }))
 }
 beforeEach(() => { http.mockReset(); jest.mocked(toast.success).mockClear() })
 
@@ -44,7 +40,7 @@ test("an unattested account never offers enable; managers can clear consent afte
   show()
   await load({ ...status, attested: false })
   expect(await screen.findByText("Off · not verified")).toBeVisible()
-  expect(screen.queryByRole("button", { name: "Turn on Ask access" })).not.toBeInTheDocument()
+  expect(screen.queryByRole("checkbox", { name: "Allow Ask to use this account" })).not.toBeInTheDocument()
   http.mockResolvedValueOnce(jsonResponse({ ...status, attested: false, direct_revision: 5 }))
   fireEvent.click(screen.getByRole("button", { name: "Clear any saved Ask access" }))
   await waitFor(() => expect(toast.success).toHaveBeenCalledWith(`Ask access turned off for ${account.display_name}.`))
@@ -52,59 +48,85 @@ test("an unattested account never offers enable; managers can clear consent afte
   expect(screen.queryByRole("button", { name: "Clear any saved Ask access" })).not.toBeInTheDocument()
 })
 
-test.each(["all", "selected"] as const)("an off, verified legacy account can be explicitly enabled for its saved %s scope", async mode => {
-  const changed = show({ ...accessDto, policy: { ...accessDto.policy, tool_access_mode: mode, allowed_tools: mode === "all" ? [] : ["MAIL_ADD_LABEL"], catalog_reads: false } })
+test.each(["all", "selected"] as const)("one policy save grants a verified account with the chosen %s scope", async mode => {
+  const dto = { ...accessDto, policy: { ...accessDto.policy, tool_access_mode: mode, allowed_tools: ["MAIL_ADD_LABEL"], catalog_reads: false } }
+  const changed = show(dto)
   await load(status)
-  expect(await enable()).toBeEnabled()
-  expect(screen.getByText("Off")).toBeVisible()
-  fireEvent.click(await enable())
-  const dialog = screen.getByRole("alertdialog")
-  expect(dialog).toHaveAccessibleDescription(mode === "all" ? /All compatible tools.*does not grant write access/ : /Only selected tools \(1 saved\).*exact IDs.*does not change the credential’s permissions/)
-  expect(dialog).toHaveAccessibleDescription(/send data to the external provider.*create, change or delete.*only if the provider allows this credential to write.*fees may apply.*private receipt.*Nothing is published/)
-  fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }))
-  expect(http.mock.calls.map(([url]) => url)).toEqual([`${base}/access?site_id=${site}`, `${base}/provider-direct?site_id=${site}`])
+  expect(await allow()).not.toBeChecked() // An existing assistant host is not generic Ask consent.
+  expect(save()).toBeDisabled()
+  fireEvent.click(await allow())
+  expect(screen.getByText(/send data to the external provider.*create, change or delete.*fees may apply.*private receipt/i)).toBeVisible()
+  expect(patchCalls()).toHaveLength(0)
   const pending = deferred<Response>()
   http.mockReturnValueOnce(pending.promise)
-  await confirmEnable()
-  expect(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Turn on Ask access" })).toBeDisabled()
+  fireEvent.click(save())
+  expect(screen.getByRole("button", { name: "Saving…" })).toBeDisabled()
   expect(changed).not.toHaveBeenCalled()
   expect(patchCalls()).toHaveLength(1)
-  expect(patchCalls()[0][0]).toBe(`${base}/provider-direct`)
-  expect(JSON.parse(String(patchCalls()[0][1]?.body))).toEqual({ site_id: site, expected_revision: status.revision, expected_direct_revision: 4, enabled: true })
-  await act(async () => pending.resolve(jsonResponse({ ...status, enabled: true, direct_revision: 5 })))
-  expect(changed).not.toHaveBeenCalled()
-  expect(toast.success).toHaveBeenCalledWith(`Ask access turned on for ${account.display_name}.`)
-  // No ordinary revision changed to force a remount: use the confirmed epoch on the next action.
-  http.mockResolvedValueOnce(jsonResponse({ ...status, direct_revision: 6 }))
-  fireEvent.click(screen.getByRole("button", { name: "Turn off Ask access" }))
-  expect(await screen.findByText("Off")).toBeVisible()
-  expect(JSON.parse(String(patchCalls()[1][1]?.body))).toEqual({ site_id: site, expected_revision: status.revision, expected_direct_revision: 5, enabled: false })
+  expect(patchCalls()[0][0]).toBe(`${base}/policy`)
+  expect(JSON.parse(String(patchCalls()[0][1]?.body))).toEqual({ site_id: site, expected_revision: status.revision,
+    ask_access: { enabled: true, expected_direct_revision: 4 }, enabled: true, tool_access_mode: mode,
+    allowed_tools: ["MAIL_ADD_LABEL"], allowed_hosts: ["assistant"], require_approval: true })
+  await act(async () => pending.resolve(jsonResponse({ connector_id: account.id, revision: 5, direct_revision: 5, ask_enabled: true })))
+  expect(changed).toHaveBeenCalledTimes(1)
 })
 
-test("unsaved host and tool edits never become authority for opt-in", async () => {
-  show({ ...accessDto, policy: { ...accessDto.policy, tool_access_mode: "selected", allowed_tools: [], allowed_hosts: [] } })
+test("no dormant grant: select a usable scope and grant the assistant host in the same save", async () => {
+  show({ ...accessDto, policy: { ...accessDto.policy, tool_access_mode: "selected", allowed_tools: [], allowed_hosts: ["direct"] } })
   await load(status)
-  expect(await enable()).toBeEnabled()
-  fireEvent.click(await enable())
-  expect(screen.getByRole("alertdialog")).toHaveAccessibleDescription(/Only selected tools \(0 saved\).*Your saved policy currently blocks calls/)
-  fireEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Cancel" }))
+  expect(await allow()).toBeDisabled()
   fireEvent.click(screen.getByRole("radio", { name: "All compatible tools" }))
-  fireEvent.click(screen.getByRole("checkbox", { name: "Allow the interactive assistant" }))
-  expect(await enable()).toBeDisabled()
-  expect(screen.getByText(/Turning on Ask uses the saved permissions, not the draft/)).toBeVisible()
-  expect(patchCalls()).toHaveLength(0)
+  expect(await allow()).not.toBeChecked()
+  fireEvent.click(await allow())
+  fireEvent.click(screen.getByRole("radio", { name: "Only selected tools" }))
+  expect(save()).toBeDisabled()
+  fireEvent.click(screen.getByRole("radio", { name: "All compatible tools" }))
+  http.mockResolvedValueOnce(jsonResponse({ connector_id: account.id, revision: 5, direct_revision: 5, ask_enabled: true }))
+  fireEvent.click(save())
+  await waitFor(() => expect(patchCalls()).toHaveLength(1))
+  expect(JSON.parse(String(patchCalls()[0][1]?.body))).toMatchObject({ allowed_hosts: ["direct", "assistant"], tool_access_mode: "all", ask_access: { enabled: true, expected_direct_revision: 4 } })
+})
+
+test.each([true, false])("unrelated edits preserve opt-outs and the saved host (existing assistant host: %s)", async host => {
+  const hosts = host ? ["direct", "assistant"] : ["direct"]
+  show({ ...accessDto, policy: { ...accessDto.policy, allowed_hosts: hosts } })
+  await load(status)
+  fireEvent.click(await allow()); fireEvent.click(await allow()) // Undo the grant draft.
+  fireEvent.click(screen.getByRole("checkbox", { name: "Allow requests for access" }))
+  http.mockResolvedValueOnce(jsonResponse({ revision: 5 }))
+  fireEvent.click(save())
+  await waitFor(() => expect(patchCalls()).toHaveLength(1))
+  const body = JSON.parse(String(patchCalls()[0][1]?.body))
+  expect(body.allowed_hosts).toEqual(hosts)
+  expect(body).not.toHaveProperty("ask_access")
 })
 
 test("a different policy revision cannot be combined with the displayed scope", async () => {
   const changed = show()
   await load({ ...status, revision: status.revision + 1 })
   expect(await screen.findByRole("alert")).toHaveTextContent(/connector changed/i)
-  expect(screen.queryByRole("button", { name: "Turn on Ask access" })).not.toBeInTheDocument()
+  expect(screen.queryByRole("checkbox", { name: "Allow Ask to use this account" })).not.toBeInTheDocument()
   http.mockResolvedValueOnce(jsonResponse(status))
   fireEvent.click(screen.getByRole("button", { name: "Refresh status" }))
-  expect(await enable()).toBeEnabled()
+  expect(await allow()).toBeEnabled()
   expect(changed).toHaveBeenCalledTimes(1)
   expect(patchCalls()).toHaveLength(0)
+})
+
+test("refresh discards an unsaved Ask grant and its implicit host change, not other drafts", async () => {
+  show({ ...accessDto, policy: { ...accessDto.policy, allowed_hosts: ["direct"] } })
+  await load(status)
+  fireEvent.click(await allow())
+  fireEvent.click(screen.getByRole("checkbox", { name: "Allow requests for access" }))
+  http.mockResolvedValueOnce(jsonResponse({ ...status, direct_revision: 6 }))
+  fireEvent.click(screen.getByRole("button", { name: "Refresh status" }))
+  expect(await allow()).not.toBeChecked()
+  http.mockResolvedValueOnce(jsonResponse({ revision: 5 }))
+  fireEvent.click(save())
+  await waitFor(() => expect(patchCalls()).toHaveLength(1))
+  const body = JSON.parse(String(patchCalls()[0][1]?.body))
+  expect(body).not.toHaveProperty("ask_access")
+  expect(body).toMatchObject({ allowed_hosts: ["direct"], require_approval: false })
 })
 
 test("first setup is not an enrollment; a fresh verified status becomes available without a second click to enable", async () => {
@@ -112,12 +134,12 @@ test("first setup is not an enrollment; a fresh verified status becomes availabl
   await load({ ...status, attested: false, setup_pending: true })
   expect(await screen.findByText("Waiting for verification")).toBeVisible()
   expect(screen.getByRole("button", { name: "Cancel automatic setup" })).toBeEnabled()
-  expect(screen.queryByRole("button", { name: "Turn on Ask access" })).not.toBeInTheDocument()
+  expect(screen.queryByRole("checkbox", { name: "Allow Ask to use this account" })).not.toBeInTheDocument()
   expect(screen.queryByText("Available to authorized members")).not.toBeInTheDocument()
   http.mockResolvedValueOnce(jsonResponse({ ...status, setup_pending: false, enabled: true, direct_revision: 6 }))
   fireEvent.click(screen.getByRole("button", { name: "Refresh status" }))
   expect(await screen.findByText("Available to authorized members")).toBeVisible()
-  expect(screen.getByRole("button", { name: "Turn off Ask access" })).toBeEnabled()
+  expect(await allow()).toBeChecked()
   expect(screen.queryByRole("button", { name: "Cancel automatic setup" })).not.toBeInTheDocument()
   expect(patchCalls()).toHaveLength(0)
 })
@@ -143,7 +165,7 @@ test.each([true, false])("only an explicit legacy server denial is labeled unava
   await load({ ...status, attested: false, setup_pending: false, ...(known && { unsupported_reason: "shared_makinari_project" }) })
   expect(await screen.findByText(known ? "Unavailable in Ask" : "Off · not verified")).toBeVisible()
   expect(screen.queryByText(/Ask execution is unavailable for this account/) !== null).toBe(known)
-  expect(screen.queryByRole("button", { name: "Turn on Ask access" })).not.toBeInTheDocument()
+  expect(screen.queryByRole("checkbox", { name: "Allow Ask to use this account" })).not.toBeInTheDocument()
   expect(patchCalls()).toHaveLength(0)
 })
 
@@ -173,37 +195,30 @@ test("an omitted saved tool mode cannot confirm availability, but does not preve
   expect(screen.queryByText("Available to authorized members")).not.toBeInTheDocument()
 })
 
-test("turning off a verified account never submits or discards an unsaved tool restriction", async () => {
-  const changed = show()
-  await load({ ...status, enabled: true, setup_pending: false })
-  const selected = screen.getByRole("radio", { name: "Only selected tools" })
-  fireEvent.click(selected)
-  http.mockResolvedValueOnce(jsonResponse({ ...status, setup_pending: false, direct_revision: 5 }))
-  fireEvent.click(await screen.findByRole("button", { name: "Turn off Ask access" }))
-  expect(await screen.findByText("Off")).toBeVisible()
-  expect(selected).toBeChecked()
-  expect(await enable()).toBeDisabled()
-  expect(changed).not.toHaveBeenCalled()
+test("unchecking Ask removes only the assistant host and revokes consent on the same policy save", async () => {
+  const changed = show({ ...accessDto, policy: { ...accessDto.policy, allowed_hosts: ["assistant", "direct"] } })
+  await load({ ...status, enabled: true })
+  expect(await allow()).toBeChecked()
+  fireEvent.click(await allow())
+  http.mockResolvedValueOnce(jsonResponse({ connector_id: account.id, revision: 5, direct_revision: 5, ask_enabled: false }))
+  fireEvent.click(save())
+  await waitFor(() => expect(changed).toHaveBeenCalledTimes(1))
   expect(patchCalls()).toHaveLength(1)
-  expect(JSON.parse(String(patchCalls()[0][1]?.body))).toEqual({ site_id: site, expected_revision: status.revision, expected_direct_revision: 4, enabled: false })
+  expect(JSON.parse(String(patchCalls()[0][1]?.body))).toMatchObject({ allowed_hosts: ["direct"], ask_access: {enabled: false, expected_direct_revision: 4} })
 })
 
-test.each(["revision conflict", "attestation lost", "wrong receipt"])("%s never displays success or automatically retries the mutation", async failure => {
+test.each(["revision conflict", "attestation lost", "wrong receipt"])("%s never displays success or retries the policy or standalone opt-in", async failure => {
   const changed = show()
   await load(status)
   const malformed = failure === "wrong receipt"
-  http.mockResolvedValueOnce(malformed ? jsonResponse({ ...status, revision: status.revision + 1 })
+  http.mockResolvedValueOnce(malformed ? jsonResponse({ connector_id: account.id, revision: 5 })
     : jsonResponse({ error: { code: failure === "revision conflict" ? "REVISION_CONFLICT" : "DIRECT_ATTESTATION_REQUIRED", message: "upstream debug" } }, 409))
-  await confirmEnable()
+  fireEvent.click(await allow()); fireEvent.click(save())
   const alert = await screen.findByRole("alert")
   expect(alert).toHaveTextContent(malformed ? /outcome is not confirmed/ : failure === "revision conflict" ? /connector changed/i : /Ask needs current verification/)
   expect(alert).not.toHaveTextContent("upstream debug")
-  expect(screen.queryByRole("button", { name: "Turn on Ask access" })).not.toBeInTheDocument()
-  expect(toast.success).not.toHaveBeenCalled()
-  expect(changed).not.toHaveBeenCalled()
-  http.mockResolvedValueOnce(jsonResponse({ ...status, direct_revision: 8 }))
-  fireEvent.click(within(alert).getByRole("button", { name: "Refresh status" }))
-  expect(await enable()).toBeEnabled()
+  expect(save()).toBeDisabled()
   expect(changed).not.toHaveBeenCalled()
   expect(patchCalls()).toHaveLength(1)
+  expect(patchCalls()[0][0]).toBe(`${base}/policy`)
 })

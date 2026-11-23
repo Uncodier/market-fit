@@ -17,6 +17,14 @@ export const directPolicyUpdate = z.object({
 }).strict()
 export type DirectPolicyUpdate = z.infer<typeof directPolicyUpdate>
 
+export const askAccessIntent = directPolicyUpdate.pick({ enabled: true, expected_direct_revision: true }).strict()
+export type AskAccessIntent = z.infer<typeof askAccessIntent>
+
+export function askPolicyReceipt(id: string, revision: number, intent: AskAccessIntent) {
+  return z.object({ connector_id: z.literal(id), revision: z.literal(revision + 1),
+    direct_revision: z.literal(intent.expected_direct_revision + 1), ask_enabled: z.literal(intent.enabled) })
+}
+
 export function directPolicyStatus(id: string, change?: Omit<DirectPolicyUpdate, "site_id">, requireSetupState = false) {
   return status.refine(value => value.connector_id === id && (!requireSetupState || value.setup_pending !== undefined) && (!change ||
     (value.revision === change.expected_revision && value.direct_revision === change.expected_direct_revision + 1 &&

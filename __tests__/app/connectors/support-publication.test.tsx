@@ -4,7 +4,7 @@ import { parseConnectorBody } from "@/app/api/connectors/contracts"
 import { access, connector, translate } from "./fixtures"
 
 jest.mock("@/app/context/LocalizationContext", () => ({ useLocalization: () => ({ t: translate }) }))
-jest.mock("@/app/connectors/provider-direct-settings", () => ({ AskAccessSection: () => null }))
+jest.mock("@/app/connectors/provider-direct-settings", () => ({ AskStatus: () => null, useAskStatus: () => ({ status: { enabled: false, attested: false } }) }))
 
 test("publication is opt-in, scoped to a custom label, and survives the policy BFF", () => {
   const save = jest.fn()

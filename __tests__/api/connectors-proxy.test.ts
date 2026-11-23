@@ -270,6 +270,45 @@ it("forwards only explicit boolean catalogue consent and rejects non-booleans be
   }
 })
 
+describe("atomic Ask policy save", () => {
+  const path = ["connections", attemptId, "policy"]
+  const ask = { enabled: true, expected_direct_revision: 9 }
+  const body = { site_id: siteId, expected_revision: 2, enabled: true, tool_access_mode: "selected", allowed_tools: ["MAIL_LIST"], allowed_hosts: ["assistant"], require_approval: true, ask_access: ask }
+  const receipt = { connector_id: attemptId, revision: 3, direct_revision: 10, ask_enabled: true }
+  const submit = (input: unknown) => proxyConnector(request(path.join("/"), "PATCH", input), path)
+
+  it("forwards a full manager decision once and projects only the matching receipt", async () => {
+    rpc.mockResolvedValueOnce({ data: [{ can_view: true, can_manage: false }] })
+    expect((await submit(body)).status).toBe(403)
+    expect(fetchMock).not.toHaveBeenCalled()
+    fetchMock.mockResolvedValueOnce(Response.json({ ...receipt, extra: "private" }))
+    expect(await (await submit(body)).json()).toEqual(receipt)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual(body)
+  })
+
+  it("rejects partial, inconsistent or dormant decisions before forwarding", async () => {
+    for (const invalid of [{ expected_revision: 0 }, { ask_access: {enabled: true} }, { ask_access: { ...ask, attested: true } },
+      { ask_access: { ...ask, expected_direct_revision: 0 } }, { enabled: false }, { allowed_hosts: [] }, { allowed_tools: [] },
+      { ask_access: { ...ask, enabled: false } }, { catalog_reads: false }]) {
+      expect((await submit({ ...body, ...invalid })).status).toBe(400)
+    }
+    expect((await submit({ site_id: siteId, expected_revision: 2, ask_access: ask })).status).toBe(400)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("does not substitute an old-server or wrong-account response for confirmation", async () => {
+    for (const invalid of [{ revision: 3 }, { ...receipt, connector_id: userId }, { ...receipt, revision: 4 },
+      { ...receipt, direct_revision: 9 }, { ...receipt, ask_enabled: false }]) {
+      fetchMock.mockResolvedValueOnce(Response.json(invalid))
+      const result = await submit(body)
+      expect(result.status).toBe(502)
+      expect(await result.json()).toMatchObject({error: {code: "OUTCOME_UNKNOWN"}})
+    }
+    expect(fetchMock).toHaveBeenCalledTimes(5)
+  })
+})
+
 it("accepts a standalone opt-out, never an abbreviated opt-in or a mixed partial policy", async () => {
   const path = ["connections", attemptId, "policy"], base = { site_id: siteId, expected_revision: 1 }
   const submit = (body: unknown) => proxyConnector(request(path.join("/"), "PATCH", body), path)

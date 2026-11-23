@@ -1,6 +1,6 @@
 import { z } from "zod"
 import { supportPublication } from "@/app/connectors/support-publication"
-import { directPolicyUpdate } from "@/app/connectors/provider-direct-contract"
+import { askAccessIntent, directPolicyUpdate } from "@/app/connectors/provider-direct-contract"
 import { toolActionFilterSchema } from "@/app/connectors/tool-action-types"
 
 const uuid = z.string().uuid()
@@ -55,12 +55,17 @@ export function parseConnectorBody(kind: string, input: unknown) {
   if (kind === "access") return versioned.extend({ members: z.array(member).max(100).default([]), agents: z.array(agent).max(100).default([]) }).strict().parse(input)
   if (kind === "policy") return z.union([versioned.extend({ catalog_reads: z.literal(false) }).strict(), versioned.extend({
     catalog_reads: z.boolean().optional(),
+    ask_access: askAccessIntent.optional(),
     tool_access_mode: z.enum(["all", "selected"]).optional(),
     support_publication: supportPublication.nullable().optional(),
     allowed_tools: z.array(z.string().regex(/^[A-Z0-9][A-Z0-9_]{0,149}$/)).max(100),
     allowed_hosts: z.array(z.enum(["assistant", "direct"])).max(2),
     require_approval: z.boolean(), enabled: z.boolean(),
-  }).strict()]).parse(input)
+  }).strict().refine(value => !value.ask_access || (
+    value.tool_access_mode && value.catalog_reads !== false && value.expected_revision > 0 && value.expected_revision <= 2_147_483_646 &&
+    value.allowed_hosts.includes("assistant") === value.ask_access.enabled &&
+    (!value.ask_access.enabled || (value.enabled && (value.tool_access_mode === "all" || value.allowed_tools.length > 0)))
+  ))]).parse(input)
   throw new Error("Unsupported connector operation")
 }
 
