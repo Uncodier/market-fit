@@ -30,7 +30,9 @@ export function useAskStatus(siteId: string, connector: Connector, canManage: bo
     const change = { site_id: siteId, expected_revision: status.revision, expected_direct_revision: status.direct_revision, enabled: false }
     const receipt = await mutation.run(`/api/connectors/${base}`, change, directPolicyStatus(connector.id, change, status.setup_pending !== undefined), "PATCH")
     if (receipt) {
-      setSaved(receipt)
+      // PATCH receipts can use the legacy shape. Only GET reports the current authority.
+      if (status.authorization_mode === "member_policy") refresh()
+      else setSaved(receipt)
       toast.success(t("connectors.directRevoked", { account: connector.display_name }))
     } else setFailed(true)
   }
@@ -39,6 +41,7 @@ export function useAskStatus(siteId: string, connector: Connector, canManage: bo
 
 function askState(status: DirectPolicyStatus, connector: Connector, policy?: ConnectorAccess["policy"]) {
   if (status.unsupported_reason) return "unsupported"
+  if (status.explicitly_disabled) return "disabled"
   if (status.setup_pending) return "pending"
   if (!status.enabled) return status.attested ? "off" : "unverified"
   if (!connector.enabled || !connector.verified_at || connector.provider_status !== "ACTIVE" || connector.revocation_pending || connector.revocation_dispatched) return "blocked"
@@ -56,18 +59,22 @@ export function AskStatus({ resource, connector, policy, onRefresh, onRevoke, di
   if (error) return <ConnectorError error={error} retry={onRefresh} />
   if (!status) return <p role="status" className="text-sm">{t("connectors.directLoading")}</p>
   const state = askState(status, connector, policy)
-  const clear = !cleared && !status.enabled && !status.setup_pending && (!policy || (!status.attested && !status.unsupported_reason))
+  const generic = status.authorization_mode === "member_policy"
+  const memberLabels: Record<string, string> = { unsupported: "connectors.genericUnsupported", unverified: "connectors.genericUnverified", blocked: "connectors.policyBlocked" }
+  const stateLabel = (generic && memberLabels[state]) || `connectors.askState.${state}`
+  const clear = !status.explicitly_disabled && !cleared && !status.enabled && !status.setup_pending && (!policy || (!status.attested && !status.unsupported_reason))
   // Preserve a local immediate revoke/cancel path even if a draft or provider is unusable.
-  const revoke = status.setup_pending || clear || (status.enabled && (!policy || state !== "available"))
+  const revoke = !status.explicitly_disabled && (status.setup_pending || clear || (status.enabled && (status.authorization_mode === "member_policy" || !policy || state !== "available")))
   return <div className="space-y-2 text-sm" role="group" aria-label={t("connectors.directTitle")}>
     <div className="flex flex-wrap items-center gap-2">
-      <Badge variant="outline">{t(`connectors.askState.${state}`)}</Badge>
+      <Badge variant="outline">{t(stateLabel)}</Badge>
       {revoke && <Button type="button" variant="outline" size="sm" disabled={pending || disabled} onClick={onRevoke}>
         {t(status.setup_pending ? "connectors.cancelAskSetup" : status.enabled ? "connectors.directDisable" : "connectors.directClear")}
       </Button>}
       <Button type="button" variant="ghost" size="sm" disabled={pending || disabled} onClick={onRefresh}>{t("connectors.refresh")}</Button>
     </div>
-    <p className="text-muted-foreground">{t(`connectors.askHelp.${state}`)}</p>
+    <p className="text-muted-foreground">{t(generic && state === "unsupported"
+      ? "connectors.genericUnsupportedHelp" : `connectors.askHelp.${state}`)}</p>
   </div>
 }
 

@@ -30,7 +30,7 @@ test("renders scoped catalogue and real partial counts without claiming executio
   expect(await screen.findByRole("link", { name: "Mail toolkit" })).toHaveAttribute("href", "/connectors/mail")
   expect(screen.getByText("1 toolkits on this page")).toBeVisible()
   expect(screen.getByText("1 visible accounts")).toBeVisible()
-  expect(screen.getByText(/Execution requires effective member and agent access/)).toBeVisible()
+  expect(screen.getByText(/An agent acting on its own needs a grant for the specific account/)).toBeVisible()
   expect(fetchMock.mock.calls[0][0]).toBe("/api/connectors/catalog?tab=all&site_id=site-1&page=1")
 })
 

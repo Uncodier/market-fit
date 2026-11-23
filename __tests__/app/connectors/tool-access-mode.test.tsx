@@ -14,14 +14,14 @@ test("an old Supabase policy stays selected until a mode-only change is saved", 
   const changed = jest.fn()
   render(<ConnectorAccessPanel siteId="site-1" connector={{ ...connector, toolkit_slug: "supabase" }} canManage onChanged={changed} />)
   const selected = await screen.findByRole("radio", { name: "Only selected tools" })
-  const all = screen.getByRole("radio", { name: "All compatible tools" })
+  const all = screen.getByRole("radio", { name: "All catalog tools" })
   const save = screen.getByRole("button", { name: "Save policy" })
   expect(selected).toBeChecked()
   expect(save).toBeDisabled()
   fireEvent.click(all)
   expect(save).toBeEnabled()
   expect(screen.getByText("No tools in the separate reviewed inventory.")).toBeVisible()
-  expect(screen.getByText(/including future tools.*provider decides.*read-only credential stays read-only/i)).toBeVisible()
+  expect(screen.getByText(/current and future tool.*unavailable for execution are still listed/i)).toBeVisible()
   expect(screen.getByText(/without permission to use the connection can request approval instead of running the action/i)).toBeVisible()
   expect(screen.getByText(/Selecting a catalogue entry does not by itself authorize execution/)).toBeVisible()
   expect(screen.queryByRole("checkbox", { name: "Allow instance catalogue reads" })).not.toBeInTheDocument()
@@ -46,9 +46,9 @@ test.each([true, false])("shows API-provided all mode without interpreting an em
     reviewed_tools: canManage ? [{ slug: "MAIL_READ", description: "Read mail" }] : [],
   }))
   render(<ConnectorAccessPanel siteId="site-1" connector={{ ...connector, can_use: true }} canManage={canManage} onChanged={jest.fn()} />)
-  expect(await screen.findByText("All compatible tools")).toBeVisible()
+  expect(await screen.findByText("All catalog tools")).toBeVisible()
   if (canManage) {
-    expect(screen.getByRole("radio", { name: "All compatible tools" })).toBeChecked()
+    expect(screen.getByRole("radio", { name: "All catalog tools" })).toBeChecked()
     expect(screen.getByText("Tools in the separate reviewed inventory: 1")).toBeVisible()
     expect(screen.getByRole("button", { name: "Save policy" })).toBeDisabled()
   } else {

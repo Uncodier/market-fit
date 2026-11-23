@@ -19,18 +19,18 @@ export function ConnectorGrantEditor({ access, kind, pending, save }: {
   access: ConnectorAccess; kind: PrincipalKind; pending: boolean; save: (upsert: Upsert) => void
 }) {
   const { t } = useLocalization()
-  const workspace = access.access_mode === "workspace"
+  const member = kind === "member"
+  const workspace = member && access.access_mode === "workspace"
   const options = accessPrincipals(access, kind)
   const [editing, setEditing] = useState<string | null>(null)
   const candidates = options.filter(option => option.eligible && !option.row)
   const principal = options.find(option => option.id === editing)
   const adding = editing !== null && !principal?.row
-  const member = kind === "member"
-  const title = workspace ? (member ? "connectors.memberExceptions" : "connectors.agentExceptions") : `connectors.${kind}s`
+  const title = !member ? "connectors.agentGrants" : workspace ? "connectors.memberExceptions" : "connectors.members"
   const addLabel = member ? "connectors.addMember" : "connectors.addAgent"
   const cancel = <Button type="button" size="icon" variant="ghost" aria-label={t("connectors.cancel")} disabled={pending} onClick={() => setEditing(null)}><X className="h-4 w-4" /></Button>
   return <SectionCard>
-    <SectionCardHeader title={t(title)} description={t(workspace ? "connectors.exceptionsHelp" : "connectors.grantsHelp")} actions={
+    <SectionCardHeader title={t(title)} description={t(!member ? "connectors.agentGrantsHelp" : workspace ? "connectors.exceptionsHelp" : "connectors.grantsHelp")} actions={
       <Button type="button" variant="outline" size="sm" disabled={pending || editing !== null || !candidates.length} onClick={() => setEditing("")}>
         <PlusCircle className="mr-2 h-4 w-4" />{t(addLabel)}
       </Button>} />
@@ -42,7 +42,7 @@ export function ConnectorGrantEditor({ access, kind, pending, save }: {
         </Select>{cancel}
       </div>}
       {adding && principal && <GrantForm key={principal.id} {...{ kind, principal, workspace, pending, save }} />}
-      <ConnectorAccessList access={access} kind={kind} onEdit={setEditing} disabled={pending || editing !== null} editingId={editing}
+      <ConnectorAccessList principals={options} workspace={workspace} kind={kind} onEdit={setEditing} disabled={pending || editing !== null} editingId={editing}
         editor={principal?.row && <div className="space-y-2"><GrantForm key={principal.id} {...{ kind, principal, workspace, pending, save }} />{cancel}</div>} />
     </SectionCardContent>
   </SectionCard>
@@ -63,15 +63,16 @@ function GrantForm({ kind, principal, workspace, pending, save }: {
   const revokeOnly = !eligible
   const inherits = workspace && !row
   const currentView = row && "can_view" in row ? row.can_view : inherits
-  const currentUse = row ? ("can_use" in row ? row.can_use : row.enabled) : inherits
+  const [now] = useState(() => Date.now())
+  const currentUse = row ? !row.revoked_at && !isExpired(row.expires_at, now) && ("can_use" in row ? row.can_use : row.enabled) : inherits
   const [view, setView] = useState(currentView)
   const [use, setUse] = useState(currentUse)
   const [expiry, setExpiry] = useState(localDateTime(row?.expires_at ?? null))
-  const [now] = useState(() => Date.now())
   const expiresAt = expiry ? new Date(expiry) : null
   const validExpiry = !expiresAt || (!Number.isNaN(expiresAt.getTime()) && expiresAt.getTime() > now)
   const canRestore = workspace && eligible && row && (!currentUse || isExpired(row.expires_at, now))
   const dirty = view !== currentView || use !== currentUse || expiry !== localDateTime(row?.expires_at ?? null)
+  const canSave = !revokeOnly && validExpiry && (dirty || (!workspace && kind === "member")) && (kind === "member" || !!row || use)
   const upsert = (canView: boolean, canUse: boolean, expires: string | null): Upsert => kind === "member"
     ? { members: [{ user_id: id, can_view: canView, can_use: canUse, expires_at: expires }], agents: [] }
     : { members: [], agents: [{ agent_id: id, enabled: canUse, expires_at: expires }] }
@@ -91,8 +92,8 @@ function GrantForm({ kind, principal, workspace, pending, save }: {
       {!validExpiry && <p role="alert" className="text-sm text-destructive">{t("connectors.invalidExpiry")}</p>}
     </div>
     <div className="flex flex-wrap gap-2">
-      <Button variant="outline" size="sm" disabled={pending || revokeOnly || !validExpiry || (workspace && !dirty)} onClick={() => save(upsert(view, use, expiresAt?.toISOString() ?? null))}>{t(workspace ? "connectors.saveException" : "connectors.saveGrant")}</Button>
-      <Button variant="outline" size="sm" disabled={pending} onClick={() => save(upsert(false, false, null))}>{t(workspace ? "connectors.blockAccess" : "connectors.revokeGrant")}</Button>
+      <Button variant="outline" size="sm" disabled={pending || !canSave} onClick={() => save(upsert(view, use, expiresAt?.toISOString() ?? null))}>{t(workspace ? "connectors.saveException" : "connectors.saveGrant")}</Button>
+      {(workspace || row) && <Button variant="outline" size="sm" disabled={pending} onClick={() => save(upsert(false, false, null))}>{t(workspace ? "connectors.blockAccess" : "connectors.revokeGrant")}</Button>}
       {canRestore && <Button variant="outline" size="sm" disabled={pending} onClick={() => save(upsert(true, true, null))}>{t("connectors.restoreAccess")}</Button>}
     </div>
     {canRestore && <p className="text-xs text-muted-foreground">{t("connectors.restoreAccessHelp")}</p>}

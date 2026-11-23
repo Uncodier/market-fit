@@ -18,7 +18,7 @@ const inputSchema = z.object({
 const responseSchema = z.object({
   success: z.literal(true),
   data: z.object({
-    conversation_id: uuid.optional(),
+    conversation_id: uuid,
     messages: z.object({
       assistant: z.object({ message_id: uuid, content: z.string().min(1).max(100_000) }),
     }),
@@ -54,7 +54,7 @@ export async function POST(request: Request): Promise<Response> {
     .from('conversations').select('id, site_id, agent_id, lead_id, visitor_id, channel, custom_data')
     .eq('id', input.conversationId).eq('site_id', input.site_id).maybeSingle()
   if (conversationError) return failure('Unable to verify conversation access', 503)
-  if (!conversation) return failure('Conversation not found', 404)
+  if (!conversation || conversation.site_id !== input.site_id || conversation.id !== input.conversationId) return failure('Conversation not found', 404)
   if (!isInternalAgentConversation(conversation)) {
     return failure('This conversation uses an external channel. Reload the conversation and send an intervention instead. No call or message was started.', 409)
   }
@@ -64,9 +64,9 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const { data: agent, error: agentError } = await access.supabase
-    .from('agents').select('id').eq('id', conversation.agent_id).eq('site_id', conversation.site_id).maybeSingle()
+    .from('agents').select('id').eq('id', conversation.agent_id).eq('site_id', conversation.site_id).eq('status', 'active').maybeSingle()
   if (agentError) return failure('Unable to verify agent access', 503)
-  if (!agent) return failure('Agent not found in this site', 404)
+  if (agent?.id !== conversation.agent_id) return failure('Agent not found in this site', 404)
 
   const { data: { session }, error: sessionError } = await access.supabase.auth.getSession()
   if (sessionError || !session?.access_token || session.user?.id !== access.userId) {
@@ -101,7 +101,7 @@ export async function POST(request: Request): Promise<Response> {
     }
     const raw = JSON.parse(decodeRequestBody(await readLimitedRequestBody(upstream as unknown as Request, 256_000)))
     const parsed = responseSchema.safeParse(raw)
-    if (!parsed.success || (parsed.data.data.conversation_id && parsed.data.data.conversation_id !== conversation.id)) {
+    if (!parsed.success || parsed.data.data.conversation_id !== conversation.id) {
       return failure(unconfirmed, 502)
     }
     return Response.json(parsed.data, {

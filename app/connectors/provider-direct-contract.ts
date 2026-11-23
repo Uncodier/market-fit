@@ -5,10 +5,15 @@ const status = z.object({
   connector_id: z.string().uuid(), revision: z.number().int().positive().max(2_147_483_647),
   direct_revision: z.number().int().positive().max(2_147_483_647),
   attested: z.boolean(), enabled: z.boolean(),
+  authority_kind: z.literal("connected_account").optional(),
+  authorization_mode: z.literal("member_policy").optional(),
+  explicitly_disabled: z.boolean().optional(),
   // Older servers do not report setup intent. Absence is not a pending grant.
   setup_pending: z.boolean().optional(),
   unsupported_reason: z.literal("shared_makinari_project").optional(),
-}).refine(value => !value.enabled || (value.attested && !value.setup_pending && !value.unsupported_reason))
+}).refine(value => (value.authorization_mode !== undefined) === (value.explicitly_disabled !== undefined))
+  .refine(value => !value.authority_kind || (!value.attested && !value.setup_pending && !value.unsupported_reason))
+  .refine(value => !value.enabled || ((value.attested || value.authority_kind === "connected_account") && !value.setup_pending && !value.unsupported_reason && !value.explicitly_disabled))
 export type DirectPolicyStatus = z.infer<typeof status>
 
 export const directPolicyUpdate = z.object({

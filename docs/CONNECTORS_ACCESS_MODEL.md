@@ -108,12 +108,14 @@ revocations, expired access and policy/scope/host denials are not overridable.
 Review is one action by an authorized manager, not an ACL change or a provider
 result for the requesting agent or customer.
 
-The account's access mode determines what an **absent** member or agent row means:
+An agent acting on its own authority needs an enabled, unexpired, non-revoked grant for the exact connected account. This applies to every provider, including for agents created after the connection. Private Instance Ask uses the signed-in member’s authority instead; it does not grant the responding agent access.
+
+The account’s access mode determines what an **absent member row** means:
 
 - **Explicit (existing accounts):** an absent row denies access. The migration
   preserves enablement, policies and grants; it never opts an existing account in.
-- **Workspace (new verified connections):** eligible same-site members and active
-  same-site agents inherit access, including when someone joins later. A stored
+- **Workspace (new verified connections):** eligible same-site members
+  inherit access, including when someone joins later. A stored
   override takes precedence: a view-only member cannot execute, and denied,
   revoked or expired access does not fall back to the workspace default. An
   unsuccessful lookup is not an absent row.
@@ -202,8 +204,8 @@ screen rules remain unchanged; unresolved legacy execution paths stay gated.
 Required regression cases:
 
 - Member and agent both granted succeeds only for permitted account/action/host.
-- In explicit mode, a missing member or agent grant denies. In workspace mode,
-  either principal's denial blocks use; view-only cannot describe executable tools.
+- An absent agent grant denies agent use in both modes. Only workspace-mode
+  members can inherit access; a view-only member cannot describe executable tools.
 - Two accounts in one toolkit stay isolated; hidden identities/counts do not leak.
 - Cross-site member, agent, policy and delegation references fail at API and DB levels.
 - Manager can manage but has no implicit provider-use bypass; non-manager cannot grant.

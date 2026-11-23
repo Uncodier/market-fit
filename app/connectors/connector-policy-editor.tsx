@@ -3,8 +3,7 @@
 import { useState } from "react"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { Checkbox } from "@/app/components/ui/checkbox"
-import { Input } from "@/app/components/ui/input"
-import { publicationLabel, type SupportPublication } from "./support-publication"
+import { Button } from "@/app/components/ui/button"
 import { RadioGroup, RadioGroupItem } from "@/app/components/ui/radio-group"
 import { ConnectorToolPicker } from "./connector-tool-picker"
 import { AskStatus, useAskStatus } from "./provider-direct-settings"
@@ -12,7 +11,7 @@ import type { AskAccessIntent } from "./provider-direct-contract"
 import { SectionCard, SectionCardHeader, SectionCardContent, SectionCardFooter } from "@/app/components/ui/section-card"
 import type { Connector, ConnectorAccess, ToolAccessMode } from "./types"
 
-export type PolicyUpdate = { catalog_reads: false } | { tool_access_mode: ToolAccessMode; allowed_tools: string[]; allowed_hosts: string[]; require_approval: boolean; enabled: boolean; catalog_reads?: true; ask_access?: AskAccessIntent; support_publication?: SupportPublication | null }
+export type PolicyUpdate = { catalog_reads: false } | { tool_access_mode: ToolAccessMode; allowed_tools: string[]; allowed_hosts: string[]; require_approval: boolean; enabled: boolean; catalog_reads?: true; ask_access?: AskAccessIntent; support_publication?: null }
 
 export function ConnectorPolicyEditor({ siteId, access, connector, canManage, pending, blocked = false, save, onChanged }: {
   siteId: string; access: ConnectorAccess; connector: Connector; canManage: boolean; pending: boolean; blocked?: boolean; save: (policy: PolicyUpdate) => void; onChanged: () => void
@@ -25,29 +24,27 @@ export function ConnectorPolicyEditor({ siteId, access, connector, canManage, pe
   const ask = useAskStatus(siteId, connector, canManage)
   const { status } = ask
   const [askDraft, setAskDraft] = useState<AskAccessIntent>()
-  const verified = !!status?.attested && !status.unsupported_reason && !status.setup_pending
+  const verified = !!status && (status.attested || status.authority_kind === "connected_account") && !status.unsupported_reason && !status.setup_pending
+  const memberPolicy = status?.authorization_mode === "member_policy"
   const intent = verified && askDraft?.expected_direct_revision === status.direct_revision ? askDraft : undefined
   const savedAsk = savedAssistant && !!status?.enabled
   const legacyHostOnly = !!status && !status.enabled && !status.setup_pending && !verified
-  const [legacyHost, setLegacyHost] = useState(savedAssistant)
-  const assistant = intent?.enabled ?? (legacyHostOnly ? legacyHost : savedAssistant)
+  const [hostDraft, setHostDraft] = useState(savedAssistant)
+  const assistant = memberPolicy ? hostDraft : intent?.enabled ?? (legacyHostOnly ? hostDraft : savedAssistant)
   const [catalogReads, setCatalogReads] = useState(access.policy.catalog_reads === true)
   const catalogChanged = catalogReads !== (access.policy.catalog_reads === true)
   const [approval, setApproval] = useState(access.policy.require_approval)
   const [enabled, setEnabled] = useState(connector.enabled)
   const savedPublication = access.policy.support_publication
-  const showPublication = canManage && connector.toolkit_slug === "gmail" && savedPublication !== undefined
-  const [audience, setAudience] = useState<SupportPublication["audience"] | "off">(savedPublication?.audience ?? "off")
-  const [labelId, setLabelId] = useState(savedPublication?.label_id ?? "")
-  const invalidPublication = showPublication && audience !== "off" && (!publicationLabel.test(labelId) || (mode === "selected" && !tools.includes("GMAIL_FETCH_EMAILS")))
-  const publicationChanged = showPublication && (audience !== (savedPublication?.audience ?? "off") || (audience !== "off" && labelId !== savedPublication?.label_id))
+  const [clearPublication, setClearPublication] = useState(false)
+  const publicationChanged = canManage && !!savedPublication && clearPublication
   const otherChanges = !!intent || assistant !== savedAssistant || publicationChanged || mode !== savedMode || tools.length !== access.policy.allowed_tools.length || tools.some(id => !access.policy.allowed_tools.includes(id)) || approval !== access.policy.require_approval || enabled !== connector.enabled
   const dirty = catalogChanged || otherChanges
   const optingOut = catalogChanged && !catalogReads
   const activatable = connector.provider_status.toUpperCase() === "ACTIVE" && !!connector.verified_at && !connector.revocation_pending
   const catalogReady = assistant && enabled && activatable && !connector.revocation_dispatched
   const askReady = verified && !!access.policy.tool_access_mode && enabled && activatable && !connector.revocation_dispatched && (mode === "all" || tools.length > 0)
-  const invalidDraft = optingOut ? otherChanges : invalidPublication || (enabled && !activatable) || (catalogChanged && !catalogReady) || (intent?.enabled && !askReady)
+  const invalidDraft = optingOut ? otherChanges : (enabled && !activatable) || (catalogChanged && !catalogReady) || (intent?.enabled && (!askReady || !assistant))
   function savePolicy() {
     if (!canManage || pending || ask.pending || blocked || !dirty || invalidDraft) return
     if (optingOut) return save({ catalog_reads: false })
@@ -56,7 +53,7 @@ export function ConnectorPolicyEditor({ siteId, access, connector, canManage, pe
     save({ tool_access_mode: mode, allowed_tools: tools, allowed_hosts: hosts, require_approval: approval, enabled,
       ...(intent ? { ask_access: intent } : {}),
       ...(catalogChanged ? { catalog_reads: true as const } : {}),
-      ...(showPublication ? { support_publication: audience === "off" ? null : { audience, label_id: labelId } } : {}),
+      ...(publicationChanged ? { support_publication: null } : {}),
     })
   }
   return <SectionCard id="tools-permissions">
@@ -77,28 +74,27 @@ export function ConnectorPolicyEditor({ siteId, access, connector, canManage, pe
         <p className="text-sm">{t("connectors.askAccount", { account: connector.display_name })}</p>
         {canManage ? <>
           <AskStatus connector={connector} policy={access.policy} resource={ask} disabled={pending}
-            onRefresh={() => { setAskDraft(undefined); setLegacyHost(savedAssistant); ask.refresh(); if (ask.mismatch) onChanged() }}
+            onRefresh={() => { setAskDraft(undefined); setHostDraft(savedAssistant); ask.refresh(); if (ask.mismatch) onChanged() }}
             onRevoke={() => { setAskDraft(undefined); void ask.revoke() }} />
-          {verified && <label className="flex items-center gap-2 text-sm"><Checkbox checked={intent?.enabled ?? savedAsk}
+          {memberPolicy && <label className="flex items-center gap-2 text-sm"><Checkbox checked={assistant} disabled={blocked || pending || ask.pending}
+            onCheckedChange={value => setHostDraft(value === true)} />{t("connectors.assistantHost")}</label>}
+          {memberPolicy && status.explicitly_disabled && verified && <Button type="button" variant="outline" size="sm"
+            disabled={blocked || pending || ask.pending || (!intent && (!assistant || !askReady))}
+            onClick={() => setAskDraft(intent ? undefined : { enabled: true, expected_direct_revision: status.direct_revision })}>
+            {t(intent ? "connectors.cancelRestoreAsk" : "connectors.restoreAsk")}
+          </Button>}
+          {!memberPolicy && verified && <label className="flex items-center gap-2 text-sm"><Checkbox checked={intent?.enabled ?? savedAsk}
             disabled={blocked || pending || ask.pending || (!intent && !savedAsk && !askReady)}
             onCheckedChange={value => setAskDraft((value === true) === savedAsk ? undefined : { enabled: value === true, expected_direct_revision: status.direct_revision })} />{t("connectors.allowAsk")}</label>}
-          {verified && !savedAsk && !askReady && <p className="text-xs text-muted-foreground">{t("connectors.askNeedsScope")}</p>}
-          {intent?.enabled && <p className="text-sm">{t("connectors.directEffects")} {t("connectors.directPrivate")}</p>}
+          {!memberPolicy && verified && !savedAsk && !askReady && <p className="text-xs text-muted-foreground">{t("connectors.askNeedsScope")}</p>}
+          {(intent?.enabled || (memberPolicy && verified)) && <p className="text-sm">{t("connectors.directEffects")} {t("connectors.directPrivate")}</p>}
         </> : <p className="text-sm text-muted-foreground">{t("connectors.directManagerOnly")}</p>}
       </div>
-      {legacyHostOnly && <label className="flex items-center gap-2 text-sm"><Checkbox checked={assistant} disabled={blocked || pending || ask.pending} onCheckedChange={value => setLegacyHost(value === true)} />{t("connectors.legacyAssistantHost")}</label>}
+      {!memberPolicy && legacyHostOnly && <label className="flex items-center gap-2 text-sm"><Checkbox checked={assistant} disabled={blocked || pending || ask.pending} onCheckedChange={value => setHostDraft(value === true)} />{t("connectors.legacyAssistantHost")}</label>}
       <p className="text-xs text-muted-foreground">{t("connectors.hostAssistant")}</p>
       <label className="flex items-center gap-2 text-sm"><Checkbox checked={approval} disabled={!canManage || pending} onCheckedChange={value => setApproval(value === true)} />{t("connectors.requireApproval")}</label>
       <p className="text-xs text-muted-foreground">{t("connectors.approvalHelp")}</p>
-      {showPublication && <fieldset className="space-y-2" disabled={blocked || pending}>
-        <legend className="text-sm font-medium">{t("connectors.publicationAudience")}</legend>
-        <RadioGroup aria-label={t("connectors.publicationAudience")} value={audience} disabled={blocked || pending} onValueChange={v => { if (v === "off" || v === "verified" || v === "anonymous") setAudience(v) }}>
-          {(["off", "verified", "anonymous"] as const).map(v => <label key={v} className="flex items-center gap-2 text-sm"><RadioGroupItem value={v} />{t({off: "connectors.publicationOff", verified: "connectors.publicationVerified", anonymous: "connectors.publicationAnonymous"}[v])}</label>)}
-        </RadioGroup>
-        {audience !== "off" && <><p className="text-xs">{t("connectors.publicationHelp")}</p>
-          <label className="block text-sm">{t("connectors.publicationLabel")}<Input value={labelId} maxLength={38} onChange={e => setLabelId(e.target.value)} /></label>
-          {invalidPublication && <p className="text-xs text-muted-foreground">{t("connectors.publicationInvalid")}</p>}</>}
-      </fieldset>}
+      {canManage && savedPublication && <label className="flex items-center gap-2 text-sm"><Checkbox checked={clearPublication} disabled={blocked || pending} onCheckedChange={value => setClearPublication(value === true)} />{t("connectors.removeLegacyPublication")}</label>}
       <label className="flex items-center gap-2 text-sm"><Checkbox checked={enabled} disabled={!canManage || pending || (!enabled && !activatable)} onCheckedChange={value => setEnabled(value === true)} />{t("connectors.enabled")}</label>
       <p className="text-xs text-muted-foreground">{t("connectors.enableHelp")}</p>
       {access.policy.catalog_reads !== undefined && <details className="space-y-2 text-sm">

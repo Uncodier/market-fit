@@ -1,5 +1,4 @@
 import { z } from "zod"
-import { supportPublication } from "@/app/connectors/support-publication"
 import { askAccessIntent, directPolicyUpdate } from "@/app/connectors/provider-direct-contract"
 import { toolActionFilterSchema } from "@/app/connectors/tool-action-types"
 
@@ -48,7 +47,7 @@ export function parseConnectorBody(kind: string, input: unknown) {
   if (kind === "approval-decision") return site.parse(input)
   if (kind === "start") return site.extend({ toolkit_slug: z.string().regex(slug), auth_config_id: z.string().regex(/^[a-zA-Z0-9_-]{1,150}$/) }).strict().parse(input)
   if (kind === "managed-oauth") return site.extend({ toolkit_slug: z.string().regex(slug) }).strict().parse(input)
-  if (kind === "supabase-token") return site.extend({ project_ref: z.string().regex(/^[a-z0-9]{20}$/),
+  if (kind === "supabase-token") return site.extend({ delegate_account: z.literal(true).optional(), project_ref: z.string().regex(/^[a-z0-9]{20}$/),
     token: z.string().min(24).max(512).regex(/^sbp_[A-Za-z0-9_-]+$/) }).strict().parse(input)
   if (kind === "complete") return z.object({ session_uri: z.string().min(1).max(4096) }).strict().parse(input)
   if (kind === "disconnect") return versioned.parse(input)
@@ -57,7 +56,7 @@ export function parseConnectorBody(kind: string, input: unknown) {
     catalog_reads: z.boolean().optional(),
     ask_access: askAccessIntent.optional(),
     tool_access_mode: z.enum(["all", "selected"]).optional(),
-    support_publication: supportPublication.nullable().optional(),
+    support_publication: z.null().optional(),
     allowed_tools: z.array(z.string().regex(/^[A-Z0-9][A-Z0-9_]{0,149}$/)).max(100),
     allowed_hosts: z.array(z.enum(["assistant", "direct"])).max(2),
     require_approval: z.boolean(), enabled: z.boolean(),

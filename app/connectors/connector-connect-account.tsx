@@ -20,7 +20,8 @@ const tokenSchema = z.object({ status: z.literal("completed"), connector_id: z.s
 export function ConnectAccount({ siteId, detail, onChanged }: { siteId: string; detail: ConnectorDetail; onChanged: () => void }) {
   const { t } = useLocalization()
   const [open, setOpen] = useState(false)
-  const configs = detail.auth_configs.filter(config => config.auth_scheme === "OAUTH2")
+  const { slug } = detail.toolkit
+  const configs = detail.auth_configs.filter(config => config.auth_scheme === "OAUTH2" || (config.auth_scheme === "API_KEY" && slug !== "supabase"))
   const [selected, setSelected] = useState("")
   const projectInput = useRef<HTMLInputElement>(null)
   const tokenInput = useRef<HTMLInputElement>(null)
@@ -29,7 +30,6 @@ export function ConnectAccount({ siteId, detail, onChanged }: { siteId: string; 
   const [redirectError, setRedirectError] = useState<unknown>()
   const [redirecting, setRedirecting] = useState(false)
   const mutation = useConnectorMutation()
-  const { slug } = detail.toolkit
   const canCreate = !configs.length && detail.can_create_managed_oauth === true
   const hasApiKey = detail.toolkit.auth_schemes.includes("API_KEY") || detail.auth_configs.some(config => config.auth_scheme === "API_KEY")
   const supabase = slug === "supabase" && hasApiKey
@@ -50,7 +50,7 @@ export function ConnectAccount({ siteId, detail, onChanged }: { siteId: string; 
         (badProject ? projectInput : tokenInput).current?.focus()
         return
       }
-      const pending = mutation.run("/api/connectors/supabase-token", { site_id: siteId, project_ref: projectRef, token }, tokenSchema)
+      const pending = mutation.run("/api/connectors/supabase-token", { site_id: siteId, project_ref: projectRef, token, delegate_account: true }, tokenSchema)
       if (tokenInput.current) tokenInput.current.value = ""
       if (await pending) { setOpen(false); onChanged() }
       return
@@ -93,8 +93,8 @@ export function ConnectAccount({ siteId, detail, onChanged }: { siteId: string; 
             : supabase ? "connectors.supabaseTokenHelp" : hasApiKey ? "connectors.apiKeyUnavailable" : "connectors.noAuthConfig")}
           {(configs.length > 0 || tokenMode) && <>
             <span className="mt-2 block font-medium text-foreground">{t(tokenMode ? "connectors.tokenAskDisclosure" : "connectors.askOnConnect")}</span>
-            {configs.length > 0 && <span className="mt-2 block">{t("connectors.askOnConnectEffects")}
-              {slug === "supabase" && ` ${t("connectors.supabaseAskLimit")}`}</span>}
+            <span className="mt-2 block">{t("connectors.askOnConnectEffects")}
+              {slug === "supabase" && ` ${t("connectors.supabaseAskLimit")}`}</span>
             <span className="mt-2 block">{t("connectors.workspaceSharingDisclosure")}{slug === "gmail" && ` ${t("connectors.gmailSharingDisclosure")}`}</span>
           </>}
         </DialogDescription>

@@ -156,6 +156,7 @@ it('scopes conversation and agent lookups to the authorized site', async () => {
   expect((await POST(request())).status).toBe(404)
   expect(agent.eq).toHaveBeenCalledWith('id', agentId)
   expect(agent.eq).toHaveBeenCalledWith('site_id', siteId)
+  expect(agent.eq).toHaveBeenCalledWith('status', 'active')
   expect(fetch).not.toHaveBeenCalled()
 })
 
@@ -216,6 +217,7 @@ it('rejects incomplete, oversized, mismatched or non-JSON responses and network 
   const responses = [new Response('html'), Response.json({ success: true }),
     Response.json({ success: false }), Response.json({ ...accepted, padding: 'x'.repeat(256_000) }),
     Response.json({ ...accepted, data: { ...accepted.data, conversation_id: siteId } }),
+    Response.json({ ...accepted, data: { messages: accepted.data.messages } }),
     Response.json({ success: true, data: { messages: { assistant: { content: 'Not saved', message_id: null } } } }),
   ]
   for (const response of responses) {

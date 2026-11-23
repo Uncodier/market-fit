@@ -16,8 +16,8 @@ discovery and the existing `tools` router. It relates provider toolkits and tool
 to business domains and relevant skills. It does not grant access.
 
 Use `connectors` as the site-owned resource for each connected account, with
-workspace-inherited agent/member access and account-specific exceptions for new
-connections; existing accounts retain explicit grants. See the [access model](/Users/prado/Desktop/Proyectos/Uncodie/Code/market-fit/docs/CONNECTORS_ACCESS_MODEL.md).
+workspace sharing and exceptions for members on new connections. Agents need
+explicit grants for each account, regardless of provider or member sharing mode. See the [access model](/Users/prado/Desktop/Proyectos/Uncodie/Code/market-fit/docs/CONNECTORS_ACCESS_MODEL.md).
 
 The intended discovery path is:
 
@@ -387,8 +387,8 @@ duplicate-effect guard. Record receipts and require evidence-based reconciliatio
 Setup, grant and policy management remain owner/admin-only; management is not an
 implicit provider-use grant. Interactive execution intersects current site access,
 effective member and agent permissions, operation/host policy, approval,
-account state and OAuth scopes. Only workspace-mode accounts inherit absent
-permissions; direct-human mode is host-owned.
+account state and OAuth scopes. Only eligible members of workspace-mode accounts inherit access
+without a grant row; direct-human mode is host-owned.
 Background work needs a scoped, revocable delegation and fresh accountable-principal
 and agent checks; no missing user, public caller or service key becomes a manager.
 

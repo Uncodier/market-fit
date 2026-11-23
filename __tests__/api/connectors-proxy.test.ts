@@ -163,6 +163,17 @@ describe("provider-direct manager opt-in", () => {
     }
   })
 
+  it("forwards only paired member-policy markers and rejects inconsistent authority", async () => {
+    const current = { ...dto, authorization_mode: "member_policy", explicitly_disabled: false }
+    fetchMock.mockResolvedValueOnce(Response.json({ ...current, evidence_ref: credential }))
+    expect(await (await get()).json()).toEqual(current)
+    for (const malformed of [{ ...current, explicitly_disabled: true }, { ...dto, explicitly_disabled: false },
+      { ...dto, authorization_mode: "member_policy" }, { ...current, authorization_mode: "unknown" }]) {
+      fetchMock.mockResolvedValueOnce(Response.json(malformed))
+      expect((await get()).status).toBe(502)
+    }
+  })
+
   it("projects only reported setup state and the trusted shared-project reason, never browser assertions", async () => {
     const pending = { ...dto, enabled: false, attested: false, setup_pending: true, unsupported_reason: "shared_makinari_project" }
     fetchMock.mockResolvedValueOnce(Response.json({ ...pending, supabase_project_ref: credential }))

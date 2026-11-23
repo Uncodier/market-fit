@@ -89,33 +89,33 @@ const workspaceAccess = {
   policy: { ...access.policy, allowed_tools: ["GMAIL_FETCH_EMAILS"], require_approval: false },
 }
 
-test("workspace lists missing rows as inherited and saved rows as exceptions, with server-supplied policy", async () => {
+test("workspace separates inherited members, ungranted agents and saved agent grants", async () => {
   fetchMock.mockResolvedValueOnce(jsonResponse(workspaceAccess))
   render(<ConnectorAccessPanel siteId="site-1" connector={{ ...connector, access_mode: "workspace", enabled: true }} canManage onChanged={jest.fn()} />)
-  expect(await screen.findByText(/Workspace access by default/)).toBeVisible()
-  const [members, agents] = screen.getAllByText("Inherits workspace access (1)")
+  expect(await screen.findByText(/Agents never inherit workspace access/)).toBeVisible()
+  const members = screen.getByText("Inherits workspace access (1)")
+  const agents = screen.getByText("Agents without a grant (1)")
   expect(members.parentElement).toHaveTextContent("Member One")
   expect(agents.parentElement).toHaveTextContent("Agent One")
   expect(members.parentElement).not.toHaveTextContent("Expired Member")
   expect(screen.getByText("Exception expired · access blocked")).toBeVisible()
   expect(screen.getByText("Blocked by exception")).toBeVisible()
   expect(screen.getByText("View only by exception")).toBeVisible()
-  expect(screen.getByText("Allowed by exception, subject to policy")).toBeVisible()
+  expect(screen.getByText("Can use subject to policy")).toBeVisible()
   expect(screen.getByText("GMAIL_FETCH_EMAILS")).toBeVisible()
   expect(screen.getByRole("button", { name: "Save policy" })).toBeDisabled()
   expect(fetchMock).toHaveBeenCalledTimes(1)
 })
 
-test.each(["member", "agent"] as const)("blocks an inherited %s with an explicit deny and restores with an explicit allow", async kind => {
-  const id = `${kind}-1`
-  const blocked = kind === "member" ? { user_id: id, can_view: false, can_use: false, expires_at: null } : { agent_id: id, enabled: false, expires_at: null }
-  const allowed = kind === "member" ? { user_id: id, can_view: true, can_use: true, expires_at: null } : { agent_id: id, enabled: true, expires_at: null }
-  const grantArray = kind === "member" ? "members" : "agents"
+test("blocks an inherited member and restores access with a member exception", async () => {
+  const id = "member-1"
+  const blocked = { user_id: id, can_view: false, can_use: false, expires_at: null }
+  const allowed = { user_id: id, can_view: true, can_use: true, expires_at: null }
   fetchMock.mockResolvedValueOnce(jsonResponse(workspaceAccess)).mockResolvedValueOnce(jsonResponse({ revision: 5 }))
-    .mockResolvedValueOnce(jsonResponse({ ...workspaceAccess, revision: 5, [grantArray]: [blocked] })).mockResolvedValueOnce(jsonResponse({ revision: 6 }))
+    .mockResolvedValueOnce(jsonResponse({ ...workspaceAccess, revision: 5, members: [blocked] })).mockResolvedValueOnce(jsonResponse({ revision: 6 }))
   const changed = jest.fn()
   const view = render(<ConnectorAccessPanel key="4" siteId="site-1" connector={connector} canManage onChanged={changed} />)
-  const add = await screen.findByRole("button", { name: `Add ${kind}` })
+  const add = await screen.findByRole("button", { name: "Add member" })
   expect(screen.queryByRole("combobox")).not.toBeInTheDocument()
   fireEvent.click(add)
   fireEvent.click(screen.getByRole("button", { name: "Cancel" }))
@@ -127,14 +127,44 @@ test.each(["member", "agent"] as const)("blocks an inherited %s with an explicit
   expect(screen.getByRole("button", { name: "Save exception" })).toBeDisabled()
   fireEvent.click(screen.getByRole("button", { name: "Block access" }))
   await waitFor(() => expect(changed).toHaveBeenCalledTimes(1))
-  expect(JSON.parse(fetchMock.mock.calls[1][1]?.body as string)).toMatchObject({ expected_revision: 4, [grantArray]: [blocked] })
+  expect(JSON.parse(fetchMock.mock.calls[1][1]?.body as string)).toMatchObject({ expected_revision: 4, members: [blocked] })
 
   view.rerender(<ConnectorAccessPanel key="5" siteId="site-1" connector={{ ...connector, revision: 5 }} canManage onChanged={changed} />)
-  fireEvent.click(await screen.findByRole("button", { name: kind === "member" ? "Edit Member One" : "Edit Agent One" }))
+  fireEvent.click(await screen.findByRole("button", { name: "Edit Member One" }))
   expect(screen.getByText(/does not remove the exception/)).toBeVisible()
   fireEvent.click(screen.getByRole("button", { name: "Restore access" }))
   await waitFor(() => expect(changed).toHaveBeenCalledTimes(2))
-  expect(JSON.parse(fetchMock.mock.calls[3][1]?.body as string)).toMatchObject({ expected_revision: 5, [grantArray]: [allowed] })
+  expect(JSON.parse(fetchMock.mock.calls[3][1]?.body as string)).toMatchObject({ expected_revision: 5, members: [allowed] })
+})
+
+test.each(["explicit", "workspace"] as const)("in %s mode, granting and revoking affect only the chosen agent on this account", async mode => {
+  const grant = { agent_id: "agent-1", enabled: true, expires_at: null }
+  const data = { ...access, access_mode: mode, agent_options: [...access.agent_options, { id: "future-agent", label: "Newest agent" }] }
+  fetchMock.mockResolvedValueOnce(jsonResponse(data)).mockResolvedValueOnce(jsonResponse({ revision: 5 }))
+    .mockResolvedValueOnce(jsonResponse({ ...data, revision: 5, agents: [grant] })).mockResolvedValueOnce(jsonResponse({ revision: 6 }))
+  const changed = jest.fn()
+  const view = render(<ConnectorAccessPanel key="4" siteId="site-1" connector={connector} canManage onChanged={changed} />)
+  expect(await screen.findByText("Agents without a grant (2)")).toBeVisible()
+  fireEvent.click(screen.getByRole("button", { name: "Add agent" }))
+  fireEvent.change(screen.getByRole("combobox"), { target: { value: grant.agent_id } })
+  const use = screen.getByRole("checkbox", { name: "Can use subject to policy" })
+  expect(use).not.toBeChecked()
+  const save = screen.getByRole("button", { name: "Save grant" })
+  expect(save).toBeDisabled()
+  expect(screen.queryByRole("button", { name: "Revoke grant" })).not.toBeInTheDocument()
+  fireEvent.click(use)
+  expect(fetchMock).toHaveBeenCalledTimes(1)
+  fireEvent.click(save)
+  await waitFor(() => expect(changed).toHaveBeenCalledTimes(1))
+  expect(fetchMock.mock.calls[1][0]).toBe("/api/connectors/connections/connector-1/access")
+  expect(JSON.parse(fetchMock.mock.calls[1][1]?.body as string)).toEqual({ site_id: "site-1", expected_revision: 4, members: [], agents: [grant] })
+
+  view.rerender(<ConnectorAccessPanel key="5" siteId="site-1" connector={{ ...connector, revision: 5 }} canManage onChanged={changed} />)
+  expect((await screen.findByText("Agents without a grant (1)")).parentElement).toHaveTextContent("Newest agent")
+  fireEvent.click(screen.getByRole("button", { name: "Edit Agent One" }))
+  fireEvent.click(screen.getByRole("button", { name: "Revoke grant" }))
+  await waitFor(() => expect(changed).toHaveBeenCalledTimes(2))
+  expect(JSON.parse(fetchMock.mock.calls[3][1]?.body as string)).toEqual({ site_id: "site-1", expected_revision: 5, members: [], agents: [{ ...grant, enabled: false }] })
 })
 
 test("a workspace member with no persisted row sees effective access without management details", async () => {
@@ -143,7 +173,23 @@ test("a workspace member with no persisted row sees effective access without man
   expect(await screen.findByText(/You have effective member-use access/)).toBeVisible()
   expect(screen.getByText("Inherits workspace access")).toBeVisible()
   expect(screen.queryByRole("button", { name: "Add member" })).not.toBeInTheDocument()
+  expect(screen.queryByRole("heading", { name: "Agent grants" })).not.toBeInTheDocument()
   expect(screen.queryByRole("combobox")).not.toBeInTheDocument()
+})
+
+test.each([
+  { enabled: false, expires_at: null, revoked_at: null },
+  { enabled: false, expires_at: "2020-01-01T00:00:00Z", revoked_at: null },
+  { enabled: false, expires_at: null, revoked_at: "2020-01-01T00:00:00Z" },
+])("an inactive saved agent grant never falls back to workspace access: %j", async flags => {
+  fetchMock.mockResolvedValueOnce(jsonResponse({ ...workspaceAccess, agents: [{ agent_id: "agent-1", ...flags }] }))
+  render(<ConnectorAccessPanel siteId="site-1" connector={connector} canManage onChanged={jest.fn()} />)
+  expect(await screen.findByText("No access grant")).toBeVisible()
+  fireEvent.click(screen.getByRole("button", { name: "Edit Agent One" }))
+  expect(screen.getByRole("checkbox", { name: "Can use subject to policy" })).not.toBeChecked()
+  expect(screen.getByRole("button", { name: "Save grant" })).toBeDisabled()
+  expect(screen.queryByRole("button", { name: "Restore access" })).not.toBeInTheDocument()
+  expect(fetchMock).toHaveBeenCalledTimes(1)
 })
 
 test("a workspace member sees their own view-only exception without seeing other principals", async () => {

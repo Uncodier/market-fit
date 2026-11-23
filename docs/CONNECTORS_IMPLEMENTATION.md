@@ -143,8 +143,8 @@ and agents already allowed to execute. Previously pending work is never auto-run
 ## Workspace access for newly connected accounts
 
 After the workspace-access migration, verifying a **new** account initializes
-its workspace sharing and tool policy together. Eligible members and active
-same-site agents inherit access unless restricted for that account. The initial
+its workspace sharing and tool policy together. Eligible members inherit access unless restricted
+for that account. Agents always need an explicit grant on the selected account. The initial
 assistant policy permits only exact reviewed reads for its toolkit: Gmail email
 reads or HubSpot contact reads. Other toolkits, including Supabase, have no
 executable default. Provider scopes, account state and business-screen checks
@@ -341,8 +341,8 @@ API verification and binding of supported runtime actions; it does not restrict 
 with Project Settings Read. Composio stores the token; Makinari does not store it.
 The server reuses or creates the Supabase API-key auth configuration (creation
 requires the project-wide Upstash lock). It verifies an active, site-bound
-Composio account before recording the connection. New accounts inherit workspace
-access, and project-bound PAT accounts can use the reviewed table inventory when authorized. This
+Composio account before recording the connection. New accounts share access with eligible workspace
+members, not agents, and project-bound PAT accounts can use the reviewed table inventory when authorized. This
 path requires the platform `COMPOSIO_PROJECT_ID` or a verified workspace project,
 but no OAuth callback is needed for the platform token path. Existing OAuth
 configurations still use the standard OAuth verification flow.

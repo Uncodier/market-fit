@@ -28,6 +28,94 @@ async function load(data: unknown) {
 }
 beforeEach(() => { http.mockReset(); jest.mocked(toast.success).mockClear() })
 
+const memberStatus = { ...status, enabled: true, authorization_mode: "member_policy", explicitly_disabled: false }
+const hostControl = () => screen.findByRole("checkbox", { name: "Allow the interactive assistant on this account" })
+
+test.each(["disabled account", "empty selected scope", "assistant host off"])("member-policy eligibility alone is insufficient: %s", async reason => {
+  show({ ...accessDto, policy: { ...accessDto.policy, tool_access_mode: "selected", allowed_hosts: reason === "assistant host off" ? [] : ["assistant"],
+    allowed_tools: reason === "empty selected scope" ? [] : ["MAIL_ADD_LABEL"] } }, true, { ...account, enabled: reason !== "disabled account" })
+  await load(memberStatus)
+  expect(await screen.findByText("Blocked by account or tool settings")).toBeVisible()
+  expect(screen.queryByText("Available to authorized members")).not.toBeInTheDocument()
+  expect(screen.queryByRole("button", { name: "Restore Ask access on save" })).not.toBeInTheDocument()
+  expect(save()).toBeDisabled()
+  expect(patchCalls()).toHaveLength(0)
+})
+
+test("unverified member-policy status is not an explicit disable or a claim about shared SQL authority", async () => {
+  show(accessDto, true, { ...account, toolkit_slug: "supabase", display_name: "Shared project" })
+  await load({ ...memberStatus, enabled: false, attested: false })
+  expect(await screen.findByText("Generic provider tools not verified")).toBeVisible()
+  expect(screen.queryByRole("button", { name: "Restore Ask access on save" })).not.toBeInTheDocument()
+  expect(screen.queryByText("Turned off by a manager")).not.toBeInTheDocument()
+  expect(screen.queryByText("Available to authorized members")).not.toBeInTheDocument()
+  expect(patchCalls()).toHaveLength(0)
+})
+
+test.each(["all", "selected"] as const)("verified %s member policy needs no enrollment; removing the host preserves other hosts", async mode => {
+  show({ ...accessDto, policy: { ...accessDto.policy, allowed_hosts: ["assistant", "direct"], tool_access_mode: mode, allowed_tools: ["MAIL_ADD_LABEL"] } })
+  await load(memberStatus)
+  expect(await screen.findByText("Available to authorized members")).toBeVisible()
+  expect(screen.queryByRole("checkbox", { name: "Allow Ask to use this account" })).not.toBeInTheDocument()
+  expect(save()).toBeDisabled()
+  expect(patchCalls()).toHaveLength(0)
+  fireEvent.click(await hostControl())
+  http.mockResolvedValueOnce(jsonResponse({ revision: 5 }))
+  fireEvent.click(save())
+  await waitFor(() => expect(patchCalls()).toHaveLength(1))
+  const body = JSON.parse(String(patchCalls()[0][1]?.body))
+  expect(body).toMatchObject({ allowed_hosts: ["direct"], tool_access_mode: mode, allowed_tools: ["MAIL_ADD_LABEL"] })
+  expect(body).not.toHaveProperty("ask_access")
+})
+
+test("ordinary edits do not restore a deliberate block or an absent assistant host", async () => {
+  show({ ...accessDto, policy: { ...accessDto.policy, allowed_hosts: ["direct"] } })
+  await load({ ...memberStatus, enabled: false, explicitly_disabled: true })
+  expect(await screen.findByText("Turned off by a manager")).toBeVisible()
+  expect(await hostControl()).not.toBeChecked()
+  expect(screen.getByRole("button", { name: "Restore Ask access on save" })).toBeDisabled()
+  fireEvent.click(screen.getByRole("radio", { name: "Only selected tools" }))
+  http.mockResolvedValueOnce(jsonResponse({ revision: 5 }))
+  fireEvent.click(save())
+  await waitFor(() => expect(patchCalls()).toHaveLength(1))
+  const body = JSON.parse(String(patchCalls()[0][1]?.body))
+  expect(body.allowed_hosts).toEqual(["direct"])
+  expect(body).not.toHaveProperty("ask_access")
+})
+
+test("only an explicit restore with usable scope and host clears the block in a single revision-bound save", async () => {
+  show({ ...accessDto, policy: { ...accessDto.policy, allowed_hosts: [], allowed_tools: [], tool_access_mode: "selected" } })
+  await load({ ...memberStatus, enabled: false, explicitly_disabled: true })
+  const restore = await screen.findByRole("button", { name: "Restore Ask access on save" })
+  fireEvent.click(await hostControl())
+  expect(restore).toBeDisabled()
+  fireEvent.click(screen.getByRole("radio", { name: "All catalog tools" }))
+  fireEvent.click(restore)
+  fireEvent.click(await hostControl())
+  expect(save()).toBeDisabled()
+  fireEvent.click(await hostControl())
+  expect(patchCalls()).toHaveLength(0)
+  http.mockResolvedValueOnce(jsonResponse({ connector_id: account.id, revision: 5, direct_revision: 5, ask_enabled: true }))
+  fireEvent.click(save())
+  await waitFor(() => expect(patchCalls()).toHaveLength(1))
+  expect(JSON.parse(String(patchCalls()[0][1]?.body))).toMatchObject({ allowed_hosts: ["assistant"], tool_access_mode: "all",
+    expected_revision: 4, ask_access: { enabled: true, expected_direct_revision: 4 } })
+})
+
+test("standalone disable reloads the member status rather than treating a legacy receipt as a legacy server", async () => {
+  show()
+  await load(memberStatus)
+  const disable = await screen.findByRole("button", { name: "Turn off Ask access" })
+  http.mockResolvedValueOnce(jsonResponse({ ...status, direct_revision: 5 }))
+    .mockResolvedValueOnce(jsonResponse({ ...memberStatus, direct_revision: 5, enabled: false, explicitly_disabled: true }))
+  fireEvent.click(disable)
+  expect(await screen.findByText("Turned off by a manager")).toBeVisible()
+  expect(await hostControl()).toBeChecked()
+  expect(screen.queryByRole("checkbox", { name: "Allow Ask to use this account" })).not.toBeInTheDocument()
+  expect(patchCalls()).toHaveLength(1)
+  expect(JSON.parse(String(patchCalls()[0][1]?.body))).toEqual({ site_id: site, expected_revision: 4, expected_direct_revision: 4, enabled: false })
+})
+
 test("legacy read/all and verified login are not proof or consent; an ordinary member cannot fetch the manager report", async () => {
   show({ ...accessDto, can_manage: false }, false)
   expect(await screen.findByText(/Member access alone does not make tools available/)).toBeVisible()
@@ -75,12 +163,12 @@ test("no dormant grant: select a usable scope and grant the assistant host in th
   show({ ...accessDto, policy: { ...accessDto.policy, tool_access_mode: "selected", allowed_tools: [], allowed_hosts: ["direct"] } })
   await load(status)
   expect(await allow()).toBeDisabled()
-  fireEvent.click(screen.getByRole("radio", { name: "All compatible tools" }))
+  fireEvent.click(screen.getByRole("radio", { name: "All catalog tools" }))
   expect(await allow()).not.toBeChecked()
   fireEvent.click(await allow())
   fireEvent.click(screen.getByRole("radio", { name: "Only selected tools" }))
   expect(save()).toBeDisabled()
-  fireEvent.click(screen.getByRole("radio", { name: "All compatible tools" }))
+  fireEvent.click(screen.getByRole("radio", { name: "All catalog tools" }))
   http.mockResolvedValueOnce(jsonResponse({ connector_id: account.id, revision: 5, direct_revision: 5, ask_enabled: true }))
   fireEvent.click(save())
   await waitFor(() => expect(patchCalls()).toHaveLength(1))
@@ -221,4 +309,12 @@ test.each(["revision conflict", "attestation lost", "wrong receipt"])("%s never 
   expect(changed).not.toHaveBeenCalled()
   expect(patchCalls()).toHaveLength(1)
   expect(patchCalls()[0][0]).toBe(`${base}/policy`)
+})
+
+test("a business OAuth account needs no independent resource attestation", async () => {
+  show({ ...accessDto, policy: { ...accessDto.policy, allowed_hosts: ["assistant"], tool_access_mode: "all" } })
+  await load({ ...memberStatus, attested: false, authority_kind: "connected_account" })
+  expect(await screen.findByText("Available to authorized members")).toBeVisible()
+  expect(screen.queryByText("Generic provider tools not verified")).not.toBeInTheDocument()
+  expect(patchCalls()).toHaveLength(0)
 })
