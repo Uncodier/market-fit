@@ -25,12 +25,14 @@ export function ConnectorPolicyEditor({ siteId, access, connector, canManage, pe
   const { status } = ask
   const [askDraft, setAskDraft] = useState<AskAccessIntent>()
   const verified = !!status && isAskVerified(status)
+  const unified = status?.authorization_mode === "host_policy"
   const memberPolicy = status?.authorization_mode === "member_policy"
-  const intent = verified && askDraft?.expected_direct_revision === status.direct_revision ? askDraft : undefined
+  const hostPolicy = unified || memberPolicy
+  const intent = !unified && verified && askDraft?.expected_direct_revision === status.direct_revision ? askDraft : undefined
   const savedAsk = savedAssistant && !!status?.enabled
   const legacyHostOnly = !!status && !status.enabled && !status.setup_pending && !verified
   const [hostDraft, setHostDraft] = useState(savedAssistant)
-  const assistant = memberPolicy ? hostDraft : intent?.enabled ?? (legacyHostOnly ? hostDraft : savedAssistant)
+  const assistant = hostPolicy ? hostDraft : intent?.enabled ?? (legacyHostOnly ? hostDraft : savedAssistant)
   const [catalogReads, setCatalogReads] = useState(access.policy.catalog_reads === true)
   const catalogChanged = catalogReads !== (access.policy.catalog_reads === true)
   const [approval, setApproval] = useState(access.policy.require_approval)
@@ -76,21 +78,21 @@ export function ConnectorPolicyEditor({ siteId, access, connector, canManage, pe
           <AskStatus connector={connector} policy={access.policy} resource={ask} disabled={pending}
             onRefresh={() => { setAskDraft(undefined); setHostDraft(savedAssistant); ask.refresh(); if (ask.mismatch) onChanged() }}
             onRevoke={() => { setAskDraft(undefined); void ask.revoke() }} />
-          {memberPolicy && <label className="flex items-center gap-2 text-sm"><Checkbox checked={assistant} disabled={blocked || pending || ask.pending}
-            onCheckedChange={value => setHostDraft(value === true)} />{t("connectors.assistantHost")}</label>}
-          {status && !status.enabled && !status.setup_pending && (status.explicitly_disabled || !verified) && <Button type="button" variant="outline" size="sm"
+          {hostPolicy && <label className="flex items-center gap-2 text-sm"><Checkbox checked={assistant} disabled={blocked || pending || ask.pending}
+            onCheckedChange={value => setHostDraft(value === true)} />{t(unified ? "connectors.askHostPolicy" : "connectors.assistantHost")}</label>}
+          {!unified && status && !status.enabled && !status.setup_pending && (status.explicitly_disabled || !verified) && <Button type="button" variant="outline" size="sm"
             disabled={blocked || pending || ask.pending || (!intent && (!assistant || !askReady))}
             onClick={() => setAskDraft(intent ? undefined : { enabled: true, expected_direct_revision: status.direct_revision })}>
             {t(intent ? "connectors.cancelRestoreAsk" : "connectors.restoreAsk")}
           </Button>}
-          {!memberPolicy && verified && <label className="flex items-center gap-2 text-sm"><Checkbox checked={intent?.enabled ?? savedAsk}
+          {!hostPolicy && verified && <label className="flex items-center gap-2 text-sm"><Checkbox checked={intent?.enabled ?? savedAsk}
             disabled={blocked || pending || ask.pending || (!intent && !savedAsk && !askReady)}
             onCheckedChange={value => setAskDraft((value === true) === savedAsk ? undefined : { enabled: value === true, expected_direct_revision: status.direct_revision })} />{t("connectors.allowAsk")}</label>}
-          {!memberPolicy && verified && !savedAsk && !askReady && <p className="text-xs text-muted-foreground">{t("connectors.askNeedsScope")}</p>}
-          {(intent?.enabled || (memberPolicy && verified)) && <p className="text-sm">{t("connectors.directEffects")} {t("connectors.directPrivate")}</p>}
+          {!hostPolicy && verified && !savedAsk && !askReady && <p className="text-xs text-muted-foreground">{t("connectors.askNeedsScope")}</p>}
+          {(intent?.enabled || (hostPolicy && (verified || (unified && assistant)))) && <p className="text-sm">{t("connectors.directEffects")} {t("connectors.directPrivate")}</p>}
         </> : <p className="text-sm text-muted-foreground">{t("connectors.directManagerOnly")}</p>}
       </div>
-      {!memberPolicy && legacyHostOnly && <label className="flex items-center gap-2 text-sm"><Checkbox checked={assistant} disabled={blocked || pending || ask.pending} onCheckedChange={value => setHostDraft(value === true)} />{t("connectors.legacyAssistantHost")}</label>}
+      {!hostPolicy && legacyHostOnly && <label className="flex items-center gap-2 text-sm"><Checkbox checked={assistant} disabled={blocked || pending || ask.pending} onCheckedChange={value => setHostDraft(value === true)} />{t("connectors.legacyAssistantHost")}</label>}
       <p className="text-xs text-muted-foreground">{t("connectors.hostAssistant")}</p>
       <label className="flex items-center gap-2 text-sm"><Checkbox checked={approval} disabled={!canManage || pending} onCheckedChange={value => setApproval(value === true)} />{t("connectors.requireApproval")}</label>
       <p className="text-xs text-muted-foreground">{t("connectors.approvalHelp")}</p>

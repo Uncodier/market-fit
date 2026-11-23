@@ -6,14 +6,16 @@ const status = z.object({
   direct_revision: z.number().int().positive().max(2_147_483_647),
   attested: z.boolean(), enabled: z.boolean(),
   authority_kind: z.literal("connected_account").optional(),
-  authorization_mode: z.literal("member_policy").optional(),
+  authorization_mode: z.enum(["member_policy", "host_policy"]).optional(),
   explicitly_disabled: z.boolean().optional(),
+  assistant_allowed: z.boolean().optional(),
   // Older servers do not report setup intent. Absence is not a pending grant.
   setup_pending: z.boolean().optional(),
   unsupported_reason: z.literal("shared_makinari_project").optional(),
-}).refine(value => (value.authorization_mode !== undefined) === (value.explicitly_disabled !== undefined))
+}).refine(value => (value.authorization_mode === "member_policy") === (value.explicitly_disabled !== undefined)
+  && (value.authorization_mode === "host_policy") === (value.assistant_allowed !== undefined))
   .refine(value => !value.authority_kind || (!value.attested && !value.setup_pending && !value.unsupported_reason))
-  .refine(value => !value.enabled || ((value.attested || value.authority_kind === "connected_account") && !value.setup_pending && !value.unsupported_reason && !value.explicitly_disabled))
+  .refine(value => !value.enabled || ((value.attested || value.authority_kind === "connected_account") && !value.setup_pending && !value.unsupported_reason && !value.explicitly_disabled && value.assistant_allowed !== false))
 export type DirectPolicyStatus = z.infer<typeof status>
 
 export function isAskVerified(status: DirectPolicyStatus): boolean {
@@ -36,6 +38,8 @@ export function askPolicyReceipt(id: string, revision: number, intent: AskAccess
 
 export function directPolicyStatus(id: string, change?: Omit<DirectPolicyUpdate, "site_id">, requireSetupState = false) {
   return status.refine(value => value.connector_id === id && (!requireSetupState || value.setup_pending !== undefined) && (!change ||
-    (value.revision === change.expected_revision && value.direct_revision === change.expected_direct_revision + 1 &&
-      value.enabled === change.enabled && !value.setup_pending)))
+    (value.direct_revision === change.expected_direct_revision + 1 && !value.setup_pending &&
+      (value.authorization_mode === "host_policy"
+        ? !change.enabled && !value.enabled && value.assistant_allowed === false && value.revision === change.expected_revision + 1
+        : value.enabled === change.enabled && value.revision === change.expected_revision))))
 }

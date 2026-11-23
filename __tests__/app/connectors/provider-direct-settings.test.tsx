@@ -31,6 +31,27 @@ beforeEach(() => { http.mockReset(); jest.mocked(toast.success).mockClear() })
 const memberStatus = { ...status, enabled: true, authorization_mode: "member_policy", explicitly_disabled: false }
 const hostControl = () => screen.findByRole("checkbox", { name: "Allow the interactive assistant on this account" })
 
+test.each([false, true])("uses one Ask setting even without execution authorization (currently on: %s)", async current => {
+  const changed = show({ ...accessDto, policy: { ...accessDto.policy, allowed_hosts: current ? ["assistant", "direct"] : ["direct"] } },
+    true, { ...account, toolkit_slug: "supabase" })
+  await load({ ...status, enabled: false, attested: false, authorization_mode: "host_policy", assistant_allowed: current, setup_pending: false })
+  expect(await screen.findByText(current ? "Ask is on · execution not authorized" : "Ask is off")).toBeVisible()
+  const toggle = screen.getByRole("checkbox", { name: "Allow Robots Ask on this account" })
+  if (current) expect(toggle).toBeChecked(); else expect(toggle).not.toBeChecked()
+  expect(screen.queryByRole("button", { name: "Restore Ask access on save" })).not.toBeInTheDocument()
+  expect(screen.queryByRole("button", { name: "Turn off Ask access" })).not.toBeInTheDocument()
+  fireEvent.click(toggle)
+  http.mockResolvedValueOnce(jsonResponse({ connector_id: account.id, revision: 5 }))
+  fireEvent.click(save())
+  await waitFor(() => expect(changed).toHaveBeenCalledTimes(1))
+  expect(patchCalls()).toHaveLength(1)
+  expect(patchCalls()[0][0]).toBe(`${base}/policy`)
+  const body = JSON.parse(String(patchCalls()[0][1]?.body))
+  expect(body.allowed_hosts).toEqual(current ? ["direct"] : ["direct", "assistant"])
+  expect(body).not.toHaveProperty("ask_access")
+  expect(body).not.toHaveProperty("catalog_reads")
+})
+
 test.each(["disabled account", "empty selected scope", "assistant host off"])("member-policy eligibility alone is insufficient: %s", async reason => {
   show({ ...accessDto, policy: { ...accessDto.policy, tool_access_mode: "selected", allowed_hosts: reason === "assistant host off" ? [] : ["assistant"],
     allowed_tools: reason === "empty selected scope" ? [] : ["MAIL_ADD_LABEL"] } }, true, { ...account, enabled: reason !== "disabled account" })

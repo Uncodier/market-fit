@@ -10,11 +10,12 @@ jest.mock("@/app/hooks/use-mobile-view", () => ({ useIsMobile: () => false }))
 const http = jest.mocked(fetch)
 const local = { ...connector, id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" }
 
-function offline(canManage: boolean, selected?: string, wrongReceipt = false, legacyAccessUnavailable = false, pendingSetup = false) {
+function offline(canManage: boolean, selected?: string, wrongReceipt = false, legacyAccessUnavailable = false, pendingSetup = false, unified = false) {
   let revision = local.revision
   let directRevision = 7
   let reads = true
   let direct = !pendingSetup
+  let hostAllowed = true
   let setup = pendingSetup
   const attested = !pendingSetup
   jest.mocked(useSearchParams).mockReturnValue(new URLSearchParams(selected ? { connector: selected } : {}) as ReturnType<typeof useSearchParams>)
@@ -23,13 +24,16 @@ function offline(canManage: boolean, selected?: string, wrongReceipt = false, le
     if (path.startsWith("/api/connectors/catalog")) return jsonResponse({ error: { code: "PROVIDER_UNAVAILABLE" } }, 503)
     if (path === "/api/connectors/connections?site_id=site-1") return jsonResponse({ can_manage: canManage, items: [{ ...local, enabled: true, revision }] })
     if (path === `/api/connectors/connections/${local.id}/provider-direct?site_id=site-1`) {
-      return jsonResponse({ connector_id: local.id, revision, direct_revision: directRevision, attested, enabled: direct, setup_pending: setup })
+      return jsonResponse({ connector_id: local.id, revision, direct_revision: directRevision, attested, enabled: direct, setup_pending: setup,
+        ...(unified && { authorization_mode: "host_policy", assistant_allowed: hostAllowed }) })
     }
     if (path === `/api/connectors/connections/${local.id}/provider-direct` && init?.method === "PATCH") {
       expect(JSON.parse(String(init.body))).toEqual({ site_id: "site-1", expected_revision: revision, expected_direct_revision: directRevision, enabled: false })
       direct = false
       setup = false
-      return jsonResponse({ connector_id: local.id, revision, direct_revision: ++directRevision, attested, enabled: direct, setup_pending: setup })
+      if (unified) { hostAllowed = false; revision++ }
+      return jsonResponse({ connector_id: local.id, revision, direct_revision: ++directRevision, attested, enabled: direct, setup_pending: setup,
+        ...(unified && { authorization_mode: "host_policy", assistant_allowed: hostAllowed }) })
     }
     if (path === `/api/connectors/connections/${local.id}/access?site_id=site-1`) return legacyAccessUnavailable
       ? jsonResponse({ error: { code: "STORAGE_UNAVAILABLE" } }, 503) : jsonResponse({ ...access,
@@ -74,6 +78,16 @@ test("cancels automatic first setup locally with no proof or provider catalogue"
   expect(await screen.findByText("Off · not verified")).toBeVisible()
   expect(screen.queryByRole("button", { name: "Turn on Ask access" })).not.toBeInTheDocument()
   expect(http.mock.calls.filter(([, init]) => init?.method === "PATCH").map(([url]) => url)).toEqual([`/api/connectors/connections/${local.id}/provider-direct`])
+})
+
+test("offline stop updates the single host setting and reloads the incremented account revision", async () => {
+  offline(true, local.id, false, true, false, true)
+  render(<DetailContent siteId="site-1" slug="mail" />)
+  fireEvent.click(await screen.findByRole("button", { name: "Turn off Ask access" }))
+  expect(await screen.findByText("Ask is off")).toBeVisible()
+  expect(screen.queryByRole("button", { name: "Turn off Ask access" })).not.toBeInTheDocument()
+  expect(http.mock.calls.filter(([url]) => url === "/api/connectors/connections?site_id=site-1")).toHaveLength(2)
+  expect(http.mock.calls.filter(([, init]) => init?.method === "PATCH")).toHaveLength(1)
 })
 
 test("the local fallback does not request direct status for a nonmanager", async () => {
