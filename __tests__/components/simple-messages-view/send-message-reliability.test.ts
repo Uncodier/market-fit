@@ -277,12 +277,12 @@ describe('postWithRetry', () => {
     setDocumentHidden(false)
   })
 
-  it('retries a 503 and then succeeds', async () => {
+  it('retries a non-Ask 503 and then succeeds', async () => {
     postMock
       .mockResolvedValueOnce({ success: false, status: 503, error: { message: 'unavailable' } })
       .mockResolvedValueOnce({ success: true, data: { ok: true } })
 
-    const pending = postWithRetry('/api/robots/instance/assistant', { message: 'hi' })
+    const pending = postWithRetry('/api/workflow/promptRobot', { message: 'hi' })
     await jest.runAllTimersAsync()
     const result = await pending
 
@@ -306,6 +306,7 @@ describe('postWithRetry', () => {
     { status: 409, error: { message: 'This assistant execution is already in progress' } },
     { status: 503, error: { message: 'Assistant capacity is temporarily full' } },
     { status: 500, error: { message: 'Start outcome unknown' } },
+    { status: 503, error: { message: 'Unlabeled upstream failure' } },
     { status: 502, error: { message: 'Bad gateway' } },
     { status: 504, error: { message: 'Gateway timeout' } },
     { status: 200, error: { code: 'ASSISTANT_STREAM_INTERRUPTED', message: 'Interrupted' }, retryable: false },

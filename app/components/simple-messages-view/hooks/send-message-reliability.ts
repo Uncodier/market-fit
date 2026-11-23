@@ -413,13 +413,9 @@ export async function postWithRetry<T = any>(
       ? await apiClient.post<T>(endpoint, payload, { onAccepted })
       : await apiClient.post<T>(endpoint, payload)
     if (lastResponse.success) return lastResponse
-    if (endpoint === '/api/robots/instance/assistant' && (
-      getAssistantAdmissionFailure(lastResponse) ||
-      lastResponse.error?.code?.startsWith('ASSISTANT_') ||
-      [500, 502, 504].includes(lastResponse.status ?? 0)
-    )) {
-      // Admission rejections require an explicit resend, not automatic replay.
-      // Gateway/start failures cannot establish whether the workflow was accepted.
+    if (endpoint === '/api/robots/instance/assistant') {
+      // Even an unlabeled 503 may have followed admission. Never automatically
+      // replay an assistant POST or infer that it finished from nearby log text.
       return { ...lastResponse, retryable: false }
     }
     if (!isRetryableApiFailure(lastResponse)) return lastResponse

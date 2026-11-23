@@ -129,6 +129,17 @@ it('releases both leases on an upstream startup failure', async () => {
   expect(release).toHaveBeenCalledTimes(2)
 })
 
+it('forwards the browser submission ID unchanged and preserves a nonterminal replay acknowledgement', async () => {
+  const requestId = 'browser-submission-1'
+  const acknowledgement = { replayed: true, code: 'ASSISTANT_REQUEST_RECORDED', action_status: 'running' }
+  ;(fetch as jest.Mock).mockResolvedValue(Response.json(acknowledgement, { status: 202 }))
+  const response = await POST(request(JSON.stringify({ site_id: 'site', message: 'Hello', request_id: requestId })))
+  expect(JSON.parse((fetch as jest.Mock).mock.calls[0][1].body)).toMatchObject({ request_id: requestId, user_id: 'verified-user' })
+  expect(response.status).toBe(202)
+  expect(await response.json()).toEqual(acknowledgement)
+  expect(release).toHaveBeenCalledTimes(2)
+})
+
 it('disconnects upstream and releases both leases even when upstream cancellation stalls', async () => {
   const cancel = jest.fn(() => new Promise<void>(() => {}))
   ;(fetch as jest.Mock).mockResolvedValue(new Response(new ReadableStream({ cancel })))

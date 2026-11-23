@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto"
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { approvalInboxSchema, approvalReceipt } from "@/app/connectors/approval-contract"
+import { directPolicyStatus, directPolicyUpdate } from "@/app/connectors/provider-direct-contract"
 import { connectorDomainCountsSchema, connectorSchema } from '@/app/connectors/types'
 import { createClient } from "@/lib/supabase/server"
 import { configuredApiUrl, isSameOriginApiRequest } from "@/lib/http/api-proxy-security"
@@ -29,9 +30,9 @@ export async function proxyConnector(request: NextRequest, path: string[]): Prom
       if (kind === 'connection-summary' && Object.keys(query).length !== 1) return connectorProxyFailure(400, 'INVALID_REQUEST')
       siteId = query.site_id
     } else {
-      if (kind === "bind-project" && request.nextUrl.search) return connectorProxyFailure(400, "INVALID_REQUEST")
+      if ((kind === "bind-project" || kind === "provider-direct") && request.nextUrl.search) return connectorProxyFailure(400, "INVALID_REQUEST")
       if (request.headers.get("content-type")?.split(";")[0].trim() !== "application/json") return connectorProxyFailure(415, "JSON_REQUIRED")
-      body = parseConnectorBody(kind, JSON.parse(decodeRequestBody(await readLimitedRequestBody(request, 32_768))))
+      body = parseConnectorBody(kind, JSON.parse(decodeRequestBody(await readLimitedRequestBody(request, kind === "provider-direct" ? 2048 : 32_768))))
       if (kind === "complete") {
         if (!attempt) return connectorProxyFailure(403, "AUTH_ATTEMPT_EXPIRED", "Start authentication again in this browser.")
         body = { ...body, site_id: attempt.site_id, nonce: attempt.nonce }
@@ -47,7 +48,8 @@ export async function proxyConnector(request: NextRequest, path: string[]): Prom
     const screen = await supabase.rpc("connector_site_access", { p_site_id: siteId, p_user_id: user.id })
     if (screen.error) return connectorProxyFailure(503, "STORAGE_UNAVAILABLE", "Connector storage is not ready.")
     const permission = Array.isArray(screen.data) ? screen.data[0] : screen.data
-    if (permission?.can_view !== true || ((request.method !== "GET" || kind === "attempt" || kind === "approval-inbox") && permission.can_manage !== true)) return connectorProxyFailure(403, "ACCESS_DENIED")
+    const managerOnly = request.method !== "GET" || ["attempt", "approval-inbox", "provider-direct"].includes(kind)
+    if (permission?.can_view !== true || (managerOnly && permission.can_manage !== true)) return connectorProxyFailure(403, "ACCESS_DENIED")
     const { data: { session }, error } = await supabase.auth.getSession()
     if (error || !session?.access_token || session.user?.id !== user.id) return connectorProxyFailure(401, "UNAUTHORIZED")
     const target = configuredApiUrl(request, `/api/connectors/${path.map(encodeURIComponent).join("/")}`)
@@ -67,15 +69,26 @@ export async function proxyConnector(request: NextRequest, path: string[]): Prom
       return connectorProxyFailure(502, request.method === "GET" ? "UPSTREAM_UNAVAILABLE" : "OUTCOME_UNKNOWN", "Request outcome could not be confirmed. Reload before retrying.")
     }
     let payload: unknown
-    try { payload = JSON.parse(decodeRequestBody(await readLimitedRequestBody(upstream as unknown as Request, 2_000_000))) }
+    try { payload = JSON.parse(decodeRequestBody(await readLimitedRequestBody(upstream as unknown as Request, kind === "provider-direct" ? 2048 : 2_000_000))) }
     catch (error) {
+      if (kind === "provider-direct") return connectorProxyFailure(502, body ? "OUTCOME_UNKNOWN" : "INVALID_RESPONSE")
       if (kind === "supabase-token" || kind === "approval-decision" || kind === "bind-project") return connectorProxyFailure(502, "OUTCOME_UNKNOWN")
       throw error
     }
     if (!upstream.ok) {
+      if (kind === "provider-direct") {
+        const status = [400, 401, 403, 404, 409, 415, 422, 429, 503].includes(upstream.status) ? upstream.status : 502
+        // Do not reflect operator/provider details (including arbitrary error codes) to the browser.
+        const failure = z.object({ error: z.object({ code: z.enum(["DIRECT_ATTESTATION_REQUIRED", "REVISION_CONFLICT", "STORAGE_UNAVAILABLE"]) }) }).safeParse(payload)
+        return connectorProxyFailure(status, failure.success ? failure.data.error.code : undefined)
+      }
       const failure = z.object({ error: z.object({ code: z.string().regex(/^[A-Z0-9_]{1,80}$/), message: z.string().max(300) }) }).safeParse(payload)
       if (failure.success) return connectorProxyFailure(upstream.status, failure.data.error.code, ["supabase-token", "bind-project"].includes(kind) ? undefined : failure.data.error.message)
       return connectorProxyFailure([400, 401, 403, 404, 409, 422, 429, 503].includes(upstream.status) ? upstream.status : 502)
+    }
+    if (kind === "provider-direct") {
+      const result = directPolicyStatus(path[1], body ? directPolicyUpdate.parse(body) : undefined).safeParse(payload)
+      return result.success ? NextResponse.json(result.data, { headers }) : connectorProxyFailure(502, body ? "OUTCOME_UNKNOWN" : "INVALID_RESPONSE")
     }
     if (kind === "bind-project") {
       const receipt = z.object({ connector_id: z.literal(path[1]), revision: z.literal(Number(body?.expected_revision) + 1) }).safeParse(payload)

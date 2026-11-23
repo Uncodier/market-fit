@@ -113,6 +113,78 @@ it("protects the approval inbox and never forwards caller-selected execution arg
   expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ site_id: siteId })
 })
 
+describe("provider-direct manager opt-in", () => {
+  const path = ["connections", attemptId, "provider-direct"]
+  const url = path.join("/")
+  const input = { site_id: siteId, expected_revision: 3, expected_direct_revision: 6, enabled: true }
+  const dto = { connector_id: attemptId, revision: 3, direct_revision: 7, attested: true, enabled: true }
+  const get = (suffix = "") => proxyConnector(request(`${url}?site_id=${siteId}${suffix}`), path)
+  const patch = (body: unknown = input, suffix = "", headers?: Record<string, string>) => proxyConnector(request(url + suffix, "PATCH", body, headers), path)
+
+  it("protects both reads and writes with verified site manager access, including the original session and origin", async () => {
+    getUser.mockResolvedValueOnce({ data: { user: null } }); expect((await get()).status).toBe(401)
+    for (const send of [get, patch]) {
+      rpc.mockResolvedValueOnce({ data: [{ can_view: true, can_manage: false }] }); expect((await send()).status).toBe(403)
+      rpc.mockResolvedValueOnce({ data: [] }); expect((await send()).status).toBe(403)
+    }
+    getSession.mockResolvedValueOnce({ data: { session: { user: { id: siteId }, access_token: credential } } })
+    expect((await patch()).status).toBe(401)
+    expect((await patch(input, "", { origin: "https://other.example.test" })).status).toBe(403)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("accepts only site scope on GET and an explicit revision-bound boolean on PATCH", async () => {
+    for (const query of ["&q=other", `&site_id=${userId}`, "&attested=true"]) expect((await get(query)).status).toBe(400)
+    expect((await patch(input, `?site_id=${userId}`)).status).toBe(400)
+    for (const extra of [{ attested: true }, { allowed_tools: [] }, { catalog_reads: true }, { actor_id: userId },
+      { expected_revision: 0 }, { expected_revision: 2_147_483_647 }, { expected_direct_revision: undefined },
+      { expected_direct_revision: 2_147_483_647 }, { enabled: 1 }, { enabled: undefined }]) {
+      expect((await patch({ ...input, ...extra })).status).toBe(400)
+    }
+    expect((await proxyConnector(request(url, "POST", input), path)).status).toBe(404)
+    expect((await proxyConnector(request(url), ["connections", "other", "provider-direct"])).status).toBe(404)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("returns only the bound policy DTO and forwards only the actor bearer", async () => {
+    fetchMock.mockResolvedValueOnce(Response.json({ ...dto, attestation_id: userId, evidence_ref: credential }))
+    const response = await get()
+    expect(await response.json()).toEqual(dto)
+    expect(response.headers.get("cache-control")).toBe("private, no-store")
+    expect(rpc).toHaveBeenCalledWith("connector_site_access", { p_site_id: siteId, p_user_id: userId })
+    const [target, init] = fetchMock.mock.calls[0]
+    expect(target.href).toBe(`https://api.example.test/api/connectors/${url}?site_id=${siteId}`)
+    expect(init.headers.authorization).toBe(`Bearer ${credential}`)
+    for (const enabled of [true, false]) {
+      const change = { ...input, enabled }; const receipt = { ...dto, enabled, attested: enabled }
+      fetchMock.mockResolvedValueOnce(Response.json({ ...receipt, provider_project_id: credential }))
+      expect(await (await patch(change)).json()).toEqual(receipt)
+      expect(JSON.parse(fetchMock.mock.calls.at(-1)![1].body)).toEqual(change)
+    }
+  })
+
+  it("rejects a substituted account, wrong revision, wrong state, inconsistent proof or ambiguous success", async () => {
+    fetchMock.mockResolvedValueOnce(Response.json({ ...dto, connector_id: userId }))
+    expect((await get()).status).toBe(502)
+    for (const reply of [{ ...dto, revision: 4 }, { ...dto, direct_revision: 6 }, { ...dto, enabled: false }, { ...dto, attested: false },
+      { ...dto, connector_id: userId }, { ...dto, enabled: "true" }, {}]) {
+      fetchMock.mockResolvedValueOnce(Response.json(reply))
+      expect((await (await patch()).json()).error.code).toBe("OUTCOME_UNKNOWN")
+    }
+    fetchMock.mockResolvedValueOnce(new Response("Not JSON"))
+    expect((await (await patch()).json()).error.code).toBe("OUTCOME_UNKNOWN")
+    expect(fetchMock).toHaveBeenCalledTimes(9)
+  })
+
+  it.each(["DIRECT_ATTESTATION_REQUIRED", "REVISION_CONFLICT", "PRIVATE_DETAIL_FROM_UPSTREAM"])("returns safe status for %s, never raw upstream errors", async code => {
+    fetchMock.mockResolvedValueOnce(Response.json({ error: { code, message: credential } }, { status: 409 }))
+    const response = await patch()
+    expect(response.status).toBe(409)
+    expect(await response.json()).toEqual({ error: { code: code.startsWith("PRIVATE") ? "REQUEST_FAILED" : code, message: "Connector request could not be confirmed." } })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+})
+
 it("projects bounded thread context fields without passing raw source messages or provider data to the client", async () => {
   const item = { id: attemptId, connector_id: attemptId, agent_id: userId, conversation_id: attemptId,
     review_conversation_id: attemptId, account_label: "Support", tool_slug: "GMAIL_FETCH_EMAILS", version: "1", arguments: {},

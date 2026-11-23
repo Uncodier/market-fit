@@ -3,10 +3,16 @@ import type { ApiResponse } from '@/app/services/api-client-response'
 type AdmissionFailure = 'busy' | 'capacity' | 'unavailable'
 
 export function isAssistantResultUnconfirmed(response: ApiResponse): boolean {
-  return !response.success && [
+  if (response.success || response.execution_started === false) return false
+  if (!response.error?.code && [500, 502, 503, 504].includes(response.status ?? 0)) return true
+  return [
     'ASSISTANT_STREAM_MISSING',
     'ASSISTANT_STREAM_INCOMPLETE',
     'ASSISTANT_STREAM_INTERRUPTED',
+    'ASSISTANT_START_UNCONFIRMED',
+    'ASSISTANT_ADMISSION_UNCONFIRMED',
+    'ASSISTANT_CONNECTION_UNCONFIRMED',
+    'ASSISTANT_START_FAILED', // Older servers could lose the workflow start acknowledgement.
   ].includes(response.error?.code || '')
 }
 

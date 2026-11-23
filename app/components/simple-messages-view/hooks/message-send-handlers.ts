@@ -127,6 +127,19 @@ export async function sendAssistantMessage(params: {
       onAccepted,
     })
 
+    // A replay acknowledgement identifies the original action; it is not a
+    // second SSE stream, a new workflow start, or a copy of a historical answer.
+    if (response.status === 202) {
+      if (response.data?.code !== 'ASSISTANT_REQUEST_RECORDED' || response.data.replayed !== true) {
+        params.onUnconfirmed?.()
+        toast({ title: 'Assistant status unconfirmed', description: 'Check this conversation before sending again.' })
+        return false
+      }
+      onAccepted?.()
+      if (!['completed', 'failed', 'paused', 'stopped', 'cancelled'].includes(response.data.action_status)) params.onUnconfirmed?.()
+      toast({ title: 'Message already recorded', description: 'Check the original turn for its result. No new execution was started.' })
+      return false
+    }
     if (response.success) return true
 
     const admissionFailure = getAssistantAdmissionFailure(response)

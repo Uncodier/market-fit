@@ -286,3 +286,15 @@ it('keeps a rejected first-message draft and resets the new conversation sent st
   expect(onMessageSent).toHaveBeenLastCalledWith(false)
   hook.unmount()
 })
+
+it.each([false, true])('never queues or resends the retained draft after ambiguous admission, first send: %s', async first => {
+  ;(sendAssistantMessage as jest.Mock).mockImplementation(async ({ onUnconfirmed }) => { onUnconfirmed(); return false })
+  const options = props()
+  const hook = renderHook(() => useMessageSending({ ...options, activeRobotInstance: first ? undefined : options.activeRobotInstance }))
+  await act(async () => { await hook.result.current.handleSendMessage() })
+  options.logsRef.current = [{ id: 'action', log_type: 'user_action', details: { status: 'running' } } as any]
+  await act(async () => { await hook.result.current.handleSendMessage() })
+  expect(sendAssistantMessage).toHaveBeenCalledTimes(1)
+  expect(enqueuePendingWork).not.toHaveBeenCalled()
+  hook.unmount()
+})

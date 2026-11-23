@@ -252,6 +252,7 @@ export class ApiClientService {
     
     // Silence POST request logs
 
+    let assistantDispatched = false;
     try {
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
@@ -270,16 +271,24 @@ export class ApiClientService {
       const timer = isAssistant && !options.timeout ? setTimeout(() => controller.abort(), 75_000) : undefined;
       let response: Response;
       try {
+        const payload = JSON.stringify(body);
+        assistantDispatched = isAssistant;
         response = await fetch(url, {
           method: 'POST',
           redirect: 'error',
           headers,
-          body: JSON.stringify(body),
+          body: payload,
           cache: options.cache || 'no-cache',
           signal: options.timeout ? AbortSignal.timeout(options.timeout) : isAssistant ? controller.signal : undefined,
         });
       } finally {
         clearTimeout(timer);
+      }
+
+      if (isAssistant && response.ok && response.status !== 202 && !response.headers.get('content-type')?.includes('text/event-stream')) {
+        void response.body?.cancel().catch(() => {});
+        return { success: false, retryable: false, status: response.status,
+          error: { code: 'ASSISTANT_STREAM_MISSING', message: 'The assistant result could not be confirmed.' } };
       }
 
       return await handleApiResponse<T>(response, { onAccepted: options.onAccepted });
@@ -316,6 +325,7 @@ export class ApiClientService {
         retryable: endpoint === '/api/robots/instance/assistant' ? false : undefined,
         error: {
           message: errorMessage,
+          ...(assistantDispatched ? { code: 'ASSISTANT_CONNECTION_UNCONFIRMED' } : {}),
           details: errorDetails
         }
       };

@@ -168,7 +168,8 @@ environment variables before changing production configuration.
 
 ## Product designs
 
-- [Robots connector catalog reads](CONNECTORS_INSTANCE_CATALOG.md) — new connection defaults, per-account controls, execution limits, agent recovery and rollout order.
+- [Provider-direct execution in private Robots Ask](CONNECTORS_PROVIDER_DIRECT.md) — external account verification, explicit per-connection opt-in, real writes and fees, private receipts and provider-independent revocation.
+- [Historical Robots connector catalog reads](CONNECTORS_INSTANCE_CATALOG.md) — saved read-only policies, earlier reporting adapters and rollout history; not provider-direct authority.
 - [Connector validation archive](CONNECTORS_VALIDATION_HISTORY.md) — historical offline test results for the initial connector release, not live provider acceptance.
 - [Connectors implementation and rollout](CONNECTORS_IMPLEMENTATION.md) — local implementation boundaries, provider attestation/configuration, version-pinned REST execution, migrations and remaining live/deployment gates.
 - [Connectors and skill-aware discovery](CONNECTORS_ARCHITECTURE.md) — approved target architecture for the native catalogue, connector resources, domain/skill registry and phased rollout; current local coverage is in the implementation guide.

@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { supportPublication } from "@/app/connectors/support-publication"
+import { directPolicyUpdate } from "@/app/connectors/provider-direct-contract"
 import { toolActionFilterSchema } from "@/app/connectors/tool-action-types"
 
 const uuid = z.string().uuid()
@@ -30,6 +31,7 @@ export function connectorRoute(path: string[], method: string) {
     if (method === "POST" && path[0] === "approvals" && ["approve", "reject"].includes(path[2])) return "approval-decision"
     if (method === "POST" && path[0] === "auth-attempts" && path[2] === "complete") return "complete"
     if (path[0] === "connections") {
+      if ((method === "GET" || method === "PATCH") && path[2] === "provider-direct") return "provider-direct"
       if (method === "POST" && path[2] === "bind-project") return "bind-project"
       if (method === "POST" && ["disconnect", "sync"].includes(path[2])) return "disconnect"
       if (method === "PATCH" && path[2] === "access") return "access"
@@ -40,6 +42,7 @@ export function connectorRoute(path: string[], method: string) {
 }
 
 export function parseConnectorBody(kind: string, input: unknown) {
+  if (kind === "provider-direct") return directPolicyUpdate.parse(input)
   if (kind === "bind-project") return site.extend({ expected_revision: z.number().int().positive().max(2_147_483_646),
     project_ref: z.string().length(20).regex(/^[a-z]{20}$/) }).strict().parse(input)
   if (kind === "approval-decision") return site.parse(input)
@@ -62,7 +65,8 @@ export function parseConnectorBody(kind: string, input: unknown) {
 }
 
 export function parseConnectorQuery(query: URLSearchParams, kind?: string) {
-  if ([...new Set(query.keys())].some(key => query.getAll(key).length !== 1)) throw new Error("Duplicate query")
+  if ([...new Set(query.keys())].some(key => query.getAll(key).length !== 1)) throw new SyntaxError("Duplicate query")
+  if (kind === "provider-direct") return site.parse(Object.fromEntries(query))
   const page = z.string().regex(/^[1-9][0-9]{0,5}$/).refine(value => Number(value) <= 100_000).optional()
   if (kind === "tool-catalog") return site.extend({
     q: z.string().max(200).optional(), cursor: z.string().max(2048).optional(), page, action: toolActionFilterSchema.optional(),

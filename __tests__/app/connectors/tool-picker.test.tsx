@@ -17,7 +17,7 @@ const path = "/api/connectors/catalog/mail/tools?site_id=site-1&page="
 function editor(allowed_tools: string[] = []) {
   const onSave = jest.fn()
   render(<ConnectorPolicyEditor siteId="site-1" access={{ ...access, reviewed_tools: [], policy: { ...access.policy, allowed_tools } }}
-    connector={connector} canManage pending={false} save={onSave} />)
+    connector={connector} canManage pending={false} save={onSave} onChanged={jest.fn()} />)
   return onSave
 }
 

@@ -10,15 +10,26 @@ jest.mock("@/app/hooks/use-mobile-view", () => ({ useIsMobile: () => false }))
 const http = jest.mocked(fetch)
 const local = { ...connector, id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" }
 
-function offline(canManage: boolean, selected?: string, wrongReceipt = false) {
+function offline(canManage: boolean, selected?: string, wrongReceipt = false, legacyAccessUnavailable = false) {
   let revision = local.revision
+  let directRevision = 7
   let reads = true
+  let direct = true
   jest.mocked(useSearchParams).mockReturnValue(new URLSearchParams(selected ? { connector: selected } : {}) as ReturnType<typeof useSearchParams>)
   http.mockImplementation(async (input, init) => {
     const path = String(input)
     if (path.startsWith("/api/connectors/catalog")) return jsonResponse({ error: { code: "PROVIDER_UNAVAILABLE" } }, 503)
-    if (path === "/api/connectors/connections?site_id=site-1") return jsonResponse({ can_manage: canManage, items: [{ ...local, revision }] })
-    if (path === `/api/connectors/connections/${local.id}/access?site_id=site-1`) return jsonResponse({ ...access,
+    if (path === "/api/connectors/connections?site_id=site-1") return jsonResponse({ can_manage: canManage, items: [{ ...local, enabled: true, revision }] })
+    if (path === `/api/connectors/connections/${local.id}/provider-direct?site_id=site-1`) {
+      return jsonResponse({ connector_id: local.id, revision, direct_revision: directRevision, attested: true, enabled: direct })
+    }
+    if (path === `/api/connectors/connections/${local.id}/provider-direct` && init?.method === "PATCH") {
+      expect(JSON.parse(String(init.body))).toEqual({ site_id: "site-1", expected_revision: revision, expected_direct_revision: directRevision, enabled: false })
+      direct = false
+      return jsonResponse({ connector_id: local.id, revision, direct_revision: ++directRevision, attested: true, enabled: direct })
+    }
+    if (path === `/api/connectors/connections/${local.id}/access?site_id=site-1`) return legacyAccessUnavailable
+      ? jsonResponse({ error: { code: "STORAGE_UNAVAILABLE" } }, 503) : jsonResponse({ ...access,
       connector_id: local.id, revision, can_manage: canManage, policy: { ...access.policy, catalog_reads: reads } })
     if (path === `/api/connectors/connections/${local.id}/policy` && init?.method === "PATCH") {
       expect(JSON.parse(String(init.body))).toEqual({ site_id: "site-1", expected_revision: revision, catalog_reads: false })
@@ -40,12 +51,34 @@ test.each(["detail", "catalog"])("cold %s page can revoke and confirm the settin
   expect(http.mock.calls.filter(([url]) => String(url).startsWith("/api/connectors/catalog"))).toHaveLength(1)
 })
 
+test.each(["detail", "catalog"])("cold %s page revokes direct access even if both metadata and old policy reads are unavailable", async page => {
+  offline(true, page === "detail" ? local.id : undefined, false, true)
+  render(page === "detail" ? <DetailContent siteId="site-1" slug="mail" /> : <CatalogContent siteId="site-1" />)
+  const revoke = await screen.findByRole("button", { name: "Revoke provider-direct access" })
+  expect(screen.getByText(/Active for the current verification/)).toBeVisible()
+  fireEvent.click(revoke)
+  expect(await screen.findByText("Inactive — no effective opt-in")).toBeVisible()
+  expect(screen.queryByRole("button", { name: "Enable provider-direct execution" })).not.toBeInTheDocument()
+  const writes = http.mock.calls.filter(([, init]) => init?.method === "PATCH")
+  expect(writes.map(([url]) => url)).toEqual([`/api/connectors/connections/${local.id}/provider-direct`])
+  expect(http.mock.calls.filter(([url]) => String(url).startsWith("/api/connectors/catalog"))).toHaveLength(1)
+})
+
+test("the local fallback does not request direct status for a nonmanager", async () => {
+  offline(false, local.id)
+  render(<DetailContent siteId="site-1" slug="mail" />)
+  await screen.findByRole("alert")
+  expect(http.mock.calls.some(([url]) => String(url).includes("/provider-direct"))).toBe(false)
+  expect(screen.queryByRole("button", { name: "Revoke provider-direct access" })).not.toBeInTheDocument()
+})
+
 test("a hidden or foreign deep link never falls back to a visible account", async () => {
   offline(true, "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")
   render(<DetailContent siteId="site-1" slug="mail" />)
   expect(await screen.findByText(/There are no accounts available/)).toBeVisible()
   expect(screen.queryByText(local.display_name)).not.toBeInTheDocument()
   expect(http.mock.calls.some(([url]) => String(url).includes("/access?"))).toBe(false)
+  expect(http.mock.calls.some(([url]) => String(url).includes("/provider-direct"))).toBe(false)
 })
 
 test("a failed revision receipt never displays a successful revocation", async () => {

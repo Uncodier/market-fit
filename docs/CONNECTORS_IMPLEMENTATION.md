@@ -1,4 +1,5 @@
-# Connectors implementation and rollout
+# Connectors implementation and rollout history
+For the current private Robots Ask path, see [Provider-direct execution](CONNECTORS_PROVIDER_DIRECT.md). The read-only inventories, SQL examples and deployment evidence below describe earlier releases, not direct access or universal setup.
 
 ## Customer Support discovery (local; not deployed)
 

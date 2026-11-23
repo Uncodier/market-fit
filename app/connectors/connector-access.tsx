@@ -48,6 +48,6 @@ export function ConnectorAccessPanel({ siteId, connector, canManage, onChanged }
       </SectionCardContent>
     </SectionCard>
     {manageable && (["member", "agent"] as const).map(kind => <ConnectorGrantEditor key={`${data.connector_id}:${data.revision}:${kind}`} access={data} kind={kind} pending={mutation.pending || !!mutation.error} save={update => void save("access", update)} />)}
-    <ConnectorPolicyEditor siteId={siteId} key={`${connector.id}:${data.revision}`} access={data} connector={connector} canManage={manageable} pending={mutation.pending} blocked={!!mutation.error} save={update => void save("policy", update)} />
+    <ConnectorPolicyEditor siteId={siteId} key={`${connector.id}:${data.revision}`} access={data} connector={connector} canManage={manageable} pending={mutation.pending} blocked={!!mutation.error} save={update => void save("policy", update)} onChanged={onChanged} />
   </div>
 }

@@ -7,13 +7,14 @@ import { Input } from "@/app/components/ui/input"
 import { publicationLabel, type SupportPublication } from "./support-publication"
 import { RadioGroup, RadioGroupItem } from "@/app/components/ui/radio-group"
 import { ConnectorToolPicker } from "./connector-tool-picker"
+import { ProviderDirectSection } from "./provider-direct-settings"
 import { SectionCard, SectionCardHeader, SectionCardContent, SectionCardFooter } from "@/app/components/ui/section-card"
 import type { Connector, ConnectorAccess, ToolAccessMode } from "./types"
 
 export type PolicyUpdate = { catalog_reads: false } | { tool_access_mode: ToolAccessMode; allowed_tools: string[]; allowed_hosts: string[]; require_approval: boolean; enabled: boolean; catalog_reads?: true; support_publication?: SupportPublication | null }
 
-export function ConnectorPolicyEditor({ siteId, access, connector, canManage, pending, blocked = false, save }: {
-  siteId: string; access: ConnectorAccess; connector: Connector; canManage: boolean; pending: boolean; blocked?: boolean; save: (policy: PolicyUpdate) => void
+export function ConnectorPolicyEditor({ siteId, access, connector, canManage, pending, blocked = false, save, onChanged }: {
+  siteId: string; access: ConnectorAccess; connector: Connector; canManage: boolean; pending: boolean; blocked?: boolean; save: (policy: PolicyUpdate) => void; onChanged: () => void
 }) {
   const { t } = useLocalization()
   const savedMode = access.policy.tool_access_mode ?? "selected"
@@ -47,7 +48,7 @@ export function ConnectorPolicyEditor({ siteId, access, connector, canManage, pe
       ...(showPublication ? { support_publication: audience === "off" ? null : { audience, label_id: labelId } } : {}),
     })
   }
-  return <SectionCard id="tools-permissions">
+  return <><SectionCard id="tools-permissions">
     <SectionCardHeader title={t("connectors.policy")} description={t("connectors.policyHelp")} />
     <SectionCardContent>
       {canManage ? <RadioGroup aria-label={t("connectors.toolMode")} value={mode} disabled={blocked || pending} onValueChange={value => { if (value === "all" || value === "selected") setMode(value) }}>
@@ -86,4 +87,7 @@ export function ConnectorPolicyEditor({ siteId, access, connector, canManage, pe
     </SectionCardContent>
     {canManage && <SectionCardFooter onSave={savePolicy} dirty={dirty} saving={pending} saveDisabled={blocked || pending || !dirty || invalidDraft} saveLabel={t("connectors.savePolicy")} savingLabel={t("connectors.saving")} />}
   </SectionCard>
+    <ProviderDirectSection key={`${siteId}:${connector.id}:${access.revision}`} siteId={siteId} connector={connector} canManage={canManage}
+      policy={access.policy} blockEnable={dirty || blocked || pending} onChanged={onChanged} />
+  </>
 }

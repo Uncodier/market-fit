@@ -44,7 +44,8 @@ it('bounds stalled auth and returns a visible failure without issuing a request'
 it('never retries an ambiguous assistant network failure', async () => {
   ;(fetch as jest.Mock).mockRejectedValue(new TypeError('Failed to fetch'))
   const { apiClient } = await import('@/app/services/api-client-service')
-  await expect(apiClient.post('/api/robots/instance/assistant', {})).resolves.toMatchObject({ success: false, retryable: false })
+  await expect(apiClient.post('/api/robots/instance/assistant', {})).resolves.toMatchObject({ success: false, retryable: false,
+    error: { code: 'ASSISTANT_CONNECTION_UNCONFIRMED' } })
 })
 
 it.each([

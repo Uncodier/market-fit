@@ -19,7 +19,7 @@ test("an old Supabase policy stays selected until a mode-only change is saved", 
   expect(save).toBeDisabled()
   fireEvent.click(all)
   expect(save).toBeEnabled()
-  expect(screen.getByText("No reviewed tools for this connection yet.")).toBeVisible()
+  expect(screen.getByText("No tools in the separate reviewed inventory.")).toBeVisible()
   expect(screen.getByText(/become compatible in the future/)).toBeVisible()
   expect(screen.getByText(/Selecting a catalogue entry does not by itself authorize execution/)).toBeVisible()
   expect(screen.getByRole("checkbox", { name: "Allow instance catalogue reads" })).not.toBeChecked()
@@ -47,12 +47,12 @@ test.each([true, false])("shows API-provided all mode without interpreting an em
   expect(await screen.findByText("All compatible tools")).toBeVisible()
   if (canManage) {
     expect(screen.getByRole("radio", { name: "All compatible tools" })).toBeChecked()
-    expect(screen.getByText("Currently reviewed for execution: 1")).toBeVisible()
+    expect(screen.getByText("Tools in the separate reviewed inventory: 1")).toBeVisible()
     expect(screen.getByRole("button", { name: "Save policy" })).toBeDisabled()
   } else {
     expect(screen.queryByRole("radio")).not.toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Save policy" })).not.toBeInTheDocument()
-    expect(screen.queryByText("No reviewed tools for this connection yet.")).not.toBeInTheDocument()
+    expect(screen.queryByText("No tools in the separate reviewed inventory.")).not.toBeInTheDocument()
   }
   expect(screen.queryByText("No tools allowed.")).not.toBeInTheDocument()
   expect(fetchMock).toHaveBeenCalledTimes(1)

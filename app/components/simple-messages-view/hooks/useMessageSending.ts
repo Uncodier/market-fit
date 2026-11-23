@@ -61,6 +61,7 @@ export const useMessageSending = ({
   const activeRequestIdRef = useRef<string | null>(null)
   const sendingLockRef = useRef(false)
   const sendingMessageRef = useRef<string | null>(null)
+  const unconfirmedDraftRef = useRef<{ scope: string; message: string; activity: string } | null>(null)
   const loadingInstanceIdRef = useRef<string | null>(null)
   const draftConnectorInstanceRef = useRef<{ scope: string; id: string } | null>(null)
   const { currentSite } = useSite()
@@ -160,9 +161,11 @@ export const useMessageSending = ({
     if (sendScopeRef.current !== sendScope) return success
     if (unconfirmed) {
       // A lost HTTP stream is not workflow completion. Durable logs own recovery.
+      unconfirmedDraftRef.current = { scope: sendScope, message: messageToSend, activity }
       if (thinkingTimeoutRef.current) clearTimeout(thinkingTimeoutRef.current)
       thinkingTimeoutRef.current = null
     } else {
+      unconfirmedDraftRef.current = null
       clearThinkingState()
       clearNewMakinaThinking()
     }
@@ -264,6 +267,12 @@ export const useMessageSending = ({
     if (!currentMessage.trim() || !currentSite?.id) return
 
     const messageToSend = currentMessage.trim()
+    const unresolved = unconfirmedDraftRef.current
+    if ((isWaitingForResponse || isNewMakinaThinking) && unresolved?.scope === sendScope &&
+        unresolved.message === messageToSend && unresolved.activity === selectedActivity) {
+      toast({ title: 'Assistant status unconfirmed', description: 'Check the original turn before sending this message again.' })
+      return
+    }
     // Assistant drafts stay visible until success; a second click must not queue
     // the unchanged in-flight message as an unintended replay.
     if (selectedActivity !== 'robot' && sendingLockRef.current && sendingMessageRef.current === messageToSend) return
@@ -281,7 +290,7 @@ export const useMessageSending = ({
       return
     }
 
-    if (selectedActivity !== 'robot' && isWaitingForResponse && !isBusy) {
+    if (selectedActivity !== 'robot' && (isWaitingForResponse || isNewMakinaThinking) && !isBusy) {
       toast({ title: 'Assistant status unconfirmed', description: 'Wait for this conversation to confirm the previous result before sending another message.' })
       return
     }
@@ -387,6 +396,7 @@ export const useMessageSending = ({
     connector,
     createConnectorInstance,
     isWaitingForResponse,
+    isNewMakinaThinking,
     activeRobotInstance,
     selectedActivity,
     selectedContext,

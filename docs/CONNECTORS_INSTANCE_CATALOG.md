@@ -1,4 +1,6 @@
-# Robots: on-demand connector catalog reads
+# Historical Robots catalogue reads and reporting adapters
+
+The sections below describe the earlier read-only path, not the provider-direct Ask gateway. Its saved settings, reviewed inventory and project-specific reporting examples do not establish current execution authority. For the new private Ask path, see [Provider-direct execution](CONNECTORS_PROVIDER_DIRECT.md): it requires independent verification of the external account and a separate manager opt-in, and it does not offer these SQL/report adapters as a fallback.
 
 This is a per-connection setting for the private interactive instance assistant. It does
 not change the Customer Support, public chat, voice, workflow or legacy MCP
@@ -50,8 +52,11 @@ Support does not disclose a private schema or its errors to public audiences.
 
 - Existing reviewed operations retain their previous policies. The new ordinary
   read path is for bounded native API collection operations (`LIST`, `GET`, or `FETCH`, optionally `ALL`) with a recognized
-  read-only contract, an isolated OAuth account, verifiable resource-specific
-  read grants and safe input/output projections. It does not require adding a
+  read-only contract, an exact private OAuth or API-key account, a verified
+  resource-specific action contract and safe input/output projections. The
+  updated API leaves resource access to the provider for that account rather
+  than trying to reconstruct it from the account's OAuth scope list. A credential
+  with additional scopes cannot change the pinned action being dispatched. It does not require adding a
   tool slug for every compatible provider operation. It does not support every
   provider schema, grant type or possible read operation.
 - External account credentials are not evidence that an unsupported action is safe.
@@ -59,8 +64,8 @@ Support does not disclose a private schema or its errors to public audiences.
   and return a smaller projection; reauthorization is not the fix for a schema
   the adapter cannot verify. The pinned HubSpot company/deal profiles read the
   first bounded page of active IDs and short names without associations or
-  history. The Google Calendar list profile requires a verified read grant and
-  returns only generated labels, not calendar addresses, names or events.
+  history. The Google Calendar list profile relies on the provider to authorize
+  the read and returns only generated labels, not calendar addresses, names or events.
 - `readOnlyHint` alone is not proof. Writes, mixed/unknown effects, credential
   overrides, proxy/file/code execution, shared or Instant accounts and arbitrary
   SQL are not enabled. The creation default cannot override these boundaries.
@@ -91,6 +96,8 @@ delivered output or historical chat content from older versions is not erased.
 ### Direct Supabase SQL
 
 Search for `SUPABASE_RUN_READ_ONLY_QUERY` on the selected Supabase connection.
+This exact action uses a Makinari reporting projection, not the provider's raw
+SQL schema. Other connector actions do not inherit its analytics-grant checks.
 Use `describe`, then supply `query` to calculate figures instead of listing reports.
 No view per KPI is required. The description lists the actual logical tables
 and columns registered for that workspace and project. The local database is recognized automatically from an authorized request, including verified custom domains. A list of report names must not be substituted for a KPI or a different tool capability. Model-supplied project references,

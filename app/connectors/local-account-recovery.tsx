@@ -7,6 +7,7 @@ import { SectionCard, SectionCardContent, SectionCardHeader } from "@/app/compon
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { useState } from "react"
 import { ConnectorError } from "./connector-feedback"
+import { DirectPolicyControls } from "./provider-direct-settings"
 import { scopedConnectorPath } from "./connector-request"
 import { accessSchema, connectionsSchema, type Connector } from "./types"
 import { useConnectorMutation, useConnectorResource } from "./use-connector-resource"
@@ -34,7 +35,12 @@ export function LocalAccountRecovery({ siteId, slug, requestedAccount }: {
         <SelectTrigger aria-label={t("connectors.account")}><SelectValue placeholder={t("connectors.selectAccount")} /></SelectTrigger>
         <SelectContent>{accounts.map(account => <SelectItem key={account.id} value={account.id}>{account.display_name}</SelectItem>)}</SelectContent>
       </Select>}
-      {current && <LocalRevocation key={`${siteId}:${current.id}:${current.revision}`} siteId={siteId} account={current} reloadAccounts={reload} />}
+      {current && <div key={`${siteId}:${current.id}:${current.revision}`} className="space-y-4">
+        <p className="text-sm font-medium">{current.display_name}</p>
+        <h4 className="font-medium">{t("connectors.directTitle")}</h4>
+        <DirectPolicyControls siteId={siteId} connector={current} onChanged={reload} />
+        <LocalRevocation siteId={siteId} account={current} reloadAccounts={reload} />
+      </div>}
     </SectionCardContent>
   </SectionCard>
 }
@@ -57,7 +63,6 @@ function LocalRevocation({ siteId, account, reloadAccounts }: { siteId: string; 
     if (receipt) reloadAccounts()
   }
   return <div className="space-y-2">
-    <p className="text-sm font-medium">{account.display_name}</p>
     {mutation.error ? <ConnectorError error={mutation.error} retry={reloadAccounts} /> : policy.policy.catalog_reads
       ? <Button variant="outline" disabled={mutation.pending} onClick={disable}>{t("connectors.disableLocalReads")}</Button>
       : <p role="status" className="text-sm">{t("connectors.localReadsOff")}</p>}

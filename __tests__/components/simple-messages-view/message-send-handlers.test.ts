@@ -69,14 +69,14 @@ it('transports user-selected speech preferences in context and text-preparation 
 })
 
 it.each(['throw', 'stall'])('shows the original failure even when error telemetry %ss', async mode => {
-  ;(postWithRetry as jest.Mock).mockResolvedValue({ success: false, status: 503, error: { message: 'Assistant capacity is full.' } })
+  ;(postWithRetry as jest.Mock).mockResolvedValue({ success: false, status: 422, error: { message: 'Request rejected.' } })
   ;(markRobotInstanceErrorIfUnanswered as jest.Mock).mockImplementation(() => {
     expect(params.toast).toHaveBeenCalled()
     if (mode === 'throw') throw new Error('logging unavailable')
     return new Promise(() => {})
   })
   await expect(sendAssistantMessage(params)).resolves.toBe(false)
-  expect(params.toast).toHaveBeenCalledWith(expect.objectContaining({ description: 'Assistant capacity is full.', variant: 'destructive' }))
+  expect(params.toast).toHaveBeenCalledWith(expect.objectContaining({ description: 'Request rejected.', variant: 'destructive' }))
 })
 
 it('shares the optimistic turn ID with the API and response reconciliation', async () => {
@@ -119,7 +119,19 @@ it('reports context rejection without issuing a POST or trying to write an error
   expect(markRobotInstanceErrorIfUnanswered).not.toHaveBeenCalled()
 })
 
-it.each(['ASSISTANT_STREAM_MISSING', 'ASSISTANT_STREAM_INCOMPLETE', 'ASSISTANT_STREAM_INTERRUPTED'])(
+it.each(['running', 'completed', 'failed', 'cancelled', 'unknown'])('recognizes a replay without reporting workflow success (%s)', async action_status => {
+  ;(postWithRetry as jest.Mock).mockResolvedValue({ success: true, status: 202,
+    data: { code: 'ASSISTANT_REQUEST_RECORDED', replayed: true, action_status } })
+  const onAccepted = jest.fn(), onUnconfirmed = jest.fn()
+  await expect(sendAssistantMessage({ ...params, onAccepted, onUnconfirmed })).resolves.toBe(false)
+  expect(onAccepted).toHaveBeenCalledTimes(1)
+  expect(onUnconfirmed).toHaveBeenCalledTimes(['running', 'unknown'].includes(action_status) ? 1 : 0)
+  expect(postWithRetry).toHaveBeenCalledTimes(1)
+  expect(markRobotInstanceErrorIfUnanswered).not.toHaveBeenCalled()
+})
+
+it.each(['ASSISTANT_STREAM_MISSING', 'ASSISTANT_STREAM_INCOMPLETE', 'ASSISTANT_STREAM_INTERRUPTED',
+  'ASSISTANT_CONNECTION_UNCONFIRMED', 'ASSISTANT_START_UNCONFIRMED', 'ASSISTANT_ADMISSION_UNCONFIRMED'])(
   'reports %s as unconfirmed tracking, not a failed workflow', async code => {
     ;(postWithRetry as jest.Mock).mockResolvedValue({ success: false, retryable: false, error: { code } })
     const onUnconfirmed = jest.fn()

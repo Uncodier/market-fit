@@ -8,7 +8,7 @@ const toggle = () => screen.getByRole("checkbox", { name: "Allow instance catalo
 const save = () => screen.getByRole("button", { name: "Save policy" })
 function editor(mode: ToolAccessMode, policy: Partial<ConnectorAccess["policy"]>, account: Partial<Connector> = {}, manage = true) {
   const onSave = jest.fn()
-  render(<ConnectorPolicyEditor siteId="site-1" canManage={manage} pending={false} save={onSave}
+  render(<ConnectorPolicyEditor siteId="site-1" canManage={manage} pending={false} save={onSave} onChanged={jest.fn()}
     connector={{ ...connector, enabled: true, ...account }} access={{ ...access, policy: {
       ...access.policy, tool_access_mode: mode, allowed_tools: ["MAIL_GET_LABEL"], ...policy,
     } }} />)
@@ -19,7 +19,7 @@ test.each(["all", "selected"] as const)("an existing disabled policy stays off u
   const onSave = editor(mode, { catalog_reads: false })
   expect(toggle()).not.toBeChecked(); expect(save()).toBeDisabled()
   expect(screen.getByText(mode === "all" ? /including future entries/ : /among those exact IDs/)).toBeVisible()
-  expect(screen.getByText(/read-only SELECT queries on authorized analytics sources.*separate platform grant.*Writes and unsupported actions are not enabled/)).toBeVisible()
+  expect(screen.getByText(/legacy read-only setting.*does not enable or revoke provider-direct execution.*authorize writes/)).toBeVisible()
   fireEvent.click(toggle()); fireEvent.click(save())
   expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ catalog_reads: true, tool_access_mode: mode, allowed_tools: ["MAIL_GET_LABEL"], allowed_hosts: ["assistant"] }))
   fireEvent.click(toggle()); expect(save()).toBeDisabled()

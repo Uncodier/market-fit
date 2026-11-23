@@ -377,8 +377,12 @@ Browser assistant sends use the authenticated same-origin
 `/api/robots/instance/assistant` proxy, not the configured external API URL
 directly. The API owns user-log persistence; a new send carries a fresh
 `request_id`. Repeating the same text is a new turn, not a duplicate. Retries
-may only recognize a final response associated with the current request's user
-log, never a historical answer or tool activity.
+of a keyed HTTP submission reuse its server-scoped action identity, including
+on first session creation. A matching duplicate returns `202` with the original
+action ID/status instead of starting another workflow; changed content returns
+`409`. A replay acknowledgement is not an assistant answer. Current access
+checks still apply. The web client does not automatically replay an ambiguous
+POST or queue its unchanged unresolved draft as a new command.
 
 The Robots timeline previews a submitted assistant message immediately, before
 context/session checks or admission. This local-only preview shares the send's
