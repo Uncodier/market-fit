@@ -1,8 +1,8 @@
 # Historical Robots catalogue reads and reporting adapters
 
-The sections below describe the earlier read-only path, not the private Ask gateway. Its saved settings, reviewed inventory and project-specific reporting examples do not establish current execution authority. See [Connected accounts in Robots Ask](CONNECTORS_PROVIDER_DIRECT.md) for the proposed default on new, verified connections and the separate rules for historical accounts. Ask does not offer these SQL/report adapters as a fallback.
+The sections below describe the earlier read-only path, not the private Ask gateway. Its saved settings, reviewed inventory and project-specific reporting examples do not establish current execution authority. See [Connected accounts in Robots Ask](CONNECTORS_PROVIDER_DIRECT.md) for the proposed default on new, verified connections and the separate rules for historical accounts. The scoped Makinari metrics report has been retired from Ask. Historical private receipt access is unchanged. Ask does not offer these SQL/report adapters as a fallback.
 
-This is a per-connection setting for the private interactive instance assistant. It does
+Historically this was a per-connection setting for the private interactive instance assistant. It does
 not change the Customer Support, public chat, voice, workflow or legacy MCP
 permissions. Browsing an integration, saving a tool ID or selecting an account
 in Robots is not a grant.

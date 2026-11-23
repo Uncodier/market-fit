@@ -54,6 +54,7 @@ describe('private Robots tool logs', () => {
     [{ action: 'describe', private_arguments: true, tool_origin: 'makinari_report' }, 'Describe: Internal Makinari report'],
     [{ action: 'search', private_arguments: true, tool_origin: 'private-canary' }, 'Search: Private tools'],
     [{ action: 'call', name: 'report:private-canary', args: 'private-canary' }, 'Call: Internal Makinari report'],
+    [{ action: 'search', query: ' REPORT :private-canary' }, 'Search: Internal Makinari report'],
     [{ action: 'list' }, 'List: Private tools'],
   ] as const)('uses only the safe label and outcome, including expanded details and copy text', (tool_args, label) => {
     const log: InstanceLog = { ...baseLog, tool_name: 'tools', tool_args,

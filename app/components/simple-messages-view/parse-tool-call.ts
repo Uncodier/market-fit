@@ -79,7 +79,8 @@ export function getToolCallMeta(log: InstanceLog): ToolCallMeta {
   const privatePage = wrapper && (operation === 'search' || operation === 'list') &&
     (output?.connector_next_cursor != null || (operation === 'search' && output?.connector_status && output?.query === undefined) ||
       (Array.isArray(output?.tools) && output.tools.some((tool: any) => originFromRef(tool?.name) || tool?.connector_id || tool?.account_label || tool?.tool_origin)))
-  const origin = directOrigin || originFromRef(args?.name) || originFromRef(args?.action_name) || originFromRef(kvs.name) || originFromRef(kvs.action_name)
+  const queryOrigin = (operation === 'search' || operation === 'list') && (originFromRef(args?.query) || originFromRef(kvs.query))
+  const origin = directOrigin || queryOrigin || originFromRef(args?.name) || originFromRef(args?.action_name) || originFromRef(kvs.name) || originFromRef(kvs.action_name)
   if (directOrigin || ((wrapper || facade || rawName === 'skill_lookup') && (
     origin || facade || privatePage || (rawName === 'skill_lookup' && output?.connector_capabilities?.capabilities?.length) ||
     args?.name === 'use_composio_tools' || args?.private_arguments === true || kvs.private_arguments === 'true' ||

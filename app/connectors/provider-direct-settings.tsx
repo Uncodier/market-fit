@@ -41,7 +41,7 @@ function allowsAskTools(policy: NonNullable<ManagerProps["policy"]>) {
 }
 
 function askState(status: DirectPolicyStatus, accountActive: boolean, policy?: ManagerProps["policy"]) {
-  if (status.unsupported_reason) return "shared"
+  if (status.unsupported_reason) return "unsupported"
   if (status.setup_pending) return "pending"
   if (!status.enabled) return status.attested ? "off" : "unverified"
   if (!accountActive) return "blocked"
@@ -67,11 +67,11 @@ function DirectPolicySnapshot({ siteId, connector, policy, blockEnable, onChange
   const scopeLabel = all ? t("connectors.directAll") : t("connectors.directSelected", { count: policy?.allowed_tools.length ?? 0 })
   const ready = policy && allowsAskTools(policy)
   const accountActive = connector.enabled && !!connector.verified_at && connector.provider_status === "ACTIVE" && !connector.revocation_pending && !connector.revocation_dispatched
-  const shared = status.unsupported_reason === "shared_makinari_project"
-  const offerEnable = !!policy?.tool_access_mode && accountActive && status.attested && !status.enabled && !status.setup_pending && !shared
+  const unsupported = !!status.unsupported_reason // Compatibility with an explicit denial from older servers.
+  const offerEnable = !!policy?.tool_access_mode && accountActive && status.attested && !status.enabled && !status.setup_pending && !unsupported
   const canEnable = offerEnable && !blockEnable
   // Effective enrollment does not distinguish absent consent from consent for an old proof.
-  const clear = !saved && !status.enabled && !status.setup_pending && (!policy || (!status.attested && !shared))
+  const clear = !saved && !status.enabled && !status.setup_pending && (!policy || (!status.attested && !unsupported))
   const state = askState(status, accountActive, policy)
   const update = async (enabled: boolean) => {
     if (mutation.pending || (enabled && !canEnable)) return

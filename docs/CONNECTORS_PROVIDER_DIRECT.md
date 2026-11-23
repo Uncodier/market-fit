@@ -2,7 +2,7 @@
 
 **For a new eligible OAuth account, connecting is the manager’s decision to allow Ask access.** Before **Continue to authorization**, the dialog explains that authorized members and agents can use the account selected at the provider, subject to saved permissions. Allowed tools can send, change or delete real data and incur provider or Composio fees. Dismiss the dialog instead of continuing if that is not intended.
 
-Generic Ask access turns on without a second manager click **only after** independent verification that the provider limits the credential to the customer’s business data for this workspace. Completing OAuth confirms the connection, not that Ask is available. Existing accounts, attempts started before the new notice, replays and proof renewals do not acquire the new default. The hosted **Supabase API token** setup does not enable generic execution. It can use a separately authorized bounded metrics read on the shared installation, as described below.
+Generic Ask access turns on without a second manager click **only after** independent verification that the provider limits the credential to the customer’s business data for this workspace. Completing OAuth confirms the connection, not that Ask is available. Existing accounts, attempts started before the new notice, replays and proof renewals do not acquire the new default. The hosted **Supabase API token** setup does not enable generic execution. Connecting a token is not proof of workspace isolation.
 
 ## Check or stop access for one account
 
@@ -15,7 +15,7 @@ In **Connectors**, select the intended **Connected account** in the toolkit head
 | **On · tools unavailable** | Enrollment is on, but the account or saved host/tool settings block calls. Broadening the policy later can make tools available. If the server omits the tool mode, the UI says **tool scope unknown** instead. |
 | **Off** | Current verification but no effective enrollment. To use an eligible existing or previously disabled account, choose **Turn on Ask access** and confirm the account and its **saved**, not draft, tool scope. This is not a prerequisite for a new pending account. |
 | **Off · not verified** | No current proof. A manager cannot self-verify from this screen. **Clear any saved Ask access** removes any remaining consent; the button is not evidence of a saved grant. An unknown resource is not labeled as shared. |
-| **Scoped reads only** | The server positively identified Makinari’s shared Supabase project. Generic provider actions are unavailable. An internal Makinari metrics report may be available on this account under a separate policy; this status is not a data grant. |
+| **Unavailable in Ask** | An older server explicitly marked this account unsupported. No enable action is offered. The label does not come from the toolkit or account name. |
 
 If Composio is unavailable, **Manage local account access** on `/connectors` or the toolkit detail page lets a manager cancel setup, turn access off or clear stale consent. It needs the Makinari API and database, not the provider catalogue. It never enables access or switches away from an explicitly requested account. An interrupted save is not confirmation of either outcome. Refresh before acting again; no mutation is automatically retried.
 
@@ -44,26 +44,17 @@ An independent deployment operator must verify the **downstream credential**, no
 
 Existing OAuth and toolkit-specific onboarding remain separate setup paths. Catalogue coverage is not universal account provisioning.
 
-### Shared-project analytics in Instance Ask
+### Retired shared-project report
 
-The new Ask contract separates provider actions from internal metrics. If you ask for a provider action, its reference is `connector:<id>:<SLUG>` and the connector discovery origin defaults to `provider`. If you ask specifically for an **internal Makinari metrics report**, Ask searches the intended account with `tool_origin: "makinari_report"`. The report reference is `report:<id>:MAKINARI_METRICS`. It is neither a provider action named `SUPABASE_RUN_READ_ONLY_QUERY` nor the native `report` tool.
+The local Ask implementation no longer offers the scoped Makinari metrics report on any account. An old report reference or saved report search cannot start a new read or switch to the native `report` tool. Selecting a connection, enabling legacy catalogue reads, or having a previous receipt does not restore this action. Authorized requesters can still open unexpired historical results under **Connectors → Private reports**; their access checks have not changed.
 
-Ask should clarify whether you mean provider data or Makinari metrics when the source is ambiguous. It must not answer a failed provider request with internal figures or switch accounts. The report describes eligible sources and scopes for the selected account. It does not expose arbitrary SQL or project administration. **All tools** is not all-workspaces data access: platform aggregates need a separate entitlement. If that scope is unavailable, Ask must not silently give workspace totals. The requester opens the private result; the model cannot summarize rows it never received.
-
-The earlier member-authority and scoped-read migrations were applied to shared Makinari
-on November 23, 2026 at **07:05:54 UTC**. The schema rollout preserved both
-connections and their policies; it did not issue a platform entitlement, execute
-a query or upgrade old turns. The new report descriptor requires the separate
-[report-source migration](../supabase/migrations/20261123080000_connector_instance_report_sources.sql),
-applied to shared Makinari at **07:44:43 UTC** and independently verified at **07:44:52 UTC** the same day.
-That schema change granted no additional access. Deploy compatible API, worker and web versions
-and verify a fresh Ask turn. Ordinary provider actions do not use the report RPC.
+For rollout, deploy the matching API, worker and web, drain old workers, then apply `20261123090000_retire_instance_scoped_report.sql`. This is a forward-only retirement, not a change to saved connections or OAuth onboarding. It has not been applied as part of this local change.
 
 ## Management interface and rollout
 
 The notice-bearing OAuth dialog starts **only** `POST /api/connectors/auth-attempts/ask` with the existing site, toolkit and auth-config identifiers. There is no browser grant, proof, or policy field. The older `/api/connectors/auth-attempts` start, managed OAuth setup and `/api/connectors/supabase-token` do not record this decision. If the new start fails, do not silently fall back. The [Ask-on-connect migration](../supabase/migrations/20261123030000_connector_ask_on_connect.sql) was applied in the same 07:05 UTC transaction. It is prospective: neither existing account was enrolled. The schema rollout did not deploy the compatible API, worker or web.
 
-`GET /api/connectors/connections/[id]/provider-direct?site_id=<uuid>` and `PATCH /api/connectors/connections/[id]/provider-direct` remain manager-only. PATCH accepts exactly `{site_id, expected_revision, expected_direct_revision, enabled}` and no query parameters. Responses project `{connector_id, revision, direct_revision, attested, enabled}` plus `setup_pending` on the new API and optional `unsupported_reason: "shared_makinari_project"` when reliably identified. Older responses without `setup_pending` do not confirm pending setup. No proof, project reference or provider data is returned. `enabled` is effective enrollment for the current verification, **not** authorization for a particular call. A successful change matches the account and requested boolean, preserves `revision`, advances `direct_revision` by exactly one and leaves no pending setup. A stale revision or missing proof on enable returns `409`; disable requires neither proof nor the catalogue. Direct-only changes invalidate old direct authorizations, not legacy reports.
+`GET /api/connectors/connections/[id]/provider-direct?site_id=<uuid>` and `PATCH /api/connectors/connections/[id]/provider-direct` remain manager-only. PATCH accepts exactly `{site_id, expected_revision, expected_direct_revision, enabled}` and no query parameters. Responses project `{connector_id, revision, direct_revision, attested, enabled}` plus `setup_pending` on the new API. The client also honors `unsupported_reason: "shared_makinari_project"` from older servers. Older responses without `setup_pending` do not confirm pending setup. No proof, project reference or provider data is returned. `enabled` is effective enrollment for the current verification, **not** authorization for a particular call. A successful change matches the account and requested boolean, preserves `revision`, advances `direct_revision` by exactly one and leaves no pending setup. A stale revision or missing proof on enable returns `409`; disable requires neither proof nor the catalogue. Direct-only changes invalidate old direct authorizations, not legacy reports.
 
 The [direct policy](../supabase/migrations/20261123010000_connector_provider_direct.sql) and [private receipt](../supabase/migrations/20261123020000_connector_direct_receipts.sql) migrations were applied together to shared Makinari on November 23, 2026, at **05:52:48 UTC**. Do not replay them there. Independent verification found two preserved accounts and **zero direct enrollments**. The matching API, worker and web were not deployed. Before enrolling a production account, verify eligible and restricted operations, genuine provider denials, revocation, duplicate submission and private receipt delivery on **two separately approved disposable accounts**. No live provider result was established by the schema rollout.
 
