@@ -11,6 +11,7 @@ export interface ToolCallMeta {
   /** Tool being invoked (nested `name` for wrappers, otherwise the tool itself) */
   target: string | null
   thought: string | null
+  privateArguments?: boolean
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -56,11 +57,39 @@ function firstString(...values: Array<string | null | undefined>): string | null
   return null
 }
 
+function originFromRef(value: unknown) {
+  if (typeof value !== 'string') return null
+  if (/^\s*report\s*:/i.test(value)) return 'makinari_report'
+  if (/^\s*connector\s*:/i.test(value)) return 'provider'
+  return null
+}
+
 export function getToolCallMeta(log: InstanceLog): ToolCallMeta {
   const rawName = log.tool_name || log.toolName || null
   const wrapper = Boolean(rawName && WRAPPER_TOOLS.has(rawName))
 
   const kvs = parseToolMessageKvs(log.message)
+  const args = asRecord(log.tool_args)
+  // New shared logs carry only server-projected categories; never derive a display
+  // name from an account label, nested argument, result or the tail of a reference.
+  const directOrigin = originFromRef(rawName)
+  const facade = rawName === 'use_composio_tools'
+  const operation = directOrigin ? 'call' : args?.action ?? kvs.action
+  const output = (log.tool_result || log.tool_results)?.output
+  const privatePage = wrapper && (operation === 'search' || operation === 'list') &&
+    (output?.connector_next_cursor != null || (operation === 'search' && output?.connector_status && output?.query === undefined) ||
+      (Array.isArray(output?.tools) && output.tools.some((tool: any) => originFromRef(tool?.name) || tool?.connector_id || tool?.account_label || tool?.tool_origin)))
+  const origin = directOrigin || originFromRef(args?.name) || originFromRef(args?.action_name) || originFromRef(kvs.name) || originFromRef(kvs.action_name)
+  if (directOrigin || ((wrapper || facade || rawName === 'skill_lookup') && (
+    origin || facade || privatePage || (rawName === 'skill_lookup' && output?.connector_capabilities?.capabilities?.length) ||
+    args?.name === 'use_composio_tools' || args?.private_arguments === true || kvs.private_arguments === 'true' ||
+    ['connector_id', 'connector_cursor', 'catalog_query', 'tool_origin'].some(key => (args && Object.hasOwn(args, key)) || Object.hasOwn(kvs, key))
+  ))) {
+    const category = origin || args?.tool_origin || kvs.tool_origin
+    const target = category === 'makinari_report' ? 'Internal Makinari report' : category === 'provider' ? 'Provider connector' : 'Private tools'
+    const action = operation === 'execute' ? 'call' : typeof operation === 'string' && ['call', 'describe', 'search', 'list', 'get'].includes(operation) ? operation : null
+    return { rawName: directOrigin ? 'tools' : rawName, wrapper: true, action, target, thought: null, privateArguments: true }
+  }
   const fromArgs = pickFromObject(log.tool_args)
   const fromDetails = pickFromObject(log.details)
   const fromResult = pickFromObject(log.tool_result || log.tool_results)
@@ -147,6 +176,7 @@ export function formatToolDisplayName(name: string): string {
 /** Subtitle next to the title: thought_process when the message is a kv dump. */
 export function getToolCallSubtitle(log: InstanceLog): string | null {
   const meta = getToolCallMeta(log)
+  if (meta.privateArguments) return null
   if (meta.thought) return meta.thought
 
   const message = log.message?.trim()

@@ -1,14 +1,14 @@
 import React, { useState, useMemo } from 'react'
 import { Eye, EyeOff, Code, LayoutGrid, Zap, Search, Download } from "@/app/components/ui/icons"
 import { InstanceLog } from '../types'
-import { getToolName, getToolResult, formatBase64Image, getToolLogPlainTextForCopy, formatToolDisplayName, getToolCallSubtitle } from '../utils'
+import { getToolName, getToolResult, formatBase64Image, getToolLogPlainTextForCopy, formatToolDisplayName, getToolCallSubtitle, getToolCallMeta } from '../utils'
 import { InstanceLogCopyFeedbackBar } from './InstanceLogCopyFeedbackBar'
 import { renderObjectWithImages } from '../render-helpers'
 import { GeneratedImageDisplay, GeneratedImageDisplayCollapsed } from './GeneratedImageDisplay'
 import { GeneratedVideoDisplay, GeneratedVideoDisplayCollapsed } from './GeneratedVideoDisplay'
 import { ImageFullscreenViewer } from './ImageFullscreenViewer'
 import { VideoFullscreenViewer } from './VideoFullscreenViewer'
-import { useToast } from '@/app/components/ui/use-toast'
+import { useToolMediaDownloads } from './use-tool-media-downloads'
 
 interface ToolCallItemProps {
   log: InstanceLog
@@ -38,102 +38,9 @@ export const ToolCallItem: React.FC<ToolCallItemProps> = ({
   const toolResult = getToolResult(log)
   const toolSubtitle = getToolCallSubtitle(log)
   const [isFullscreenOpen, setIsFullscreenOpen] = useState(false)
-  const { toast } = useToast()
+  const { handleDownloadImage, handleDownloadVideo } = useToolMediaDownloads(toolResult)
+  const isPrivate = getToolCallMeta(log).privateArguments
   const copyPlainText = useMemo(() => getToolLogPlainTextForCopy(log), [log])
-
-  // Function to download image
-  const handleDownloadImage = async (e: React.MouseEvent) => {
-    e.stopPropagation()
-    
-    if (!toolResult?.output?.images || toolResult.output.images.length === 0) {
-      return
-    }
-
-    const images = toolResult.output.images
-    const downloadImage = async (imageObj: any, index: number) => {
-      try {
-        const imageUrl = typeof imageObj === 'string' ? imageObj : imageObj?.url || ''
-        const response = await fetch(imageUrl)
-        const blob = await response.blob()
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `image-${index + 1}.${blob.type.split('/')[1] || 'png'}`
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        window.URL.revokeObjectURL(url)
-      } catch (err) {
-        console.error('Failed to download image:', err)
-        toast({
-          title: "Download failed",
-          description: `Could not download image ${index + 1}`,
-          variant: "destructive"
-        })
-      }
-    }
-
-    // Download all images
-    for (let i = 0; i < images.length; i++) {
-      await downloadImage(images[i], i)
-      // Small delay between downloads
-      if (i < images.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 300))
-      }
-    }
-
-    toast({
-      title: "Download started",
-      description: `Downloading ${images.length} image(s)...`,
-    })
-  }
-
-  // Function to download video
-  const handleDownloadVideo = async (e: React.MouseEvent) => {
-    e.stopPropagation()
-    
-    if (!toolResult?.output?.videos || toolResult.output.videos.length === 0) {
-      return
-    }
-
-    const videos = toolResult.output.videos
-    const downloadVideo = async (videoObj: any, index: number) => {
-      try {
-        const videoUrl = typeof videoObj === 'string' ? videoObj : videoObj?.url || ''
-        const response = await fetch(videoUrl)
-        const blob = await response.blob()
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `video-${index + 1}.${blob.type.split('/')[1] || 'mp4'}`
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        window.URL.revokeObjectURL(url)
-      } catch (err) {
-        console.error('Failed to download video:', err)
-        toast({
-          title: "Download failed",
-          description: `Could not download video ${index + 1}`,
-          variant: "destructive"
-        })
-      }
-    }
-
-    // Download all videos
-    for (let i = 0; i < videos.length; i++) {
-      await downloadVideo(videos[i], i)
-      // Small delay between downloads
-      if (i < videos.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 300))
-      }
-    }
-
-    toast({
-      title: "Download started",
-      description: `Downloading ${videos.length} video(s)...`,
-    })
-  }
 
   // Helper to check if tool result has an error
   const hasError = toolResult && (toolResult.error || toolResult.success === false)
@@ -153,12 +60,12 @@ export const ToolCallItem: React.FC<ToolCallItemProps> = ({
   const isMediaGeneration = isImageGeneration || isVideoGeneration
 
   const hasCollapsibleElements = Boolean(
-    log.screenshot_base64 ||
+    (!isPrivate && log.screenshot_base64) ||
       (toolResult &&
         Object.keys(toolResult).length > 0 &&
         toolName !== 'generate_image' &&
         toolName !== 'generate_video') ||
-      (log.details && Object.keys(log.details).length > 0)
+      (!isPrivate && log.details && Object.keys(log.details).length > 0)
   )
 
   return (
@@ -429,7 +336,7 @@ export const ToolCallItem: React.FC<ToolCallItemProps> = ({
               </div>
             )}
             
-            {log.screenshot_base64 && (
+            {!isPrivate && log.screenshot_base64 && (
               <div className="mt-2 text-muted-foreground">
                 <strong>Captura de pantalla:</strong>
                 <div className="mt-2">
@@ -450,7 +357,7 @@ export const ToolCallItem: React.FC<ToolCallItemProps> = ({
                 </div>
               </div>
             )}
-            {log.details && Object.keys(log.details).length > 0 && (
+            {!isPrivate && log.details && Object.keys(log.details).length > 0 && (
               <div className="mt-3 text-muted-foreground">
                 <div className="flex items-center gap-2 mb-2">
                   <Eye className="h-3.5 w-3.5 text-blue-600" />

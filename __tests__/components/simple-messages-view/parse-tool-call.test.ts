@@ -81,6 +81,16 @@ describe('getToolName + formatToolDisplayName', () => {
     expect(formatToolDisplayName('clearbit_enrich')).toBe('Clearbit Enrich')
   })
 
+  it('does not confuse a native report action with a qualified internal report', () => {
+    const native = log({ tool_name: 'tools', tool_args: { action: 'call', name: 'report' } })
+    expect(formatToolDisplayName(getToolName(native)!)).toBe('Call: report')
+    const facade = log({ tool_name: 'use_composio_tools', tool_args: {
+      action: 'execute', action_name: 'report:malformed', thought_process: 'do not display',
+    } })
+    expect(formatToolDisplayName(getToolName(facade)!)).toBe('Call: Internal Makinari report')
+    expect(getToolCallSubtitle(facade)).toBeNull()
+  })
+
   it('formats legacy encoded keys without saying Tool Lookup', () => {
     expect(formatToolDisplayName('tools_meta:describe:webSearch')).toBe('Describe: webSearch')
     expect(formatToolDisplayName('tool_lookup_webSearch')).toBe('webSearch')

@@ -15,7 +15,7 @@ In **Connectors**, select the intended **Connected account** in the toolkit head
 | **On · tools unavailable** | Enrollment is on, but the account or saved host/tool settings block calls. Broadening the policy later can make tools available. If the server omits the tool mode, the UI says **tool scope unknown** instead. |
 | **Off** | Current verification but no effective enrollment. To use an eligible existing or previously disabled account, choose **Turn on Ask access** and confirm the account and its **saved**, not draft, tool scope. This is not a prerequisite for a new pending account. |
 | **Off · not verified** | No current proof. A manager cannot self-verify from this screen. **Clear any saved Ask access** removes any remaining consent; the button is not evidence of a saved grant. An unknown resource is not labeled as shared. |
-| **Scoped reads only** | The server positively identified Makinari’s shared Supabase project. Generic delegation is off. On the new scoped path, an authorized user can discover its exact read tool if the saved catalogue/host/tool policy allows it. The status is not itself a data grant. |
+| **Scoped reads only** | The server positively identified Makinari’s shared Supabase project. Generic provider actions are unavailable. An internal Makinari metrics report may be available on this account under a separate policy; this status is not a data grant. |
 
 If Composio is unavailable, **Manage local account access** on `/connectors` or the toolkit detail page lets a manager cancel setup, turn access off or clear stale consent. It needs the Makinari API and database, not the provider catalogue. It never enables access or switches away from an explicitly requested account. An interrupted save is not confirmation of either outcome. Refresh before acting again; no mutation is automatically retried.
 
@@ -24,6 +24,8 @@ If Composio is unavailable, **Manage local account access** on `/connectors` or 
 Makinari decides **who can request which tools**. The provider enforces **which data the selected credential can read or change**. A read-only token or API key stays read-only under **All compatible tools**, even if the catalogue lists write actions. A credential with write permission still cannot be used through Ask for a tool excluded by Makinari. A provider denial ends that call; it is not retried with another account.
 
 Eligible new accounts use the workspace’s member and agent sharing rules, including for principals added later. **Only selected tools** restricts discovery and calls to exact saved IDs; an empty selection allows none. **All compatible tools** includes future eligible provider actions. **Legacy catalogue reads**, where reported, is a separate read-only feature, not a credential permission. Neither it nor browsing a provider catalogue grants Ask access.
+
+For example, two CRM connections can list the same action, but only one credential may be able to update the record. Select the intended account in the Ask picker. If multiple accounts fit, Ask should clarify which one you mean before acting. It uses the toolkit and the final eight characters of the local connection ID shown in the picker, **not** the account name, email address, provider account ID or credential. The full local ID identifies the choice if suffixes coincide. Selecting or naming an account is not consent to change it or use another one.
 
 The private, interactive **Ask** session uses the authenticated member’s own instance. The active same-site agent is pinned to that turn for provenance; it cannot lend or withhold connector use. Autonomous Agents retain their own grants; a background run does not inherit the interactive session. Host, workspace, license, location, assigned-record and relevant screen restrictions still apply. Selecting an account narrows the search; it grants nothing. Describe checks the exact account and provider contract; dispatch checks the version, schema and current authority again.
 
@@ -44,20 +46,18 @@ Existing OAuth and toolkit-specific onboarding remain separate setup paths. Cata
 
 ### Shared-project analytics in Instance Ask
 
-When an authenticated user selects a connection bound to this installation,
-Ask checks the saved member, host, catalogue-read and tool policy. It can offer
-`SUPABASE_RUN_READ_ONLY_QUERY` without first granting generic direct execution.
-Only supported analytics sources and server-compiled read operations are eligible;
-neither free-form SQL nor project administration is exposed. **All tools** is
-not all-workspaces data access. Company-wide figures require a matching explicit
-platform entitlement, and a provider rejection ends the call on that same account.
-The result is delivered to the requester, not copied into a shared log or prompt.
+The new Ask contract separates provider actions from internal metrics. If you ask for a provider action, its reference is `connector:<id>:<SLUG>` and the connector discovery origin defaults to `provider`. If you ask specifically for an **internal Makinari metrics report**, Ask searches the intended account with `tool_origin: "makinari_report"`. The report reference is `report:<id>:MAKINARI_METRICS`. It is neither a provider action named `SUPABASE_RUN_READ_ONLY_QUERY` nor the native `report` tool.
 
-The member-authority and scoped-read migrations were applied to shared Makinari
+Ask should clarify whether you mean provider data or Makinari metrics when the source is ambiguous. It must not answer a failed provider request with internal figures or switch accounts. The report describes eligible sources and scopes for the selected account. It does not expose arbitrary SQL or project administration. **All tools** is not all-workspaces data access: platform aggregates need a separate entitlement. If that scope is unavailable, Ask must not silently give workspace totals. The requester opens the private result; the model cannot summarize rows it never received.
+
+The earlier member-authority and scoped-read migrations were applied to shared Makinari
 on November 23, 2026 at **07:05:54 UTC**. The schema rollout preserved both
 connections and their policies; it did not issue a platform entitlement, execute
-a query or upgrade old turns. Matching applications and a new Ask turn still
-need verification before relying on this behavior.
+a query or upgrade old turns. The new report descriptor requires the separate
+[report-source migration](../supabase/migrations/20261123080000_connector_instance_report_sources.sql),
+applied to shared Makinari at **07:44:43 UTC** and independently verified at **07:44:52 UTC** the same day.
+That schema change granted no additional access. Deploy compatible API, worker and web versions
+and verify a fresh Ask turn. Ordinary provider actions do not use the report RPC.
 
 ## Management interface and rollout
 

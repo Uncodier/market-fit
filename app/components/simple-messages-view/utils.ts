@@ -133,13 +133,23 @@ export const removeDuplicateSteps = (steps: PlanStep[]): PlanStep[] => {
 
 // Helper function to get tool result from various possible field names
 export const getToolResult = (log: InstanceLog): any => {
-  return log.tool_result || log.tool_results || null
+  const result = log.tool_result || log.tool_results || null
+  if (!result || !getToolCallMeta(log).privateArguments) return result
+  // Old rows can contain complete account descriptors or raw provider errors.
+  // Preserve only the recorded status; absence is not evidence that the call ran.
+  return {
+    ...(typeof result.success === 'boolean' && { success: result.success }),
+    ...(['passed', 'failed', 'unknown'].includes(result.operation_outcome) && { operation_outcome: result.operation_outcome }),
+  }
 }
 
 /** Plain text for clipboard + feedback context on tool logs */
 export const getToolLogPlainTextForCopy = (log: InstanceLog): string => {
   const toolName = getToolName(log) || 'Unknown'
   const toolResult = getToolResult(log)
+  if (getToolCallMeta(log).privateArguments) {
+    return `Tool: ${formatToolDisplayName(toolName)}\nResult: ${JSON.stringify(toolResult)}`
+  }
   const resultStr = toolResult ? JSON.stringify(toolResult, null, 2) : ''
   const detailsStr = log.details ? JSON.stringify(log.details, null, 2) : ''
   return `Tool: ${toolName}

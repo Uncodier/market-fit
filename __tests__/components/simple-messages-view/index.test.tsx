@@ -59,7 +59,7 @@ describe('SimpleMessagesView', () => {
     model.connector = { id, name: 'Reporting', toolkit: 'supabase' }
     model.connectorSelection = { ...model.connectorSelection, connector: model.connector, selectedId: id, canSelect: true }
     render(<SimpleMessagesView />)
-    expect(screen.getByRole('button', { name: 'Select connector: Reporting' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Select connector: Reporting · 00000001' })).toBeEnabled()
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 

@@ -25,7 +25,7 @@ test.each(["all", "selected"] as const)("an existing disabled policy stays off u
   const onSave = editor(mode, { catalog_reads: false })
   expect(toggle()).not.toBeChecked(); expect(save()).toBeDisabled()
   expect(screen.getByText(mode === "all" ? /including future entries/ : /among those exact IDs/)).toBeVisible()
-  expect(screen.getByText(/allows scoped metrics reads only when the signed-in member, tool and requested data are authorized/)).toBeVisible()
+  expect(screen.getByText(/internal Makinari metrics report, not provider tool access/)).toBeVisible()
   fireEvent.click(toggle()); fireEvent.click(save())
   expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ catalog_reads: true, tool_access_mode: mode, allowed_tools: ["MAIL_GET_LABEL"], allowed_hosts: ["assistant"] }))
   fireEvent.click(toggle()); expect(save()).toBeDisabled()

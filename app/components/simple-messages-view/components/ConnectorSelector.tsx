@@ -22,11 +22,13 @@ type Props = {
 }
 
 export function ConnectorSelector({ siteId, canSelect, selectedId, selectedName, selectedToolkit, onChange, disabled }: Props) {
+  const selectedLabel = selectedName && isRobotConnectorId(selectedId)
+    ? `${selectedName} · ${selectedId.slice(-8)}` : selectedName
   return <Popover>
     <PopoverTrigger asChild>
       <Button type="button" variant="secondary" size="sm" disabled={disabled || !siteId}
-        aria-label={selectedName ? `Select connector: ${selectedName}` : "Select connector"}
-        title={selectedName || "Connectors"} className="relative h-8 px-2 sm:px-3">
+        aria-label={selectedLabel ? `Select connector: ${selectedLabel}` : "Select connector"}
+        title={selectedLabel || "Connectors"} className="relative h-8 px-2 sm:px-3">
         {selectedToolkit ? <ConnectorLogo compact src={connectorToolkitLogo(selectedToolkit)} name={selectedToolkit} />
           : <Plug className="h-4 w-4 text-sky-600" />}
         <span className="hidden max-w-24 truncate sm:inline">{selectedName || "connectors"}</span>
@@ -34,7 +36,7 @@ export function ConnectorSelector({ siteId, canSelect, selectedId, selectedName,
       </Button>
     </PopoverTrigger>
     <PopoverContent side="top" align="start" aria-label="Connector selection">
-      <p className="mb-2 text-xs text-muted-foreground">Choose one connected account for Ask. You can start a new conversation with it.</p>
+      <p className="mb-2 text-xs text-muted-foreground">Choose the account Ask should use. Match its ID here if Ask asks which connection you mean.</p>
       <fieldset disabled={disabled} className="space-y-2">
         <legend className="sr-only">Connector account</legend>
         {selectedId !== undefined && <Button type="button" variant="ghost" size="sm" onClick={() => onChange()}>
@@ -59,6 +61,8 @@ function ConnectorOptions({ siteId, selectedId, onChange }: Pick<Props, 'selecte
   const [search, setSearch] = useState("")
   const { data, error, reload } = useConnectorResource(scopedConnectorPath('connections', siteId), connectionsSchema)
   const accounts = (data?.items ?? []).filter(account => isRobotConnectorId(account.id) && isUsableConnector(account))
+  const suffixCounts = new Map<string, number>()
+  for (const { id } of accounts) suffixCounts.set(id.slice(-8), (suffixCounts.get(id.slice(-8)) ?? 0) + 1)
   const query = search.trim().toLowerCase()
   const matching = accounts.filter(account => `${account.display_name} ${account.toolkit_slug} ${account.id}`.toLowerCase().includes(query))
   if (error) return <div role="alert" className="text-sm">
@@ -74,7 +78,7 @@ function ConnectorOptions({ siteId, selectedId, onChange }: Pick<Props, 'selecte
         <input type="radio" name={group} checked={account.id === selectedId} onChange={() => onChange(account.id)} />
         <ConnectorLogo compact src={connectorToolkitLogo(account.toolkit_slug)} name={account.toolkit_slug} />
         <span className="min-w-0 break-words">{account.display_name || account.toolkit_slug}
-          <span className="block text-xs text-muted-foreground">{account.toolkit_slug} · {account.id.slice(-8)}</span>
+          <span className="block text-xs text-muted-foreground">{account.toolkit_slug} · Account {suffixCounts.get(account.id.slice(-8)) === 1 ? `…${account.id.slice(-8)}` : account.id}</span>
         </span>
       </label>)}
       {!matching.length && <p role="status" className="text-muted-foreground">No matching connectors.</p>}

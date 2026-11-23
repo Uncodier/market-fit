@@ -141,7 +141,7 @@ test.each([true, false, undefined])("cancel before proof requires an exact recei
 test.each([true, false])("only a server-confirmed shared Makinari project is labeled scoped-read-only (hint: %s)", async known => {
   show(accessDto, true, { ...account, toolkit_slug: "supabase", display_name: "Makinari shared project" })
   await load({ ...status, attested: false, setup_pending: false, ...(known && { unsupported_reason: "shared_makinari_project" }) })
-  expect(await screen.findByText(known ? "Scoped reads only" : "Off · not verified")).toBeVisible()
+  expect(await screen.findByText(known ? "Makinari reports only" : "Off · not verified")).toBeVisible()
   expect(screen.queryByText(/This account is bound to Makinari’s shared Supabase project/) !== null).toBe(known)
   expect(screen.queryByRole("button", { name: "Turn on Ask access" })).not.toBeInTheDocument()
   expect(patchCalls()).toHaveLength(0)
@@ -150,7 +150,7 @@ test.each([true, false])("only a server-confirmed shared Makinari project is lab
 test("known shared project never promises availability even if first setup was requested", async () => {
   show()
   await load({ ...status, attested: false, setup_pending: true, unsupported_reason: "shared_makinari_project" })
-  expect(await screen.findByText("Scoped reads only")).toBeVisible()
+  expect(await screen.findByText("Makinari reports only")).toBeVisible()
   expect(screen.getByRole("button", { name: "Cancel automatic setup" })).toBeEnabled()
   expect(screen.queryByText("Waiting for verification")).not.toBeInTheDocument()
   expect(patchCalls()).toHaveLength(0)

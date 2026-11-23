@@ -45,3 +45,14 @@ it('offers Add New when accounts cannot be listed and lets the user clear an inv
   expect(onChange).toHaveBeenCalledWith()
   expect(request).not.toHaveBeenCalled()
 })
+
+it('distinguishes equally named accounts even when their short IDs also collide', async () => {
+  const sibling = first.replace('ab1a0a11', 'ab1a0a12')
+  request.mockResolvedValue({ items: [first, sibling].map(id => ({ ...base, id, display_name: 'Engineering' })) })
+  const onChange = jest.fn()
+  render(<ConnectorSelector siteId="site" canSelect onChange={onChange} />)
+  fireEvent.click(screen.getByRole('button', { name: 'Select connector' }))
+  expect(await screen.findByRole('radio', { name: new RegExp(first) })).toBeVisible()
+  fireEvent.click(screen.getByRole('radio', { name: new RegExp(sibling) }))
+  expect(onChange).toHaveBeenCalledWith(sibling)
+})
