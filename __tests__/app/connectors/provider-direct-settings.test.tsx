@@ -46,7 +46,7 @@ test("unverified member-policy status is not an explicit disable or a claim abou
   show(accessDto, true, { ...account, toolkit_slug: "supabase", display_name: "Shared project" })
   await load({ ...memberStatus, enabled: false, attested: false })
   expect(await screen.findByText("Generic provider tools not verified")).toBeVisible()
-  expect(screen.queryByRole("button", { name: "Restore Ask access on save" })).not.toBeInTheDocument()
+  expect(screen.getByRole("button", { name: "Restore Ask access on save" })).toBeDisabled()
   expect(screen.queryByText("Turned off by a manager")).not.toBeInTheDocument()
   expect(screen.queryByText("Available to authorized members")).not.toBeInTheDocument()
   expect(patchCalls()).toHaveLength(0)
@@ -83,6 +83,20 @@ test("ordinary edits do not restore a deliberate block or an absent assistant ho
   expect(body).not.toHaveProperty("ask_access")
 })
 
+test("keeps the restore button visible and explains why an explicitly disabled unverified account cannot be restored", async () => {
+  show(accessDto, true, { ...account, toolkit_slug: "supabase" })
+  await load({ ...memberStatus, enabled: false, attested: false, explicitly_disabled: true })
+  expect(await screen.findByText("Ask is off · not authorized for execution")).toBeVisible()
+  expect(screen.getByText(/this connection has no current authorization.*cannot be restored here/i)).toBeVisible()
+  expect(await hostControl()).toBeChecked()
+  const restore = screen.getByRole("button", { name: "Restore Ask access on save" })
+  expect(restore).toBeVisible()
+  expect(restore).toBeDisabled()
+  fireEvent.click(restore)
+  expect(save()).toBeDisabled()
+  expect(patchCalls()).toHaveLength(0)
+})
+
 test("only an explicit restore with usable scope and host clears the block in a single revision-bound save", async () => {
   show({ ...accessDto, policy: { ...accessDto.policy, allowed_hosts: [], allowed_tools: [], tool_access_mode: "selected" } })
   await load({ ...memberStatus, enabled: false, explicitly_disabled: true })
@@ -100,6 +114,21 @@ test("only an explicit restore with usable scope and host clears the block in a 
   await waitFor(() => expect(patchCalls()).toHaveLength(1))
   expect(JSON.parse(String(patchCalls()[0][1]?.body))).toMatchObject({ allowed_hosts: ["assistant"], tool_access_mode: "all",
     expected_revision: 4, ask_access: { enabled: true, expected_direct_revision: 4 } })
+})
+
+test("restores a delegated Supabase account without a separate binding or attestation step", async () => {
+  show(accessDto, true, { ...account, toolkit_slug: "supabase" })
+  await load({ ...memberStatus, authority_kind: "connected_account", attested: false, enabled: false, explicitly_disabled: true })
+  const restore = await screen.findByRole("button", { name: "Restore Ask access on save" })
+  expect(restore).toBeEnabled()
+  fireEvent.click(restore)
+  http.mockResolvedValueOnce(jsonResponse({ connector_id: account.id, revision: 5, direct_revision: 5, ask_enabled: true }))
+  fireEvent.click(save())
+  await waitFor(() => expect(patchCalls()).toHaveLength(1))
+  expect(patchCalls()[0][0]).toBe(`${base}/policy`)
+  const body = JSON.parse(String(patchCalls()[0][1]?.body))
+  expect(body.ask_access).toEqual({ enabled: true, expected_direct_revision: 4 })
+  expect(body).not.toHaveProperty("project_ref")
 })
 
 test("standalone disable reloads the member status rather than treating a legacy receipt as a legacy server", async () => {

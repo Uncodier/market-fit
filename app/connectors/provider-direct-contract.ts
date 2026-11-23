@@ -16,6 +16,10 @@ const status = z.object({
   .refine(value => !value.enabled || ((value.attested || value.authority_kind === "connected_account") && !value.setup_pending && !value.unsupported_reason && !value.explicitly_disabled))
 export type DirectPolicyStatus = z.infer<typeof status>
 
+export function isAskVerified(status: DirectPolicyStatus): boolean {
+  return (status.attested || status.authority_kind === "connected_account") && !status.unsupported_reason && !status.setup_pending
+}
+
 export const directPolicyUpdate = z.object({
   site_id: z.string().uuid(), expected_revision: z.number().int().positive().max(2_147_483_646),
   expected_direct_revision: z.number().int().positive().max(2_147_483_646), enabled: z.boolean(),

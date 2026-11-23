@@ -14,7 +14,6 @@ export const connectorSchema = z.object({
   id: z.string(), toolkit_slug: z.string(), display_name: z.string(),
   provider_status: z.string(), enabled: z.boolean(), revocation_pending: z.boolean(),
   revocation_dispatched: z.boolean().optional(),
-  can_verify_supabase_project: z.boolean().optional(),
   revision: z.number().int(), verified_at: z.string().nullable(), can_use: z.boolean(),
   access_mode: accessMode,
 })

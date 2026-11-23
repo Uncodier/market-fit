@@ -20,6 +20,7 @@ const tokenSchema = z.object({ status: z.literal("completed"), connector_id: z.s
 export function ConnectAccount({ siteId, detail, onChanged }: { siteId: string; detail: ConnectorDetail; onChanged: () => void }) {
   const { t } = useLocalization()
   const [open, setOpen] = useState(false)
+  const [preferProjectToken, setPreferProjectToken] = useState(false)
   const { slug } = detail.toolkit
   const configs = detail.auth_configs.filter(config => config.auth_scheme === "OAUTH2" || (config.auth_scheme === "API_KEY" && slug !== "supabase"))
   const [selected, setSelected] = useState("")
@@ -29,11 +30,13 @@ export function ConnectAccount({ siteId, detail, onChanged }: { siteId: string; 
   const configId = configs.length === 1 ? configs[0].id : configs.some(config => config.id === selected) ? selected : ""
   const [redirectError, setRedirectError] = useState<unknown>()
   const [redirecting, setRedirecting] = useState(false)
-  const mutation = useConnectorMutation()
+  const hostedMutation = useConnectorMutation()
+  const tokenMutation = useConnectorMutation()
   const canCreate = !configs.length && detail.can_create_managed_oauth === true
   const hasApiKey = detail.toolkit.auth_schemes.includes("API_KEY") || detail.auth_configs.some(config => config.auth_scheme === "API_KEY")
   const supabase = slug === "supabase" && hasApiKey
-  const tokenMode = supabase && !configs.length && !canCreate
+  const tokenMode = supabase && (preferProjectToken || (!configs.length && !canCreate))
+  const mutation = tokenMode ? tokenMutation : hostedMutation
   const label = t(configs.length ? (detail.connections.length ? "connectors.connectAnother" : "connectors.connect")
     : canCreate ? "connectors.setUpOAuth" : supabase ? "connectors.supabaseSetup" : hasApiKey ? "connectors.apiKeySetup" : "connectors.setupRequired")
 
@@ -84,21 +87,28 @@ export function ConnectAccount({ siteId, detail, onChanged }: { siteId: string; 
       if (!value) {
         if (tokenInput.current) tokenInput.current.value = ""
         setInvalid({ project: false, token: false })
+        setPreferProjectToken(false)
       }
     }}>
       <DialogContent busy={mutation.pending || redirecting}>
-        <DialogHeader><DialogTitle>{label}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{tokenMode ? t("connectors.supabaseSetup") : label}</DialogTitle></DialogHeader>
         <DialogBody className="space-y-4"><DialogDescription>
-          {t(configs.length ? "connectors.connectHelp" : canCreate ? "connectors.managedOAuthHelp"
-            : supabase ? "connectors.supabaseTokenHelp" : hasApiKey ? "connectors.apiKeyUnavailable" : "connectors.noAuthConfig")}
+          {t(tokenMode ? "connectors.supabaseTokenHelp" : configs.length ? "connectors.connectHelp" : canCreate ? "connectors.managedOAuthHelp"
+            : hasApiKey ? "connectors.apiKeyUnavailable" : "connectors.noAuthConfig")}
           {(configs.length > 0 || tokenMode) && <>
-            <span className="mt-2 block font-medium text-foreground">{t(tokenMode ? "connectors.tokenAskDisclosure" : "connectors.askOnConnect")}</span>
-            <span className="mt-2 block">{t("connectors.askOnConnectEffects")}
+            <span className="mt-2 block font-medium text-foreground">{t(tokenMode ? "connectors.tokenAskDisclosure" : slug === "supabase" ? "connectors.supabaseOAuthAsk" : "connectors.askOnConnect")}</span>
+            <span className="mt-2 block">{(tokenMode || slug !== "supabase") && t("connectors.askOnConnectEffects")}
               {slug === "supabase" && ` ${t("connectors.supabaseAskLimit")}`}</span>
             <span className="mt-2 block">{t("connectors.workspaceSharingDisclosure")}{slug === "gmail" && ` ${t("connectors.gmailSharingDisclosure")}`}</span>
           </>}
         </DialogDescription>
-        {configs.length > 0 && <div className="space-y-2"><Label>{t("connectors.authConfig")}</Label>
+        {supabase && configs.length > 0 && <Button type="button" variant="outline" size="sm" disabled={mutation.pending || redirecting} onClick={() => {
+          if (tokenInput.current) tokenInput.current.value = ""
+          setInvalid({ project: false, token: false })
+          setRedirectError(undefined)
+          setPreferProjectToken(!tokenMode)
+        }}>{t(tokenMode ? "connectors.useOAuthInstead" : "connectors.useProjectTokenInstead")}</Button>}
+        {!tokenMode && configs.length > 0 && <div className="space-y-2"><Label>{t("connectors.authConfig")}</Label>
           <Select value={configId} onValueChange={setSelected} disabled={mutation.pending}>
             <SelectTrigger aria-label={t("connectors.authConfig")}><SelectValue placeholder={t("connectors.selectAuthConfig")} /></SelectTrigger>
             <SelectContent>{configs.map(config => <SelectItem key={config.id} value={config.id}>{config.name}</SelectItem>)}</SelectContent>
@@ -125,7 +135,7 @@ export function ConnectAccount({ siteId, detail, onChanged }: { siteId: string; 
           <a className="underline" href="https://supabase.com/dashboard/account/tokens" target="_blank" rel="noopener noreferrer">{t("connectors.supabaseTokenLink")}</a>
         </div>}
         {!!error && <ConnectorError error={error} retry={retryableTokenError ? undefined : onChanged} />}
-        {actionable && !configs.length && <p className="text-xs text-muted-foreground">{t("connectors.providerCosts")}</p>}
+        {actionable && (tokenMode || !configs.length) && <p className="text-xs text-muted-foreground">{t("connectors.providerCosts")}</p>}
         </DialogBody>
         <DialogFooter>{actionable ? <Button disabled={(!tokenMode && !canCreate && !configId) || mutation.pending || redirecting || (!!error && !retryableTokenError)} onClick={() => void start()}>
           {t(tokenMode ? (mutation.pending ? "connectors.supabaseVerifying" : "connectors.supabaseConnect")

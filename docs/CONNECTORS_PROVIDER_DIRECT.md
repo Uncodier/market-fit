@@ -14,10 +14,15 @@ Select the intended **Connected account** in **Connectors → Tools & permission
 | **Available to authorized members** | The verified account and saved host/tool settings allow Ask. The signed-in member must still have permission for each call. **Turn off Ask access** blocks Ask without disconnecting the account. |
 | **Blocked by account or tool settings** (legacy: **On · tools unavailable**) | The account or saved host/tool settings prevent calls. If the server omits the tool mode, the UI says **tool scope unknown** instead. |
 | **Turned off by a manager** | Tool, host and sharing edits leave this block intact. To reverse it, first select an enabled account, assistant host and usable tool scope; then choose **Restore Ask access on save** and **Save policy**. |
+| **Ask is off · not authorized for execution** | An explicit block and missing account authorization are both present. The restore button remains visible but disabled; editing the host and tools does not grant execution. |
 | **Generic provider tools not verified** (legacy: **Off · not verified**) | Neither ordinary OAuth authority nor a current resource attestation is available. A clear-access control does not imply that a grant exists. |
 | **Generic provider tools unavailable** (legacy: **Unavailable in Ask**) | The server explicitly marked generic execution unsupported. This cannot be inferred from the account name. |
 
 **Refresh status** reads the saved policy; **Verify provider status** is a separate connection check. On servers that do not report the member-policy contract, the form retains the legacy **Allow Ask to use this account** checkbox for verified accounts. An **Off** status alone does not identify a deliberate block.
+
+Supabase offers **Use a project token for Ask** even when an OAuth configuration exists. OAuth can connect an account but does not bind it to a single project for Ask. The project-token flow records delegation for the exact verified project; it does not grant access to other projects or restore existing account blocks.
+
+The old **Verify and bind this project** action is no longer offered. A delegated account's Ask status already comes from the server; the UI does not read or require the server's private project reference to render the restore control.
 
 If Composio is unavailable, **Manage local account access** on `/connectors` or the toolkit detail page lets a manager cancel setup, turn access off or clear stale consent. It needs the Makinari API and database, not the provider catalogue. It never enables access or switches away from an explicitly requested account. An interrupted save is not confirmation of either outcome. Refresh before acting again; no mutation is automatically retried.
 

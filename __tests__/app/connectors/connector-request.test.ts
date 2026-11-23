@@ -44,10 +44,6 @@ test.each([
   ["API_NOT_CONFIGURED", 503, "apiUnavailable"],
   ["UPSTREAM_UNAVAILABLE", 502, "apiUnavailable"],
   ["PROVIDER_INVALID_RESPONSE", 502, "providerResponse"],
-  ["SUPABASE_BIND_SCHEMA", 422, "supabaseBindSchema"],
-  ["SUPABASE_BIND_ACCOUNT", 422, "supabaseBindAccount"],
-  ["SUPABASE_BIND_READ", 422, "supabaseBindRead"],
-  ["SUPABASE_BIND_IDENTITY", 422, "supabaseBindIdentity"],
 ])("explains %s without exposing upstream messages", async (code, status, expected) => {
   fetchMock.mockResolvedValueOnce(jsonResponse({ error: { code, message: "private provider details" } }, status as number))
   try {

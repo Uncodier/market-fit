@@ -83,20 +83,12 @@ it('reads only the requested account summary, removes private fields and rejects
   expect((await get()).status).toBe(502)
 })
 
-it("binds only on a same-origin manager request and projects an exact ID/revision receipt", async () => {
+it("does not forward the retired project-binding endpoint", async () => {
   const path = ["connections", attemptId, "bind-project"]
   const input = { site_id: siteId, expected_revision: 3, project_ref: "a".repeat(20) }
-  const submit = (body: unknown, headers?: Record<string, string>) => proxyConnector(request(path.join("/"), "POST", body, headers), path)
-  expect((await submit(input, { origin: "https://foreign.example.test" })).status).toBe(403)
-  expect((await submit({ ...input, actor_id: userId })).status).toBe(400)
-  rpc.mockResolvedValueOnce({ data: [{ can_view: true, can_manage: false }], error: null })
-  expect((await submit(input)).status).toBe(403)
+  expect((await proxyConnector(request(path.join("/"), "POST", input), path)).status).toBe(404)
+  expect(rpc).not.toHaveBeenCalled()
   expect(fetchMock).not.toHaveBeenCalled()
-  fetchMock.mockResolvedValueOnce(Response.json({ connector_id: attemptId, revision: 4, provider_metadata: credential }))
-  expect(await (await submit(input)).json()).toEqual({ connector_id: attemptId, revision: 4 })
-  expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual(input)
-  fetchMock.mockResolvedValueOnce(Response.json({ connector_id: userId, revision: 4 }))
-  expect((await submit(input)).status).toBe(502)
 })
 
 it("protects the approval inbox and never forwards caller-selected execution arguments", async () => {

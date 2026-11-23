@@ -30,7 +30,7 @@ export async function proxyConnector(request: NextRequest, path: string[]): Prom
       if (kind === 'connection-summary' && Object.keys(query).length !== 1) return connectorProxyFailure(400, 'INVALID_REQUEST')
       siteId = query.site_id
     } else {
-      if ((kind === "start" || kind === "bind-project" || kind === "provider-direct") && request.nextUrl.search) return connectorProxyFailure(400, "INVALID_REQUEST")
+      if ((kind === "start" || kind === "provider-direct") && request.nextUrl.search) return connectorProxyFailure(400, "INVALID_REQUEST")
       if (request.headers.get("content-type")?.split(";")[0].trim() !== "application/json") return connectorProxyFailure(415, "JSON_REQUIRED")
       body = parseConnectorBody(kind, JSON.parse(decodeRequestBody(await readLimitedRequestBody(request, kind === "provider-direct" ? 2048 : 32_768))))
       if (kind === "complete") {
@@ -74,7 +74,7 @@ export async function proxyConnector(request: NextRequest, path: string[]): Prom
     try { payload = JSON.parse(decodeRequestBody(await readLimitedRequestBody(upstream as unknown as Request, kind === "provider-direct" ? 2048 : 2_000_000))) }
     catch (error) {
       if (ask || kind === "provider-direct") return connectorProxyFailure(502, body ? "OUTCOME_UNKNOWN" : "INVALID_RESPONSE")
-      if (kind === "supabase-token" || kind === "approval-decision" || kind === "bind-project") return connectorProxyFailure(502, "OUTCOME_UNKNOWN")
+      if (kind === "supabase-token" || kind === "approval-decision") return connectorProxyFailure(502, "OUTCOME_UNKNOWN")
       throw error
     }
     if (!upstream.ok) {
@@ -85,7 +85,7 @@ export async function proxyConnector(request: NextRequest, path: string[]): Prom
         return connectorProxyFailure(status, failure.success ? failure.data.error.code : undefined)
       }
       const failure = z.object({ error: z.object({ code: z.string().regex(/^[A-Z0-9_]{1,80}$/), message: z.string().max(300) }) }).safeParse(payload)
-      if (failure.success) return connectorProxyFailure(upstream.status, failure.data.error.code, ["supabase-token", "bind-project"].includes(kind) ? undefined : failure.data.error.message)
+      if (failure.success) return connectorProxyFailure(upstream.status, failure.data.error.code, kind === "supabase-token" ? undefined : failure.data.error.message)
       return connectorProxyFailure([400, 401, 403, 404, 409, 422, 429, 503].includes(upstream.status) ? upstream.status : 502)
     }
     if (ask) {
@@ -95,10 +95,6 @@ export async function proxyConnector(request: NextRequest, path: string[]): Prom
     if (kind === "provider-direct") {
       const result = directPolicyStatus(path[1], body ? directPolicyUpdate.parse(body) : undefined).safeParse(payload)
       return result.success ? NextResponse.json(result.data, { headers }) : connectorProxyFailure(502, body ? "OUTCOME_UNKNOWN" : "INVALID_RESPONSE")
-    }
-    if (kind === "bind-project") {
-      const receipt = z.object({ connector_id: z.literal(path[1]), revision: z.literal(Number(body?.expected_revision) + 1) }).safeParse(payload)
-      return receipt.success ? NextResponse.json(receipt.data, { headers }) : connectorProxyFailure(502, "OUTCOME_UNKNOWN")
     }
     if (kind === 'connection-summary') {
       const summary = connectorSchema.safeParse(payload)

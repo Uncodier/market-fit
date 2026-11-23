@@ -100,6 +100,32 @@ test("connects Supabase via a masked token and refreshes only after server verif
   expect(fetchMock).toHaveBeenCalledTimes(1)
 })
 
+test("offers the project-token route for Ask even when Supabase OAuth is configured", async () => {
+  fetchMock.mockResolvedValueOnce(jsonResponse({ status: "completed", connector_id: "11111111-1111-4111-8111-111111111111" }))
+  const changed = jest.fn()
+  show({ ...supabase, auth_configs: detail.auth_configs }, changed)
+  fireEvent.click(screen.getByRole("button", { name: "Connect account" }))
+  expect(screen.getByRole("dialog")).toHaveAccessibleDescription(/OAuth connects this account but does not bind it to a single project for Ask/)
+  fireEvent.click(screen.getByRole("button", { name: "Use a project token for Ask" }))
+  expect(screen.getByRole("dialog", { name: "Supabase API token setup" })).toBeVisible()
+  const tokenField = screen.getByLabelText("Personal access token")
+  fireEvent.input(tokenField, { target: { value: `sbp_${randomBytes(24).toString("hex")}` } })
+  fireEvent.click(screen.getByRole("button", { name: "Use OAuth instead" }))
+  expect(screen.queryByLabelText("Personal access token")).not.toBeInTheDocument()
+  expect(screen.getByRole("button", { name: "Continue to authorization" })).toBeEnabled()
+  expect(fetchMock).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole("button", { name: "Use a project token for Ask" }))
+  expect(screen.getByLabelText("Personal access token")).toHaveValue("")
+  const project_ref = "a".repeat(20), token = `sbp_${randomBytes(24).toString("hex")}`
+  fireEvent.input(screen.getByLabelText("Supabase project reference"), { target: { value: project_ref } })
+  fireEvent.input(screen.getByLabelText("Personal access token"), { target: { value: token } })
+  fireEvent.click(screen.getByRole("button", { name: "Connect with API token" }))
+  await waitFor(() => expect(changed).toHaveBeenCalledTimes(1))
+  expect(fetchMock).toHaveBeenCalledTimes(1)
+  expect(fetchMock).toHaveBeenCalledWith("/api/connectors/supabase-token", expect.objectContaining({ method: "POST",
+    body: JSON.stringify({ site_id: "site-1", project_ref, token, delegate_account: true }) }))
+})
+
 test("explains which Supabase fields are invalid and never submits a project API key", () => {
   show(supabase)
   fireEvent.click(screen.getByRole("button", { name: "Supabase API token setup" }))

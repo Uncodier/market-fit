@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
+import { act, fireEvent, render, screen, within } from "@testing-library/react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { DetailContent } from "@/app/connectors/connector-detail"
 import ConnectorDetailLoading from "@/app/connectors/[slug]/loading"
@@ -92,30 +92,14 @@ test("switching accounts in the header pins the exact account in the URL without
   expect(fetchMock).toHaveBeenCalledTimes(1)
 })
 
-test("the manager supplies the reference rather than trusting the label; the pinned account is reloaded after a verified receipt", async () => {
-  const ref = "a".repeat(20)
-  const old = { ...connector, toolkit_slug: "supabase", enabled: true, display_name: `Supabase · ${ref}`, can_verify_supabase_project: true }
-  const accountDetail = { ...detail, connections: [old] }
-  fetchMock.mockResolvedValueOnce(jsonResponse(accountDetail))
-    .mockResolvedValueOnce(jsonResponse({ connector_id: old.id, revision: old.revision + 1 }))
-    .mockResolvedValueOnce(jsonResponse({ ...accountDetail, connections: [{ ...old, can_verify_supabase_project: false }] }))
+test("ignores the old project-binding flag while retaining normal provider verification for managers", async () => {
+  const old = { ...active, toolkit_slug: "supabase", can_verify_supabase_project: true }
+  fetchMock.mockResolvedValueOnce(jsonResponse({ ...detail, connections: [old] }))
   render(<DetailContent slug="supabase" siteId="site-1" />)
-  const field = await screen.findByLabelText("Project reference for this existing account")
-  const button = screen.getByRole("button", { name: "Verify and bind this project" })
-  expect(field).toHaveValue(""); expect(button).toBeDisabled()
-  fireEvent.change(field, { target: { value: "1".repeat(20) } }); expect(button).toBeDisabled()
-  fireEvent.change(field, { target: { value: ref } }); fireEvent.click(button)
   await screen.findByRole("button", { name: "Verify provider status" })
-  await waitFor(() => expect(screen.queryByRole("button", { name: "Verify and bind this project" })).not.toBeInTheDocument())
-  expect(fetchMock).toHaveBeenCalledWith(`/api/connectors/connections/${old.id}/bind-project`, expect.objectContaining({ method: "POST",
-    body: JSON.stringify({ site_id: "site-1", expected_revision: old.revision, project_ref: ref }) }))
-})
-
-test("a nonmanager cannot start project verification", async () => {
-  fetchMock.mockResolvedValueOnce(jsonResponse({ ...detail, can_manage: false, connections: [{ ...connector, enabled: true, toolkit_slug: "supabase", can_verify_supabase_project: true }] }))
-  render(<DetailContent slug="supabase" siteId="site-1" />)
-  await screen.findByText("Account permissions")
+  expect(screen.queryByLabelText("Project reference for this existing account")).not.toBeInTheDocument()
   expect(screen.queryByRole("button", { name: "Verify and bind this project" })).not.toBeInTheDocument()
+  expect(fetchMock).toHaveBeenCalledTimes(1)
 })
 
 test("labels a disabled account without selecting it even when it is the only option", async () => {

@@ -31,7 +31,6 @@ export function connectorRoute(path: string[], method: string) {
     if (method === "POST" && path[0] === "auth-attempts" && path[2] === "complete") return "complete"
     if (path[0] === "connections") {
       if ((method === "GET" || method === "PATCH") && path[2] === "provider-direct") return "provider-direct"
-      if (method === "POST" && path[2] === "bind-project") return "bind-project"
       if (method === "POST" && ["disconnect", "sync"].includes(path[2])) return "disconnect"
       if (method === "PATCH" && path[2] === "access") return "access"
       if (method === "PATCH" && path[2] === "policy") return "policy"
@@ -42,8 +41,6 @@ export function connectorRoute(path: string[], method: string) {
 
 export function parseConnectorBody(kind: string, input: unknown) {
   if (kind === "provider-direct") return directPolicyUpdate.parse(input)
-  if (kind === "bind-project") return site.extend({ expected_revision: z.number().int().positive().max(2_147_483_646),
-    project_ref: z.string().length(20).regex(/^[a-z]{20}$/) }).strict().parse(input)
   if (kind === "approval-decision") return site.parse(input)
   if (kind === "start") return site.extend({ toolkit_slug: z.string().regex(slug), auth_config_id: z.string().regex(/^[a-zA-Z0-9_-]{1,150}$/) }).strict().parse(input)
   if (kind === "managed-oauth") return site.extend({ toolkit_slug: z.string().regex(slug) }).strict().parse(input)

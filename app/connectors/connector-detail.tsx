@@ -21,7 +21,6 @@ import {
   connectorDetailBodyClassName, connectorDetailToolbarClassName,
 } from "./connector-skeletons"
 import { ConnectionActions } from "./connector-lifecycle"
-import { BindProject } from "./connector-bind-project"
 import { ConnectAccount } from "./connector-connect-account"
 import { canRecoverLocalAccounts, ConnectorRequestError, scopedConnectorPath } from "./connector-request"
 import { LocalAccountRecovery } from "./local-account-recovery"
@@ -142,8 +141,6 @@ export function DetailContent({ siteId, slug }: { siteId: string; slug: string }
                 {t("connectors.supabaseDisconnectHelp")} {data.can_manage && <a className="underline" href="https://supabase.com/dashboard/account/tokens" target="_blank" rel="noopener noreferrer">{t("connectors.supabaseTokenLink")}</a>}
               </p> : <p className="text-sm text-muted-foreground">{t("connectors.reconnectHelp")}</p>}
               {data.can_manage && selected.revocation_pending && (!supabaseDisconnect || selected.revocation_dispatched === false) && <p className="text-xs text-muted-foreground">{t(selected.revocation_dispatched === false ? "connectors.revocationRetry" : "connectors.revocationVerify")}</p>}
-              {data.can_manage && selected.toolkit_slug === "supabase" && selected.can_verify_supabase_project === true && connectorStatus(selected) === "active" &&
-                <BindProject key={`${selected.id}:${selected.revision}`} siteId={siteId} connector={selected} onChanged={reload} />}
             </div>}
           </SectionCardContent>
           {selected && data.can_manage && <ConnectionActions key={`${selected.id}:${selected.revision}`} siteId={siteId} connector={selected} onChanged={reload} />}

@@ -71,10 +71,9 @@ cannot request this infrastructure action.
 Rollout requires `20261120040000_connector_supabase_project_binding.sql` plus
 matching code. New verified PAT accounts capture the project reference during
 setup. Do not infer it for older accounts from a display label or the Robots URL.
-For an existing active PAT account, a manager can use **Verify and bind this
-project** in its connection card. This checks the entered reference via a pinned
-project-metadata read using the existing provider account. Only a confirmed
-match is saved, for that connector, once. No new token or account is required.
+The historical **Verify and bind this project** action only recorded metadata,
+not Ask authorization. It is removed from connection settings; existing
+project references do not become delegation records.
 In Robots, choose a connected account beside Skills, or open
 `/robots?connector=<local-connector-uuid>`, then submit the request in **Ask**.
 You can select an account before opening an instance. The first send in a new

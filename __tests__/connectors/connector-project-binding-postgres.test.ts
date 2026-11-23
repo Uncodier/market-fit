@@ -3,6 +3,7 @@ import { isolatedPostgres, postgresAvailable } from '../security/isolated-postgr
 import { finalizeSql, id, insertAttempt, installConnectorFixture, sqlSource } from './connector-postgres-fixture'
 
 const migration = '20261120040000_connector_supabase_project_binding.sql'
+const retirement = '20261123164000_retire_connector_project_binding.sql'
 const project = 'a'.repeat(20)
 const suite = postgresAvailable ? describe : describe.skip
 suite('Supabase account project binding', () => {
@@ -40,8 +41,33 @@ suite('Supabase account project binding', () => {
     expect(() => service(`UPDATE connectors SET supabase_project_ref=NULL WHERE id='${account.id}'`)).toThrow(/immutable/)
     expect(db("SELECT has_column_privilege('authenticated', 'public.connectors','supabase_project_ref','SELECT')")).toBe('f')
   })
+
+  it('retires the old writer without changing existing accounts or provider verification', () => {
+    insertAttempt(db, 'completing', 'new-account', 'supabase')
+    const unbound = JSON.parse(service(finalizeSql({ toolkit: 'supabase' })))
+    db(sqlSource(migration))
+    db(sqlSource(retirement))
+    expect(db("SELECT to_regprocedure('public.connector_bind_supabase_project(uuid,uuid,uuid,integer,text,text)') IS NULL")).toBe('t')
+    expect(db(`SELECT revision FROM public.connectors WHERE id='${unbound.id}' AND supabase_project_ref IS NULL`)).toBe(String(unbound.revision))
+    expect(() => service(`UPDATE public.connectors SET supabase_project_ref='${project}' WHERE id='${unbound.id}'`)).toThrow(/immutable/)
+    expect(service(`UPDATE public.connectors SET verified_at=now() WHERE id='${unbound.id}' RETURNING id`)).toBe(unbound.id)
+  })
+
+  it('continues to accept a new project on creation but never lets it be changed', () => {
+    db(sqlSource(migration))
+    db(sqlSource(retirement))
+    service(`INSERT INTO public.site_connector_auth_attempts(id,site_id,provider_id,user_id,toolkit_slug,auth_config_id,
+      provider_account_id,nonce_hash,credential_revision,status,expires_at,supabase_project_ref) VALUES
+      ('${id.attempt}','${id.site}','${id.provider}','${id.owner}','supabase','auth-config','new-account',
+      '${'a'.repeat(64)}','rev-1','completing',now()+interval '5 minutes','${project}')`)
+    const account = JSON.parse(service(finalizeSql({ toolkit: 'supabase' })))
+    expect(account.supabase_project_ref).toBe(project)
+    expect(() => service(`UPDATE public.site_connector_auth_attempts SET supabase_project_ref=NULL WHERE id='${id.attempt}'`)).toThrow(/immutable/)
+    expect(() => service(`UPDATE public.connectors SET supabase_project_ref=NULL WHERE id='${account.id}'`)).toThrow(/immutable/)
+    expect(db("SELECT has_column_privilege('authenticated', 'public.connectors','supabase_project_ref','SELECT')")).toBe('f')
+  })
 })
 
-test('canonical, API and web migrations remain identical', () => {
-  for (const repo of ['API', 'makinari-db-scheme']) expect(sqlSource(migration, repo)).toBe(sqlSource(migration))
+test.each([migration, retirement])('canonical, API and web copies of %s remain identical', name => {
+  for (const repo of ['API', 'makinari-db-scheme']) expect(sqlSource(name, repo)).toBe(sqlSource(name))
 })

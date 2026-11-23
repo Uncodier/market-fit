@@ -7,7 +7,7 @@ import { Badge } from "@/app/components/ui/badge"
 import { Button } from "@/app/components/ui/button"
 import { ConnectorError } from "./connector-feedback"
 import { ConnectorRequestError, scopedConnectorPath } from "./connector-request"
-import { directPolicyStatus, type DirectPolicyStatus } from "./provider-direct-contract"
+import { directPolicyStatus, isAskVerified, type DirectPolicyStatus } from "./provider-direct-contract"
 import type { Connector, ConnectorAccess } from "./types"
 import { useConnectorMutation, useConnectorResource } from "./use-connector-resource"
 
@@ -41,7 +41,7 @@ export function useAskStatus(siteId: string, connector: Connector, canManage: bo
 
 function askState(status: DirectPolicyStatus, connector: Connector, policy?: ConnectorAccess["policy"]) {
   if (status.unsupported_reason) return "unsupported"
-  if (status.explicitly_disabled) return "disabled"
+  if (status.explicitly_disabled) return isAskVerified(status) ? "disabled" : "disabledUnverified"
   if (status.setup_pending) return "pending"
   if (!status.enabled) return status.attested ? "off" : "unverified"
   if (!connector.enabled || !connector.verified_at || connector.provider_status !== "ACTIVE" || connector.revocation_pending || connector.revocation_dispatched) return "blocked"

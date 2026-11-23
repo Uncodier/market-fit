@@ -7,7 +7,7 @@ import { Button } from "@/app/components/ui/button"
 import { RadioGroup, RadioGroupItem } from "@/app/components/ui/radio-group"
 import { ConnectorToolPicker } from "./connector-tool-picker"
 import { AskStatus, useAskStatus } from "./provider-direct-settings"
-import type { AskAccessIntent } from "./provider-direct-contract"
+import { isAskVerified, type AskAccessIntent } from "./provider-direct-contract"
 import { SectionCard, SectionCardHeader, SectionCardContent, SectionCardFooter } from "@/app/components/ui/section-card"
 import type { Connector, ConnectorAccess, ToolAccessMode } from "./types"
 
@@ -24,7 +24,7 @@ export function ConnectorPolicyEditor({ siteId, access, connector, canManage, pe
   const ask = useAskStatus(siteId, connector, canManage)
   const { status } = ask
   const [askDraft, setAskDraft] = useState<AskAccessIntent>()
-  const verified = !!status && (status.attested || status.authority_kind === "connected_account") && !status.unsupported_reason && !status.setup_pending
+  const verified = !!status && isAskVerified(status)
   const memberPolicy = status?.authorization_mode === "member_policy"
   const intent = verified && askDraft?.expected_direct_revision === status.direct_revision ? askDraft : undefined
   const savedAsk = savedAssistant && !!status?.enabled
@@ -78,7 +78,7 @@ export function ConnectorPolicyEditor({ siteId, access, connector, canManage, pe
             onRevoke={() => { setAskDraft(undefined); void ask.revoke() }} />
           {memberPolicy && <label className="flex items-center gap-2 text-sm"><Checkbox checked={assistant} disabled={blocked || pending || ask.pending}
             onCheckedChange={value => setHostDraft(value === true)} />{t("connectors.assistantHost")}</label>}
-          {memberPolicy && status.explicitly_disabled && verified && <Button type="button" variant="outline" size="sm"
+          {status && !status.enabled && !status.setup_pending && (status.explicitly_disabled || !verified) && <Button type="button" variant="outline" size="sm"
             disabled={blocked || pending || ask.pending || (!intent && (!assistant || !askReady))}
             onClick={() => setAskDraft(intent ? undefined : { enabled: true, expected_direct_revision: status.direct_revision })}>
             {t(intent ? "connectors.cancelRestoreAsk" : "connectors.restoreAsk")}
