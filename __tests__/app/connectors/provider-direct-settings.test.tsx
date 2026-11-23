@@ -36,7 +36,7 @@ test("legacy read/all and verified login are not proof or consent; an ordinary m
   show({ ...accessDto, can_manage: false }, false)
   expect(await screen.findByText(/Member access alone does not make tools available/)).toBeVisible()
   expect(screen.queryByRole("button", { name: /Ask access/ })).not.toBeInTheDocument()
-  expect(screen.queryByText("Available to authorized members and agents")).not.toBeInTheDocument()
+  expect(screen.queryByText("Available to authorized members")).not.toBeInTheDocument()
   expect(http.mock.calls.map(([url]) => url)).toEqual([`${base}/access?site_id=${site}`])
 })
 
@@ -113,10 +113,10 @@ test("first setup is not an enrollment; a fresh verified status becomes availabl
   expect(await screen.findByText("Waiting for verification")).toBeVisible()
   expect(screen.getByRole("button", { name: "Cancel automatic setup" })).toBeEnabled()
   expect(screen.queryByRole("button", { name: "Turn on Ask access" })).not.toBeInTheDocument()
-  expect(screen.queryByText("Available to authorized members and agents")).not.toBeInTheDocument()
+  expect(screen.queryByText("Available to authorized members")).not.toBeInTheDocument()
   http.mockResolvedValueOnce(jsonResponse({ ...status, setup_pending: false, enabled: true, direct_revision: 6 }))
   fireEvent.click(screen.getByRole("button", { name: "Refresh status" }))
-  expect(await screen.findByText("Available to authorized members and agents")).toBeVisible()
+  expect(await screen.findByText("Available to authorized members")).toBeVisible()
   expect(screen.getByRole("button", { name: "Turn off Ask access" })).toBeEnabled()
   expect(screen.queryByRole("button", { name: "Cancel automatic setup" })).not.toBeInTheDocument()
   expect(patchCalls()).toHaveLength(0)
@@ -138,10 +138,10 @@ test.each([true, false, undefined])("cancel before proof requires an exact recei
   expect(JSON.parse(String(patchCalls()[0][1]?.body))).toEqual({ site_id: site, expected_revision: status.revision, expected_direct_revision: 4, enabled: false })
 })
 
-test.each([true, false])("only a server-confirmed shared Makinari project is called unsupported (hint: %s)", async known => {
+test.each([true, false])("only a server-confirmed shared Makinari project is labeled scoped-read-only (hint: %s)", async known => {
   show(accessDto, true, { ...account, toolkit_slug: "supabase", display_name: "Makinari shared project" })
   await load({ ...status, attested: false, setup_pending: false, ...(known && { unsupported_reason: "shared_makinari_project" }) })
-  expect(await screen.findByText(known ? "Not supported for this project" : "Off · not verified")).toBeVisible()
+  expect(await screen.findByText(known ? "Scoped reads only" : "Off · not verified")).toBeVisible()
   expect(screen.queryByText(/This account is bound to Makinari’s shared Supabase project/) !== null).toBe(known)
   expect(screen.queryByRole("button", { name: "Turn on Ask access" })).not.toBeInTheDocument()
   expect(patchCalls()).toHaveLength(0)
@@ -150,7 +150,7 @@ test.each([true, false])("only a server-confirmed shared Makinari project is cal
 test("known shared project never promises availability even if first setup was requested", async () => {
   show()
   await load({ ...status, attested: false, setup_pending: true, unsupported_reason: "shared_makinari_project" })
-  expect(await screen.findByText("Not supported for this project")).toBeVisible()
+  expect(await screen.findByText("Scoped reads only")).toBeVisible()
   expect(screen.getByRole("button", { name: "Cancel automatic setup" })).toBeEnabled()
   expect(screen.queryByText("Waiting for verification")).not.toBeInTheDocument()
   expect(patchCalls()).toHaveLength(0)
@@ -161,7 +161,7 @@ test.each([{ allowed_tools: [], allowed_hosts: ["assistant"] }, { allowed_tools:
   await load({ ...status, enabled: true, setup_pending: false })
   expect(await screen.findByText("On · tools unavailable")).toBeVisible()
   expect(screen.getByRole("button", { name: "Turn off Ask access" })).toBeEnabled()
-  expect(screen.queryByText("Available to authorized members and agents")).not.toBeInTheDocument()
+  expect(screen.queryByText("Available to authorized members")).not.toBeInTheDocument()
   expect(patchCalls()).toHaveLength(0)
 })
 
@@ -170,7 +170,7 @@ test("an omitted saved tool mode cannot confirm availability, but does not preve
   await load({ ...status, enabled: true })
   expect(await screen.findByText("On · tool scope unknown")).toBeVisible()
   expect(screen.getByRole("button", { name: "Turn off Ask access" })).toBeEnabled()
-  expect(screen.queryByText("Available to authorized members and agents")).not.toBeInTheDocument()
+  expect(screen.queryByText("Available to authorized members")).not.toBeInTheDocument()
 })
 
 test("turning off a verified account never submits or discards an unsaved tool restriction", async () => {

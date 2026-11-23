@@ -11,7 +11,7 @@ type Db = (sql: string) => string
 export const proofTable = 'connector_result_private.direct_attestations'
 
 // Test DDL and identities only. This fixture is not a production enrollment script.
-export function installProviderDirect(db: Db, beforePolicyMigration?: () => void) {
+export function installProviderDirect(db: Db, beforePolicyMigration?: () => void, mode: 'explicit' | 'workspace' = 'workspace') {
   db('DROP SCHEMA IF EXISTS connector_direct_rpc CASCADE;') // Reset the receipt gate between isolated cases.
   installAnalytics(db)
   db(sqlSource('20261121031200_connector_provider_attestations.sql'))
@@ -22,7 +22,7 @@ export function installProviderDirect(db: Db, beforePolicyMigration?: () => void
     ALTER TABLE public.site_connector_providers ENABLE TRIGGER connector_provider_identity_guard;
     INSERT INTO connector_result_private.provider_attestations VALUES ('${id.site}','${revision}','project-a','https://app.example.test/connectors/callback');
     INSERT INTO public.connectors(id,site_id,provider_id,toolkit_slug,provider_account_id,auth_config_id,display_name,provider_status,
-      created_by,verified_at,access_mode,enabled) VALUES ('${direct}','${id.site}','${id.provider}','crm','direct-a','auth-config','CRM','ACTIVE','${id.owner}',now(),'workspace',true);
+      created_by,verified_at,access_mode,enabled) VALUES ('${direct}','${id.site}','${id.provider}','crm','direct-a','auth-config','CRM','ACTIVE','${id.owner}',now(),'${mode}',true);
     INSERT INTO public.connector_policies(site_id,connector_id,allowed_hosts,tool_access_mode,catalog_reads)
       VALUES ('${id.site}','${direct}',ARRAY['assistant'],'all',true);
     ALTER DEFAULT PRIVILEGES IN SCHEMA connector_result_private GRANT ALL ON TABLES TO anon,authenticated,service_role;

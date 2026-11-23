@@ -2,7 +2,7 @@
 
 **For a new eligible OAuth account, connecting is the manager’s decision to allow Ask access.** Before **Continue to authorization**, the dialog explains that authorized members and agents can use the account selected at the provider, subject to saved permissions. Allowed tools can send, change or delete real data and incur provider or Composio fees. Dismiss the dialog instead of continuing if that is not intended.
 
-Ask access turns on without a second manager click **only after** independent verification that the provider limits the credential to the customer’s business data for this workspace. Completing OAuth confirms the connection, not that Ask is available. Existing accounts, attempts started before the new notice, replays, reconnecting an existing account and proof renewals do not acquire the new default. Creating a managed OAuth configuration is not connecting an account. The hosted **Supabase API token** setup uses a Management PAT; it does not enable this Ask path.
+Generic Ask access turns on without a second manager click **only after** independent verification that the provider limits the credential to the customer’s business data for this workspace. Completing OAuth confirms the connection, not that Ask is available. Existing accounts, attempts started before the new notice, replays and proof renewals do not acquire the new default. The hosted **Supabase API token** setup does not enable generic execution. It can use a separately authorized bounded metrics read on the shared installation, as described below.
 
 ## Check or stop access for one account
 
@@ -11,11 +11,11 @@ In **Connectors**, select the intended **Connected account** in the toolkit head
 | Status | Meaning and control |
 | --- | --- |
 | **Waiting for verification** | First setup is pending, not active. **Cancel automatic setup** keeps the account off even if proof arrives later. |
-| **Available to authorized members and agents** | Current verification and enrollment, with a saved policy allowing the assistant and a tool scope. Each call still checks the member, agent and exact action. **Turn off Ask access** stops new calls without disconnecting the account. |
+| **Available to authorized members** | Current verification and enrollment, with a saved policy allowing the assistant and a tool scope. In a private interactive instance, the signed-in member is the principal; the pinned prompt agent is not a second grantee. **Turn off Ask access** stops new direct calls without disconnecting the account. |
 | **On · tools unavailable** | Enrollment is on, but the account or saved host/tool settings block calls. Broadening the policy later can make tools available. If the server omits the tool mode, the UI says **tool scope unknown** instead. |
 | **Off** | Current verification but no effective enrollment. To use an eligible existing or previously disabled account, choose **Turn on Ask access** and confirm the account and its **saved**, not draft, tool scope. This is not a prerequisite for a new pending account. |
 | **Off · not verified** | No current proof. A manager cannot self-verify from this screen. **Clear any saved Ask access** removes any remaining consent; the button is not evidence of a saved grant. An unknown resource is not labeled as shared. |
-| **Not supported for this project** | The server positively identified Makinari’s shared Supabase project. Makinari does not delegate that project to Robots Ask. A toolkit slug, account name or unverified project reference cannot establish this status. |
+| **Scoped reads only** | The server positively identified Makinari’s shared Supabase project. Generic delegation is off. On the new scoped path, an authorized user can discover its exact read tool if the saved catalogue/host/tool policy allows it. The status is not itself a data grant. |
 
 If Composio is unavailable, **Manage local account access** on `/connectors` or the toolkit detail page lets a manager cancel setup, turn access off or clear stale consent. It needs the Makinari API and database, not the provider catalogue. It never enables access or switches away from an explicitly requested account. An interrupted save is not confirmation of either outcome. Refresh before acting again; no mutation is automatically retried.
 
@@ -25,7 +25,7 @@ Makinari decides **who can request which tools**. The provider enforces **which 
 
 Eligible new accounts use the workspace’s member and agent sharing rules, including for principals added later. **Only selected tools** restricts discovery and calls to exact saved IDs; an empty selection allows none. **All compatible tools** includes future eligible provider actions. **Legacy catalogue reads**, where reported, is a separate read-only feature, not a credential permission. Neither it nor browsing a provider catalogue grants Ask access.
 
-The private, interactive **Ask** session uses the authenticated member’s own instance and an authorized same-site agent. Member and agent grants, allowed host, site, location, assigned-record and relevant screen restrictions still apply. Selecting an account in Robots narrows the search; it grants nothing. Search pages are candidates. Describe checks the exact account and provider contract; dispatch checks the version, schema and current authority again. **All** is not a promise that every listed tool, auth scheme or input can run.
+The private, interactive **Ask** session uses the authenticated member’s own instance. The active same-site agent is pinned to that turn for provenance; it cannot lend or withhold connector use. Autonomous Agents retain their own grants; a background run does not inherit the interactive session. Host, workspace, license, location, assigned-record and relevant screen restrictions still apply. Selecting an account narrows the search; it grants nothing. Describe checks the exact account and provider contract; dispatch checks the version, schema and current authority again.
 
 An allowed call is still subject to the provider’s permissions and fees. Private delivery does not hide or reverse a write at its destination. **Allow requests for access** is for members or agents without local permission to use a supported action. It is not a connection setup step, a per-write approval, or a way around the provider’s denial. For a generic Ask tool without a review flow, denial does not create a request. This path does not enable public chat, Customer Support, shared reports, voice, plans or background execution.
 
@@ -42,9 +42,26 @@ An independent deployment operator must verify the **downstream credential**, no
 
 Existing OAuth and toolkit-specific onboarding remain separate setup paths. Catalogue coverage is not universal account provisioning.
 
+### Shared-project analytics in Instance Ask
+
+When an authenticated user selects a connection bound to this installation,
+Ask checks the saved member, host, catalogue-read and tool policy. It can offer
+`SUPABASE_RUN_READ_ONLY_QUERY` without first granting generic direct execution.
+Only supported analytics sources and server-compiled read operations are eligible;
+neither free-form SQL nor project administration is exposed. **All tools** is
+not all-workspaces data access. Company-wide figures require a matching explicit
+platform entitlement, and a provider rejection ends the call on that same account.
+The result is delivered to the requester, not copied into a shared log or prompt.
+
+The member-authority and scoped-read migrations were applied to shared Makinari
+on November 23, 2026 at **07:05:54 UTC**. The schema rollout preserved both
+connections and their policies; it did not issue a platform entitlement, execute
+a query or upgrade old turns. Matching applications and a new Ask turn still
+need verification before relying on this behavior.
+
 ## Management interface and rollout
 
-The notice-bearing OAuth dialog starts **only** `POST /api/connectors/auth-attempts/ask` with the existing site, toolkit and auth-config identifiers. There is no browser grant, proof, or policy field. The older `/api/connectors/auth-attempts` start, managed OAuth setup and `/api/connectors/supabase-token` do not record this decision. If the new start fails, do not silently fall back. The [Ask-on-connect migration](../supabase/migrations/20261123030000_connector_ask_on_connect.sql) is prospective and **local, not applied**. Deploy the migration and compatible API, worker and web through a coordinated rollout before expecting new-account behavior.
+The notice-bearing OAuth dialog starts **only** `POST /api/connectors/auth-attempts/ask` with the existing site, toolkit and auth-config identifiers. There is no browser grant, proof, or policy field. The older `/api/connectors/auth-attempts` start, managed OAuth setup and `/api/connectors/supabase-token` do not record this decision. If the new start fails, do not silently fall back. The [Ask-on-connect migration](../supabase/migrations/20261123030000_connector_ask_on_connect.sql) was applied in the same 07:05 UTC transaction. It is prospective: neither existing account was enrolled. The schema rollout did not deploy the compatible API, worker or web.
 
 `GET /api/connectors/connections/[id]/provider-direct?site_id=<uuid>` and `PATCH /api/connectors/connections/[id]/provider-direct` remain manager-only. PATCH accepts exactly `{site_id, expected_revision, expected_direct_revision, enabled}` and no query parameters. Responses project `{connector_id, revision, direct_revision, attested, enabled}` plus `setup_pending` on the new API and optional `unsupported_reason: "shared_makinari_project"` when reliably identified. Older responses without `setup_pending` do not confirm pending setup. No proof, project reference or provider data is returned. `enabled` is effective enrollment for the current verification, **not** authorization for a particular call. A successful change matches the account and requested boolean, preserves `revision`, advances `direct_revision` by exactly one and leaves no pending setup. A stale revision or missing proof on enable returns `409`; disable requires neither proof nor the catalogue. Direct-only changes invalidate old direct authorizations, not legacy reports.
 

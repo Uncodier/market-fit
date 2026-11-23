@@ -2,8 +2,8 @@
 import { isolatedPostgres, postgresAvailable, uuid } from '../security/isolated-postgres'
 import { id, jsonSql, sqlSource } from './connector-postgres-fixture'
 import { direct, enableDirect, installProviderDirect, instance, issueDirect, issueSql, revision, setSql } from './provider-direct-fixture'
+import { createGateway, gateway, installDirectReceipts, receiptMigration as migration } from './provider-direct-receipt-fixture'
 
-const migration = '20261123020000_connector_direct_receipts.sql'
 const request = uuid(902), hash = 'a'.repeat(64), digest = 'b'.repeat(64), slug = 'CRM_LIST_DEALS'
 const report = { title: 'Connector result', note: 'A private preview.', columns: ['Field', 'Value'], rows: [['$.total', '23']] }
 const recovery = { version: 1, revision: uuid(910), respawnCount: 0, inFlight: true, inFlightKind: 'turn',
@@ -18,10 +18,6 @@ const list = 'SELECT id FROM public.list_connector_private_results()'
 const session = (who = id.admin, anon: boolean | null = false) => `SET LOCAL ROLE authenticated;
   SET LOCAL request.jwt.claims='${JSON.stringify({sub: who, role:'authenticated', ...(anon !== null && {is_anonymous: anon})})}';`
 const verbose = '\\set VERBOSITY verbose\n'
-const gateway = `SET SESSION AUTHORIZATION direct_fixture_gateway; SET ROLE service_role;
-  SET request.jwt.claims='{"role":"service_role"}'; SET request.jwt.claim='{"role":"service_role"}';
-  SET request.jwt.claim.sub='${id.owner}'; SET request.jwt.claim.role='service_role';
-  SET request.headers='{"x-test":"outer"}'; SET request.cookies='{"test":"outer"}'; SET connector_direct.result_id='prior-ack';`
 
 if (process.env.REQUIRE_REAL_POSTGRES === '1' && !postgresAvailable) throw new Error('Disposable PostgreSQL binaries required')
 
@@ -54,28 +50,11 @@ test('hosted migration owners need no persistent custom parameter grants', () =>
     throw new Error('Fixture lock not acquired')
   }
 
-  beforeAll(() => { pg.start(); db(`CREATE ROLE direct_fixture_gateway NOINHERIT;
-    GRANT authenticated,service_role TO direct_fixture_gateway;`) }, 30000)
+  beforeAll(() => { pg.start(); db(createGateway) }, 30000)
   afterAll(pg.stop)
   beforeEach(() => {
     installProviderDirect(db)
-    // Install the real server-owned provenance guard, not a test-only permission function.
-    db(`CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$ SELECT coalesce(
-        nullif(current_setting('request.jwt.claim.sub',true),''),auth.jwt()->>'sub')::uuid $$;
-      CREATE OR REPLACE FUNCTION auth.jwt() RETURNS jsonb LANGUAGE sql STABLE AS $$ SELECT coalesce(
-        nullif(current_setting('request.jwt.claim',true),''),nullif(current_setting('request.jwt.claims',true),''))::jsonb $$;
-      CREATE FUNCTION auth.role() RETURNS text LANGUAGE sql STABLE AS $$ SELECT coalesce(
-        nullif(current_setting('request.jwt.claim.role',true),''), auth.jwt()->>'role') $$;
-      ALTER TABLE remote_instances ADD COLUMN agent_id uuid;
-      CREATE TABLE instance_pending_work(id uuid PRIMARY KEY, instance_id uuid,site_id uuid,user_id uuid);
-      CREATE TABLE instance_logs(id uuid PRIMARY KEY,instance_id uuid REFERENCES remote_instances(id) ON DELETE CASCADE,
-        site_id uuid,user_id uuid,agent_id uuid,log_type text,trusted_user_action boolean NOT NULL DEFAULT false,details jsonb,
-        message text NOT NULL DEFAULT '',created_at timestamptz NOT NULL DEFAULT clock_timestamp());
-      GRANT ALL ON instance_logs TO anon, authenticated, service_role;
-      ALTER TABLE instance_logs ENABLE ROW LEVEL SECURITY;
-      CREATE POLICY instance_log_fixture ON instance_logs TO authenticated USING (site_id='${id.site}') WITH CHECK (site_id='${id.site}');`)
-    db(sqlSource('20261119223000_connector_identity_guards.sql'))
-    db(sqlSource(migration,'makinari-db-scheme'))
+    installDirectReceipts(db)
     epoch = issueDirect(db); enableDirect(db); service(action())
   }, 30000)
 

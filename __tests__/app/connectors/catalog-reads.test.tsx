@@ -14,7 +14,7 @@ function editor(mode: ToolAccessMode, policy: Partial<ConnectorAccess["policy"]>
       ...access.policy, tool_access_mode: mode, allowed_tools: ["MAIL_GET_LABEL"], ...policy,
     } }} />)
   if (policy.catalog_reads !== undefined) {
-    const summary = screen.getByText("Legacy catalogue reads")
+    const summary = screen.getByText("Catalogue and scoped reads")
     expect(summary.closest("details")).not.toHaveAttribute("open")
     fireEvent.click(summary)
   }
@@ -25,7 +25,7 @@ test.each(["all", "selected"] as const)("an existing disabled policy stays off u
   const onSave = editor(mode, { catalog_reads: false })
   expect(toggle()).not.toBeChecked(); expect(save()).toBeDisabled()
   expect(screen.getByText(mode === "all" ? /including future entries/ : /among those exact IDs/)).toBeVisible()
-  expect(screen.getByText(/legacy setting does not turn Robots Ask access on or off.*authorize writes/)).toBeVisible()
+  expect(screen.getByText(/allows scoped metrics reads only when the signed-in member, tool and requested data are authorized/)).toBeVisible()
   fireEvent.click(toggle()); fireEvent.click(save())
   expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ catalog_reads: true, tool_access_mode: mode, allowed_tools: ["MAIL_GET_LABEL"], allowed_hosts: ["assistant"] }))
   fireEvent.click(toggle()); expect(save()).toBeDisabled()
@@ -61,7 +61,7 @@ test("never enables the instance host as a side effect of a policy save", () => 
 
 test("does not offer legacy controls when the server does not report a legacy setting", () => {
   editor("all", {})
-  expect(screen.queryByText("Legacy catalogue reads")).not.toBeInTheDocument()
+  expect(screen.queryByText("Catalogue and scoped reads")).not.toBeInTheDocument()
   expect(screen.queryByRole("checkbox", { name: "Allow instance catalogue reads" })).not.toBeInTheDocument()
 })
 
