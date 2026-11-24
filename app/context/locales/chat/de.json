@@ -1,4 +1,10 @@
 {
+  "chat.status.checkDeliveryBeforeRetry": "Prüfe vor einem erneuten Versuch den Versandstatus, damit die Nachricht nicht doppelt gesendet wird.",
+  "chat.recipient.whatsappPhone": "Speichere die Telefonnummer des Kontakts mit + und Landesvorwahl oder antworte in einem WhatsApp-Chat mit verifizierter Nummer.",
+  "chat.recipient.internationalPhone": "Füge dem Kontakt eine gültige internationale Telefonnummer mit + und Landesvorwahl hinzu.",
+  "chat.recipient.conflict": "Die WhatsApp-Nummern stimmen nicht überein. Prüfe, ob Kontakt und Chat dieselbe Nummer verwenden.",
+  "chat.recipient.email": "Füge dem Kontakt eine gültige E-Mail-Adresse hinzu, um eine E-Mail zu senden.",
+  "chat.recipient.channelIdentity": "Verknüpfe den Kontakt mit einem gültigen Konto oder einer Empfänger-ID für diesen Kanal.",
   "chat.workspace.unavailable": "Der Zugriff auf den Arbeitsbereich konnte nicht bestätigt werden.",
   "chat.workspace.denied": "Unterhaltungen sind für dieses Konto in diesem Arbeitsbereich nicht verfügbar.",
   "chat.workspace.choose": "Arbeitsbereich auswählen",

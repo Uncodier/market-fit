@@ -42,7 +42,7 @@ function deferred<T>() {
 }
 
 function setup(isAgentOnlyConversation = false, conversationId = 'conversation-1', isConversationReady = true,
-  commentOptions: { isCommentConversation?: boolean; commentReplyTarget?: ChatMessage } = {}) {
+  options: Pick<Parameters<typeof useChatOperations>[0], 'isCommentConversation' | 'commentReplyTarget' | 'channelBlockReasons' | 'conversationChannel'> = {}) {
   return renderHook(() => {
     const [messages, setMessages] = useState<ChatMessage[]>([])
     const [, setIsAgentResponding] = useState(false)
@@ -51,7 +51,7 @@ function setup(isAgentOnlyConversation = false, conversationId = 'conversation-1
       isAgentOnlyConversation, setChatMessages: setMessages, setIsAgentResponding,
       isConversationReady,
       leadData: { id: 'lead-1' },
-      ...commentOptions,
+      ...options,
     })
     return { ...operations, messages, setMessages }
   })
@@ -113,6 +113,25 @@ describe('useChatOperations send lifecycle', () => {
     },
   )
 
+  it.each([
+    { metadata: { channel: 'whatsapp' }, conversationChannel: 'web' },
+    { metadata: {}, conversationChannel: 'whatsapp' },
+    { metadata: { whatsapp_text_delivery: { state: 'failed' } }, conversationChannel: 'web' },
+    { metadata: { provider_call_id: 'call-1' }, conversationChannel: 'voice' },
+    { metadata: { comment_delivery_status: 'unknown' }, conversationChannel: 'web' },
+    { metadata: { status: 'placement_unknown' as const }, conversationChannel: 'web' },
+  ])('does not admit a blocked retry or change the saved row: %o', async ({ metadata, conversationChannel }) => {
+    const { result } = setup(false, 'conversation-1', true, { channelBlockReasons: { whatsapp: 'chat.recipient.whatsappPhone' }, conversationChannel })
+    const failed: ChatMessage = { id: 'failed-1', role: 'team_member', text: 'Original', timestamp: new Date(),
+      metadata: { command_status: 'failed', ...metadata } }
+    act(() => result.current.setMessages([failed]))
+    await act(async () => { await result.current.handleRetryMessage(failed) })
+    expect(sendTeamMemberIntervention).not.toHaveBeenCalled()
+    expect(markInterventionMessageFailed).not.toHaveBeenCalled()
+    expect(result.current.messages).toEqual([failed])
+    expect(result.current.isLoading).toBe(false)
+  })
+
   it('retries requested Audio using the same saved row when no template receipt exists', async () => {
     jest.mocked(sendTeamMemberIntervention).mockResolvedValue(accepted)
     const { result } = setup()
@@ -162,6 +181,7 @@ describe('useChatOperations send lifecycle', () => {
     act(() => { send = result.current.handleSendMessage('Draft') })
     expect(result.current.isLoading).toBe(true)
     expect(result.current.messages[0].id).toMatch(/^temp-/)
+    expect(result.current.messages[0].metadata?.status).toBe('sending')
     await act(async () => {
       response.resolve(accepted)
       expect(await send).toBe(true)
@@ -171,7 +191,7 @@ describe('useChatOperations send lifecycle', () => {
     expect(result.current.messages).toEqual([expect.objectContaining({
       id: 'message-1', text: 'Saved message', role: 'team_member',
       timestamp: new Date('2026-01-02T03:04:05.000Z'),
-      metadata: { status: 'pending', channel: 'call' },
+      metadata: { status: 'accepted', command_status: 'pending', dispatch_owner: 'chat_intervention', response_format: 'text', channel: 'call' },
     })])
     expect(sendTeamMemberIntervention).toHaveBeenCalledTimes(1)
     expect(markInterventionMessageFailed).not.toHaveBeenCalled()
@@ -205,6 +225,7 @@ describe('useChatOperations send lifecycle', () => {
       id: 'message-1', text: 'Draft', sender_id: 'user-1', role: 'team_member',
     })])
     expect(result.current.messages[0].timestamp).toBeInstanceOf(Date)
+    expect(result.current.messages[0].metadata).toMatchObject({ status: 'accepted', command_status: 'pending', dispatch_owner: 'chat_intervention' })
   })
 
   it.each([
@@ -221,7 +242,7 @@ describe('useChatOperations send lifecycle', () => {
     expect(sendTeamMemberIntervention).toHaveBeenCalledTimes(1)
   })
 
-  it.each([{ success: false }, {}])('does not consume an unconfirmed response: %j', async response => {
+  it.each([{ success: false }, { success: true }, {}])('does not consume an unconfirmed response: %j', async response => {
     jest.mocked(sendTeamMemberIntervention).mockResolvedValue(response)
     const { result } = setup()
     await act(async () => { expect(await result.current.handleSendMessage('Draft')).toBe(false) })
@@ -316,6 +337,7 @@ describe('useChatOperations send lifecycle', () => {
     const { result } = setup(true)
     await act(async () => { expect(await result.current.handleSendMessage('Draft')).toBe(success) })
     expect(sendTeamMemberIntervention).not.toHaveBeenCalled()
+    if (success) expect(result.current.messages[0].metadata).toEqual({ response_format: 'text' })
     expect(markInterventionMessageFailed).not.toHaveBeenCalled()
   })
 
@@ -337,6 +359,20 @@ describe('useChatOperations send lifecycle', () => {
     expect(sendTeamMemberIntervention).toHaveBeenCalledWith(
       'conversation-1', 'Draft', 'user-1', 'agent-1', expect.objectContaining({ message_id: 'message-1' }),
     )
+  })
+
+  it('shows the accepted retry on the same row without realtime, dropping the stale failure', async () => {
+    jest.mocked(sendTeamMemberIntervention).mockResolvedValue({ success: true, data: { message: { message_id: 'message-1' } } })
+    const { result } = setup()
+    const failed: ChatMessage = { id: 'message-1', role: 'team_member', text: 'Draft', timestamp: new Date(),
+      metadata: { status: 'failed', command_status: 'failed', error_message: 'Previous failure' } }
+    act(() => { result.current.setMessages([failed]) })
+    await act(async () => { await result.current.handleRetryMessage(failed) })
+    expect(result.current.messages).toHaveLength(1)
+    expect(result.current.messages[0]).toMatchObject({ id: failed.id, metadata: {
+      status: 'accepted', command_status: 'pending', dispatch_owner: 'chat_intervention',
+    } })
+    expect(result.current.messages[0].metadata?.error_message).toBeUndefined()
   })
 
   it('uses the persisted retry status instead of fabricating failure after the row advanced', async () => {

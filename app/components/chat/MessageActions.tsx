@@ -1,5 +1,6 @@
 "use client"
 
+import { isManualIntervention } from '@/lib/chat/manual-intervention'
 import React from "react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
 import { ChatMessage } from "@/app/types/chat"
@@ -37,7 +38,7 @@ export function MessageActions({
   )
 
   // Only show actions for pending or accepted messages
-  if (publicReplyClaimed || (!isPending && !isAccepted)) {
+  if (isManualIntervention(message.role, message.metadata) || publicReplyClaimed || (!isPending && !isAccepted)) {
     return null
   }
 

@@ -3,6 +3,9 @@ import { act, fireEvent, render, screen } from '@testing-library/react'
 import { SWRConfig } from 'swr'
 import { ChatList } from '@/app/components/chat/chat-list'
 import { SWRProvider } from '@/app/providers/swr-provider'
+import { createConversationListCache } from '@/app/providers/conversation-list-cache'
+import { ConversationListCacheOnly } from '@/app/providers/conversation-list-read-scope'
+import { WorkspaceSiteSWRScope } from '@/app/providers/WorkspaceSiteSWRScope'
 import { getConversationPage, type ConversationPage } from '@/app/services/getConversations.client'
 import { createClient } from '@/lib/supabase/client'
 import { LocalizationProvider } from '@/app/context/LocalizationContext'
@@ -10,6 +13,7 @@ import { LocalizationProvider } from '@/app/context/LocalizationContext'
 jest.mock('@/app/services/getConversations.client', () => ({ getConversationPage: jest.fn() }))
 jest.mock('@/lib/supabase/client', () => ({ createClient: jest.fn() }))
 jest.mock('@/app/context/ThemeContext', () => ({ useTheme: () => ({ isDarkMode: false }) }))
+jest.mock('@/app/context/SiteContext', () => ({ useSite: () => ({ currentSite: { id: 'site' }, isLoading: false }), useOptionalSite: () => null }))
 jest.mock('@/app/components/auth/auth-provider', () => ({ useAuthContext: () => ({
   user: { id: 'reviewer', user_metadata: { name: 'Reviewer', picture: '/local-avatar.png' } }, isLoading: false,
 }) }))
@@ -21,19 +25,29 @@ const channel = { on: jest.fn(), subscribe: jest.fn() }
 const openChannel = jest.fn(() => channel)
 const from = jest.fn()
 const flush = (ms = 0) => act(async () => { await jest.advanceTimersByTimeAsync(ms) })
-function mount(previewOnly = false) {
+function mount(previewOnly = false, cacheConfig = createConversationListCache('reviewer', 'site'), cacheOnly = false) {
   const select = jest.fn()
   const registerRefresh = jest.fn<void, [() => Promise<void>]>()
-  const cache = new Map()
   const wrapper = ({ children }: { children: ReactNode }) => (
     <StrictMode><LocalizationProvider preferredLocale="en"><SWRProvider>
-      <SWRConfig value={{ provider: () => cache }}>{children}</SWRConfig>
+      <WorkspaceSiteSWRScope><SWRConfig value={cacheConfig}>{children}</SWRConfig></WorkspaceSiteSWRScope>
     </SWRProvider></LocalizationProvider></StrictMode>
   )
-  const ui = (previewOnly: boolean) => <ChatList siteId="site" onSelectConversation={select}
-    onLoadConversations={registerRefresh} previewOnly={previewOnly} />
+  const ui = (previewOnly: boolean) => <ConversationListCacheOnly.Provider value={cacheOnly && previewOnly}>
+    <ChatList siteId="site" onSelectConversation={select} onLoadConversations={registerRefresh} previewOnly={previewOnly} />
+  </ConversationListCacheOnly.Provider>
   const view = render(ui(previewOnly), { wrapper })
-  return { select, registerRefresh, setPreview: (value: boolean) => view.rerender(ui(value)) }
+  return { select, registerRefresh, unmount: view.unmount, setPreview: (value: boolean) => view.rerender(ui(value)) }
+}
+async function priorVisit() {
+  const cache = createConversationListCache('reviewer', 'site')
+  read.mockResolvedValueOnce(first)
+  const visit = mount(false, cache)
+  await flush()
+  expect(visit.select).toHaveBeenCalledTimes(1)
+  visit.unmount()
+  read.mockClear()
+  return cache
 }
 beforeEach(() => {
   jest.useFakeTimers()
@@ -44,6 +58,60 @@ beforeEach(() => {
   jest.mocked(createClient).mockReturnValue({ from, channel: openChannel, removeChannel: jest.fn() } as ReturnType<typeof createClient>)
 })
 afterEach(() => { jest.useRealTimers() })
+
+it.each(['Refreshed conversation', 'Loaded conversation'])('only auto-opens the confirmed first page: %s', async title => {
+  const cache = await priorVisit()
+  let finish!: (page: ConversationPage) => void
+  read.mockReturnValueOnce(new Promise(resolve => { finish = resolve }))
+  const view = mount(false, cache)
+  expect(screen.getByText('Loaded conversation')).toBeVisible()
+  await flush(50)
+  expect(read).toHaveBeenCalledTimes(1)
+  expect(read.mock.calls[0][0].page).toBe(1)
+  expect(view.select).not.toHaveBeenCalled()
+
+  // Includes a deep-equal response: SWR can keep the original items reference.
+  await act(async () => { finish({ ...first, items: [row(title, 'pending')] }) })
+  expect(view.select.mock.calls).toEqual([[title, 'Agent', 'agent', title]])
+})
+
+it.each([false, true])('does not open warm rows after failure or while retrying (denied: %s)', async denied => {
+  const cache = await priorVisit()
+  let finish!: (page: ConversationPage) => void
+  let fail!: (cause: unknown) => void
+  read.mockRejectedValueOnce({ status: 503 }).mockReturnValueOnce(new Promise((resolve, reject) => {
+    finish = resolve; fail = reject
+  }))
+  const view = mount(false, cache)
+  await flush(50)
+  expect(screen.getByText('Loaded conversation')).toBeVisible()
+  fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+  expect(view.select).not.toHaveBeenCalled()
+  await act(async () => { if (denied) fail({ status: 403 }); else finish(first) })
+  if (denied) {
+    expect(screen.queryByText('Loaded conversation')).not.toBeInTheDocument()
+    expect(view.select).not.toHaveBeenCalled()
+  } else {
+    expect(view.select.mock.calls).toEqual([['Loaded conversation', 'Agent', 'agent', 'Loaded conversation']])
+  }
+  expect(read).toHaveBeenCalledTimes(2)
+})
+
+it('shows a cache-only revisit without a read, then waits for the resumed page before opening a thread', async () => {
+  const cache = await priorVisit()
+  let finish!: (page: ConversationPage) => void
+  read.mockReturnValueOnce(new Promise(resolve => { finish = resolve }))
+  const view = mount(true, cache, true)
+  await flush(50)
+  expect(screen.getByText('Loaded conversation')).toBeVisible()
+  expect(read).not.toHaveBeenCalled()
+  view.setPreview(false)
+  await flush(50)
+  expect(read).toHaveBeenCalledTimes(1)
+  expect(view.select).not.toHaveBeenCalled()
+  await act(async () => { finish({ ...first, items: [row('Resumed')] }) })
+  expect(view.select.mock.calls).toEqual([['Resumed', 'Agent', 'agent', 'Resumed']])
+})
 
 it('distinguishes first load, failure and confirmed empty; clicking Retry starts just one fresh read', async () => {
   let fail!: (reason: unknown) => void

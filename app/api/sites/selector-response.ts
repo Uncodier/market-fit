@@ -1,13 +1,11 @@
 import 'server-only'
-import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import type { createUserSupabase } from '@/lib/auth/site-member-request'
 import { readSelectorSites } from '@/lib/sites/selector-cache'
+import { readPages, SITE_LIST_COLUMNS, type SiteRow, type SitesQuery } from '@/lib/sites/list-accessible-sites'
 import { SitesRequestTiming } from './request-timing'
 
-/** The global service fetch repeats this gate for every query. Here it is verified
- * once per request, before cache access or creating a narrowly scoped list client.
- */
+/** Verify location before even reading presentation metadata from cache. */
 export async function selectorResponse(
   userClient: Awaited<ReturnType<typeof createUserSupabase>>, userId: string, signal: AbortSignal, fresh = false,
   timing = new SitesRequestTiming(),
@@ -19,12 +17,11 @@ export async function selectorResponse(
     return NextResponse.json({ success: false, error: 'Workspace access is temporarily unavailable' }, { status: 503 })
   }
   if (data) return NextResponse.json({ success: false, error: 'Unrestricted location access is required' }, { status: 403 })
-  const result = await timing.measure('list', () => readSelectorSites(userId, databaseSignal => createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
-      auth: { persistSession: false, autoRefreshToken: false },
-      global: { fetch: (input, init) => fetch(input, { ...init, cache: 'no-store', signal: databaseSignal }) },
-    },
-  ), fresh))
+  // Membership flags can lag a billing expiry. The user-scoped RPC reaches
+  // current_user_site_role and checks the effective license at read time.
+  const result = await timing.measure('list', () => readSelectorSites(userId, databaseSignal =>
+    readPages<SiteRow>(() => userClient.rpc('get_my_accessible_sites', {}, { get: true, count: 'exact' })
+      .select(SITE_LIST_COLUMNS) as unknown as SitesQuery, 'id', databaseSignal), fresh))
   timing.record('redis_read', result.cacheReadMs)
   timing.record('redis_write', result.cacheFillMs)
   return NextResponse.json({ success: true, sites: result.sites, authoritative: result.authoritative,

@@ -16,18 +16,19 @@ import { useWorkspaceAccessSnapshot } from './WorkspaceAccessSnapshot'
 type PermissionContextValue = {
   siteId: string | null
   capabilities: SiteCapabilities | null
+  capabilitiesPending?: boolean
   can: (command: PermissionCommand) => boolean
   isViewOnly: boolean
 }
 
 const PermissionContext = createContext<PermissionContextValue | null>(null)
 
-async function fetchCapabilities(siteId: string): Promise<SiteCapabilities | null> {
+async function fetchCapabilities(siteId: string, signal: AbortSignal): Promise<SiteCapabilities | null> {
   try {
     const supabase = createClient()
     const { data, error } = await supabase.rpc("get_my_site_capabilities", {
       p_site_id: siteId,
-    })
+    }).abortSignal(signal)
     if (error) return null
     return parseCapabilities(data)
   } catch {
@@ -48,19 +49,25 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
     : capabilitiesFromRole(confirmed?.role ?? null), [confirmed, source, loaded])
 
   useEffect(() => {
-    let cancelled = false
     if (!source.siteId || !source.legacy) return
-    fetchCapabilities(source.siteId).then((next) => {
-      if (cancelled) return
+    const controller = new AbortController()
+    const timer = setTimeout(() => {
+      controller.abort()
+      setLoaded({ source, capabilities: null })
+    }, 8_000)
+    void fetchCapabilities(source.siteId, controller.signal).then((next) => {
+      if (controller.signal.aborted) return
+      clearTimeout(timer)
       setLoaded({ source, capabilities: next })
     })
-    return () => { cancelled = true }
+    return () => { clearTimeout(timer); controller.abort() }
   }, [source])
   useEffect(() => {
     setPermissionStore({ siteId, capabilities, loaded: !siteId || !!capabilities })
     return () => setPermissionStore({ siteId: null, capabilities: null, loaded: false })
   }, [siteId, capabilities])
 
+  const capabilitiesPending = !!siteId && source.legacy && loaded?.source !== source
   const value = useMemo<PermissionContextValue>(() => {
     const can = (command: PermissionCommand) => {
       if (!siteId || !capabilities) return true
@@ -69,10 +76,11 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
     return {
       siteId,
       capabilities,
+      capabilitiesPending,
       can,
-      isViewOnly: !!capabilities && !capabilities.insert && !capabilities.update,
+      isViewOnly: !!siteId && capabilities?.select === true && !capabilities.insert && !capabilities.update,
     }
-  }, [siteId, capabilities])
+  }, [siteId, capabilities, capabilitiesPending])
 
   return (
     <PermissionContext.Provider value={value}>

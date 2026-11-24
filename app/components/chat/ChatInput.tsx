@@ -8,6 +8,7 @@ import { LoadingSkeleton } from "@/app/components/ui/loading-skeleton"
 import { cn } from "@/lib/utils"
 import { useLocalization } from '@/app/context/LocalizationContext'
 import { useLayout } from "@/app/context/LayoutContext"
+import { DisabledReasonTooltip } from "./DisabledReasonTooltip"
 import { ChannelSelector } from "./ChannelSelector"
 import { ResponseFormatSelector } from './ResponseFormatSelector'
 import { supportsAudioResponse, type ChatResponseFormat } from '@/lib/chat/response-format'
@@ -34,6 +35,8 @@ interface ChatInputProps {
   } | null
   isAgentOnlyConversation?: boolean
   isConversationReady?: boolean
+  channelBlockReasons?: Readonly<Record<string, string>>
+  onChannelCommitted?: (channel: string) => void
   commentReplySelection?: CommentReplySelection
 }
 
@@ -52,6 +55,8 @@ export const ChatInput = memo(function ChatInput({
   isAgentOnlyConversation = false,
   isConversationReady = true,
   commentReplySelection,
+  channelBlockReasons,
+  onChannelCommitted,
 }: ChatInputProps) {
   const { t } = useLocalization()
   const { isLayoutCollapsed } = useLayout()
@@ -69,17 +74,20 @@ export const ChatInput = memo(function ChatInput({
   // Track whether the textarea has any user input to control send button fill/enable
   const [hasInput, setHasInput] = useState(false)
 
-  // Channel selector hook - now optimized
+  const isDirect = !commentReplySelection && !isAgentOnlyConversation
   const {
     selectedChannel,
     setSelectedChannel,
     availableChannels,
+    displayChannels = availableChannels,
     isUpdatingChannel,
     channelLoadError,
     retryChannelLoad,
   } = useChannelSelector({
     conversationId,
     leadData,
+    channelBlockReasons: isDirect ? channelBlockReasons : undefined,
+    onChannelCommitted,
     isAgentOnlyConversation
   })
   const audioSupported = !commentReplySelection && !isAgentOnlyConversation && supportsAudioResponse(selectedChannel)
@@ -91,9 +99,26 @@ export const ChatInput = memo(function ChatInput({
     }
   }, [audioSupported, conversationId, formatSelection.conversationId])
   const isVoice = !commentReplySelection && selectedChannel === 'voice'
-  const voiceBlock = isVoice ? getVoiceCallBlock(leadData) : null
-  const channelUnavailable = !commentReplySelection && !isAgentOnlyConversation && !availableChannels.includes(selectedChannel)
-  const sendingBlocked = channelUnavailable || isUpdatingChannel || isLoading || !isConversationReady || Boolean(voiceBlock) ||
+  const voiceBlock = getVoiceCallBlock(leadData)
+  const voiceReason = !voiceBlock ? undefined
+    : voiceBlock.code === 'VOICE_DO_NOT_CALL' ? (leadData?.do_not_call ? 'chat.input.doNotCall' : 'chat.input.callOptOut')
+    : voiceBlock.code === 'VOICE_PHONE_REQUIRED' ? 'chat.input.phoneRequired' : 'chat.input.leadRequired'
+
+  // A persisted channel may no longer be configured. Show it without making it eligible.
+  const pickerChannels = useMemo(() => !isDirect ? availableChannels : displayChannels.includes(selectedChannel)
+    ? displayChannels : [...displayChannels, selectedChannel], [isDirect, availableChannels, displayChannels, selectedChannel])
+  const pickerReasons = useMemo<Readonly<Record<string, string>> | undefined>(() => {
+    if (!isDirect) return undefined
+    // Preserve explicit voice opt-out even if a recipient reason is supplied.
+    if (voiceReason && (!channelBlockReasons?.voice || voiceBlock?.code === 'VOICE_DO_NOT_CALL')) {
+      return { ...channelBlockReasons, voice: voiceReason }
+    }
+    return channelBlockReasons
+  }, [isDirect, channelBlockReasons, voiceBlock?.code, voiceReason])
+  const channelUnavailable = isDirect && !availableChannels.includes(selectedChannel)
+  const sendBlockReason = pickerReasons?.[selectedChannel] ?? (channelUnavailable ? 'chat.input.channelUnavailable' : isVoice ? voiceReason : undefined)
+  const sendLabel = commentReplySelection ? t('chat.input.replyPublicly') : isVoice ? t('chat.input.startCall') : t('chat.input.send')
+  const sendingBlocked = Boolean(sendBlockReason) || isUpdatingChannel || isLoading || !isConversationReady ||
     Boolean(commentReplySelection && !commentReplySelection.target)
   
   // CRITICAL: Direct handler to prevent character loss
@@ -178,14 +203,13 @@ export const ChatInput = memo(function ChatInput({
         <div className="w-full mx-auto relative pb-[20px] px-4 md:px-8 lg:px-12 xl:px-24">
           <p className="text-xs text-muted-foreground px-2 pb-2 pointer-events-auto" role="status">
             {!isConversationReady ? t('chat.input.loadingSettings')
-              : channelUnavailable ? t('chat.input.channelUnavailable')
+              : sendBlockReason ? t(sendBlockReason)
               : commentReplySelection ? (commentReplySelection.target ? t('chat.input.publicReplyHint')
                 : commentReplySelection.options.length ? t('chat.input.selectCommentHint')
                   : t('chat.input.noCommentHint'))
-              : voiceBlock ? t(voiceBlock.code === 'VOICE_DO_NOT_CALL' ? (leadData?.do_not_call ? 'chat.input.doNotCall' : 'chat.input.callOptOut') : voiceBlock.code === 'VOICE_PHONE_REQUIRED' ? 'chat.input.phoneRequired' : 'chat.input.leadRequired')
-                : isVoice ? t('chat.input.callHint')
-                  : isAgentOnlyConversation ? t('chat.input.internalHint')
-                    : t('chat.input.interventionHint')}
+              : isVoice ? t('chat.input.callHint')
+                : isAgentOnlyConversation ? t('chat.input.internalHint')
+                  : t('chat.input.interventionHint')}
           </p>
           <form onSubmit={handleSubmit} className="relative w-full pointer-events-auto">
             <div className="relative w-full" id="tour-chat-input">
@@ -214,19 +238,21 @@ export const ChatInput = memo(function ChatInput({
 
               {/* Send button on the right - moved after textarea */}
               <div className="absolute bottom-[15px] right-[15px]" style={{ zIndex: 51 }}>
-                <Button 
-                  type="submit" 
-                  size="icon"
-                  disabled={!canSend}
-                  className="h-[35.1px] w-[35.1px] shrink-0 rounded-full bg-foreground text-background hover:bg-foreground/90 disabled:opacity-50"
-                >
-                  {isLoading ? (
-                    <LoadingSkeleton size="sm" />
-                  ) : (
-                    <Icons.ArrowUp className="h-4.5 w-4.5" />
-                  )}
-                  <span className="sr-only">{commentReplySelection ? t('chat.input.replyPublicly') : isVoice ? t('chat.input.startCall') : t('chat.input.send')}</span>
-                </Button>
+                <DisabledReasonTooltip label={sendLabel} reason={sendBlockReason && t(sendBlockReason)}>
+                  <Button
+                    type="submit"
+                    size="icon"
+                    disabled={!canSend}
+                    className="h-[35.1px] w-[35.1px] shrink-0 rounded-full bg-foreground text-background hover:bg-foreground/90 disabled:opacity-50"
+                  >
+                    {isLoading ? (
+                      <LoadingSkeleton size="sm" />
+                    ) : (
+                      <Icons.ArrowUp className="h-4.5 w-4.5" />
+                    )}
+                    <span className="sr-only">{sendLabel}</span>
+                  </Button>
+                </DisabledReasonTooltip>
               </div>
               
               {/* Channel selector centered */}
@@ -243,6 +269,8 @@ export const ChatInput = memo(function ChatInput({
           selectedChannel={selectedChannel}
           onChannelChange={setSelectedChannel}
           availableChannels={availableChannels}
+          displayChannels={pickerChannels}
+          channelBlockReasons={pickerReasons}
           isUpdating={isUpdatingChannel}
         />}
         {audioSupported && <ResponseFormatSelector
@@ -295,6 +323,8 @@ export const ChatInput = memo(function ChatInput({
     prevProps.isChatListCollapsed === nextProps.isChatListCollapsed &&
     prevProps.isAgentOnlyConversation === nextProps.isAgentOnlyConversation &&
     prevProps.isConversationReady === nextProps.isConversationReady &&
+    prevProps.channelBlockReasons === nextProps.channelBlockReasons &&
+    prevProps.onChannelCommitted === nextProps.onChannelCommitted &&
     prevProps.commentReplySelection === nextProps.commentReplySelection &&
     prevProps.handleMessageChange === nextProps.handleMessageChange &&
     prevProps.setMessage === nextProps.setMessage &&

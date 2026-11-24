@@ -174,6 +174,7 @@ export function ChatParticipantMessageRow({
             <MessageStatus
               message={message}
               onRetry={actions.onRetry}
+              retryBlockReason={actions.retryBlockReason}
               acceptedLabel={isOtherTeamMember ? "accepted" : "scheduled"}
             />
             <MessageTimestamp

@@ -17,6 +17,12 @@ and interacting with audio/video controls never opens another tab.
 
 ## Request and persistence boundary
 
+### Recipient checks before sending
+
+In a direct chat, configured channels with an unusable recipient stay visible but cannot be selected. Hover or keyboard-focus a blocked channel, Send, or Retry to see what to correct. Switching to an eligible channel preserves the draft. WhatsApp requires an international number, or a matching provider-verified inbound contact in this conversation; a local CRM number alone never implies a country. Conflicting WhatsApp contacts also block sending. SMS and voice require an international number, voice keeps its opt-out checks, email requires a valid address, and social routes require a channel-specific recipient. Internal messages and public comment replies keep their separate rules.
+
+These are UI checks, not delivery guarantees. The provider API still verifies the authoritative saved recipient and connection before dispatch. A historical recipient error does not block retry once the current contact is valid; a provider-owned delivery receipt still does.
+
 ### Audio delivery evidence
 
 Provider acceptance (`sent`) is displayed as **Sent to provider; delivery
@@ -46,6 +52,24 @@ The external API owns message creation. A successful send must return
 `success: true` and `data.message.message_id`. The composer replaces its
 optimistic row with that ID without waiting for Realtime. An existing Realtime
 row wins over the HTTP snapshot.
+
+**Manual Send authorizes dispatch; it does not confirm delivery.** While HTTP is
+in flight, the local row shows Sending. On validated success, including an
+older API's ID-only response, it shows Accepted with a pending command until
+there is stronger delivery evidence. Retry uses the same row and only replaces
+its own optimistic state. Rejections and ambiguous responses never synthesize
+approval. Persisted failure, unknown placement and provider receipts take
+precedence; a definite failure without a provider-owned attempt can still be retried.
+
+A `team_member` row owned by `dispatch_owner: chat_intervention` is not an
+assistant proposal, even if its delivery status later becomes `pending`. Older
+interventions have `command_status` instead of an owner marker. Neither shape
+contributes to the pending-proposal list flags or exposes Accept, Undo (Pending),
+Edit or Reject. Single and bulk moderation writes exclude these rows; direct
+Undo checks the current role and compares the saved metadata before writing.
+Empty-conversation cleanup cannot delete a newly arrived reply. These are web
+application guards, not new database policies. Unmarked legacy proposals and
+internal agent chat sends keep their existing paths.
 
 Malformed responses, admission errors, and network failures are not successful
 sends. The draft remains available. A definite post-save failure may consume
@@ -149,8 +173,8 @@ dispatch. Neither approval nor rejection grants manual retry permission.
 Existing audio receipt guards still apply to non-template sends. Client error reconciliation preserves
 template metadata instead of overwriting it with a generic HTTP failure.
 
-The HTTP response allowlist is unchanged: it returns lifecycle identifiers, not
-template metadata. Realtime remains authoritative. No provider call or production
+The proxy allowlists lifecycle identifiers, approval/command states and bounded
+receipt states only; it strips nested provider details. Realtime remains authoritative. No provider call or production
 delivery has been verified by the offline tests.
 
 Public social-comment threads require an explicit persisted `reply_to_message_id`.
@@ -282,6 +306,7 @@ the authentication diagnosis above is separate from that earlier investigation.
 Focused offline regression checks:
 
 ```bash
+npm test -- --runInBand __tests__/api/manual-intervention-bulk-moderation.test.ts __tests__/api/accept-message.test.ts __tests__/components/chat __tests__/services/conversation-list-items.test.ts
 npm test -- --runInBand __tests__/chat __tests__/api/intervention-proxy.test.ts __tests__/api/intervention-voice-preflight.test.ts __tests__/api/agent-message-proxy.test.ts __tests__/hooks/use-chat-operations.test.tsx __tests__/hooks/use-lead-data-routing.test.tsx __tests__/components/chat/chat-input.test.tsx
 npm run typecheck
 ```

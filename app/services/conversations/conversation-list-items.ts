@@ -1,3 +1,4 @@
+import { isManualIntervention } from '@/lib/chat/manual-intervention'
 import type { ConversationListItem } from "@/app/types/chat"
 import type { createClient } from '@/lib/supabase/client'
 import { readConversationQuery, conversationReadError } from "./conversation-read-error"
@@ -39,14 +40,15 @@ async function loadMessageModerationFlags(
   const flags = new Map<string, MessageModerationFlags>()
   if (conversationIds.length === 0) return flags
 
-  const data = await readConversationQuery<Array<{ conversation_id: string; custom_data?: { status?: string } }>>(supabase
+  const data = await readConversationQuery<Array<{ conversation_id: string; role: string; custom_data?: { status?: string } }>>(supabase
     .from("messages")
-    .select("conversation_id, custom_data")
+    .select("conversation_id, role, custom_data")
     .in("conversation_id", conversationIds)
     .or("custom_data->>status.eq.pending,custom_data->>status.eq.accepted"), signal)
   if (!Array.isArray(data)) throw conversationReadError(null)
 
   for (const message of data) {
+    if (isManualIntervention(message.role, message.custom_data)) continue
     const conversationId = message.conversation_id
     const status = message.custom_data?.status
     const current = flags.get(conversationId) || {

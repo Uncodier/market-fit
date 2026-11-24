@@ -429,8 +429,10 @@ export type WorkspaceRequestScope = { actorId: string; siteId: string }
 
 export interface SiteContextType {
   sites: Site[]
+  sitesLoaded?: boolean
   currentSite: Site | null
   requestScope?: WorkspaceRequestScope | null
+  workspaceAccessLost?: boolean
   isLoading: boolean
   error: Error | null
   setCurrentSite: (site: Site) => void

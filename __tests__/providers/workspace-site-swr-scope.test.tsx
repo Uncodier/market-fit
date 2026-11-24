@@ -159,3 +159,22 @@ it('preserves visible data through background transport failure and subsequent s
   rerender(<Wrapper><List name="inventory" /></Wrapper>)
   expect(screen.getByTestId('inventory')).toHaveTextContent('Loaded')
 })
+
+it.each(['denial snapshot', 'explicit clear'])('does not mask an inbox %s with retained rows during site loading', async mode => {
+  mockLoading = false
+  type Page = { rows: string; denial?: { status: number } }
+  const read = async (): Promise<Page> => ({ rows: 'private row' })
+  function Inbox() {
+    const { data, mutate } = useSWR(['conversations', mockSiteId, 'all', '', mockActorId], read)
+    return <><span>{data?.denial ? 'denied' : data?.rows ?? 'pending'}</span>
+      <button onClick={() => { void mutate(mode === 'explicit clear' ? undefined : { rows: '', denial: { status: 403 } }, false) }}>Invalidate</button></>
+  }
+  const view = render(<Wrapper><Inbox /></Wrapper>)
+  await screen.findByText('private row')
+  mockLoading = true
+  view.rerender(<Wrapper><Inbox /></Wrapper>)
+  expect(screen.getByText('private row')).toBeVisible()
+  fireEvent.click(screen.getByText('Invalidate'))
+  await screen.findByText(mode === 'explicit clear' ? 'pending' : 'denied')
+  expect(screen.queryByText('private row')).toBeNull()
+})

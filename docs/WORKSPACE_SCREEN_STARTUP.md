@@ -6,6 +6,9 @@ Pending workspace/access checks render non-interactive skeletons with an
 accessible busy state, not visible verification or loading messages. Once
 authorized preview rows arrive they can be shown read-only. Denial, missing
 selection, timeout and recoverable failure remain explicit, not an endless skeleton.
+On the compatibility path, settings, the selector and the capability read may
+finish in different orders. Pending checks do not report a verification failure;
+a failed capability read or its eight-second timeout offers a fresh access check.
 
 The workspace shell resolves an actor-bound selection. A local name or ID is a
 presentation hint, **never** authorization. Navigation and UI capability hints
@@ -35,7 +38,15 @@ SDK supports it; even uncancellable late completions cannot publish. A five-seco
 deadline and explicit retry bound the visible wait without retrying every screen
 on focus or on a timer. No preview payload or permission is persisted. The preview
 may add a small separate read on slow startup; it never seeds an incompatible full
-list cache. The conversation inbox retains its separate, reusable first-page read.
+list cache. Returning to the conversation inbox under the same actor, site and access
+proof shows the cached list for that filter and search while page one revalidates.
+The workspace keeps these rows only in memory. A new proof starts cold, even if
+it grants the same role, and a denied list read retires the other cached views.
+On desktop the cached rows do not choose a thread: automatic selection waits
+for a successful page-one response for the current visit and filter. If the
+legacy selector fails with an unchanged membership proof and selected site,
+already loaded rows remain visible without list reads, navigation or actions.
+Retrying the directory does not itself restore access to those operations.
 
 ## Coverage and deliberate exclusions
 
@@ -73,6 +84,10 @@ shop or printer configuration. Refreshing the same active site does not repeat a
 completed settings read just to update the selector.
 
 The notification inbox shows an empty result only after its scoped GET succeeds.
+During a refresh of the same inbox, including a settings sync for the same
+verified workspace, it keeps the last result visible with row actions disabled.
+A cold inbox still waits for settings. Losing the selection or its proof retires
+the displayed result; returning to the inbox does not reuse another site's rows.
 When verification or settings fail, retry the failed prerequisite rather than
 fetching messages without it. A timed-out preview whose Auth request has not
 settled offers an explicit page reload, not an ineffective retry. A normal retry

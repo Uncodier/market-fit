@@ -11,14 +11,14 @@ jest.mock('@/app/services/getConversationMessages.client', () => ({ getConversat
 const metadata = { source: 'comment', status: 'accepted' as const, reply_to_message_id: 'parent', reply_to_comment_id: 'provider-parent' }
 const message: ChatMessage = { id: 'reply', role: 'assistant', text: 'Answer', timestamp: new Date(), metadata }
 
-function setup(savedMetadata: Record<string, unknown>, updatedRow: unknown = { id: 'reply' }) {
+function setup(savedMetadata: Record<string, unknown>, updatedRow: unknown = { id: 'reply' }, role = 'assistant') {
   const update = jest.fn()
   const eq = jest.fn()
   const chain = { select: jest.fn(), eq, single: jest.fn(), update, maybeSingle: jest.fn() }
   chain.select.mockReturnValue(chain)
   eq.mockReturnValue(chain)
   update.mockReturnValue(chain)
-  chain.single.mockResolvedValue({ data: { custom_data: savedMetadata }, error: null })
+  chain.single.mockResolvedValue({ data: { role, custom_data: savedMetadata }, error: null })
   chain.maybeSingle.mockResolvedValue({ data: updatedRow, error: null })
   jest.mocked(createClient).mockReturnValue({ from: () => chain } as unknown as ReturnType<typeof createClient>)
   const onMessagesUpdate = jest.fn()
@@ -55,4 +55,11 @@ it('does not claim success when a concurrent delivery wins the metadata compare'
     expect(onMessagesUpdate).not.toHaveBeenCalled()
     expect(toast.success).not.toHaveBeenCalled()
   } finally { log.mockRestore() }
+})
+
+it('refuses direct undo when a stale proposal callback references a saved manual intervention', async () => {
+  const { result, update, onMessagesUpdate } = setup({ status: 'accepted', dispatch_owner: 'chat_intervention' }, undefined, 'team_member')
+  await act(async () => { await result.current.handleUndoAcceptMessage(message) })
+  expect(update).not.toHaveBeenCalled()
+  expect(onMessagesUpdate).not.toHaveBeenCalled()
 })

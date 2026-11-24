@@ -1,7 +1,7 @@
 import 'server-only'
 import { hashRedisKeyPart } from '@/lib/redis/control-plane'
 import { executeRedisCommand } from '@/lib/redis/upstash-rest'
-import { listAccessibleSitesForUser, type SitesAdminClient, type SiteRow } from './list-accessible-sites'
+import type { SiteRow } from './list-accessible-sites'
 
 const TTL_SECONDS = 60
 const REDIS_BUDGET_MS = 250
@@ -20,6 +20,7 @@ type CacheMiss = Exclude<SelectorCacheReason, 'hit' | 'bypass' | 'coalesced'>
 type Lookup = { reason: 'hit'; sites: SiteRow[]; savedAt: number } | { reason: CacheMiss }
 type TimedLookup = Lookup & { readMs?: number }
 type DatabaseResult = { sites: SiteRow[]; fillMs?: number }
+type ReadSites = (signal: AbortSignal) => Promise<SiteRow[]>
 type Fill = {
   fresh: boolean
   pending: boolean
@@ -77,7 +78,7 @@ async function writeCache(key: string, sites: SiteRow[], savedAt: number) {
 }
 
 function startFill(
-  scope: Scope, key: string, userId: string, createAdmin: (signal: AbortSignal) => SitesAdminClient,
+  scope: Scope, key: string, readSites: ReadSites,
   fresh: boolean, cacheDisabled: boolean,
 ): Fill {
   const previous = scope.fill
@@ -88,8 +89,8 @@ function startFill(
     // Independent from a subscriber disconnect; bound age from the start of the scan.
     const savedAt = Date.now()
     const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(5_000)])
-    const { sites, error } = await listAccessibleSitesForUser(createAdmin(signal), userId, signal)
-    if (error || signal.aborted) throw new Error('The complete project list is temporarily unavailable')
+    const sites = await readSites(signal)
+    if (signal.aborted) throw new Error('The complete project list is temporarily unavailable')
     const value = project(sites)
     if (cacheDisabled) return { sites: value }
     // A superseded fill must not start a write. If one was already sent, finish it
@@ -137,9 +138,9 @@ async function databaseResponse(
  * Cache entries contain presentation metadata, never authorization or billing.
  * Only pending work is shared in-process; Redis failure falls back to the DB.
  */
-export async function readSelectorSites(userId: string, createAdmin: (signal: AbortSignal) => SitesAdminClient, fresh = false): Promise<SelectorResult> {
+export async function readSelectorSites(userId: string, readSites: ReadSites, fresh = false): Promise<SelectorResult> {
   const namespace = `${process.env.NEXT_PUBLIC_SUPABASE_URL}|${process.env.VERCEL_ENV ?? process.env.NODE_ENV}`
-  const key = `sites:selector:v2:${await hashRedisKeyPart(`${namespace}:${userId}`)}`
+  const key = `sites:selector:v3:${await hashRedisKeyPart(`${namespace}:${userId}`)}`
   const scope = inflight.get(key) ?? { readers: 0 }
   inflight.set(key, scope)
   scope.readers += 1
@@ -150,7 +151,7 @@ export async function readSelectorSites(userId: string, createAdmin: (signal: Ab
     }
     if (fresh) {
       // A fresh read after a mutation cannot join a cached miss's earlier scan.
-      return await databaseResponse(startFill(scope, key, userId, createAdmin, true, false), 'bypass')
+      return await databaseResponse(startFill(scope, key, readSites, true, false), 'bypass')
     }
     const sharedLookup = Boolean(scope.lookup)
     const lookup = await (scope.lookup ??= readCache(key).finally(() => { scope.lookup = undefined }))
@@ -168,7 +169,7 @@ export async function readSelectorSites(userId: string, createAdmin: (signal: Ab
           cacheReason: sharedLookup ? 'coalesced' : 'hit', cacheReadMs, revalidateAfterMs })
       }
     }
-    return await databaseResponse(startFill(scope, key, userId, createAdmin, false, reason === 'disabled'),
+    return await databaseResponse(startFill(scope, key, readSites, false, reason === 'disabled'),
       reason, cacheReadMs)
   } finally {
     scope.readers -= 1

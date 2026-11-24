@@ -5,7 +5,7 @@ import { SWRConfig, unstable_serialize, useSWRConfig, type Middleware } from "sw
 import { useSite } from "@/app/context/SiteContext"
 import { AuthContext } from "@/app/components/auth/auth-context"
 import { isTerminalRequestError } from "@/lib/swr/retry-policy"
-import { ConversationListReadScope, isConversationListKey } from './conversation-list-read-scope'
+import { ConversationListCacheOnly, ConversationListReadScope, isConversationListKey } from './conversation-list-read-scope'
 
 // Coordinate only a resumed read, within the SWR cache that owns it. No data,
 // grants or settled promises are cached here; ordinary mutate() stays explicit.
@@ -27,7 +27,8 @@ const siteLoadingMiddleware: Middleware = next => (key, fetcher, config) => {
   const independent = verified && !auth?.isLoading && verified.actorId === auth?.user?.id &&
     verified.actorId === requestScope?.actorId && verified.siteId === requestScope.siteId &&
     isConversationListKey(key) && key[1] === verified.siteId && key[4] === verified.actorId
-  const isLoading = siteLoading && !independent
+  const cacheOnly = useContext(ConversationListCacheOnly)
+  const isLoading = cacheOnly || (siteLoading && !independent)
   const scope = JSON.stringify([auth?.user?.id, currentSite?.id])
   const resource = unstable_serialize(key)
   // Never carry another resource or tenant's data through a key change.
@@ -45,17 +46,26 @@ const siteLoadingMiddleware: Middleware = next => (key, fetcher, config) => {
       wakeResource(cache, JSON.stringify([scope, resource]), mutate)
     }
   }, [cache, isLoading, resource, scope, fetcher, mutate, result.isValidating])
+  // A terminal page read can be recorded as a denial snapshot (not a thrown
+  // SWR error). Never mask it with rows retained before a workspace pause.
+  const list = isConversationListKey(key)
+  const snapshot = result.data
+  const deniedList = list && snapshot && typeof snapshot === 'object' && 'denial' in snapshot && !!snapshot.denial
   useEffect(() => {
     if (previous.current?.scope !== scope || previous.current?.resource !== resource ||
-        isTerminalRequestError(result.error)) previous.current = null
-    if (!isLoading && result.data !== undefined && !isTerminalRequestError(result.error)) {
+        deniedList || isTerminalRequestError(result.error)) previous.current = null
+    if (!isLoading && result.data !== undefined && !deniedList && !isTerminalRequestError(result.error)) {
       previous.current = { scope, resource, data: result.data }
     }
-  }, [scope, resource, isLoading, result.data, result.error])
+  }, [scope, resource, isLoading, deniedList, result.data, result.error])
+  if (deniedList) return result
   if (isTerminalRequestError(result.error)) return { ...result, data: undefined, isLoading: false }
   if (!isLoading || !resource) return result
+  // A revisited cache-only inbox has no previous render. Its proof-owned SWR
+  // provider already isolates these rows by actor, site, search and filter.
+  if (cacheOnly && list) return { ...result, isLoading: result.data === undefined && !result.error }
   const data = previous.current?.scope === scope && previous.current.resource === resource
-    ? previous.current.data : undefined
+    ? (list ? result.data : previous.current.data) : undefined
   return { ...result, data, error: undefined, isLoading: data === undefined }
 }
 

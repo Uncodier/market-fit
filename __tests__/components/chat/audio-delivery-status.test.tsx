@@ -53,3 +53,29 @@ it('ignores malformed receipts and preserves the prepared-audio retry path', () 
   render(<MessageStatus message={message({ status: 'failed', command_status: 'failed', audio_delivery: { state: 'ready' } })} onRetry={jest.fn()} />)
   expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument()
 })
+it('separates manual approval, definite failure, and unconfirmed placement', () => {
+  const row = { ...message({}), role: 'team_member' as const }
+  const metadata = { dispatch_owner: 'chat_intervention', status: 'accepted' as const, delay_timer: 123, command_status: 'pending' as const }
+  const retry = jest.fn()
+  const { rerender } = render(<><MessageStatus message={{ ...row, metadata }} /><MessageTimestamp message={{ ...row, metadata }} /></>)
+  expect(screen.getByText('Accepted')).toBeInTheDocument()
+  expect(screen.queryByLabelText('Delivered')).not.toBeInTheDocument()
+  rerender(<MessageStatus message={{ ...row, metadata: { ...metadata, command_status: 'failed' } }} onRetry={retry} />)
+  expect(screen.getByText('Failed to send')).toBeInTheDocument()
+  expect(screen.queryByText('Accepted')).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Retry' })).toBeEnabled()
+  rerender(<MessageStatus message={{ ...row, metadata: { ...metadata, call_status: 'placement_unknown' } }} onRetry={retry} />)
+  expect(screen.getByText('Delivery unconfirmed')).toBeInTheDocument()
+  expect(screen.queryByRole('button')).not.toBeInTheDocument()
+})
+
+it('does not upgrade an older text acceptance receipt to sent or hide a signed failure', () => {
+  const metadata = { dispatch_owner: 'chat_intervention', command_status: 'pending' as const, whatsapp_text_delivery: { state: 'accepted' } }
+  const row = { ...message(metadata), role: 'team_member' as const }
+  const { rerender } = render(<MessageStatus message={row} />)
+  expect(screen.getByText('Delivery unconfirmed')).toBeInTheDocument()
+  rerender(<><MessageStatus message={{ ...row, metadata: { ...metadata, status: 'failed' } }} />
+    <MessageTimestamp message={{ ...row, metadata: { ...metadata, status: 'failed' } }} /></>)
+  expect(screen.getByText('Failed to send')).toBeInTheDocument()
+  expect(screen.queryByLabelText('Sent to provider; delivery unconfirmed')).not.toBeInTheDocument()
+})

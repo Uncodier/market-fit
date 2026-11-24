@@ -38,6 +38,21 @@ members are marked `license_suspended`, not removed. An upgrade or a freed seat
 restores eligible license-suspended members in that order. Role, invitation status,
 assignment history and business records remain intact.
 
+The workspace selector uses the signed-in user's `get_my_accessible_sites`
+RPC for authoritative reads, so it honors effective coverage even before
+the persisted suspension flag catches up. The selected workspace also checks
+its effective role at entry, on visibility/reconnection, and every minute
+while visible. A confirmed loss retires the selection and its pending reads,
+clears its saved selection, and returns the member to Projects with an access
+notice. Other projects and the signed-in session remain available. Transport,
+Auth and timeout errors are not evidence of revoked access. To restore access,
+the owner resolves the license or membership and the member retries the picker.
+
+The desktop sidebar uses the credits widget slot for a **Manage billing** link
+when the selected workspace confirms the signed-in user's owner role. The link
+opens the existing Billing screen and does not depend on the credit balance.
+Other eligible roles keep the existing credits widget behavior.
+
 ### Manual member activation
 
 Team settings uses an **Active / Inactive** switch for persisted non-owner members.

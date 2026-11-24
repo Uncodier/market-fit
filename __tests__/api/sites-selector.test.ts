@@ -41,6 +41,22 @@ it('verifies identity and location before reading cache without legacy billing/d
   expect(warning).not.toHaveBeenCalled()
 })
 
+it('gets the authoritative directory from the signed-in user’s effective-access RPC', async () => {
+  const databaseSignal = new AbortController().signal
+  const read = { select: jest.fn().mockReturnThis(), order: jest.fn().mockReturnThis(),
+    range: jest.fn().mockReturnThis(), abortSignal: jest.fn().mockResolvedValue({ data: [], count: 0, error: null }) }
+  rpc.mockReturnValueOnce({ abortSignal: gate }).mockReturnValueOnce(read)
+  jest.mocked(readSelectorSites).mockImplementationOnce(async (_actor, load) => ({
+    sites: await load(databaseSignal), authoritative: true, cache: 'miss', cacheReason: 'bypass',
+  }))
+  const response = await GET(request())
+  expect(await response.json()).toMatchObject({ authoritative: true, sites: [] })
+  expect(rpc).toHaveBeenCalledWith('get_my_accessible_sites', {}, { get: true, count: 'exact' })
+  expect(read.select).toHaveBeenCalledWith('id, name, url, description, user_id, created_at, updated_at')
+  expect(read.abortSignal).toHaveBeenCalledWith(databaseSignal)
+  expect(createClient).not.toHaveBeenCalled()
+})
+
 it.each([401, 403, 429, 500, 503, 0])('classifies auth status %s without leaking diagnostics', async status => {
   getUser.mockResolvedValue({ data: { user: null }, error: { status, message: 'Sensitive diagnostic' } })
   const response = await GET(request())
@@ -100,24 +116,6 @@ it('reports thrown auth transport failure as temporary unavailability', async ()
   expect(response.status).toBe(503)
   expect(await response.text()).not.toContain('Private')
   expect(readSelectorSites).not.toHaveBeenCalled()
-})
-
-it('creates the list-only service client after the gate, with bounded DB transport', async () => {
-  const databaseSignal = new AbortController().signal
-  jest.mocked(readSelectorSites).mockImplementationOnce(async (_actor, factory) => {
-    expect(gate).toHaveBeenCalledTimes(1)
-    factory(databaseSignal)
-    return { sites: [], authoritative: true, cache: 'miss', cacheReason: 'empty' }
-  })
-  await GET(request())
-  expect(createClient).toHaveBeenCalledTimes(1)
-  const options = jest.mocked(createClient).mock.calls[0][2]!
-  expect(options.auth).toEqual({ persistSession: false, autoRefreshToken: false })
-  const transport = jest.spyOn(global, 'fetch').mockResolvedValue(new Response('{}'))
-  try {
-    await options.global!.fetch!('https://example.test/rest/v1/sites')
-    expect(transport).toHaveBeenCalledWith('https://example.test/rest/v1/sites', { signal: databaseSignal, cache: 'no-store' })
-  } finally { transport.mockRestore() }
 })
 
 it.each(['location', 'list'] as const)('reports a stalled %s stage without caching authorization', async stage => {

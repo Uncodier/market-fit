@@ -10,7 +10,7 @@ jest.mock('@/app/context/ScreenAccessContext', () => ({ useOptionalScreenAccess:
 jest.mock('@/app/context/LocalizationContext', () => ({ useLocalization: () => ({ t: (key: string) => key }) }))
 jest.mock('@/app/workspace-preview/loaders/directories', () => ({ directoryPreview: jest.fn() }))
 const mockSite = { requestScope: { actorId: 'actor', siteId: 'site' }, currentSite: { id: 'site' } as { id: string } | null,
-  error: null as Error | null, isLoading: true, refreshSites: jest.fn(), sites: [{ id: 'site' }] }
+  error: null as Error | null, isLoading: true, sitesLoaded: true, refreshSites: jest.fn(), sites: [{ id: 'site' }] }
 const mockAccess = { verifiedWorkspaceLists: { actorId: 'actor', siteId: 'site' } as { actorId: string; siteId: string } | undefined,
   canAccessNavKey: jest.fn(), isReady: true, screenScopeStatus: 'ready', legacyWorkspaceListsAllowed: false, retryScreenScope: jest.fn() }
 const mockRead = jest.mocked(directoryPreview)
@@ -98,6 +98,10 @@ it('keeps legacy startup gated until both the old site list and capability verif
   mockAccess.screenScopeStatus = 'legacy'; mockAccess.verifiedWorkspaceLists = undefined
   const view = render(ui()); await advance(500); expect(mockRead).not.toHaveBeenCalled(); expect(screen.queryByText('Edit')).toBeNull()
   mockSite.isLoading = false; view.rerender(ui()); expect(screen.queryByText('Edit')).toBeNull()
+  expect(screen.getByText('workspacePreview.failed')).toBeVisible()
+  mockSite.sitesLoaded = false; view.rerender(ui())
+  expect(screen.getByRole('status')).toHaveAttribute('aria-busy', 'true')
+  mockSite.sitesLoaded = true
   mockAccess.legacyWorkspaceListsAllowed = true; view.rerender(ui()); expect(screen.getByText('Edit')).toBeVisible()
 })
 

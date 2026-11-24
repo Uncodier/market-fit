@@ -361,3 +361,12 @@ it.each(['claim', 'target', 'moderation', 'content'])('the CAS cannot overwrite 
   expect(concurrent).toEqual(before)
   expect(f.conversationUpdate.update).not.toHaveBeenCalled()
 })
+it.each([{ status: 'accepted', dispatch_owner: 'chat_intervention' },
+  { status: 'pending', dispatch_owner: 'chat_intervention' }, { status: 'pending', command_status: 'pending' }])(
+  'refuses direct proposal approval on a dispatched manual row: %j', async metadata => {
+    const f = fixture()
+    f.message.role = 'team_member'
+    Object.assign(f.message.custom_data, metadata)
+    expect((await POST(request())).status).toBe(409)
+    expect(f.update.update).not.toHaveBeenCalled()
+  })

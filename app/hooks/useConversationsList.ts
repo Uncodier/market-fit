@@ -39,6 +39,7 @@ export function useConversationsList({ siteId, userId, combinedFilter, debounced
   const pendingPage = useRef<AbortController | null>(null)
   const firstRead = useRef<{ key: ListKey; controller: AbortController; request: Promise<ListSnapshot> } | null>(null)
   const [pagingOwner, setPagingOwner] = useState<typeof pageOwner | null>(null)
+  const [confirmedKey, setConfirmedKey] = useState<ListKey | null>(null)
 
   // Each transition gets a new owner, even A -> B -> A. In particular, never use
   // SWR's bound mutate after awaiting a page: it targets the *latest* key.
@@ -81,11 +82,23 @@ export function useConversationsList({ siteId, userId, combinedFilter, debounced
 
   const { data, error, isValidating } = useSWR<ListSnapshot, ReadError>(key, fetchFirst, {
     keepPreviousData: false,
+    revalidateOnMount: false,
+    revalidateIfStale: false,
+    // SWR calls onSuccess for an accepted response even if it keeps the
+    // deep-equal cached data. A denial is a resolved snapshot, not a success.
+    onSuccess: page => {
+      if (key && key === currentKey.current && !page.denial) setConfirmedKey(key)
+    },
     shouldRetryOnError: false,
     revalidateOnReconnect: false,
     revalidateOnFocus: false,
     refreshInterval: 0,
   })
+  useLayoutEffect(() => {
+    // A quick A -> B -> A must read A again, not reuse SWR's recently settled
+    // request. Join a cold/Strict Mode read if it has already started.
+    if (key && firstRead.current?.key !== key) void mutateKey(key)
+  }, [key, mutateKey])
   const pageError = data?.pageError
   const terminalError = isTerminalRequestError(error) ? error : error ? undefined : data?.denial
   const snapshot = key && !terminalError && !data?.denial ? data : undefined
@@ -160,6 +173,7 @@ export function useConversationsList({ siteId, userId, combinedFilter, debounced
     hasMore: interactive && !!snapshot?.hasMore && !isValidating,
     hasEmptyResult: !!snapshot && !readError && snapshot.items.length === 0,
     isInitialLoad: !snapshot,
+    hasConfirmedFirstPage: !!key && key === confirmedKey && !!snapshot && !readError,
     currentPage: snapshot?.page ?? 0,
     readError, pageError: terminalError ? undefined : pageError, terminalError,
     updateConversations, refreshConversations, loadMore,

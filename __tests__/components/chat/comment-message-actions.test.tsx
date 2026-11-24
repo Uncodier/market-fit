@@ -16,3 +16,16 @@ it('still allows approval of an unclaimed pending comment proposal', () => {
   render(<MessageActions {...callbacks} message={message} />)
   expect(screen.getByRole('button', { name: 'Accept' })).toBeEnabled()
 })
+it.each(['pending', 'accepted', 'queued', 'failed'] as const)('never offers proposal mutations on manual %s, even with cached acceptance', status => {
+  render(<MessageActions {...callbacks} isActionsAccepted message={{ ...message, role: 'team_member',
+    metadata: { dispatch_owner: 'chat_intervention', status } }} />)
+  expect(screen.queryByRole('button')).not.toBeInTheDocument()
+})
+
+it('hides actions on a legacy dispatched row without hiding undo on assistant proposals', () => {
+  const metadata = { status: 'accepted' as const, command_status: 'pending' as const }
+  const { rerender } = render(<MessageActions {...callbacks} message={{ ...message, role: 'team_member', metadata }} />)
+  expect(screen.queryByRole('button')).not.toBeInTheDocument()
+  rerender(<MessageActions {...callbacks} message={{ ...message, metadata }} />)
+  expect(screen.getByRole('button', { name: 'Pending' })).toBeEnabled()
+})

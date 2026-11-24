@@ -5,15 +5,16 @@ import type { Site } from '@/app/context/site-types'
 const mockPush = jest.fn()
 const mockRouter = { push: mockPush }
 const mockSelect = jest.fn()
+const mockRefresh = jest.fn()
 const project = { id: 'project-1', name: 'Project One', description: 'First project' } as Site
 let mockMode: string
-let mockSite: { sites: Site[]; currentSite: Site | null; isLoading: boolean; error: Error | null }
+let mockSite: { sites: Site[]; currentSite: Site | null; isLoading: boolean; error: Error | null; workspaceAccessLost?: boolean }
 
 jest.mock('next/navigation', () => ({
   useRouter: () => mockRouter,
   useSearchParams: () => new URLSearchParams(mockMode),
 }))
-jest.mock('@/app/context/SiteContext', () => ({ useSite: () => ({ ...mockSite, setCurrentSite: mockSelect }) }))
+jest.mock('@/app/context/SiteContext', () => ({ useSite: () => ({ ...mockSite, setCurrentSite: mockSelect, refreshSites: mockRefresh }) }))
 jest.mock('@/app/context/LocalizationContext', () => ({
   useLocalization: () => ({ t: (key: string, params?: { name?: string; error?: string }) =>
     params?.name ? `Select ${params.name}` : params?.error ?? key }),
@@ -74,4 +75,15 @@ it('never displays demo rows in manage mode or retains rows the provider clears'
   mockSite.sites = []
   rerender(<ProjectsPage />)
   expect(screen.queryByText(project.name)).not.toBeInTheDocument()
+})
+
+it('explains why the selection was lost and lets the member retry or pick another project', () => {
+  mockSite = { ...mockSite, workspaceAccessLost: true, isLoading: false, sites: [project] }
+  mockMode = ''
+  render(<ProjectsPage />)
+  expect(screen.getByRole('alert')).toHaveTextContent('workspaceAccess.lostDescription')
+  expect(screen.getByRole('button', { name: 'Select Project One' })).toBeEnabled()
+  expect(mockPush).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole('button', { name: 'common.retry' }))
+  expect(mockRefresh).toHaveBeenCalledTimes(1)
 })

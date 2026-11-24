@@ -1,4 +1,10 @@
 {
+  "chat.status.checkDeliveryBeforeRetry": "重複送信を避けるため、再試行する前に配信状況を確認してください。",
+  "chat.recipient.whatsappPhone": "連絡先の電話番号に「+」と国番号を付けて保存するか、電話番号が確認済みの WhatsApp チャットで返信してください。",
+  "chat.recipient.internationalPhone": "連絡先に「+」と国番号から始まる有効な国際電話番号を追加してください。",
+  "chat.recipient.conflict": "WhatsApp の番号が一致しません。連絡先とチャットの電話番号が同じか確認してください。",
+  "chat.recipient.email": "メールを送信するには、連絡先に有効なメールアドレスを追加してください。",
+  "chat.recipient.channelIdentity": "このチャネルで使えるアカウントまたは受信者 ID を連絡先に関連付けてください。",
   "chat.workspace.unavailable": "ワークスペースへのアクセスを確認できませんでした。",
   "chat.workspace.denied": "このアカウントでは、このワークスペースの会話を利用できません。",
   "chat.workspace.choose": "ワークスペースを選択",

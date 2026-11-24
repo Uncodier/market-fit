@@ -1,3 +1,4 @@
+import { PROPOSAL_FILTER, isManualIntervention } from '@/lib/chat/manual-intervention'
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
@@ -27,11 +28,14 @@ export function useChatMessageActions({
   )
 
   const handleEditMessage = (message: ChatMessage) => {
+    if (isManualIntervention(message.role, message.metadata)) return
     setEditingMessage(message)
     setEditModalOpen(true)
   }
 
   const handleSaveEditedMessage = async (messageId: string, newText: string) => {
+    const target = chatMessages.find(row => row.id === messageId)
+    if (target && isManualIntervention(target.role, target.metadata)) return
     if (!messageId || !newText.trim()) {
       toast.error("Message content cannot be empty")
       return
@@ -42,7 +46,7 @@ export function useChatMessageActions({
       const { error } = await supabase
         .from("messages")
         .update({ content: newText.trim(), updated_at: new Date().toISOString() })
-        .eq("id", messageId)
+        .eq("id", messageId).or(PROPOSAL_FILTER).select("id").single()
 
       if (error) {
         console.error("Error updating message:", error)
@@ -77,6 +81,7 @@ export function useChatMessageActions({
   }
 
   const handleDeleteMessage = async (message: ChatMessage) => {
+    if (isManualIntervention(message.role, message.metadata)) return
     if (!message.id) {
       toast.error("Cannot delete message: missing ID")
       return
@@ -101,7 +106,7 @@ export function useChatMessageActions({
       const { error: deleteError } = await supabase
         .from("messages")
         .delete()
-        .eq("id", message.id)
+        .eq("id", message.id).eq("conversation_id", conversationId || "").or(PROPOSAL_FILTER).select("id").single()
 
       if (deleteError) {
         console.error("Error deleting message:", deleteError)
@@ -119,19 +124,21 @@ export function useChatMessageActions({
         const leadId = conversation?.lead_id ?? leadData?.id ?? leadData?.lead_id
         const siteId = conversation?.site_id
 
-        await supabase.from("messages").delete().eq("conversation_id", conversationId)
-        const { error: conversationError } = await supabase
+        // A new reply may have arrived since the count. Never sweep child rows.
+        const { data: deleted, error: conversationError } = await supabase
           .from("conversations")
           .delete()
-          .eq("id", conversationId)
+          .eq("id", conversationId).eq("site_id", siteId || "").eq("message_count", 0)
+          .select("id").maybeSingle()
 
-        if (conversationError) {
-          console.error("Error deleting conversation:", conversationError)
-        } else {
-          window.dispatchEvent(
-            new CustomEvent("conversation:deleted", { detail: { conversationId } }),
-          )
+        if (conversationError || !deleted) {
+          if (conversationError) console.error("Error deleting conversation:", conversationError)
+          const refreshedMessages = await getConversationMessages(conversationId)
+          onMessagesUpdate?.(refreshedMessages)
+          toast.success("Message deleted")
+          return
         }
+        window.dispatchEvent(new CustomEvent("conversation:deleted", { detail: { conversationId } }))
 
         if (leadId && siteId) {
           const { count: conversationCount } = await supabase
@@ -168,6 +175,7 @@ export function useChatMessageActions({
   }
 
   const handleAcceptMessage = async (message: ChatMessage) => {
+    if (isManualIntervention(message.role, message.metadata)) return
     if (!message.id) {
       toast.error("Cannot accept message: missing ID")
       return
@@ -216,13 +224,14 @@ export function useChatMessageActions({
   }
 
   const handleUndoAcceptMessage = async (message: ChatMessage) => {
+    if (isManualIntervention(message.role, message.metadata)) return
     if (!message.id) return
 
     try {
       const supabase = createClient()
       const { data: currentMessage, error: fetchError } = await supabase
         .from("messages")
-        .select("custom_data")
+        .select("role, custom_data")
         .eq("id", message.id)
         .single()
 
@@ -232,8 +241,9 @@ export function useChatMessageActions({
         return
       }
 
-      if (currentMessage?.custom_data?.source === 'comment' &&
-        (currentMessage.custom_data.status !== 'accepted' || currentMessage.custom_data.comment_delivery_status)) {
+      if (!currentMessage || isManualIntervention(currentMessage.role, currentMessage.custom_data) || currentMessage.custom_data?.status !== 'accepted') return
+      if (currentMessage.custom_data.source === 'comment' &&
+        currentMessage.custom_data.comment_delivery_status) {
         toast.error('This public reply is no longer awaiting delivery. Refresh the conversation to check its status.')
         return
       }
@@ -246,9 +256,9 @@ export function useChatMessageActions({
         .from("messages")
         .update({ custom_data: updatedCustomData, updated_at: new Date().toISOString() })
         .eq("id", message.id)
-      if (currentMessage?.custom_data?.source === 'comment') {
-        update.eq('conversation_id', conversationId || '').eq('custom_data', JSON.stringify(currentMessage.custom_data))
-      }
+        .eq("role", currentMessage.role)
+        .eq("conversation_id", conversationId || "")
+        .eq("custom_data", JSON.stringify(currentMessage.custom_data))
       const { data: updatedRow, error: updateError } = await update.select('id').maybeSingle()
 
       if (updateError || !updatedRow) {

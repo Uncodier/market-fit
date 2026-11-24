@@ -49,7 +49,7 @@ function checkCancellation(signal?: AbortSignal): void {
   if (signal?.aborted) throw new Error("Site list request aborted")
 }
 
-async function readPages<T>(
+export async function readPages<T>(
   createQuery: () => SitesQuery,
   orderColumn: string,
   signal?: AbortSignal

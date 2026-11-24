@@ -1,3 +1,4 @@
+import { PROPOSAL_FILTER } from '@/lib/chat/manual-intervention'
 import { NextRequest, NextResponse } from "next/server"
 import { createClient, createServiceClient } from "@/lib/supabase/server"
 import { acquireOperationLease } from "@/lib/redis/operation-lease"
@@ -70,6 +71,7 @@ export async function POST(request: NextRequest) {
       .eq("conversations.site_id", siteId)
       .eq("conversations.is_archived", false)
       .or("custom_data->>status.eq.pending,custom_data->>status.eq.accepted")
+      .or(PROPOSAL_FILTER)
       .limit(MAX_MESSAGES + 1)
 
     if (msgsError) {
@@ -93,6 +95,7 @@ export async function POST(request: NextRequest) {
     // Step 3: delete unsent messages in batches using admin client
     const messageIds = allMessages.map((m: any) => m.id)
     let totalDeletedMessages = 0
+    const affectedConversations = new Set<string>()
 
     for (let i = 0; i < messageIds.length; i += BATCH_SIZE) {
       const batch = messageIds.slice(i, i + BATCH_SIZE)
@@ -100,7 +103,9 @@ export async function POST(request: NextRequest) {
         .from("messages")
         .delete()
         .in("id", batch)
-        .select("id")
+        .or("custom_data->>status.eq.pending,custom_data->>status.eq.accepted")
+        .or(PROPOSAL_FILTER)
+        .select("conversation_id")
         
       if (error) {
         console.error("Error deleting messages batch:", error.message)
@@ -109,15 +114,12 @@ export async function POST(request: NextRequest) {
       
       if (data) {
         totalDeletedMessages += data.length
+        for (const deleted of data) affectedConversations.add(deleted.conversation_id)
       }
     }
 
     // Step 4: check which affected conversations are now empty — in parallel batches
-    const affectedConvIds = [
-      ...new Set<string>(
-        allMessages.map((m: any) => String(m.conversation_id))
-      ),
-    ]
+    const affectedConvIds = [...affectedConversations]
     const conversationsToDelete: string[] = []
 
     for (let i = 0; i < affectedConvIds.length; i += COUNT_CONCURRENCY) {
@@ -141,20 +143,20 @@ export async function POST(request: NextRequest) {
     const conversationsToUpdate = affectedConvIds.filter(id => !conversationsToDelete.includes(id))
 
     // Step 5: delete empty conversations in batches using admin client
-    let totalDeletedConversations = 0
+    const deletedConversations: string[] = []
     if (conversationsToDelete.length > 0) {
       for (let i = 0; i < conversationsToDelete.length; i += BATCH_SIZE) {
         const batch = conversationsToDelete.slice(i, i + BATCH_SIZE)
         const { data, error } = await supabaseAdmin
           .from("conversations")
           .delete()
-          .in("id", batch)
+          .in("id", batch).eq("site_id", siteId).eq("message_count", 0)
           .select("id")
           
         if (error) {
           console.error("Error deleting empty conversations:", error.message)
         } else if (data) {
-          totalDeletedConversations += data.length
+          for (const deleted of data) deletedConversations.push(deleted.id)
         }
       }
     }
@@ -177,8 +179,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       deletedMessages: totalDeletedMessages,
-      deletedConversations: totalDeletedConversations,
-      conversationsToDelete,
+      deletedConversations: deletedConversations.length,
+      conversationsToDelete: deletedConversations,
     })
     } finally {
       await lease.release()

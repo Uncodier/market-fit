@@ -18,7 +18,7 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { NavigationAreaGroups } from "./NavigationAreaGroups"
 import { SIDEBAR_AUTOMATION_AREA_ORDER } from "@/app/config/navigation-areas"
 import { OnboardingProgressWidget } from "./OnboardingProgressWidget"
-import { CreditsWidget } from "./CreditsWidget"
+import { SidebarBillingWidget } from "./SidebarBillingWidget"
 import { StartupTrialWidget } from "./StartupTrialWidget"
 
 const NavigationPage = dynamic(() => import("@/app/navigation/page"), {
@@ -245,7 +245,7 @@ export function Sidebar({
           >
             {desktopVisible && !hideSidebarWidgets && <>
               <OnboardingProgressWidget isCollapsed={renderCollapsed} />
-              <CreditsWidget isCollapsed={renderCollapsed} />
+              <SidebarBillingWidget actorId={user?.is_anonymous ? undefined : user?.id} isCollapsed={renderCollapsed} />
               <StartupTrialWidget isCollapsed={renderCollapsed} />
             </>}
           </div>

@@ -10,14 +10,19 @@ import { SITE_HYDRATION_TIMEOUT_MS } from "@/app/context/site-loading-lifecycle"
 const mockSession = { user: { id: "owner" } }
 let mockAuth: (event: string, session: unknown) => void
 const mockSettings = jest.fn()
+const mockEffectiveRole = jest.fn()
+const mockRouter = { push: jest.fn(), replace: jest.fn() }
+jest.mock('next/navigation', () => ({ usePathname: () => window.location.pathname, useRouter: () => mockRouter }))
 const mockClient = {
   auth: {
     getSession: jest.fn(async () => ({ data: { session: mockSession } })),
+    getUser: jest.fn(async () => ({ data: { user: mockSession.user }, error: null })),
     onAuthStateChange: (callback: typeof mockAuth) => {
       mockAuth = callback
       return { data: { subscription: { unsubscribe: jest.fn() } } }
     },
   },
+  rpc: () => ({ retry: () => ({ abortSignal: mockEffectiveRole }) }),
   from: () => ({ select: () => ({ eq: () => ({ abortSignal: () => ({ maybeSingle: mockSettings }), single: mockSettings }) }) }),
   channel: () => ({ on: () => ({ subscribe: () => ({}) }) }),
   removeChannel: jest.fn(),
@@ -52,6 +57,7 @@ beforeEach(() => {
   window.history.replaceState({}, "", "/")
   jest.clearAllMocks()
   mockSettings.mockReset().mockResolvedValue({ data: { about: "Hydrated settings" }, error: null })
+  mockEffectiveRole.mockReset().mockResolvedValue({ data: 'owner', error: null })
   mockClient.auth.getSession.mockReset().mockResolvedValue({ data: { session: mockSession } })
   jest.mocked(fetchAccessibleSitesClient).mockReset().mockResolvedValue(response())
   localStorage.clear()
@@ -132,8 +138,10 @@ it.each([false, true])("requires explicit selection after removal with the real 
   expect(result.current.currentSite).toBeNull()
   expect(localStorage.getItem("currentSiteId")).toBeNull()
   expect(localStorage.getItem(SITE_SELECTION_CACHE_KEY)).toBeNull()
+  expect(result.current.workspaceAccessLost).toBe(true)
   await act(async () => { await result.current.setCurrentSite(second) })
   expect(result.current.currentSite?.id).toBe(second.id)
+  expect(result.current.workspaceAccessLost).toBe(false)
 })
 
 it('clears previously published projects immediately on a fresh location denial', async () => {
@@ -146,6 +154,22 @@ it('clears previously published projects immediately on a fresh location denial'
   expect(result.current.error?.message).toContain('not permitted')
   expect(localStorage.getItem(SITE_SELECTION_CACHE_KEY)).toBeNull()
   expect(localStorage.getItem('currentSiteId')).toBeNull()
+})
+
+it('clears a confirmed lost workspace even if the initial list still included it', async () => {
+  window.history.replaceState({}, '', '/records')
+  const { result } = mount()
+  await waitFor(() => expect(result.current.currentSite?.settings?.about).toBe('Hydrated settings'))
+  jest.mocked(fetchAccessibleSitesClient).mockResolvedValue(response([second]))
+  mockEffectiveRole.mockResolvedValue({ data: null, error: null })
+  await act(async () => { window.dispatchEvent(new Event('online')) })
+  expect(result.current.currentSite).toBeNull()
+  expect(result.current.requestScope).toBeNull()
+  expect(result.current.sites.map(site => site.id)).toEqual([second.id])
+  expect(result.current.workspaceAccessLost).toBe(true)
+  expect(localStorage.getItem('currentSiteId')).toBeNull()
+  expect(document.cookie).not.toContain('mf_current_site_id=')
+  await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith('/projects'))
 })
 
 it('retires slow settings with a definitive location denial', async () => {

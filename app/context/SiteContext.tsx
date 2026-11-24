@@ -15,6 +15,7 @@ import { cleanUUID } from "./site-storage"
 import { persistSiteSettings } from "./site-update-settings"
 import { fetchSiteSettings } from "./site-set-current"
 import { useSiteLoadingLifecycle } from "./site-loading-lifecycle"
+import { useWorkspaceAdmission } from "./use-workspace-admission"
 import { updateSiteRecord, createSiteRecord, deleteSiteRecord } from "./site-crud"
 import { refreshSiteBillingRecord } from "./site-refresh-billing"
 import { useSiteResourceSync } from "./site-resource-sync"
@@ -111,11 +112,15 @@ export function SiteProvider({ children }: SiteProviderProps) {
     return () => setIsMounted(false)
   }, [])
   
-  const { loadSites, selectSite: handleSetCurrentSite, invalidate, requestScope } = useSiteLoadingLifecycle({
+  const { loadSites, selectSite: handleSetCurrentSite, invalidate, requestScope, lostAccess, leaveUnavailableSite } = useSiteLoadingLifecycle({
     supabaseRef, isMounted, isInitialized, currentSite, unauthorizedRetryRef, authUserIdRef,
-    setSitesLoaded, setSitesLoadAttempted, setIsLoading, setError,
+    setSitesLoaded, setSitesLoadAttempted, setIsLoading, setError, error,
     setHasValidSession, setIsInitialized, setSites, setCurrentSite,
   })
+  useWorkspaceAdmission(requestScope, leaveUnavailableSite)
+  useEffect(() => {
+    if (lostAccess?.refreshDirectory) void loadSites(true)
+  }, [lostAccess])
 
   // Cargar sitios al iniciar el provider, pero solo después de la hidratación
   useEffect(() => {
@@ -282,8 +287,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
       if (
         !isMounted ||
         !isInitialized ||
-        isLoading ||
-        !sitesLoaded || (!currentSite && requestScope && error) ||
+        (!lostAccess && (isLoading || !sitesLoaded)) || (!currentSite && requestScope && error) ||
         !supabaseRef.current
       ) {
         return
@@ -301,12 +305,12 @@ export function SiteProvider({ children }: SiteProviderProps) {
       })
 
       if (redirectTo) {
-        navigateOrAssign(router, redirectTo, { markUI: false })
+        navigateOrAssign(router, redirectTo, { markUI: false, replace: !!lostAccess })
       }
-    }, 1000) // ✅ Increased delay from 100ms to 1000ms
+    }, lostAccess ? 0 : 1000)
 
     return () => clearTimeout(redirectTimer)
-  }, [isMounted, isInitialized, isLoading, sitesLoaded, hasValidSession, sites.length, currentSite?.id, requestScope, error, pathname, router])
+  }, [isMounted, isInitialized, isLoading, sitesLoaded, hasValidSession, sites.length, currentSite?.id, requestScope, error, pathname, router, lostAccess])
   
   useSiteResourceSync(!workspaceLoading && requestScope?.siteId === currentSite?.id ? currentSite?.id : undefined,
     requestScope?.actorId, setSites, setCurrentSite)
@@ -439,7 +443,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
     const recovering = canRecoverMissingPosSite(options, currentSite?.id,
       typeof window === "undefined" ? "" : window.location.pathname)
     const recoveringList = options?.recoverMissingList === true && currentSite &&
-      sites.length === 0 && isInitialized && !isLoading
+      (sites.length === 0 || !!error) && isInitialized && !isLoading
     if (currentSite && !recovering && !recoveringList && (shouldPreventRefresh() || isOnProtectedPage())) {
       return
     }
@@ -449,8 +453,10 @@ export function SiteProvider({ children }: SiteProviderProps) {
   // Valor del contexto
   const value = {
     sites,
+    sitesLoaded,
     currentSite: currentSite || null,
     requestScope,
+    workspaceAccessLost: !!lostAccess && lostAccess.actorId === authUserIdRef.current,
     isLoading: workspaceLoading,
     error,
     setCurrentSite: handleSetCurrentSite,

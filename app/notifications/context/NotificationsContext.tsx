@@ -14,7 +14,7 @@ import { toast } from "sonner"
 
 interface NotificationsContextType {
   notifications: Notification[]
-  status: ReturnType<typeof useNotificationScope>['status'] | 'inactive' | 'loading' | 'failed'
+  status: ReturnType<typeof useNotificationScope>['status'] | 'inactive' | 'loading' | 'refreshing' | 'failed'
   retryVerification?: () => void
   filters: NotificationsFilters
   searchQuery: string
@@ -53,10 +53,16 @@ interface NotificationsProviderProps {
 
 export function NotificationsProvider({ children, active }: NotificationsProviderProps & { active: boolean }) {
   const verification = useNotificationScope()
-  const target = active && verification.status === 'ready' ? verification.target : undefined
+  const admitted = active && 'target' in verification ? verification : undefined
+  const target = admitted?.target
   const actor = target?.actorId
   const siteId = target?.siteId
-  const scope = useMemo(() => actor && siteId ? { actor, siteId } : null, [actor, siteId])
+  const proof = admitted?.proof
+  const scope = useMemo(() => actor && siteId && proof ? { actor, siteId, proof } : null, [actor, siteId, proof])
+  // Object identity distinguishes successive grants of the same effective role.
+  // Reset only the reader, not the workspace layout or its other queries.
+  const [reader, setReader] = useState({ scope, generation: 0 })
+  if (reader.scope !== scope) setReader({ scope, generation: reader.generation + 1 })
   const [snapshot, setSnapshot] = useState<{ scope: NonNullable<typeof scope>; value: NotificationsContextType } | null>(null)
   const publish = useCallback((value: NotificationsContextType | null) => {
     if (!scope) return
@@ -66,29 +72,42 @@ export function NotificationsProvider({ children, active }: NotificationsProvide
 
   // Key the private reader, NOT the workspace layout: arriving at the inbox must
   // not restart the sidebar's queries, and leaving it must retire its rows.
-  const value = !active ? emptyInbox : verification.status !== 'ready'
+  const paused = verification.status === 'paused'
+  const result = scope && snapshot?.scope === scope ? snapshot.value : pendingInbox
+  const value = !active ? emptyInbox : !admitted
     ? { ...emptyInbox, status: verification.status, retryVerification: 'retry' in verification ? verification.retry : undefined }
-    : scope && snapshot?.scope === scope ? snapshot.value : pendingInbox
+    : paused && (result.status === 'ready' || result.status === 'refreshing') ? { ...result, status: 'paused' as const }
+    : paused && result.status !== 'denied' ? pendingInbox : result
   return <NotificationsContext.Provider value={value}>
-    {scope && <InboxState key={JSON.stringify([scope.actor, scope.siteId])} siteId={scope.siteId} userId={scope.actor} publish={publish} />}
+    {scope && <InboxState key={reader.generation} siteId={scope.siteId} userId={scope.actor} paused={paused} publish={publish} />}
     {children}
   </NotificationsContext.Provider>
 }
 
-function InboxState({ siteId, userId, publish }: { siteId: string; userId: string; publish: (value: NotificationsContextType | null) => void }) {
+function InboxState({ siteId, userId, paused, publish }: { siteId: string; userId: string; paused: boolean; publish: (value: NotificationsContextType | null) => void }) {
   const [notifications, setNotifications] = useState<Notification[]>([])
-  const [status, setStatus] = useState<'loading' | 'ready' | 'failed' | 'denied'>('loading')
+  const [status, setStatus] = useState<'loading' | 'ready' | 'refreshing' | 'failed' | 'denied'>('loading')
   const [filters, setFilters] = useState<NotificationsFilters>({})
   const [searchQuery, setSearchQuery] = useState("")
   const activeRead = useRef<AbortController | null>(null)
+  const enabled = useRef(false)
+  const writable = useRef(false)
+  useLayoutEffect(() => {
+    enabled.current = !paused && status !== 'denied'
+    writable.current = !paused && status === 'ready'
+    return () => { enabled.current = writable.current = false }
+  }, [paused, status])
   
   const loadNotifications = useCallback(async () => {
-    if (!siteId || !userId) return
+    if (!enabled.current) return
     activeRead.current?.abort()
     const controller = new AbortController()
     activeRead.current = controller
     await getNotifications(siteId, userId, controller.signal).then(result => {
       if (controller.signal.aborted || result.cancelled) return
+      // An in-flight denial revokes even paused rows. Other results cannot
+      // replace a snapshot while settings are paused; resumption revalidates.
+      if (!result.denied && !enabled.current) return
       
       if (result.denied || result.error || !Array.isArray(result.notifications)) {
         console.warn("Background notification fetch failed:", result.error)
@@ -99,7 +118,7 @@ function InboxState({ siteId, userId, publish }: { siteId: string; userId: strin
       setNotifications(result.notifications)
       setStatus('ready')
     }).catch(() => {
-      if (!controller.signal.aborted) { setStatus('failed'); setNotifications([]) }
+      if (enabled.current && !controller.signal.aborted) { setStatus('failed'); setNotifications([]) }
     }).finally(() => {
       if (activeRead.current === controller) {
         activeRead.current = null
@@ -107,8 +126,9 @@ function InboxState({ siteId, userId, publish }: { siteId: string; userId: strin
     })
   }, [siteId, userId])
 
-  const refreshNotifications = useCallback(() => {
-    setStatus('loading')
+  const refreshNotifications = useCallback(async () => {
+    if (!enabled.current) return
+    setStatus(previous => previous === 'ready' || previous === 'refreshing' ? 'refreshing' : 'loading')
     return loadNotifications()
   }, [loadNotifications])
   
@@ -118,6 +138,7 @@ function InboxState({ siteId, userId, publish }: { siteId: string; userId: strin
     const cancel = () => {
       isMounted = false
       activeRead.current?.abort()
+      activeRead.current = null
     }
     // Full-document navigation may cancel fetch before React unmount cleanup runs.
     const suspend = () => { activeRead.current?.abort() }
@@ -132,9 +153,12 @@ function InboxState({ siteId, userId, publish }: { siteId: string; userId: strin
       window.removeEventListener('pageshow', resume)
     }
     
-    void loadNotifications()
     return cleanup
-  }, [loadNotifications, refreshNotifications]);
+  }, [refreshNotifications]);
+
+  useEffect(() => {
+    if (!paused && !activeRead.current) void refreshNotifications()
+  }, [paused, refreshNotifications])
   
   // Function to update filters - wrapped in useCallback
   const updateFilters = useCallback((newFilters: NotificationsFilters) => {
@@ -154,10 +178,7 @@ function InboxState({ siteId, userId, publish }: { siteId: string; userId: strin
   
   // Function to mark notification as read - wrapped in useCallback
   const markAsRead = useCallback(async (id: string) => {
-    if (!siteId || !userId) {
-      toast.error("No site or user selected")
-      return
-    }
+    if (!writable.current) return
     
     try {
       const result = await updateNotification({ id, is_read: true })
@@ -179,14 +200,11 @@ function InboxState({ siteId, userId, publish }: { siteId: string; userId: strin
       console.error("Error marking notification as read:", error)
       toast.error("Error marking notification as read")
     }
-  }, [siteId, userId])
+  }, [])
   
   // Function to mark all notifications as read - wrapped in useCallback
   const markAllNotificationsAsRead = useCallback(async () => {
-    if (!siteId || !userId) {
-      toast.error("No site or user selected")
-      return
-    }
+    if (!writable.current) return
     
     try {
       const result = await markAllAsRead(siteId, userId)
@@ -210,10 +228,7 @@ function InboxState({ siteId, userId, publish }: { siteId: string; userId: strin
   
   // Function to delete a notification - wrapped in useCallback
   const deleteOneNotification = useCallback(async (id: string) => {
-    if (!siteId || !userId) {
-      toast.error("No site or user selected")
-      return
-    }
+    if (!writable.current) return
     
     try {
       const result = await deleteNotification(id)
@@ -233,14 +248,11 @@ function InboxState({ siteId, userId, publish }: { siteId: string; userId: strin
       console.error("Error deleting notification:", error)
       toast.error("Error deleting notification")
     }
-  }, [siteId, userId])
+  }, [])
   
   // Function to delete all notifications - wrapped in useCallback
   const deleteAllUserNotifications = useCallback(async () => {
-    if (!siteId || !userId) {
-      toast.error("No site or user selected")
-      return
-    }
+    if (!writable.current) return
     
     try {
       const result = await deleteAllNotifications(siteId, userId)

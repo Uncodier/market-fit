@@ -5,5 +5,7 @@
   "workspacePreview.syncFailed": "Vista previa de solo lectura · No se pudo cargar la configuración.",
   "workspacePreview.failed": "No se pudo cargar la vista previa.",
   "workspacePreview.denied": "Esta pantalla no está disponible para tu cuenta en este espacio de trabajo.",
-  "workspacePreview.empty": "No hay elementos para mostrar en la vista previa."
+  "workspacePreview.empty": "No hay elementos para mostrar en la vista previa.",
+  "workspaceAccess.lostTitle": "Ya no tienes acceso a este proyecto",
+  "workspaceAccess.lostDescription": "Volviste a Proyectos. Pide al propietario que revise tu membresía y tu cupo de licencia. Después, reintenta o elige otro proyecto."
 }

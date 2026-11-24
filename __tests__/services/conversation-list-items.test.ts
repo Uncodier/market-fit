@@ -22,7 +22,11 @@ describe("buildConversationListItems", () => {
     jest.clearAllMocks()
   })
 
-  it("uses the bounded latest message and preserves moderation flags", async () => {
+  it.each([
+    ['assistant', { status: 'accepted' }, true],
+    ['team_member', { status: 'accepted', dispatch_owner: 'chat_intervention' }, false],
+    ['team_member', { status: 'pending', command_status: 'pending' }, false],
+  ] as const)("uses the bounded latest message and derives proposal moderation flags: %s %j", async (role, custom_data, proposal) => {
     const supabase = {
       from: jest.fn((table: string) => {
         if (table === 'profiles') return resolvedQuery([{ id: 'user-1', name: 'Alex Owner' }])
@@ -44,7 +48,7 @@ describe("buildConversationListItems", () => {
           return resolvedQuery([
             {
               conversation_id: "conversation-1",
-              custom_data: { status: "accepted" },
+              role, custom_data,
             },
           ])
         }
@@ -80,8 +84,8 @@ describe("buildConversationListItems", () => {
         leadStatus: "qualified",
         lastMessage: "Most recent message",
         channel: "web",
-        status: "pending",
-        hasAcceptedMessage: true,
+        status: proposal ? "pending" : "active",
+        hasAcceptedMessage: proposal,
       }),
     ])
   })

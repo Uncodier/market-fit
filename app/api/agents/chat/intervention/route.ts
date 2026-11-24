@@ -23,7 +23,20 @@ const inputSchema = z.object({
 }).refine(input => Boolean(input.conversationId || input.conversation_id))
   .refine(input => !input.conversationId || !input.conversation_id || input.conversationId === input.conversation_id)
 
-// Return only lifecycle identifiers, never provider payloads or database errors.
+// Only lifecycle evidence crosses the proxy, never provider payloads or database errors.
+const receiptState = z.enum(['creating', 'submitting', 'pending', 'ready', 'preparing', 'preparation_failed',
+  'dispatching', 'attempting', 'accepted', 'queued', 'sending', 'sent', 'delivered', 'read', 'failed', 'rejected', 'unknown']).catch('unknown')
+const receipt = z.object({ state: receiptState.optional(), delivery_status: receiptState.optional() }).nullish()
+const deliveryMetadata = z.object({
+  dispatch_owner: z.literal('chat_intervention').optional(),
+  status: z.enum(['accepted', 'pending', 'sending', 'queued', 'sent', 'delivered', 'failed', 'placement_unknown', 'needs_reconciliation']).optional(),
+  command_status: z.enum(['pending', 'failed', 'success']).optional(),
+  needs_reconciliation: z.boolean().optional(),
+  voice_mode: z.literal('agent_call').optional(),
+  call_status: z.enum(['placing', 'queued', 'ringing', 'in_progress', 'completed', 'failed', 'busy', 'no_answer', 'canceled', 'cancelled', 'placement_unknown']).optional(),
+  audio_delivery: receipt, template_delivery: receipt, whatsapp_text_delivery: receipt,
+  comment_delivery_status: receiptState.optional(),
+}).nullish()
 const responseSchema = z.object({
   success: z.boolean(),
   execution_started: z.boolean().optional(),
@@ -31,7 +44,7 @@ const responseSchema = z.object({
     execution_started: z.boolean().optional(),
     conversation_id: uuid.optional(),
     message_id: uuid.optional(),
-    message: z.object({ message_id: uuid }).optional(),
+    message: z.object({ message_id: uuid, custom_data: deliveryMetadata }).optional(),
     channel_send: z.object({
       success: z.boolean().optional(),
       method: z.string().max(80).optional(),
@@ -98,10 +111,7 @@ export async function POST(request: Request): Promise<Response> {
     if (error) return failure('Unable to verify the saved message', 503)
     if (!saved) return failure('Saved message not found', 404)
     const state = saved.custom_data as Record<string, unknown> | null
-    if (isDeliveryRetryBlocked(state) || state?.comment_delivery_status || state?.provider_call_id || state?.call_status === 'placement_unknown' || state?.status === 'placement_unknown' ||
-      ['sent', 'delivered', 'sending', 'queued', 'running', 'in_progress'].includes(String(state?.status)) ||
-      ['placing', 'queued', 'ringing', 'in_progress', 'completed'].includes(String(state?.call_status)) ||
-      state?.command_status === 'success' ||
+    if (isDeliveryRetryBlocked(state) ||
       (state?.command_status !== 'failed' && state?.status !== 'failed')) {
       return failure('This message cannot be retried while delivery is active or unconfirmed', 409)
     }

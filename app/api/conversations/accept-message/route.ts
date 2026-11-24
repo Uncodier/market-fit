@@ -1,3 +1,4 @@
+import { isManualIntervention } from '@/lib/chat/manual-intervention'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { userCanOnSite } from '@/lib/permissions/site-access'
@@ -48,7 +49,7 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     const current = metadata(message.custom_data)
-    if (!['assistant', 'team_member'].includes(message.role) ||
+    if (isManualIntervention(message.role, current) || !['assistant', 'team_member'].includes(message.role) ||
       !['pending', 'accepted'].includes(String(current.status))) return failure(conflict, 409)
     let comment = needsCommentApproval(current, conversation)
     if (!comment && mayHaveLegacyComments(conversation)) {

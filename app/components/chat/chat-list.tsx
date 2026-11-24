@@ -73,6 +73,7 @@ export function ChatList({
     hasMore,
     hasEmptyResult,
     isInitialLoad,
+    hasConfirmedFirstPage,
     isValidating, readError, pageError, terminalError,
     updateConversations,
     refreshConversations,
@@ -100,10 +101,8 @@ export function ChatList({
   }, [byConversation, conversations, refreshConversations, readOnly, combinedFilter, debouncedSearchQuery])
 
   useAutoSelectTopConversation({
-    enabled: !readOnly,
+    enabled: !readOnly && hasConfirmedFirstPage,
     conversations,
-    isLoading,
-    isInitialLoad,
     selectedConversationId,
     onSelectConversation,
   })

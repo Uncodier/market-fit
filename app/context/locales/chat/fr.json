@@ -1,4 +1,10 @@
 {
+  "chat.status.checkDeliveryBeforeRetry": "Vérifiez l’état de l’envoi avant de réessayer pour éviter d’envoyer ce message deux fois.",
+  "chat.recipient.whatsappPhone": "Enregistrez le numéro du contact avec + et l’indicatif du pays, ou répondez dans une conversation WhatsApp dont le numéro est vérifié.",
+  "chat.recipient.internationalPhone": "Ajoutez au contact un numéro international valide commençant par + et l’indicatif du pays.",
+  "chat.recipient.conflict": "Les numéros WhatsApp ne correspondent pas. Vérifiez que le contact et la conversation utilisent le même numéro.",
+  "chat.recipient.email": "Ajoutez une adresse e-mail valide à ce contact pour envoyer un e-mail.",
+  "chat.recipient.channelIdentity": "Associez au contact un compte ou un identifiant de destinataire valide pour ce canal.",
   "chat.workspace.unavailable": "Impossible de vérifier l’accès à l’espace de travail.",
   "chat.workspace.denied": "Les conversations ne sont pas disponibles pour ce compte dans cet espace de travail.",
   "chat.workspace.choose": "Choisir un espace de travail",

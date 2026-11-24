@@ -7,6 +7,9 @@ import type { Notification } from '@/app/notifications/types'
 
 let mockActor = 'alice', mockTargetActor = 'alice', mockLoading = false
 let mockPermission: 'ready' | 'loading' | 'denied' = 'ready'
+const mockRead = { status: 'ready' }
+jest.mock('@/app/context/WorkspaceAccessSnapshot', () => ({ useWorkspaceAccessSnapshot: () => ({
+  actor: mockActor, siteId: 'site', read: mockPermission === 'ready' ? mockRead : undefined }) }))
 jest.mock('@/app/context/ScreenAccessContext', () => ({ useOptionalScreenAccess: () => ({ screenScopeStatus: mockPermission,
   verifiedWorkspaceLists: mockPermission === 'ready' ? { actorId: mockActor, siteId: 'site' } : undefined }) }))
 jest.mock('@/app/context/SiteContext', () => ({ useSite: () => ({ currentSite: { id: 'site' },

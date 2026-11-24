@@ -1,7 +1,7 @@
 "use client"
 
 import { useLayoutEffect, useRef, useState, type Dispatch, type SetStateAction } from "react"
-import { loadAccessibleSites, type LoadSitesDeps } from "./site-load-sites"
+import { clearSelection, loadAccessibleSites, type LoadSitesDeps } from "./site-load-sites"
 import { applyCurrentSite } from "./site-set-current"
 import type { Site, WorkspaceRequestScope } from "./site-types"
 import { cacheSiteSelection, clearSiteSelectionCache, discardForeignSiteSelection, readSiteSelection } from "./site-selection-cache"
@@ -21,6 +21,8 @@ export function useSiteLoadingLifecycle(deps: LifecycleDeps) {
   // Keep the request target independent of settings. Only an independently
   // authorized reader may use it after a transient settings failure.
   const [requestScope, setRequestScope] = useState<WorkspaceRequestScope | null>(null)
+  const liveScope = useRef<WorkspaceRequestScope | null>(null)
+  const [lostAccess, setLostAccess] = useState<(WorkspaceRequestScope & { refreshDirectory?: boolean }) | null>(null)
   const generation = useRef(0)
   const active = useRef(true)
   const hydrating = useRef(false)
@@ -29,6 +31,11 @@ export function useSiteLoadingLifecycle(deps: LifecycleDeps) {
   const controller = useRef<AbortController | null>(null)
   const selectionReads = useRef<AbortController | null>(null)
   const revalidationTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  function publishScope(scope: WorkspaceRequestScope | null) {
+    liveScope.current = scope
+    setRequestScope(scope)
+  }
 
   function retire() {
     if (revalidationTimer.current) clearTimeout(revalidationTimer.current)
@@ -62,27 +69,45 @@ export function useSiteLoadingLifecycle(deps: LifecycleDeps) {
   }, [])
 
   function invalidate() {
-    setRequestScope(null)
+    publishScope(null)
+    setLostAccess(null)
     clearSiteSelectionCache()
     retire()
     latest.current = { ...latest.current, currentSite: null, isInitialized: false }
   }
 
   function retireDeniedScope() {
-    setRequestScope(null)
+    publishScope(null)
     retire()
     latest.current = { ...latest.current, currentSite: null }
   }
 
-  function retireRemovedSelection() {
+  function retireRemovedSelection(siteId: string, actorId: string | null) {
     // The successful list MUST still publish its other accessible sites. Only
     // its removed selection (including pending detail and React setters) retires.
     selectionReads.current?.abort()
     selectionReads.current = null
     hydrating.current = false
-    setRequestScope(null)
+    publishScope(null)
+    if (actorId && !siteId.startsWith('demo-')) setLostAccess({ siteId, actorId })
     latest.current = { ...latest.current, currentSite: null }
     latest.current.setIsInitialized(true)
+  }
+
+  function leaveUnavailableSite(scope: WorkspaceRequestScope) {
+    const state = latest.current
+    if (liveScope.current?.siteId !== scope.siteId || liveScope.current.actorId !== scope.actorId ||
+      state.authUserIdRef.current !== scope.actorId) return
+    retireDeniedScope()
+    clearSelection(scope.siteId)
+    setLostAccess({ ...scope, refreshDirectory: true })
+    state.setCurrentSite(null)
+    state.setSites(sites => sites.filter(site => site.id !== scope.siteId))
+    state.setError(null)
+    state.setIsLoading(false)
+    state.setIsInitialized(true)
+    state.setSitesLoaded(true)
+    state.setHasValidSession(true)
   }
 
   async function bounded(request: number, signal: AbortSignal, operation: () => Promise<void>, initial: boolean | (() => boolean)) {
@@ -131,7 +156,8 @@ export function useSiteLoadingLifecycle(deps: LifecycleDeps) {
     selectionReads.current = reads
     const ownsSelection = () => isCurrent() && !reads.signal.aborted
     const actorId = state.authUserIdRef.current
-    setRequestScope(actorId && !site.id.startsWith('demo-') ? { actorId, siteId: site.id } : null)
+    publishScope(actorId && !site.id.startsWith('demo-') ? { actorId, siteId: site.id } : null)
+    setLostAccess(null)
     hydrating.current = true
     latest.current = { ...latest.current, currentSite: site }
     state.setIsLoading(true)
@@ -214,7 +240,7 @@ export function useSiteLoadingLifecycle(deps: LifecycleDeps) {
       }
       discardForeignSiteSelection(userId)
       const cached = !state.currentSite && !isDemoModeActive() ? readSiteSelection(userId) : null
-      if (!cached && !state.currentSite) setRequestScope(null)
+      if (!cached && !state.currentSite) publishScope(null)
       if (cached) {
         // Publish identity without waiting for the full list. Settings remain independently
         // gated, so currency and checkout configuration never come from invented defaults.
@@ -269,5 +295,5 @@ export function useSiteLoadingLifecycle(deps: LifecycleDeps) {
     finally { if (initialLoad.current === pending) initialLoad.current = null }
   }
 
-  return { loadSites, selectSite, invalidate, requestScope }
+  return { loadSites, selectSite, invalidate, requestScope, lostAccess, leaveUnavailableSite }
 }

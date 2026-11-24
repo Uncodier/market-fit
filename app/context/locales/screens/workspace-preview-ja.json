@@ -5,5 +5,7 @@
   "workspacePreview.syncFailed": "読み取り専用のプレビュー · 設定を読み込めませんでした。",
   "workspacePreview.failed": "プレビューを読み込めませんでした。",
   "workspacePreview.denied": "このアカウントでは、このワークスペースの画面を利用できません。",
-  "workspacePreview.empty": "プレビューに表示する項目はありません。"
+  "workspacePreview.empty": "プレビューに表示する項目はありません。",
+  "workspaceAccess.lostTitle": "このプロジェクトにアクセスできなくなりました",
+  "workspaceAccess.lostDescription": "プロジェクト一覧に戻りました。プロジェクトの所有者にメンバー資格とライセンス枠の確認を依頼してから、再試行するか別のプロジェクトを選んでください。"
 }

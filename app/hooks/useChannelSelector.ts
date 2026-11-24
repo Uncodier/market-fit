@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { useSite } from "@/app/context/SiteContext"
-import { getEnabledSiteChannels, leadHasChannel, normalizeChannel } from "@/lib/site-channels"
+import { getEnabledSiteChannels, normalizeChannel } from "@/lib/site-channels"
+import { recipientBlockKey } from '@/lib/chat/recipient-eligibility'
 
 type Channel = 'web' | 'email' | 'whatsapp' | 'instagram' | 'messenger' | 'sms' | 'telegram' | 'voice' | 'website_chat' | string
 
@@ -15,12 +16,15 @@ interface UseChannelSelectorProps {
   } | null
   isAgentOnlyConversation?: boolean
   defaultChannel?: Channel
+  channelBlockReasons?: Readonly<Record<string, string>>
+  onChannelCommitted?: (channel: string) => void
 }
 
 interface UseChannelSelectorReturn {
   selectedChannel: Channel
   setSelectedChannel: (channel: Channel) => void
   availableChannels: Channel[]
+  displayChannels?: Channel[]
   isUpdatingChannel?: boolean
   channelLoadError?: string
   retryChannelLoad?: () => void
@@ -30,10 +34,12 @@ export function useChannelSelector({
   conversationId,
   leadData,
   isAgentOnlyConversation = false,
-  defaultChannel = 'web'
+  defaultChannel = 'web', channelBlockReasons, onChannelCommitted
 }: UseChannelSelectorProps): UseChannelSelectorReturn {
   const { currentSite } = useSite()
-  const [selectedChannel, setSelectedChannelState] = useState<Channel>(defaultChannel)
+  const [selection, setSelection] = useState<{ id?: string; channel: Channel }>()
+  const selectedChannel = selection && selection.id === conversationId ? selection.channel
+    : conversationId?.startsWith('new-') ? 'web' : defaultChannel
   const [updatingOperations, setUpdatingOperations] = useState<Record<string, number>>({})
   const operationCounter = useRef(0)
   const pendingOperations = useRef(new Map<string, number>())
@@ -56,32 +62,12 @@ export function useChannelSelector({
   // Log channel selection for diagnostics.
   console.log(`[useChannelSelector] Hook called - conversationId: ${conversationId}, selectedChannel: ${selectedChannel}`)
 
-  // Memoize available channels calculation
-  const availableChannels = useMemo(() => {
-    const channels: Channel[] = ['web'] // Web chat is always available
-
-    // Don't show other channels for agent-only conversations
-    if (isAgentOnlyConversation) {
-      return channels
-    }
-
-    const enabledChannels = getEnabledSiteChannels(currentSite)
-    
-    for (const channel of enabledChannels) {
-      if (channel === 'web') continue // already added
-      
-      if (leadHasChannel(leadData, channel)) {
-        channels.push(channel)
-        console.log(`[availableChannels] Added ${channel} channel`)
-      } else {
-        console.log(`[availableChannels] ${channel} not available for lead`)
-      }
-    }
-
-    // Historical selection is retained separately, never treated as channel availability.
-    console.log(`[availableChannels] Final channels:`, channels)
-    return channels
-  }, [currentSite, leadData, isAgentOnlyConversation])
+  const configured = useMemo(() => isAgentOnlyConversation ? ['web']
+    : ['web', ...getEnabledSiteChannels(currentSite).filter(c => c !== 'web')], [currentSite, isAgentOnlyConversation])
+  const availableChannels = useMemo(() => configured.filter(channel => channel === 'web' || !(channelBlockReasons
+    ? channelBlockReasons[channel] : recipientBlockKey(channel, { lead: leadData }))), [configured, channelBlockReasons, leadData])
+  // A disabled or historical route stays visible without becoming selectable.
+  const displayChannels = isAgentOnlyConversation || configured.includes(selectedChannel) ? configured : [...configured, selectedChannel]
 
   // Enhanced setSelectedChannel with database update
   const setSelectedChannel = useCallback(async (channel: Channel) => {
@@ -141,7 +127,8 @@ export function useChannelSelector({
         console.log(`✅ Successfully updated conversation ${conversationId} channel to ${channel}`)
         
         // Update local state only after successful database update
-        setSelectedChannelState(channel)
+        setSelection({ id: conversationId, channel })
+        onChannelCommitted?.(channel)
         
       } catch (error) {
         console.error("Unexpected error updating conversation channel:", error)
@@ -157,9 +144,9 @@ export function useChannelSelector({
       }
     } else {
       // For new conversations, just update local state
-      setSelectedChannelState(channel)
+      setSelection({ id: conversationId, channel })
     }
-  }, [availableChannels, selectedChannel, conversationId])
+  }, [availableChannels, selectedChannel, conversationId, onChannelCommitted])
 
   // Get conversation's channel from database - run immediately when conversationId is available
   useEffect(() => {
@@ -168,10 +155,6 @@ export function useChannelSelector({
     // Skip if no conversation ID or it's a new conversation
     if (!conversationId || (conversationId && conversationId.startsWith("new-"))) {
       console.log(`[loadChannelEffect] Skipping - no conversation or new conversation`)
-      // Reset to default for new conversations
-      if (conversationId && conversationId.startsWith("new-")) {
-        setSelectedChannelState('web')
-      }
       return
     }
 
@@ -227,7 +210,7 @@ export function useChannelSelector({
         console.log(`📺 Channel loaded from conversation ${conversationId}: ${conversationChannel}`)
         
         // Set the channel from database
-        setSelectedChannelState(conversationChannel)
+        setSelection({ id: conversationId, channel: conversationChannel })
         setLoadedConversationId(conversationId)
         setLoadFailure(undefined)
       } catch (error) {
@@ -263,6 +246,7 @@ export function useChannelSelector({
     setSelectedChannel,
     availableChannels,
     channelLoadError,
+    displayChannels,
     retryChannelLoad,
     isUpdatingChannel: isUpdatingChannel || Boolean(channelLoadError)
       || Boolean(conversationId && !conversationId.startsWith('new-') && loadedConversationId !== conversationId)

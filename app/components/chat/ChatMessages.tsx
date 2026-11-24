@@ -16,6 +16,7 @@ import { ChatMessagesLoading } from "./ChatMessagesLoading"
 import { ChatMessageRow } from "./ChatMessageRow"
 import { findPromptForChatResponse } from "./chat-response-context"
 import { formatDate, isSameDay } from "./chat-message-status"
+import { getRetryChannelBlockReason } from '@/lib/chat/retry-channel'
 import { ChatMessagesProps, MessageRowActions } from "./chat-message-types"
 import {
   useMessageSenderData,
@@ -41,6 +42,8 @@ export function ChatMessages({
   participantIdentity,
   conversationId,
   conversationCustomData,
+  channelBlockReasons,
+  conversationChannel,
   readOnly = false,
   internalReview = false,
   onRetryMessage,
@@ -215,7 +218,10 @@ export function ChatMessages({
                           userDataCache,
                           agentDataCache,
                         }}
-                        actions={rowActions}
+                        actions={{
+                          ...rowActions,
+                          retryBlockReason: getRetryChannelBlockReason(message.metadata, conversationChannel, channelBlockReasons),
+                        }}
                       />
                     </div>
                   </React.Fragment>

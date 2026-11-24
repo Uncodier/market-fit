@@ -6,6 +6,9 @@ import { useSite } from '@/app/context/SiteContext'
 import { useAuth } from '@/app/hooks/use-auth'
 
 jest.mock('@/app/context/SiteContext', () => ({ useSite: jest.fn() }))
+const mockRead = { status: 'ready' }
+jest.mock('@/app/context/WorkspaceAccessSnapshot', () => ({ useWorkspaceAccessSnapshot: () => ({ actor: 'user',
+  siteId: jest.requireMock('@/app/context/SiteContext').useSite().currentSite?.id, read: mockRead }) }))
 jest.mock('@/app/hooks/use-auth', () => ({ useAuth: jest.fn() }))
 jest.mock('@/app/context/ScreenAccessContext', () => ({ useOptionalScreenAccess: () => {
   const selected = jest.requireMock('@/app/context/SiteContext').useSite()

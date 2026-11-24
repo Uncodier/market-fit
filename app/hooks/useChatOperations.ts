@@ -1,6 +1,8 @@
 "use client"
 
+import { sendingManualMetadata, acceptedManualMetadata } from '@/lib/chat/manual-intervention'
 import { useRef, useState } from 'react'
+import { getRetryChannelBlockReason } from '@/lib/chat/retry-channel'
 import { isDeliveryRetryBlocked, isChatResponseFormat, requestedResponseFormat, type ChatResponseFormat } from '@/lib/chat/response-format'
 import { useChatConversationActions } from './useChatConversationActions'
 import { reconcileInterventionMessage } from './reconcile-intervention-message'
@@ -42,6 +44,8 @@ interface UseChatOperationsProps {
   agentName: string
   conversationId: string
   isAgentOnlyConversation: boolean
+  conversationChannel?: string | null
+  channelBlockReasons?: Readonly<Record<string, string>>
   isConversationReady?: boolean
   isCommentConversation?: boolean
   commentReplyTarget?: ChatMessage
@@ -55,6 +59,8 @@ export function useChatOperations({
   agentName,
   conversationId,
   isAgentOnlyConversation,
+  conversationChannel,
+  channelBlockReasons,
   isConversationReady = true,
   isCommentConversation = false,
   commentReplyTarget,
@@ -95,7 +101,7 @@ export function useChatOperations({
       sender_id: user.id,
       sender_name: userName,
       sender_avatar: userAvatar || undefined,
-      metadata: { response_format: responseFormat },
+      metadata: { response_format: responseFormat, ...(!isAgentOnlyConversation && sendingManualMetadata) },
       ...(isCommentConversation && commentReplyTarget ? { metadata: {
         source: 'comment',
         response_format: 'text',
@@ -108,7 +114,7 @@ export function useChatOperations({
         platform_post_url: commentReplyTarget.metadata?.platform_post_url,
         post_title: commentReplyTarget.metadata?.post_title,
         post_text: commentReplyTarget.metadata?.post_text,
-        status: 'pending',
+        ...sendingManualMetadata,
       } } : {}),
     }
 
@@ -158,12 +164,11 @@ export function useChatOperations({
           reply_to_message_id: isCommentConversation ? commentReplyTarget?.id : undefined,
           response_format: isCommentConversation ? 'text' : responseFormat,
         })
-        if (result?.success !== true) throw new Error("Message acceptance could not be confirmed.")
-
-        const savedMessage = result.data?.message
-        if (savedMessage?.message_id) {
-          setChatMessages(previous => reconcileInterventionMessage(previous, tempUserMessage, savedMessage))
-        }
+        const savedMessage = result?.data?.message
+        if (result?.success !== true || !savedMessage?.message_id) throw new Error("Message acceptance could not be confirmed.")
+        setChatMessages(previous => reconcileInterventionMessage(previous, tempUserMessage, {
+          ...savedMessage, custom_data: { ...tempUserMessage.metadata, ...acceptedManualMetadata(savedMessage.custom_data) },
+        }))
         if (result.data?.channel_send?.callId) {
           toast.success('Call requested. Waiting for the voice provider; this does not confirm the recipient answered.')
         }
@@ -227,7 +232,9 @@ export function useChatOperations({
 
   // Retry a failed message using the same row
   const handleRetryMessage = async (failedMessage: ChatMessage) => {
-    if (isDeliveryRetryBlocked(failedMessage.metadata)) return
+    if (!isConversationReady || failedMessage.metadata?.command_status !== 'failed' ||
+      isDeliveryRetryBlocked(failedMessage.metadata) ||
+      getRetryChannelBlockReason(failedMessage.metadata, conversationChannel, channelBlockReasons)) return
     if (!failedMessage.text || !failedMessage.id || sendInFlightRef.current || !currentSite?.id || !user?.id) return
     if (failedMessage.id.startsWith("temp-") || failedMessage.id.startsWith("error-")) return
 
@@ -237,7 +244,8 @@ export function useChatOperations({
     const userAvatar = user.user_metadata?.avatar_url || null
     const pendingMetadata = {
       ...failedMessage.metadata,
-      command_status: 'pending' as const,
+      ...sendingManualMetadata,
+      call_status: undefined,
       error_message: undefined,
     }
 
@@ -251,7 +259,7 @@ export function useChatOperations({
 
     try {
       const savedFormat = requestedResponseFormat(failedMessage.metadata)
-      await sendTeamMemberIntervention(
+      const result = await sendTeamMemberIntervention(
         conversationId,
         failedMessage.text,
         user.id,
@@ -266,6 +274,12 @@ export function useChatOperations({
       )
 
       // Realtime may already have advanced this row while the request was pending.
+      const saved = result.data?.message
+      if (result.success && saved?.message_id === failedMessage.id) {
+        setChatMessages(previous => previous.map(row => row.id === failedMessage.id && row.metadata === pendingMetadata
+          ? { ...row, metadata: withMappedCommandStatus({ ...pendingMetadata, ...acceptedManualMetadata(saved?.custom_data) }) }
+          : row))
+      }
       console.log(`[${new Date().toISOString()}] ✅ Retry queued for message`, failedMessage.id)
     } catch (apiError) {
       logApiError(apiError, "TeamInterventionRetry")
@@ -279,7 +293,11 @@ export function useChatOperations({
         // Admission failed before this retry started. Restore only our optimistic
         // state; a newer Realtime event remains authoritative. Ambiguous requests
         // must stay pending rather than encouraging another call.
-        if (apiError instanceof InterventionRequestError && apiError.executionStarted === false) {
+        if (interventionSavedMessageId(apiError) === failedMessage.id) {
+          setChatMessages(previous => previous.map(row => row.id === failedMessage.id && row.metadata === pendingMetadata
+            ? { ...row, metadata: { ...pendingMetadata, voice_mode: 'agent_call', call_status: 'placement_unknown', status: 'placement_unknown' } }
+            : row))
+        } else if (apiError instanceof InterventionRequestError && apiError.executionStarted === false) {
           setChatMessages(previous => previous.map(row =>
             row.id === failedMessage.id && row.metadata === pendingMetadata
               ? { ...row, metadata: failedMessage.metadata }

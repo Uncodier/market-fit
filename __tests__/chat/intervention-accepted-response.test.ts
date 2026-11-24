@@ -32,6 +32,10 @@ describe("shouldTreatInterventionAsFailed", () => {
     ).toBe(false)
   })
 
+  it('does not infer acceptance from a skipped method when the channel explicitly failed', () => {
+    expect(shouldTreatInterventionAsFailed({ success: true, data: { channel_send: { success: false, method: 'none' } } })).toBe(true)
+  })
+
   it("treats 2xx as failed only when Temporal never started", () => {
     expect(
       shouldTreatInterventionAsFailed({

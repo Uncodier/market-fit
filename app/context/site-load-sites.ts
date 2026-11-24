@@ -23,7 +23,8 @@ export type LoadSitesDeps = {
   setSitesLoaded: (v: boolean) => void
   setSitesLoadAttempted: (v: boolean) => void
   setIsLoading: (v: boolean) => void
-  setError: (e: Error | null) => void
+  error?: Error | null
+  setError: Dispatch<SetStateAction<Error | null>>
   setHasValidSession: (v: boolean) => void
   setIsInitialized: (v: boolean | ((prev: boolean) => boolean)) => void
   setSites: Dispatch<SetStateAction<Site[]>>
@@ -32,7 +33,7 @@ export type LoadSitesDeps = {
   reload: () => void
   isCurrent?: () => boolean
   onAccessDenied?: () => void
-  onSelectionRemoved?: () => void
+  onSelectionRemoved?: (siteId: string, actorId: string | null) => void
   sessionUserId?: string | null
   signal?: AbortSignal
   fresh?: boolean
@@ -72,7 +73,10 @@ export async function loadAccessibleSites(deps: LoadSitesDeps): Promise<{
       setSitesLoaded(false)
       setIsLoading(true)
     }
-    setError(null)
+    // Keep an already hydrated selection read-only during directory recovery.
+    // Starting a retry is not a successful verification.
+    const recoveringError = background ? deps.error : null
+    if (!recoveringError) setError(null)
     // ✅ MARK that we attempted to load sites (kept for diagnostics)
     setSitesLoadAttempted(true)
     
@@ -245,7 +249,7 @@ export async function loadAccessibleSites(deps: LoadSitesDeps): Promise<{
       const selected = uniqueSites.find(site => site.id === selectedId)
       if (selected) cacheSiteSelection(userId, selected)
       else if (selectedId && authoritative) {
-        deps.onSelectionRemoved?.()
+        deps.onSelectionRemoved?.(selectedId, userId)
         clearSelection(selectedId)
         setIsLoading(false)
       }
@@ -270,6 +274,9 @@ export async function loadAccessibleSites(deps: LoadSitesDeps): Promise<{
       // Without an active identity, a cache miss must not enable the empty-list
       // redirect before the authoritative revalidation can restore the saved ID.
       setSitesLoaded(authoritative || Boolean(currentSite))
+      if (recoveringError && authoritative) {
+        setError(previous => isCurrent() && previous === recoveringError ? null : previous)
+      }
       
       // Si hay sitios, intentamos restaurar el sitio guardado (no auto-seleccionar el primero)
       if (sitesWithData.length > 0) {
@@ -314,11 +321,11 @@ export async function loadAccessibleSites(deps: LoadSitesDeps): Promise<{
     }
   }
 
-function clearSelection(selectedId: string | null) {
-  clearSiteSelectionCache()
+export function clearSelection(selectedId: string | null) {
   // Another tab may have selected a different site in the meantime.
   try {
     if (selectedId && localStorage.getItem("currentSiteId") === selectedId) {
+      clearSiteSelectionCache()
       localStorage.removeItem("currentSiteId")
       clearCurrentSiteCookie()
     }

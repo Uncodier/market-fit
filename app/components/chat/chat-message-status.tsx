@@ -1,8 +1,10 @@
 "use client"
 
 import { useLocalization } from '@/app/context/LocalizationContext'
+import { DisabledReasonTooltip } from "./DisabledReasonTooltip"
 import { ChatMessage } from "@/app/types/chat"
 import { isSocialCommentMetadata } from '@/lib/chat/social-comment-context'
+import { isManualIntervention, manualReceiptLabel } from '@/lib/chat/manual-intervention'
 import { isDeliveryRetryBlocked } from '@/lib/chat/response-format'
 import { getTemplateDeliveryStatus } from '@/lib/chat/template-delivery'
 import { getAudioDeliveryStatus } from '@/lib/chat/audio-delivery'
@@ -73,12 +75,14 @@ export function MessageTimestamp({
   const templateStatus = getTemplateDeliveryStatus(message.metadata)
   const audioStatus = getAudioDeliveryStatus(message.metadata)
   const status = message.metadata?.status
+  const receiptLabel = isManualIntervention(message.role, message.metadata) && manualReceiptLabel(message.metadata)
   const deliveryLabel = templateStatus ? t(templateLabelKeys[templateStatus.label] ?? 'chat.template.unconfirmed')
-    : audioStatus ? t(audioStatus.labelKey) : t(status === 'sent' ? 'chat.status.sent' : 'chat.status.delivered')
+    : audioStatus ? t(audioStatus.labelKey) : receiptLabel ? t(receiptLabel) : t(status === 'sent' ? 'chat.status.sent' : 'chat.status.delivered')
   const showCheck = templateStatus ? templateStatus.commandStatus === 'success'
     : audioStatus ? audioStatus.confirmed || audioStatus.labelKey === 'chat.status.sent'
-      : status === 'sent' || status === 'delivered'
-  const confirmedDelivery = audioStatus ? audioStatus.confirmed : status === 'delivered'
+      : receiptLabel ? ['chat.status.sent', 'chat.status.delivered', 'chat.status.read'].includes(receiptLabel) : status === 'sent' || status === 'delivered'
+  const confirmedDelivery = audioStatus ? audioStatus.confirmed : receiptLabel
+    ? receiptLabel === 'chat.status.delivered' || receiptLabel === 'chat.status.read' : status === 'delivered'
 
   return (
     <p className={`${className} inline-flex items-center gap-1 whitespace-nowrap shrink-0`}>
@@ -113,9 +117,11 @@ export function MessageTimestamp({
 export function MessageStatus({
   message,
   onRetry,
+  retryBlockReason,
   acceptedLabel = "scheduled",
 }: {
   message: ChatMessage
+  retryBlockReason?: string
   onRetry?: (message: ChatMessage) => Promise<void>
   acceptedLabel?: "scheduled" | "accepted"
 }) {
@@ -124,6 +130,9 @@ export function MessageStatus({
   const deliveryRetryBlocked = isDeliveryRetryBlocked(message.metadata)
   const templateStatus = getTemplateDeliveryStatus(message.metadata)
   const audioStatus = getAudioDeliveryStatus(message.metadata)
+  const manual = isManualIntervention(message.role, message.metadata)
+  const receiptLabel = manual && manualReceiptLabel(message.metadata)
+  const showApproval = message.metadata?.status === 'accepted' && (!manual || message.metadata.command_status !== 'failed')
   const isCommentProposal = isSocialCommentMetadata(message.metadata) &&
     (message.role === 'assistant' || message.role === 'agent') && !message.metadata?.comment_delivery_status
 
@@ -155,15 +164,24 @@ export function MessageStatus({
     )
   }
 
+  if (receiptLabel) return (
+    <div className="flex items-center gap-2 text-xs">
+      <span role="status">{t(receiptLabel)}</span>
+      {deliveryRetryBlocked && message.metadata?.command_status === 'failed' && (
+        <span className="text-muted-foreground">{t('chat.status.checkDeliveryBeforeRetry')}</span>
+      )}
+    </div>
+  )
+
   return (
     <div className="flex items-center gap-2">
-      {(message.metadata?.status === "pending" || message.metadata?.status === "sending" || message.metadata?.status === "queued") && (
+      {(!manual || message.metadata?.command_status !== "failed") && (message.metadata?.status === "pending" || message.metadata?.status === "sending" || message.metadata?.status === "queued") && (
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
               <span className="inline-flex items-center text-xs text-amber-500">
                 <Icons.Clock className="h-3 w-3 mr-1" />
-                {isCommentProposal ? t('chat.status.proposedReply') : estimatedSendTime ? t('chat.status.sendingAt', { time: estimatedSendTime }) : t('chat.status.sending')}
+                {isCommentProposal ? t('chat.status.proposedReply') : estimatedSendTime && !manual ? t('chat.status.sendingAt', { time: estimatedSendTime }) : t('chat.status.sending')}
               </span>
             </TooltipTrigger>
             <TooltipContent>
@@ -172,13 +190,13 @@ export function MessageStatus({
           </Tooltip>
         </TooltipProvider>
       )}
-      {message.metadata?.status === "accepted" && (
+      {showApproval && (
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
               <span className="inline-flex items-center text-xs text-green-500">
                 <Icons.Check className="h-3 w-3 mr-1" />
-                {acceptedLabel === "accepted"
+                {manual || acceptedLabel === "accepted"
                   ? t('chat.status.accepted')
                   : estimatedSendTime
                     ? t('chat.status.sendingAt', { time: estimatedSendTime })
@@ -187,7 +205,7 @@ export function MessageStatus({
             </TooltipTrigger>
             <TooltipContent>
               <p>
-                {acceptedLabel === "accepted"
+                {manual || acceptedLabel === "accepted"
                   ? t('chat.status.acceptedHint')
                   : t('chat.status.scheduledHint')}
               </p>
@@ -196,7 +214,7 @@ export function MessageStatus({
         </TooltipProvider>
       )}
       {deliveryRetryBlocked && message.metadata?.command_status === 'failed' && (
-        <span className="text-xs text-amber-500">{t('chat.status.audioCheckBeforeRetry')}</span>
+        <span className="text-xs text-amber-500">{t('chat.status.checkDeliveryBeforeRetry')}</span>
       )}
       {message.metadata?.command_status === "failed" && !deliveryRetryBlocked && (
         <>
@@ -213,27 +231,40 @@ export function MessageStatus({
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
-          {onRetry && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => onRetry(message)}
-                    className="inline-flex items-center text-xs text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded px-1 py-0.5 transition-colors"
-                    type="button"
-                  >
-                    <Icons.RotateCcw className="h-3 w-3 mr-1" />
-                    {t('chat.status.retry')}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>{t('chat.status.retryHint')}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
+          {onRetry && <RetryButton message={message} onRetry={onRetry} reasonKey={retryBlockReason} />}
         </>
       )}
     </div>
+  )
+}
+
+function RetryButton({ message, onRetry, reasonKey }: {
+  message: ChatMessage
+  onRetry: (message: ChatMessage) => Promise<void>
+  reasonKey?: string
+}) {
+  const { t } = useLocalization()
+  const label = t('chat.status.retry')
+  const button = (
+    <button
+      type="button"
+      disabled={Boolean(reasonKey)}
+      onClick={reasonKey ? undefined : () => onRetry(message)}
+      className="inline-flex items-center text-xs text-blue-500 enabled:hover:bg-blue-50 dark:enabled:hover:bg-blue-900/30 disabled:text-muted-foreground rounded px-1 py-0.5 transition-colors"
+    >
+      <Icons.RotateCcw className="h-3 w-3 mr-1" />
+      {label}
+    </button>
+  )
+  if (reasonKey) {
+    return <DisabledReasonTooltip reason={t(reasonKey)} label={label}>{button}</DisabledReasonTooltip>
+  }
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>{button}</TooltipTrigger>
+        <TooltipContent>{t('chat.status.retryHint')}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   )
 }

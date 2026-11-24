@@ -7,8 +7,10 @@ import { isAdminScreenRole, isScreenBlocked } from "@/lib/auth/screen-access"
 import type { AllowedWorkspaceListScope, ScreenScope } from '@/lib/permissions/workspace-screen-scope'
 import type { WorkspaceRequestScope } from './site-types'
 import { useWorkspaceAccessSnapshot, WorkspaceAccessSnapshot } from './WorkspaceAccessSnapshot'
+import { createConversationListCache } from '@/app/providers/conversation-list-cache'
 
 type ScreenAccessContextValue = {
+  conversationListCache?: ReturnType<typeof createConversationListCache>
   blockedScreens: string[]
   isSiteAdmin: boolean
   isReady: boolean
@@ -57,12 +59,22 @@ function ScreenProjection({ children }: { children: ReactNode }) {
     const legacyWorkspaceListsAllowed = loaded?.status === 'legacy' && capability?.select === true &&
       (capability.role === 'owner' || (!!role && capability.role === role))
     const legacyListAllowed = legacyWorkspaceListsAllowed && canAccessNavKey('chat')
-    return { blockedScreens, isSiteAdmin, isReady: demo || !!loaded, canAccessNavKey, verifiedListScope, verifiedWorkspaceLists,
-      screenScopeStatus: read?.status ?? 'loading', legacyWorkspaceListsAllowed, legacyListAllowed, retryScreenScope }
+    const status = loaded?.status === 'legacy' && current && permissions?.siteId === siteId && !capability
+      ? permissions.capabilitiesPending ? 'loading' : 'unavailable'
+      : read?.status ?? 'loading'
+    return { blockedScreens, isSiteAdmin, isReady: demo || (!!loaded && status !== 'loading'), canAccessNavKey, verifiedListScope, verifiedWorkspaceLists,
+      screenScopeStatus: status, legacyWorkspaceListsAllowed, legacyListAllowed, retryScreenScope }
   }, [read, actor, siteId, current, permissions, retryScreenScope])
 
+  // The workspace outlives route pages. A fresh proof (including a recheck
+  // granting the very same role) starts with an empty inbox.
+  const cacheAllowed = !!value.verifiedListScope || (value.legacyListAllowed && !!current &&
+    site?.sites?.some(row => row.id === current))
+  const conversationListCache = useMemo(() => cacheAllowed && actor && siteId && read
+    ? createConversationListCache(actor, siteId) : undefined, [cacheAllowed, actor, siteId, read])
+  const projection = useMemo(() => ({ ...value, conversationListCache }), [value, conversationListCache])
   return (
-    <ScreenAccessContext.Provider value={value}>
+    <ScreenAccessContext.Provider value={projection}>
       {children}
     </ScreenAccessContext.Provider>
   )

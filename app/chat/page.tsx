@@ -8,6 +8,7 @@ import { useSearchParams, useRouter } from "next/navigation"
 import { useAuthContext } from "@/app/components/auth/auth-provider"
 import { markUINavigation } from "@/lib/navigation/navigation-helpers"
 import { useSite } from "@/app/context/SiteContext"
+import { chatChannelBlockReasons } from '@/lib/chat/recipient-eligibility'
 import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
 import { WorkspaceConversationList } from './WorkspaceConversationList'
@@ -89,6 +90,7 @@ function ChatPageContent() {
   const {
     leadData,
     participantIdentity,
+    visitorPhone,
     conversationCustomData,
     conversationChannel,
     isLoadingLead,
@@ -98,6 +100,9 @@ function ChatPageContent() {
     isLeadInvalidated,
     refreshLeadData
   } = useLeadData(conversationId, currentSite?.id)
+  const onChannelCommitted = useCallback((channel: string) => {
+    refreshLeadData(channel)
+  }, [refreshLeadData])
   
   const internalReview = conversationChannel === 'internal_review'
   const allowMessageActions = isConversationReady && !internalReview
@@ -115,6 +120,10 @@ function ChatPageContent() {
     clearMessagesForTransition
   } = useChatMessages(conversationId, agentId, agentName, isAgentOnlyConversation)
   const commentReply = useCommentReplySelection(conversationId, currentSite?.id, conversationCustomData, chatMessages)
+  const channelBlockReasons = useMemo(() => isAgentOnlyConversation || commentReply.isCommentConversation ? undefined
+    : chatChannelBlockReasons(currentSite, { lead: leadData, visitorPhone, conversationData: conversationCustomData,
+      conversationChannel, messages: chatMessages }), [isAgentOnlyConversation, commentReply.isCommentConversation, currentSite,
+      leadData, visitorPhone, conversationCustomData, conversationChannel, chatMessages])
   
   const {
     isLoading,
@@ -130,6 +139,8 @@ function ChatPageContent() {
     conversationId,
     isAgentOnlyConversation,
     isConversationReady: allowMessageActions,
+    channelBlockReasons,
+    conversationChannel,
     isCommentConversation: commentReply.isCommentConversation,
     commentReplyTarget: commentReply.target,
     setChatMessages,
@@ -344,6 +355,8 @@ function ChatPageContent() {
               internalReview={internalReview}
               readOnly={!allowMessageActions}
               onRetryMessage={handleRetryMessage}
+              conversationChannel={conversationChannel}
+              channelBlockReasons={channelBlockReasons}
               onMessagesUpdate={setChatMessages}
               isChatListCollapsed={isChatListCollapsed}
             />
@@ -359,6 +372,8 @@ function ChatPageContent() {
               textareaRef={textareaRef}
               isLoading={isLoading}
               handleSendMessage={handleSendMessageSubmit}
+              onChannelCommitted={onChannelCommitted}
+              channelBlockReasons={channelBlockReasons}
               handleKeyDown={handleKeyDown}
               conversationId={conversationId}
               isChatListCollapsed={isChatListCollapsed}

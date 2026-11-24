@@ -24,12 +24,15 @@ export interface ChatMessagesProps {
   participantIdentity?: ParticipantIdentity
   conversationId?: string
   conversationCustomData?: unknown
+  conversationChannel?: string | null
+  channelBlockReasons?: Readonly<Record<string, string>>
   onRetryMessage?: (failedMessage: ChatMessage) => Promise<void>
   onMessagesUpdate?: (messages: ChatMessage[]) => void
   isChatListCollapsed?: boolean
 }
 
 export interface MessageRowActions {
+  retryBlockReason?: string
   readOnly?: boolean
   onEdit: (message: ChatMessage) => void
   onDelete: (message: ChatMessage) => Promise<void>

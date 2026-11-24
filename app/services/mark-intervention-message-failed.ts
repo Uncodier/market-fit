@@ -1,5 +1,5 @@
 import { createClient } from "../../lib/supabase/client"
-import { hasTemplateDelivery } from '@/lib/chat/template-delivery'
+import { isDeliveryRetryBlocked } from '@/lib/chat/response-format'
 
 export class InterventionRequestError extends Error {
   messageId?: string
@@ -116,11 +116,7 @@ export async function markInterventionMessageFailed(
         return existing as MarkedInterventionMessage
       }
       // The call/webhook may have advanced while the HTTP error was in flight.
-      if (hasTemplateDelivery(state) || state?.provider_call_id || state?.status === 'placement_unknown' ||
-        state?.call_status === 'placement_unknown' || state?.status === 'sent' ||
-        state?.status === 'delivered' || state?.command_status === 'success' ||
-        state?.workflow_id || state?.workflowId ||
-        ['sending', 'queued', 'running', 'in_progress'].includes(String(state?.status))) {
+      if (isDeliveryRetryBlocked(state) || state?.workflow_id || state?.workflowId) {
         return existing as MarkedInterventionMessage
       }
       return updateMessageCustomData(

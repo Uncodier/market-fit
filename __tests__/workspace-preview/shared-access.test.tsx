@@ -18,6 +18,7 @@ function Sink() {
   const permissions = usePermissions(), access = useScreenAccess()
   return <><div data-testid="role">{permissions.capabilities?.role ?? 'none'}</div>
     <div data-testid="write">{String(permissions.can('update'))}</div>
+    <div data-testid="view-only">{String(permissions.isViewOnly)}</div>
     <div data-testid="admission">{access.verifiedWorkspaceLists ? 'verified' : access.screenScopeStatus}</div>
     <button onClick={() => access.retryScreenScope()}>Recheck</button></>
 }
@@ -29,7 +30,7 @@ function tree(actor = 'a') {
 const proof = (role: string) => ({ data: { site_id: siteId, actor_id: 'a', role, blocked_screens: [], location_restricted: false }, error: null })
 beforeEach(() => {
   mockRpc.mockReset().mockImplementation((name: string) => name === 'read_workspace_screen_scope'
-    ? { retry: () => ({ abortSignal: mockProof }) } : Promise.resolve({ data: { role: 'marketing' }, error: null }))
+    ? { retry: () => ({ abortSignal: mockProof }) } : { abortSignal: () => Promise.resolve({ data: { role: 'marketing' }, error: null }) })
   mockProof.mockReset().mockResolvedValue(proof('marketing'))
   mockMember.mockReset().mockResolvedValue({ data: { role: 'marketing', blocked_screens: ['leads'] }, error: null })
 })
@@ -39,8 +40,10 @@ it('uses one verified read for both consumers and retires permissions on invalid
   ui.rerender(tree()); expect(mockRpc.mock.calls.map(([name]) => name)).toEqual(['read_workspace_screen_scope'])
   mockProof.mockResolvedValueOnce({ data: null, error: null }); act(() => notifyScreenScopeChanged(siteId))
   await screen.findByText('denied'); expect(screen.getByTestId('write')).toHaveTextContent('false')
+  expect(screen.getByTestId('view-only')).toHaveTextContent('false')
   expect(getPermissionStore().capabilities?.role).toBe(null)
   fireEvent.click(screen.getByText('Recheck')); await screen.findByText('marketing')
+  expect(screen.getByTestId('view-only')).toHaveTextContent('true')
   ui.rerender(tree('other')); expect(screen.getByTestId('role')).toHaveTextContent('none')
   expect(mockRpc).toHaveBeenCalledTimes(3)
 })
@@ -52,4 +55,20 @@ it('uses capability fallback only on a missing RPC, not on transient or malforme
   await screen.findByText('marketing'); expect(mockRpc.mock.calls.map(([name]) => name)).toEqual([
     'read_workspace_screen_scope', 'read_workspace_screen_scope','get_my_site_capabilities',
   ]); expect(screen.getByTestId('admission')).toHaveTextContent('legacy')
+})
+
+it('keeps legacy access pending until the capability read settles and lets a failed check retry', async () => {
+  mockProof.mockResolvedValue({ data: null, error: { code: 'PGRST202' }, status: 404 })
+  let finish!: (result: object) => void
+  const capability = jest.fn().mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
+    .mockResolvedValue({ data: { role: 'marketing' }, error: null })
+  mockRpc.mockImplementation(name => name === 'get_my_site_capabilities' ? { abortSignal: capability }
+    : { retry: () => ({ abortSignal: mockProof }) })
+  render(tree()); await act(async () => {})
+  expect(capability).toHaveBeenCalledTimes(1)
+  expect(screen.getByTestId('admission')).toHaveTextContent('loading')
+  await act(async () => finish({ data: null, error: { code: '57014' } }))
+  expect(screen.getByTestId('admission')).toHaveTextContent('unavailable')
+  fireEvent.click(screen.getByText('Recheck')); await screen.findByText('marketing')
+  expect(screen.getByTestId('admission')).toHaveTextContent('legacy')
 })

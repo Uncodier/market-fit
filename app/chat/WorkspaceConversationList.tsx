@@ -1,6 +1,6 @@
 "use client"
 
-import { type ComponentProps, type ReactNode } from 'react'
+import { useState, type ComponentProps, type ReactNode } from 'react'
 import Link from 'next/link'
 import { SWRConfig } from 'swr'
 import { useAuthContext } from '@/app/components/auth/auth-context'
@@ -10,16 +10,28 @@ import { Button } from '@/app/components/ui/button'
 import { useLocalization } from '@/app/context/LocalizationContext'
 import { useOptionalScreenAccess } from '@/app/context/ScreenAccessContext'
 import { useSite } from '@/app/context/SiteContext'
-import { ConversationListReadScope } from '@/app/providers/conversation-list-read-scope'
+import { ConversationListCacheOnly, ConversationListReadScope } from '@/app/providers/conversation-list-read-scope'
 import { getDemoSiteId } from '@/lib/demo-utils'
 
 type Props = Omit<ComponentProps<typeof ChatList>, 'siteId' | 'previewOnly'>
-const listCache = { provider: () => new Map(), keepPreviousData: false }
+const coldCache = { provider: () => new Map(), keepPreviousData: false }
 
 function Notice({ message, children }: { message: string; children?: ReactNode }) {
   return <div className="space-y-3 p-4 text-sm text-muted-foreground">
     <p role="status">{message}</p>{children}
   </div>
+}
+
+function StaleListNotice() {
+  const { refreshSites } = useSite()
+  const { t } = useLocalization()
+  const [pending, setPending] = useState(false)
+  return <Notice message={t('chat.list.stale')}>
+    <Button variant="outline" size="sm" disabled={pending} onClick={async () => {
+      setPending(true)
+      try { await refreshSites({ recoverMissingList: true }) } finally { setPending(false) }
+    }}>{t('common.retry')}</Button>
+  </Notice>
 }
 
 /** Only this read-only projection may start before workspace settings. Private
@@ -41,14 +53,22 @@ export function WorkspaceConversationList(props: Props) {
   const proven = matches && verified?.actorId === actor && verified.siteId === target.siteId
   // During a staggered deployment never use the hint for early access if the
   // verification RPC is absent. The settled legacy selector + nav gates still apply.
-  const legacy = matches && !!current && !site.isLoading && !site.error && access?.screenScopeStatus === 'legacy' &&
+  const legacyScope = matches && !!current && access?.screenScopeStatus === 'legacy' &&
     access.legacyListAllowed && site.sites.some(row => row.id === current)
+  const legacy = legacyScope && !site.isLoading && !site.error
+  const cacheOnly = !!(legacyScope && !legacy && access.conversationListCache?.hasSnapshot())
 
-  if (proven || legacy) {
+  if (target && (proven || legacy || cacheOnly)) {
     return <ConversationListReadScope.Provider value={proven ? target : null}>
-      <SWRConfig key={`${actor}:${target.siteId}`} value={listCache}>
-        <ChatList {...props} siteId={target.siteId} previewOnly={!current || site.isLoading} />
-      </SWRConfig>
+      <ConversationListCacheOnly.Provider value={cacheOnly}>
+        {cacheOnly && site.error && !site.isLoading && <StaleListNotice />}
+        <SWRConfig key={access?.conversationListCache?.key ?? `${actor}:${target.siteId}`}
+          value={access?.conversationListCache ?? coldCache}>
+          <fieldset className="contents" disabled={cacheOnly}>
+            <ChatList {...props} siteId={target.siteId} previewOnly={cacheOnly || !current || site.isLoading} />
+          </fieldset>
+        </SWRConfig>
+      </ConversationListCacheOnly.Provider>
     </ConversationListReadScope.Provider>
   }
 
@@ -56,9 +76,11 @@ export function WorkspaceConversationList(props: Props) {
   if (!actor || (matches && (access?.screenScopeStatus === 'denied' || (access?.screenScopeStatus === 'ready' && !proven) ||
     (access?.isReady && !access.canAccessNavKey('chat'))))) return <Notice message={t('chat.workspace.denied')} />
   const failedCheck = matches && access?.screenScopeStatus === 'unavailable'
-  if (failedCheck || site.error || (matches && access?.screenScopeStatus === 'legacy' && !site.isLoading && !legacy)) return <Notice message={t('chat.workspace.unavailable')}>
+  const legacyRejected = matches && access?.screenScopeStatus === 'legacy' && site.sitesLoaded && !legacy
+  const checkingAccess = matches && access?.screenScopeStatus === 'loading'
+  if (failedCheck || (!checkingAccess && !site.isLoading && (site.error || legacyRejected))) return <Notice message={t('chat.workspace.unavailable')}>
     <Button variant="outline" size="sm" onClick={() => {
-      if (failedCheck) access.retryScreenScope()
+      if (failedCheck || (legacyRejected && !site.error && !access.legacyListAllowed)) access.retryScreenScope()
       else void site.refreshSites({ recoverMissingList: true })
     }}>{t('common.retry')}</Button>
   </Notice>

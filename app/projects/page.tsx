@@ -61,7 +61,7 @@ export default function ProjectsPage() {
   useEffect(() => {
     window.dispatchEvent(new CustomEvent('breadcrumb:update', { detail: { title: t('layout.nav.projects.title') } }))
   }, [t])
-  const { sites, currentSite, isLoading, setCurrentSite, error } = useSite()
+  const { sites, currentSite, isLoading, setCurrentSite, error, workspaceAccessLost, refreshSites } = useSite()
   const router = useRouter()
   const searchParams = useSearchParams()
   const isManageMode = searchParams?.get('manage') === '1' || searchParams?.get('from') === 'buyer'
@@ -254,6 +254,19 @@ export default function ProjectsPage() {
             />
           </div>
         </div>
+        {workspaceAccessLost && (
+          <Card className="mx-auto mb-4 w-full max-w-2xl border-destructive/40 bg-destructive/5">
+            <CardContent className="space-y-3 p-4 text-sm">
+              <div role="alert">
+                <p className="font-semibold">{t("workspaceAccess.lostTitle")}</p>
+                <p className="text-muted-foreground">{t("workspaceAccess.lostDescription")}</p>
+              </div>
+              <Button variant="outline" size="sm" disabled={isLoading} onClick={() => void refreshSites()}>
+                {t("common.retry")}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
         {Content}
       </div>
     </div>

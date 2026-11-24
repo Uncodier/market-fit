@@ -27,6 +27,7 @@ export default function NotificationsPage() {
   const [pending, setPending] = useState<"read" | "delete" | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const ready = status === 'ready'
+  const showInbox = ready || status === 'refreshing' || status === 'paused'
   const loading = status === 'checking' || status === 'inactive' || status === 'loading'
   const retry = status === 'failed' ? refreshNotifications : retryVerification
   const unreadCount = notifications.filter(notification => !notification.is_read).length
@@ -66,7 +67,7 @@ export default function NotificationsPage() {
                 <TabsTrigger value="all">{t('notifications.tabs.all')}</TabsTrigger>
                 <TabsTrigger value="unread" className="gap-2">
                   {t('notifications.tabs.unread')}
-                  {ready && <span className="rounded-full bg-background px-1.5 text-xs tabular-nums">{unreadCount}</span>}
+                  {showInbox && <span className="rounded-full bg-background px-1.5 text-xs tabular-nums">{unreadCount}</span>}
                 </TabsTrigger>
               </TabsList>
             </Tabs>
@@ -94,11 +95,11 @@ export default function NotificationsPage() {
             </div>
           </div>
           <p role="status" className="text-sm text-muted-foreground">
-            {ready ? (query ? `${filteredNotifications.length} results` : `${unreadCount} unread · ${notifications.length} total`)
+            {showInbox ? (query ? `${filteredNotifications.length} results` : `${unreadCount} unread · ${notifications.length} total`)
               : null}
           </p>
         </div>
-        {!ready ? <div role="alert" className="space-y-3 rounded-lg border p-4">
+        {!showInbox ? <div role="alert" className="space-y-3 rounded-lg border p-4">
           <p>{status === 'missing' ? t('noSiteSelected') : status === 'denied' ? t('workspacePreview.denied')
             : status === 'settings-unavailable' ? t('notifications.settingsUnavailable')
             : status === 'unavailable' ? t('chat.workspace.unavailable') : 'Notifications could not be loaded.'}</p>
@@ -107,7 +108,7 @@ export default function NotificationsPage() {
         </div> : filteredNotifications.length > 0 ? (
           <div className="space-y-3">
             {filteredNotifications.map(notification => (
-              <NotificationCard key={notification.id} notification={notification} onMarkAsRead={markAsRead} onDelete={deleteOneNotification} disabled={!!pending} />
+              <NotificationCard key={notification.id} notification={notification} onMarkAsRead={markAsRead} onDelete={deleteOneNotification} disabled={!ready || !!pending} />
             ))}
           </div>
         ) : (
@@ -129,7 +130,7 @@ export default function NotificationsPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={!!pending}>Cancel</AlertDialogCancel>
-            <AlertDialogAction className="bg-destructive" disabled={!!pending} onClick={event => { event.preventDefault(); void runBulkAction("delete") }}>
+            <AlertDialogAction className="bg-destructive" disabled={!ready || !!pending} onClick={event => { event.preventDefault(); void runBulkAction("delete") }}>
               {pending === "delete" ? "Deleting…" : "Delete all notifications"}
             </AlertDialogAction>
           </AlertDialogFooter>

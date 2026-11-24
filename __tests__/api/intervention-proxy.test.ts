@@ -158,13 +158,16 @@ it('restores explicitly requested Audio on a failed row without a template recei
   })
 })
 
-it('keeps the response allowlist minimal; delivery metadata arrives through Realtime', async () => {
+it('allowlists only lifecycle fields and receipt states, never arbitrary metadata on either hop', async () => {
   jest.mocked(fetch).mockResolvedValueOnce(Response.json({ success: true, data: {
-    message: { message_id: messageId, custom_data: { delivery_format: 'template', template_delivery: { state: 'pending' } } },
+    message: { message_id: messageId, custom_data: { status: 'accepted', command_status: 'pending', dispatch_owner: 'chat_intervention',
+      phone: 'private', template_delivery: { state: 'pending', provider_payload: { internal: true } } } },
     channel_send: { success: true, delivery_status: 'queued', provider_payload: { internal: true } },
   } }))
-  const body = await (await POST(request())).json()
-  expect(body.data.message).toEqual({ message_id: messageId })
+  const body = await (await POST(request({ custom_data: { status: 'delivered' } }))).json()
+  expect(JSON.parse(String(jest.mocked(fetch).mock.calls[0][1]?.body))).not.toHaveProperty('custom_data')
+  expect(body.data.message).toEqual({ message_id: messageId, custom_data: { status: 'accepted', command_status: 'pending',
+    dispatch_owner: 'chat_intervention', template_delivery: { state: 'pending' } } })
   expect(body.data.channel_send).toEqual({ success: true, delivery_status: 'queued' })
 })
 

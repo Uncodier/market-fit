@@ -40,7 +40,7 @@ function ReviewStartup({ route, children }: { route: PreviewRoute; children: Rea
     (access?.isReady && !access.canAccessNavKey(route.screen)))))
   const rejectedScope = access?.screenScopeStatus === 'unavailable'
   const retry = useCallback(() => {
-    if (rejectedScope) access?.retryScreenScope()
+    if (rejectedScope || (!site.error && access?.screenScopeStatus === 'legacy' && !access.legacyWorkspaceListsAllowed)) access?.retryScreenScope()
     else void site.refreshSites({ recoverMissingList: true })
   }, [rejectedScope, access, site])
   const demo = getDemoSiteId()
@@ -50,7 +50,8 @@ function ReviewStartup({ route, children }: { route: PreviewRoute; children: Rea
   const settledLegacy = access?.screenScopeStatus === 'legacy' && access.legacyWorkspaceListsAllowed && !site.error &&
     !!live && site.sites.some(row => row.id === live)
   const phase = demo ? 'checking' : blocked ? 'denied' : confirmed && access?.canAccessNavKey(route.screen) ? 'preview'
-    : rejectedScope || (!site.isLoading && (site.error || (access?.screenScopeStatus === 'legacy' && !settledLegacy))) ? 'unavailable'
+    : matches && access?.screenScopeStatus === 'loading' ? 'checking'
+    : rejectedScope || (!site.isLoading && (site.error || (site.sitesLoaded && access?.screenScopeStatus === 'legacy' && !settledLegacy))) ? 'unavailable'
     : !auth.isLoading && !site.isLoading && !live && !target ? 'missing' : 'checking'
   const interactive = !demo && matches && live && !site.isLoading && hasSettledSiteSettings(site.currentSite) && !blocked &&
     (access?.screenScopeStatus === 'ready' || settledLegacy)

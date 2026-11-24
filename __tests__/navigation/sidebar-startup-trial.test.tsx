@@ -8,7 +8,8 @@ jest.mock("next/dynamic", () => ({ __esModule: true, default: () => () => null }
 jest.mock("@/app/context/SiteContext", () => ({ useOptionalSite: jest.fn(), useSite: jest.fn() }))
 jest.mock("@/app/context/PermissionContext", () => ({ useOptionalPermissions: jest.fn() }))
 jest.mock("@/app/context/LocalizationContext", () => ({ useLocalization: () => ({ t: (key: string) => key }) }))
-jest.mock("@/app/hooks/use-auth", () => ({ useAuth: () => ({ user: null }) }))
+const mockAuth = jest.fn()
+jest.mock("@/app/hooks/use-auth", () => ({ useAuth: () => mockAuth() }))
 jest.mock("@/app/components/navigation/NavigationLink", () => {
   const { forwardRef } = jest.requireActual<typeof import("react")>("react")
   return { NavigationLink: forwardRef<HTMLAnchorElement, React.AnchorHTMLAttributes<HTMLAnchorElement>>(
@@ -30,6 +31,7 @@ const originalFetch = global.fetch
 
 beforeEach(() => {
   jest.clearAllMocks()
+  mockAuth.mockReturnValue({ user: null })
   jest.useFakeTimers()
   const context = { currentSite: { id: siteId, billing_read_status: "loaded",
     billing: { plan: "commission", addons_count: 0, credits_available: 1, account_balance: 0 },
@@ -73,4 +75,29 @@ it.each([false, true])("keeps the independent shortcut in the existing sidebar w
   expect(credits.closest(".md\\:grid")).toBe(widgetBlock)
   expect(screen.getByRole(isCollapsed ? "button" : "link", { name: "Activate trial" })).toBeInTheDocument()
   expect(fetchMock).toHaveBeenCalledTimes(1)
+})
+
+it.each([false, true])("replaces the credits card with the owner billing link (collapsed=%s)", isCollapsed => {
+  const ownerId = 'owner'
+  const site = { id: siteId, billing: { plan: 'foundry', credits_available: 0 } }
+  const context = { currentSite: site, requestScope: { siteId, actorId: ownerId } } as never
+  jest.mocked(useOptionalSite).mockReturnValue(context)
+  jest.mocked(useSite).mockReturnValue(context)
+  const existing = useOptionalPermissions()!
+  jest.mocked(useOptionalPermissions).mockReturnValue({ ...existing,
+    capabilities: { ...existing.capabilities!, role: 'owner', is_owner: true },
+  })
+  mockAuth.mockReturnValue({ user: { id: ownerId } })
+  const view = render(<Sidebar isCollapsed={isCollapsed} onCollapse={jest.fn()} />)
+  expect(screen.getByRole('link', { name: 'billing.form.manageSub' })).toHaveAttribute('href', '/billing')
+  expect(screen.queryByRole('button', { name: 'layout.sidebar.manageCredits' })).not.toBeInTheDocument()
+  jest.mocked(useOptionalPermissions).mockReturnValue({ ...existing, capabilities: null })
+  view.rerender(<Sidebar isCollapsed={isCollapsed} onCollapse={jest.fn()} />)
+  expect(screen.queryByRole('button', { name: 'layout.sidebar.manageCredits' })).not.toBeInTheDocument()
+  jest.mocked(useOptionalPermissions).mockReturnValue({ ...existing,
+    capabilities: { ...existing.capabilities!, role: 'owner', is_owner: true },
+  })
+  mockAuth.mockReturnValue({ user: { id: 'another-actor' } })
+  view.rerender(<Sidebar isCollapsed={isCollapsed} onCollapse={jest.fn()} />)
+  expect(screen.queryByRole('link', { name: 'billing.form.manageSub' })).not.toBeInTheDocument()
 })

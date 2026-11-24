@@ -5,5 +5,7 @@
   "workspacePreview.syncFailed": "Aperçu en lecture seule · Impossible de charger les paramètres.",
   "workspacePreview.failed": "Impossible de charger l’aperçu.",
   "workspacePreview.denied": "Cet écran n’est pas accessible à votre compte dans cet espace de travail.",
-  "workspacePreview.empty": "Aucun élément à afficher."
+  "workspacePreview.empty": "Aucun élément à afficher.",
+  "workspaceAccess.lostTitle": "Vous n’avez plus accès à ce projet",
+  "workspaceAccess.lostDescription": "Vous avez été redirigé vers Projets. Demandez au propriétaire de vérifier votre accès et votre place dans la licence, puis réessayez ou choisissez un autre projet."
 }

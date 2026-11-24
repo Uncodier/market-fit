@@ -18,11 +18,13 @@ export function useLeadData(conversationId: string, siteId?: string) {
           visitor_id,
           channel,
           custom_data,
+          visitors:visitor_id (custom_data),
           leads (
             id,
             name,
             email,
             phone,
+            origin,
             do_not_call,
             voice_call_consent_status,
             voice_call_consent_at,
@@ -49,6 +51,7 @@ export function useLeadData(conversationId: string, siteId?: string) {
         conversationCustomData: conversationWithLead.custom_data,
         isAgentOnly: isInternalAgentConversation(conversationWithLead),
         participantIdentity: resolveParticipantIdentity(conversationWithLead, conversationWithLead.leads),
+        visitorPhone: conversationWithLead.visitors?.custom_data?.whatsapp_phone,
       }
       
       // Check if this is an agent-only conversation
@@ -97,6 +100,7 @@ export function useLeadData(conversationId: string, siteId?: string) {
           avatarUrl: routing.participantIdentity.avatarUrl || null,
           email: lead.email,
           phone: lead.phone,
+          origin: lead.origin,
           do_not_call: lead.do_not_call,
           voice_call_consent_status: lead.voice_call_consent_status,
           voice_call_consent_at: lead.voice_call_consent_at,
@@ -116,7 +120,9 @@ export function useLeadData(conversationId: string, siteId?: string) {
     }
   )
   
-  const refreshLeadData = useCallback(() => mutate(), [mutate])
+  const refreshLeadData = useCallback((committedChannel?: string) => typeof committedChannel === 'string'
+    ? mutate(current => current && { ...current, channel: committedChannel }, { revalidate: true })
+    : mutate(), [mutate])
 
   const isLoadingLead = isSwrLoadingLead && data === undefined
 
@@ -127,6 +133,7 @@ export function useLeadData(conversationId: string, siteId?: string) {
     isAgentOnlyConversation: data?.isAgentOnly === true,
     conversationChannel: data?.channel,
     conversationCustomData: data?.conversationCustomData,
+    visitorPhone: data?.visitorPhone,
     isConversationReady: Boolean(data && !error),
     isLead: data?.leadData !== null && data?.leadData !== undefined,
     isLeadInvalidated: data?.isInvalidated || false,

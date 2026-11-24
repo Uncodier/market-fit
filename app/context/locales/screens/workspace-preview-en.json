@@ -5,5 +5,7 @@
   "workspacePreview.syncFailed": "Read-only preview · Workspace settings could not be loaded.",
   "workspacePreview.failed": "The workspace preview could not be loaded.",
   "workspacePreview.denied": "This screen is not available for your account in this workspace.",
-  "workspacePreview.empty": "No items to preview."
+  "workspacePreview.empty": "No items to preview.",
+  "workspaceAccess.lostTitle": "You no longer have access to this project",
+  "workspaceAccess.lostDescription": "You were taken back to Projects. Ask the project owner to check your membership and license seat, then retry or choose another project."
 }

@@ -7,9 +7,10 @@ import { useNotificationScope } from './use-notification-scope'
 export function useNotificationBadge(inboxOpen: boolean) {
   const workspace = useNotificationScope()
   const target = !inboxOpen && workspace.status === 'ready' ? workspace.target : undefined
+  const proof = workspace.status === 'ready' ? workspace.proof : undefined
   const actor = target?.actorId
   const site = target?.siteId
-  const scope = useMemo(() => actor && site ? { actor, site } : null, [actor, site])
+  const scope = useMemo(() => actor && site && proof ? { actor, site, proof } : null, [actor, site, proof])
   const [result, setResult] = useState<{ scope: NonNullable<typeof scope>; count: number } | null>(null)
   useEffect(() => {
     if (!scope) return

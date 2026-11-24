@@ -16,16 +16,34 @@ function deferred<T>() {
   const promise = new Promise<T>((yes, no) => { resolve = yes; reject = no })
   return { promise, resolve, reject }
 }
-function mount(initialProps = defaults) {
+function mount(initialProps = defaults, dedupingInterval = 0) {
   const cache = new Map()
   const wrapper = ({ children }: { children: ReactNode }) => (
-    <StrictMode><SWRConfig value={{ provider: () => cache, keepPreviousData: true, dedupingInterval: 0 }}>{children}</SWRConfig></StrictMode>
+    <StrictMode><SWRConfig value={{ provider: () => cache, keepPreviousData: true, dedupingInterval }}>{children}</SWRConfig></StrictMode>
   )
   return { ...renderHook(useConversationsList, { wrapper, initialProps }), cache }
 }
 const flush = (ms = 0) => act(async () => { await jest.advanceTimersByTimeAsync(ms) })
 beforeEach(() => { jest.useFakeTimers(); read.mockReset() })
 afterEach(() => { jest.useRealTimers() })
+
+it('requires a new confirmation when returning to a recently confirmed key', async () => {
+  const retired = deferred<ConversationPage>()
+  const revisit = deferred<ConversationPage>()
+  read.mockResolvedValueOnce(page('A')).mockReturnValueOnce(retired.promise).mockReturnValueOnce(revisit.promise)
+  const hook = mount(defaults, 2_000)
+  await flush()
+  expect(hook.result.current.hasConfirmedFirstPage).toBe(true)
+  hook.rerender({ ...defaults, combinedFilter: 'assigned' })
+  expect(hook.result.current.hasConfirmedFirstPage).toBe(false)
+  hook.rerender(defaults)
+  expect(hook.result.current.conversations[0].id).toBe('A')
+  await act(async () => { retired.resolve(page('B')) })
+  expect(hook.result.current.hasConfirmedFirstPage).toBe(false)
+  expect(read).toHaveBeenCalledTimes(3)
+  await act(async () => { revisit.resolve(page('A')) })
+  expect(hook.result.current.hasConfirmedFirstPage).toBe(true)
+})
 
 it('requires a real-site actor, admits demo, and uses the exact actor/site/filter/search list key', async () => {
   read.mockResolvedValue(page('result'))

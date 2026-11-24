@@ -45,7 +45,7 @@ export function shouldTreatInterventionAsFailed(responseData: InterventionAccept
   if (!channelSend) return false
   if (channelSend.callId || channelSend.delivery_status === 'placement_unknown') return false
   if (channelSend.success === true) return false
-  if (channelSend.method === "none") return false
+  if (channelSend.method === "none" && channelSend.success !== false) return false
   return !getInterventionWorkflowId(channelSend)
 }
 

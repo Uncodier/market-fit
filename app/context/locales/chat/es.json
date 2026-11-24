@@ -1,4 +1,10 @@
 {
+  "chat.status.checkDeliveryBeforeRetry": "Verifica el estado del envío antes de volver a intentarlo para no duplicar el mensaje.",
+  "chat.recipient.whatsappPhone": "Guarda el teléfono del contacto con + y el código de país, o responde en una conversación de WhatsApp con un número verificado.",
+  "chat.recipient.internationalPhone": "Añade al contacto un teléfono internacional válido que empiece por + y el código de país.",
+  "chat.recipient.conflict": "Los números de WhatsApp no coinciden. Verifica que el contacto y la conversación corresponden al mismo número.",
+  "chat.recipient.email": "Añade una dirección de correo válida al contacto para enviar por este canal.",
+  "chat.recipient.channelIdentity": "Vincula al contacto una cuenta o un identificador válido para este canal.",
   "chat.workspace.unavailable": "No se pudo verificar el acceso al espacio de trabajo.",
   "chat.workspace.denied": "Las conversaciones no están disponibles para esta cuenta en este espacio de trabajo.",
   "chat.workspace.choose": "Elegir un espacio de trabajo",

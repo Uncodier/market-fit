@@ -143,4 +143,15 @@ describe("channel selector availability", () => {
     const { result } = renderHook(() => useChannelSelector({ leadData: { id: "lead" }, defaultChannel: "whatsapp" }))
     expect(result.current.availableChannels).toEqual(["web"])
   })
+
+  it('displays configured but ineligible channels and refuses their updates until the recipient is fixed', async () => {
+    mockSite = { settings: { channels: { connections: [{ type: 'whatsapp', status: 'connected' }, { type: 'email', status: 'connected' }] } } }
+    const committed = jest.fn()
+    const { result, rerender } = renderHook(({ phone }) => useChannelSelector({ leadData: { ...leadData, phone }, onChannelCommitted: committed }),
+      { initialProps: { phone: '4155550100' } })
+    expect(result.current.displayChannels).toContain('whatsapp'); expect(result.current.availableChannels).toEqual(['web','email'])
+    await act(async () => result.current.setSelectedChannel('whatsapp'))
+    expect(result.current.selectedChannel).toBe('web'); expect(mockUpdate).not.toHaveBeenCalled(); expect(committed).not.toHaveBeenCalled()
+    rerender({ phone: '+14155550100' }); expect(result.current.availableChannels).toContain('whatsapp')
+  })
 })

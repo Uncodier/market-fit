@@ -1,3 +1,4 @@
+import { PROPOSAL_FILTER } from '@/lib/chat/manual-intervention'
 import { NextRequest, NextResponse } from "next/server"
 import { createClient, createServiceClient } from "@/lib/supabase/server"
 import { acquireOperationLease } from "@/lib/redis/operation-lease"
@@ -69,6 +70,7 @@ export async function POST(request: NextRequest) {
       .eq("conversations.site_id", siteId)
       .eq("conversations.is_archived", false)
       .eq("custom_data->>status", "pending")
+      .or(PROPOSAL_FILTER)
       .limit(MAX_MESSAGES + 1)
 
     if (msgsError) {
@@ -92,6 +94,8 @@ export async function POST(request: NextRequest) {
     // Step 2: bulk-update in batches using .eq("id", id).
     const now = new Date().toISOString()
     let failCount = 0
+    let updatedCount = 0
+    const updatedConversations = new Set<string>()
 
     for (let i = 0; i < allMessages.length; i += BATCH_SIZE) {
       const batch = allMessages.slice(i, i + BATCH_SIZE)
@@ -105,7 +109,9 @@ export async function POST(request: NextRequest) {
               updated_at: now,
             })
             .eq("id", m.id)
+            .or(PROPOSAL_FILTER)
             .eq("custom_data->>status", "pending")
+            .select("conversation_id").maybeSingle()
         )
       )
 
@@ -119,11 +125,14 @@ export async function POST(request: NextRequest) {
             r.error.hint
           )
           failCount++
+        } else if (r.data) {
+          updatedCount++
+          updatedConversations.add(r.data.conversation_id)
         }
       })
     }
 
-    const conversationIds = [...new Set(allMessages.map((m: any) => m.conversation_id))]
+    const conversationIds = [...updatedConversations]
 
     // Step 3: update status to 'active' for all affected conversations
     if (conversationIds.length > 0) {
@@ -149,7 +158,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      updatedCount: allMessages.length,
+      updatedCount,
       conversationIds,
     })
     } finally {

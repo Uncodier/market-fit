@@ -17,7 +17,13 @@ export function isAudioRetryBlocked(metadata: Record<string, unknown> | null | u
 }
 
 export function isDeliveryRetryBlocked(metadata: Record<string, unknown> | null | undefined): boolean {
-  return isAudioRetryBlocked(metadata) || isTemplateRetryBlocked(metadata)
+  if (!metadata) return false
+  // A stale command failure does not release an active or provider-owned delivery.
+  return isAudioRetryBlocked(metadata) || isTemplateRetryBlocked(metadata) || metadata.whatsapp_text_delivery != null ||
+    Boolean(metadata.comment_delivery_status || metadata.provider_call_id) || metadata.command_status === 'success' ||
+    ['sent', 'delivered', 'sending', 'queued', 'running', 'in_progress', 'placement_unknown', 'needs_reconciliation'].includes(String(metadata.status)) ||
+    metadata.needs_reconciliation === true ||
+    ['placing', 'queued', 'ringing', 'in_progress', 'completed', 'placement_unknown'].includes(String(metadata.call_status))
 }
 
 export function requestedResponseFormat(metadata: Record<string, unknown> | null | undefined): unknown {
