@@ -43,7 +43,7 @@ describe("record insight calculations", () => {
     expect(resolveRelationsForSidebar).not.toHaveBeenCalled()
   })
 
-  it("merges unsaved values into chronological history and preserves all analysis levels", async () => {
+  it("keeps saved values and original dates in history while showing unsaved current values separately", async () => {
     const history = [
       insightRecord({ id: "older", created_at: "2026-01-01T12:00:00Z", data: { Amount: 10, Status: "Won" } }),
       insightRecord({ data: { Amount: 20, Status: "Won" } }),
@@ -56,7 +56,7 @@ describe("record insight calculations", () => {
     const props = {
       fields,
       formData: { Amount: 30, Status: "Won" },
-      record: insightRecord(),
+      record: insightRecord({ data: { Amount: 20, Status: "Won" }, relations: { Customer: "customer-1" } }),
       relationsData: { Customer: "customer-1" },
     }
     const { result, rerender } = renderHook(currentProps => useRecordInsights(currentProps), { initialProps: props })
@@ -65,14 +65,14 @@ describe("record insight calculations", () => {
     expect(getHistoricalRelatedRecords).toHaveBeenCalledWith("category-1", "Customer", "customer-1")
     expect(getRecords).toHaveBeenCalledWith("site-1", "category-1")
     expect(resolveRelationsForSidebar).toHaveBeenCalledWith([{ target: "lead", ids: ["customer-1"] }], "site-1")
-    expect(result.current.chartData.map(point => [point.id, point.Amount])).toEqual([
-      ["older", 10], ["current-record", 30],
+    expect(result.current.chartData.map(point => [point.id, point.values.Amount])).toEqual([
+      ["older", 10], ["current-record", 20],
     ])
-    expect(result.current.chartData[1].rawDate.toLocaleDateString()).toBe(new Date().toLocaleDateString())
+    expect(result.current.chartData[1].rawDate.toISOString()).toBe("2026-01-03T12:00:00.000Z")
     expect(result.current.metaAnalysis).toEqual({
-      activity: { totalRecords: 2, avgPeriodicity: 4, daysSinceFirst: 4, daysSinceLast: 0 },
-      numericStats: [{ name: "Amount", avg: "20.0", min: 10, max: 30, current: 30, trend: "50.0" }],
-      categoricalStats: [{ name: "Status", mode: "Won", count: 3 }],
+      activity: { totalRecords: 2, avgPeriodicity: 2, daysSinceFirst: 4, daysSinceLast: 2 },
+      numericStats: [{ name: "Amount", avg: "15.0", min: 10, max: 20, current: 20, trend: "33.3" }],
+      categoricalStats: [{ name: "Status", mode: "Won", count: 2 }],
     })
     expect(result.current.macroAnalysis).toEqual({
       totalRecords: 3,
@@ -86,7 +86,7 @@ describe("record insight calculations", () => {
 
     rerender({ ...props, formData: { Amount: 50, Status: "Won" } })
     expect(result.current.numericData).toEqual([{ name: "Amount", value: 50 }])
-    expect(result.current.chartData.map(point => point.Amount)).toEqual([10, 50])
+    expect(result.current.chartData.map(point => point.values.Amount)).toEqual([10, 20])
     expect(history[1].data.Amount).toBe(20)
   })
 

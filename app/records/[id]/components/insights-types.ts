@@ -3,6 +3,7 @@ import type { RecordCategory, RecordItem } from "../../actions"
 export interface InsightField {
   id: string
   name: string
+  label?: string
   type: string
   relationTarget?: string
   targetCategoryId?: string
@@ -22,10 +23,11 @@ export interface InsightsTabProps {
   relationsData?: RecordItem["relations"]
 }
 
-export type InsightChartPoint = RecordItem["data"] & {
+export type InsightChartPoint = {
   date: string
   rawDate: Date
   id?: string
+  values: Record<string, number | null>
 }
 
 interface CrossContext {

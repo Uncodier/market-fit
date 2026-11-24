@@ -7,6 +7,9 @@ const sourceFiles = [
   "InsightGeneratedPreviews.tsx",
   "use-record-insights.ts",
   "insights-types.ts",
+  "RecordMetrics.tsx",
+  "record-metrics.ts",
+  "use-metric-history.ts",
 ]
 const source = (name: string) => readFileSync(
   path.join(process.cwd(), "app/records/[id]/components", name),

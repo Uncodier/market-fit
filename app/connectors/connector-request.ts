@@ -51,7 +51,6 @@ export function connectorErrorKey(error: unknown): string {
   if (error.code === "auth_not_required") return "authNotRequired"
   if (error.code === "connector_not_active") return "accountNotActive"
   if (error.code === "connector_setup_unavailable") return "connectorSetupUnavailable"
-  if (error.code === "hosted_starts_paused") return "hostedStartsPaused"
   if (error.code === "ask_incompatible") return "askIncompatible"
   if (error.code === "managed_oauth_unavailable") return "setup"
   if (error.code === "supabase_token_rejected") return "supabaseTokenRejected"

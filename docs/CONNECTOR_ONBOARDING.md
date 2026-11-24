@@ -97,14 +97,12 @@ live provider metadata at setup time.
 3. For this cutover, pause **all** new Connect Link starts at ingress, including
    the legacy `/auth-attempts` and `/auth-attempts/ask` POSTs, but leave completion
    and callback routes reachable. Drain outstanding pre-continuation attempts
-   for their ten-minute lifetime before replacing callback readers. Keep
-   `CONNECTORS_HOSTED_STARTS_ENABLED` unset or false on all API instances.
+   for their ten-minute lifetime before replacing callback readers.
    Release the compatible API everywhere, then the compatible web, including the
-   callback page. Only then reopen ingress for compatible clients and set the
-   API flag to `true` to allow new hosted starts. For rollback, pause starts
-   first and retain the compatible callback and API
-   completion handlers until outstanding attempts expire (ten minutes). The gate
-   does not disable completion, existing connections, or legacy routes.
+   callback page. Reopen ingress for compatible clients. Hosted starts are on
+   by default and require no activation flag. For rollback, pause new starts
+   at ingress and retain the compatible callback and API completion handlers
+   until outstanding attempts expire (ten minutes).
 4. On an approved disposable project/site, verify a first Meta Ads connection
    starts the consent flow without a prior configuration, returns through the
    normal callback, and has Ask off. Repeat with an account-credential toolkit,

@@ -1,6 +1,7 @@
 import { fieldPreviewKey } from "../../lib/entity-preview-request"
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Legend } from "recharts"
-import { Sparkles, FileText, BarChart as ChartIcon, PieChart as PieIcon, Image as ImageIcon, Activity, TrendingUp, Clock, Folder } from "@/app/components/ui/icons"
+import { Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts"
+import { Sparkles, FileText, PieChart as PieIcon, Image as ImageIcon, Activity, TrendingUp, Clock, Folder } from "@/app/components/ui/icons"
+import { RecordMetrics } from "./RecordMetrics"
 import { InsightGeneratedPreviews } from "./InsightGeneratedPreviews"
 import { useRecordInsights } from "./use-record-insights"
 import type { InsightsTabProps } from "./insights-types"
@@ -9,8 +10,9 @@ const COLORS = ['#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
 
 export function InsightsTab({ fields, formData, description, record, relationsData }: InsightsTabProps) {
   const {
-    hasDescription, numberFields, selectFields, fileFields,
-    chartData, numericData, metaAnalysis, macroAnalysis, dynamicCrosses,
+    hasDescription, selectFields, fileFields,
+    numericData, metaAnalysis, macroAnalysis, dynamicCrosses,
+    metricRecords, historyStatus, setHistoryRelation, retryHistory,
     primaryRelationName, primaryRelationLabel, macroRelationLabels,
     activeRelations, allRelationLabels, categoryHistory,
   } = useRecordInsights({ fields, formData, description, record, relationsData })
@@ -35,54 +37,10 @@ export function InsightsTab({ fields, formData, description, record, relationsDa
         </section>
       )}
 
-      {/* Numeric Chart (Evolution Line or Bar) */}
-      {numericData.length > 0 && (
-        <section>
-          <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
-            <ChartIcon className="h-4 w-4" />
-            <span>
-              {numberFields.length === 1 
-                ? `${numberFields[0].name} Evolution` 
-                : 'Metrics Evolution'}
-            </span>
-          </div>
-          <div className="h-[200px] w-full mt-2">
-            <ResponsiveContainer width="100%" height="100%">
-              {chartData.length >= 2 ? (
-                <LineChart data={chartData}>
-                  <XAxis dataKey="date" fontSize={12} tickLine={false} axisLine={false} stroke="var(--muted-foreground)" />
-                  <YAxis fontSize={12} tickLine={false} axisLine={false} stroke="var(--muted-foreground)" width={30} />
-                  <Tooltip 
-                    contentStyle={{ borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--background)' }} 
-                  />
-                  {numberFields.length > 1 && <Legend iconType="circle" wrapperStyle={{ fontSize: '12px' }} />}
-                  {numberFields.map((f, i) => (
-                    <Line 
-                      key={f.name} 
-                      type="monotone" 
-                      dataKey={f.name} 
-                      stroke={COLORS[i % COLORS.length]} 
-                      strokeWidth={3}
-                      activeDot={{ r: 6, strokeWidth: 0 }} 
-                      dot={{ r: 3, strokeWidth: 0 }}
-                    />
-                  ))}
-                </LineChart>
-              ) : (
-                <BarChart data={numericData}>
-                  <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} stroke="var(--muted-foreground)" />
-                  <YAxis fontSize={12} tickLine={false} axisLine={false} stroke="var(--muted-foreground)" width={30} />
-                  <Tooltip 
-                    cursor={{ fill: 'var(--muted)', opacity: 0.4 }} 
-                    contentStyle={{ borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--background)' }} 
-                  />
-                  <Bar dataKey="value" fill="#0ea5e9" radius={[4, 4, 0, 0]} maxBarSize={50} />
-                </BarChart>
-              )}
-            </ResponsiveContainer>
-          </div>
-        </section>
-      )}
+      <RecordMetrics fields={fields} formData={formData} record={record} relationsData={relationsData}
+        records={metricRecords} historyStatus={historyStatus}
+        relationName={primaryRelationName} relationLabel={primaryRelationLabel}
+        onRelationChange={setHistoryRelation} onRetry={retryHistory} />
 
       {/* Meta-Analysis */}
       {metaAnalysis && (
@@ -101,7 +59,7 @@ export function InsightsTab({ fields, formData, description, record, relationsDa
           <div className="space-y-8">
             {/* Activity Summary */}
             <div>
-              <h4 className="text-xs font-medium text-muted-foreground mb-3 border-b border-border/30 pb-1">Activity Summary</h4>
+              <h4 className="text-xs font-medium text-muted-foreground mb-3 border-b border-border/30 pb-1">Saved Record Activity</h4>
               <div className="grid grid-cols-2 gap-y-4 gap-x-2">
                 <div>
                   <div className="text-[11px] text-muted-foreground mb-0.5">Total Records</div>
@@ -139,9 +97,9 @@ export function InsightsTab({ fields, formData, description, record, relationsDa
                       </div>
                       <div>
                         <div className="text-[10px] text-muted-foreground">Vs. Average</div>
-                        <div className={`text-lg font-medium flex items-center gap-1 ${Number(stat.trend) > 0 ? 'text-emerald-500' : Number(stat.trend) < 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
+                        <div className="text-lg font-medium flex items-center gap-1 text-muted-foreground">
                           {Number(stat.trend) > 0 ? <TrendingUp className="h-3.5 w-3.5" /> : null}
-                          {Number(stat.trend) > 0 ? '+' : ''}{stat.trend}%
+                          {stat.trend === null ? 'No data' : `${Number(stat.trend) > 0 ? '+' : ''}${stat.trend}%`}
                         </div>
                       </div>
                     </div>

@@ -330,7 +330,6 @@
   "connectors.callbackSuccess": "Account authorization verified. This does not confirm Ask access. Review Robots Ask access and the saved permissions for this account in Connectors.",
   "connectors.reviewAccess": "Review account access",
   "connectors.reviewOriginalWorkspace": "Switch to the workspace where you connected this account to review its access.",
-  "connectors.errors.hostedStartsPaused": "New connections are temporarily paused. Please try again later. Existing connections are not affected.",
   "connectors.errors.askIncompatible": "Robots Ask could not be enabled for this connection. Refresh its compatibility status in Tools & permissions.",
   "connectors.backToCatalog": "Back to connectors",
   "connectors.checkCredentialAccount": "Check connection again"

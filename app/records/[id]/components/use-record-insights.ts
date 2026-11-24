@@ -1,7 +1,9 @@
 import { useScopedPreviewState } from "../../hooks/useScopedPreviewState"
 import { buildPreviewRequests, fieldPreviewKey, fetchPreviewBatches } from "../../lib/entity-preview-request"
 import { useEffect, useMemo } from "react"
-import { getHistoricalRelatedRecords, getRecords, type RecordItem } from "../../actions"
+import { getRecords, type RecordItem } from "../../actions"
+import { useMetricHistory } from "./use-metric-history"
+import { isMetricNumber, metricDate, metricNumber, savedMetricRecords } from "./record-metrics"
 import type { InsightChartPoint, InsightCross, InsightsTabProps } from "./insights-types"
 
 export function useRecordInsights({ fields, formData, description, record, relationsData }: InsightsTabProps) {
@@ -9,7 +11,7 @@ export function useRecordInsights({ fields, formData, description, record, relat
   const hasDescription = !!description || fields.some(f => f.type === 'description' && formData[f.name])
 
   // 2. Numeric Charts
-  const numberFields = useMemo(() => fields.filter(f => f.type === 'number' && formData[f.name] !== undefined), [fields, formData])
+  const numberFields = useMemo(() => fields.filter(f => f.type === 'number'), [fields])
   
   // 3. Select / Pie Charts
   const selectFields = fields.filter(f => f.type === 'select' && formData[f.name])
@@ -22,18 +24,16 @@ export function useRecordInsights({ fields, formData, description, record, relat
   const fileFields = fields.filter(f => f.type === 'file' && formData[f.name])
 
   // History logic
-  const [history, setHistory] = useScopedPreviewState<RecordItem[]>(record?.site_id, [])
-  const [categoryHistory, setCategoryHistory] = useScopedPreviewState<RecordItem[]>(record?.site_id, [])
-
-  const primaryRelationName = useMemo(() => {
-    const rels = fields.filter(f => f.type === 'relation' && relationsData?.[f.name])
-    return rels.length > 0 ? rels[0].name : null
-  }, [fields, relationsData])
-  const primaryRelationId = primaryRelationName ? relationsData?.[primaryRelationName] : null
+  const { history, historyStatus, primaryRelationName, primaryRelationId, setHistoryRelation, retryHistory } =
+    useMetricHistory({ fields, formData, record, relationsData })
+  const [categoryHistory, setCategoryHistory] = useScopedPreviewState<RecordItem[]>(
+    JSON.stringify([record?.site_id, record?.category_id]), [],
+  )
 
   // Resolve the actual name of the related entity for UI context
-  const [primaryRelationLabel, setPrimaryRelationLabel] = useScopedPreviewState<string | null>(record?.site_id, null)
-  const [allRelationLabels, setAllRelationLabels] = useScopedPreviewState<Record<string, string>>(record?.site_id, {})
+  const labelScope = JSON.stringify([record?.site_id, primaryRelationName, primaryRelationId, relationsData])
+  const [primaryRelationLabel, setPrimaryRelationLabel] = useScopedPreviewState<string | null>(labelScope, null)
+  const [allRelationLabels, setAllRelationLabels] = useScopedPreviewState<Record<string, string>>(labelScope, {})
   
   const activeRelations = useMemo(() => {
     return fields.filter(f => f.type === 'relation' && relationsData?.[f.name])
@@ -57,73 +57,40 @@ export function useRecordInsights({ fields, formData, description, record, relat
       })
     }
     return () => { active = false }
-  }, [activeRelations, relationsData, primaryRelationId, primaryRelationName, record?.site_id])
+  }, [activeRelations, relationsData, primaryRelationId, primaryRelationName, record?.site_id, setAllRelationLabels, setPrimaryRelationLabel])
 
   useEffect(() => {
     let active = true
-    if (record?.category_id && primaryRelationName && primaryRelationId) {
-      getHistoricalRelatedRecords(record.category_id, primaryRelationName, primaryRelationId)
-        .then(({ records }) => {
-          if (active && records) setHistory(records)
-        })
-    } else {
-      setHistory([])
-    }
-
     if (record?.category_id && record?.site_id) {
       getRecords(record.site_id, record.category_id)
         .then(({ records }) => {
           if (active && records) setCategoryHistory(records)
         })
+        .catch(() => { if (active) setCategoryHistory([]) })
     } else {
       setCategoryHistory([])
     }
     return () => { active = false }
-  }, [record?.category_id, record?.site_id, primaryRelationName, primaryRelationId])
+  }, [record?.category_id, record?.site_id, setCategoryHistory])
 
-  // Merge history with current formData
-  const chartData = useMemo(() => {
-    if (!history.length && !numberFields.length) return []
-    
-    // Group by date
-    const dataPoints = history.map(h => {
-      const point: InsightChartPoint = { 
-        date: new Date(h.created_at).toLocaleDateString(),
-        rawDate: new Date(h.created_at)
-      }
-      numberFields.forEach(f => {
-        point[f.name] = Number(h.data[f.name]) || 0
-      })
-      point.id = h.id
-      return point
-    })
-    
-    const currentPoint: InsightChartPoint = { 
-      date: new Date().toLocaleDateString(), 
-      rawDate: new Date(),
-      id: record?.id 
-    }
-    numberFields.forEach(f => {
-      currentPoint[f.name] = Number(formData[f.name]) || 0
-    })
-    
-    const existingIndex = dataPoints.findIndex(p => p.id === record?.id)
-    if (existingIndex >= 0) {
-      // Overwrite with unsaved formData
-      dataPoints[existingIndex] = { ...dataPoints[existingIndex], ...currentPoint }
-    } else if (record?.id) {
-      dataPoints.push(currentPoint)
-    }
-    
-    // Sort by date ascending for chart
-    return dataPoints.sort((a, b) => a.rawDate.getTime() - b.rawDate.getTime())
-  }, [history, numberFields, formData, record?.id])
+  const metricRecords = useMemo(() => savedMetricRecords(
+    history, record, primaryRelationName, primaryRelationId,
+  ), [history, record, primaryRelationName, primaryRelationId])
 
-  // Aggregate number fields into a single bar chart if there are multiple, or just show the metric
-  const numericData = numberFields.map(f => ({
-    name: f.name,
-    value: Number(formData[f.name]) || 0
-  }))
+  // Activity is based on saved timestamps, never the time the panel was opened.
+  const chartData = useMemo<InsightChartPoint[]>(() => {
+    if (!numberFields.length || historyStatus === "loading" || historyStatus === "error") return []
+    return metricRecords.flatMap(item => {
+      const timestamp = metricDate(item.created_at)
+      if (timestamp === null) return []
+      const rawDate = new Date(timestamp)
+      return [{ id: item.id, rawDate, date: rawDate.toLocaleDateString(),
+        values: Object.fromEntries(numberFields.map(field => [field.name, metricNumber(item.data[field.name])])),
+      }]
+    }).sort((a, b) => a.rawDate.getTime() - b.rawDate.getTime())
+  }, [metricRecords, numberFields, historyStatus])
+
+  const numericData = numberFields.map(field => ({ name: field.name, value: metricNumber(formData[field.name]) }))
 
   // Macro-analysis computations (Category level)
   const macroAnalysis = useMemo(() => {
@@ -136,7 +103,7 @@ export function useRecordInsights({ fields, formData, description, record, relat
     
     // Numeric field stats
     const numericStats = numberFields.map(f => {
-      const values = sorted.map(p => Number(p.data[f.name])).filter(v => v !== undefined && !isNaN(v))
+      const values = sorted.map(p => metricNumber(p.data[f.name])).filter(isMetricNumber)
       if (values.length === 0) return null
 
       const max = Math.max(...values)
@@ -221,7 +188,7 @@ export function useRecordInsights({ fields, formData, description, record, relat
       }
     }
     return () => { active = false }
-  }, [macroAnalysis?.categoricalStats, fields, record?.site_id])
+  }, [macroAnalysis?.categoricalStats, fields, record?.site_id, setMacroRelationLabels])
 
   const dynamicCrosses = useMemo(() => {
     if (categoryHistory.length === 0) return []
@@ -245,12 +212,12 @@ export function useRecordInsights({ fields, formData, description, record, relat
 
       // Cross 1: Categorical vs Numeric
       numberFields.forEach(numField => {
-        const subsetVals = subset.map(h => Number(h.data[numField.name])).filter(v => !isNaN(v))
+        const subsetVals = subset.map(h => metricNumber(h.data[numField.name])).filter(isMetricNumber)
         if (subsetVals.length === 0) return
         
         const subsetAvg = subsetVals.reduce((a, b) => a + b, 0) / subsetVals.length
         
-        const allVals = categoryHistory.map(h => Number(h.data[numField.name])).filter(v => !isNaN(v))
+        const allVals = categoryHistory.map(h => metricNumber(h.data[numField.name])).filter(isMetricNumber)
         const overallAvg = allVals.length > 0 ? allVals.reduce((a, b) => a + b, 0) / allVals.length : 0
         
         if (overallAvg > 0) {
@@ -347,16 +314,16 @@ export function useRecordInsights({ fields, formData, description, record, relat
 
     // Numeric field stats
     const numericStats = numberFields.map(f => {
-      const values = sorted.map(p => p[f.name]).filter(v => v !== undefined && !isNaN(v))
+      const values = sorted.map(p => p.values[f.name]).filter(isMetricNumber)
       if (values.length === 0) return null
 
       const max = Math.max(...values)
       const min = Math.min(...values)
       const avg = values.reduce((a, b) => a + b, 0) / values.length
-      const current = Number(formData[f.name]) || 0
+      const current = sorted.find(point => point.id === record?.id)?.values[f.name] ?? null
 
-      let trend = 0
-      if (avg > 0) {
+      let trend: number | null = null
+      if (avg > 0 && current !== null) {
         trend = ((current - avg) / avg) * 100
       }
 
@@ -366,17 +333,14 @@ export function useRecordInsights({ fields, formData, description, record, relat
         min,
         max,
         current,
-        trend: trend.toFixed(1)
+        trend: trend === null ? null : trend.toFixed(1)
       }
     }).filter(stat => stat !== null)
 
     // Categorical mode (most frequent value)
     const categoricalStats = selectFields.map(f => {
       // Gather historical + current
-      const allValues = history.map(h => h.data[f.name]).filter(Boolean)
-      if (formData[f.name]) {
-        allValues.push(formData[f.name])
-      }
+      const allValues = metricRecords.map(h => h.data[f.name]).filter(Boolean)
 
       const frequencies: Record<string, number> = {}
       allValues.forEach(val => {
@@ -409,11 +373,12 @@ export function useRecordInsights({ fields, formData, description, record, relat
       numericStats,
       categoricalStats
     }
-  }, [chartData, numberFields, selectFields, history, formData])
+  }, [chartData, numberFields, selectFields, metricRecords, record?.id])
 
   return {
     hasDescription, numberFields, selectFields, fileFields,
     chartData, numericData, metaAnalysis, macroAnalysis, dynamicCrosses,
+    metricRecords, historyStatus, setHistoryRelation, retryHistory,
     primaryRelationName, primaryRelationLabel, macroRelationLabels,
     activeRelations, allRelationLabels, categoryHistory,
   }
