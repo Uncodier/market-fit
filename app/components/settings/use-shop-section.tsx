@@ -11,7 +11,6 @@ import { useDropzone } from "react-dropzone"
 import { Truck, ShieldCheck, RotateCcw } from "../ui/icons"
 
 import { uploadAssetFile } from "@/app/assets/actions"
-import { listCatalogCategories, listCatalogItems } from "@/app/catalog/actions"
 import { downloadSettingsQr } from "./share-qr"
 
 interface ShopSectionProps {
@@ -33,8 +32,6 @@ export function useShopSection({ active, onSave, siteId }: ShopSectionProps) {
     form.getValues("shop.trust_badges") || []
   )
   const [isUploadingImage, setIsUploadingImage] = useState(false)
-  const [categories, setCategories] = useState<any[]>([])
-  const [items, setItems] = useState<any[]>([])
 
   const siteUrl = form.watch("url") || (siteId ? `https://${siteId}.uncodie.com` : "https://uncodie.com")
 
@@ -50,17 +47,6 @@ export function useShopSection({ active, onSave, siteId }: ShopSectionProps) {
   const handleDownloadQR = () => {
     downloadSettingsQr("marketplace-qr-code-container", `${siteId || "marketplace"}-qr.png`)
   }
-
-  useEffect(() => {
-    if (siteId) {
-      listCatalogCategories(siteId).then(res => {
-        if (res.data) setCategories(res.data)
-      })
-      listCatalogItems({ siteId, pageSize: 1000 }).then(res => {
-        if (res.data) setItems(res.data)
-      })
-    }
-  }, [siteId])
 
   useEffect(() => {
     // Keep local state in sync if form gets reset or hydrated
@@ -134,7 +120,7 @@ export function useShopSection({ active, onSave, siteId }: ShopSectionProps) {
 
   return {
     active, onSave, siteId, form, savingCard,
-    badgesList, isUploadingImage, categories, items, siteUrl,
+    badgesList, isUploadingImage, siteUrl,
     handleCopyUrl, handleDownloadQR, handleSave, addBadge, removeBadge,
     getHeroRootProps, getHeroInputProps, isHeroDragActive,
   }

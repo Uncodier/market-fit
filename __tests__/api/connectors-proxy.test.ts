@@ -1,5 +1,5 @@
 /** @jest-environment node */
-import { randomBytes } from "node:crypto"
+import { createHmac, randomBytes } from "node:crypto"
 import { NextRequest, NextResponse } from "next/server"
 import { proxyConnector } from "@/app/api/connectors/proxy"
 import { createClient } from "@/lib/supabase/server"
@@ -392,14 +392,47 @@ it.each(["auth-attempts", "auth-attempts/ask"])("keeps an actor/site-bound OAuth
   expect(parsed).toEqual({ nonce: body.nonce, site_id: siteId, user_id: userId })
 })
 
+it("starts hosted setup with an optional exact config, generates the nonce, and does not reflect extra provider fields", async () => {
+  const path = ["auth-attempts", "hosted"]
+  const legacy = { site_id: siteId, toolkit_slug: "_1password" }
+  const input = { ...legacy, expected_setup: randomBytes(32).toString("hex") }
+  const submit = (body: unknown) => proxyConnector(request(path.join("/"), "POST", body), path)
+  expect((await submit(legacy)).status).toBe(400)
+  for (const extra of [{ nonce: credential }, { ask_on_connect: true }, { scopes: ["all"] }, { callback_url: "https://other.example.test" }]) {
+    expect((await submit({ ...input, ...extra })).status).toBe(400)
+  }
+  rpc.mockResolvedValueOnce({ data: [{ can_view: true, can_manage: false }] })
+  expect((await submit(input)).status).toBe(403)
+  expect(fetchMock).not.toHaveBeenCalled()
+  const dto = { attempt_id: attemptId, redirect_url: "https://connect.composio.dev/link" }
+  fetchMock.mockResolvedValueOnce(Response.json({ ...dto, provider_key: credential }))
+  const response = await submit(input)
+  const { nonce, ...forwarded } = JSON.parse(fetchMock.mock.calls[0][1].body)
+  expect(forwarded).toEqual(input)
+  expect(nonce).toMatch(/^[a-f0-9]{64}$/)
+  expect(await response.json()).toEqual({ ...dto, continuation: createHmac("sha256", nonce).update(`connector-tab:v1:${attemptId}`).digest("hex") })
+  const cookie = response.headers.get("set-cookie")!
+  expect(cookie).toContain("HttpOnly")
+  expect(readAttemptCookie(request("pending-auth", "GET", undefined, { cookie: cookie.split(";")[0] }), attemptId))
+    .toEqual({ nonce, site_id: siteId, user_id: userId })
+  fetchMock.mockResolvedValueOnce(Response.json({ ...dto, redirect_url: "https://connect.composio.dev:444/link" }))
+  const uncertain = await submit(input)
+  expect(uncertain.headers.has("set-cookie")).toBe(false)
+  expect(await uncertain.json()).toMatchObject({ error: { code: "OUTCOME_UNKNOWN" } })
+})
+
 it("requires the original actor's attempt cookie and rejects forged completion fields", async () => {
   const path = ["auth-attempts", attemptId, "complete"]
-  expect((await proxyConnector(request(path.join("/"), "POST", { session_uri: "opaque" }), path)).status).toBe(403)
+  expect((await proxyConnector(request(path.join("/"), "POST", { session_uri: "opaque", continuation: credential }), path)).status).toBe(403)
   const response = NextResponse.json({})
   setAttemptCookie(response, attemptId, { site_id: siteId, user_id: siteId, nonce: randomBytes(32).toString("hex") })
-  expect((await proxyConnector(request(path.join("/"), "POST", { session_uri: "opaque" }, {
+  expect((await proxyConnector(request(path.join("/"), "POST", { session_uri: "opaque", continuation: credential }, {
     cookie: response.headers.get("set-cookie")!.split(";")[0],
   }), path)).status).toBe(403)
+  setAttemptCookie(response, attemptId, { site_id: siteId, user_id: userId, nonce: randomBytes(32).toString("hex") })
+  const sameActor = { cookie: response.headers.get("set-cookie")!.split(";")[0] }
+  expect((await proxyConnector(request(path.join("/"), "POST", { session_uri: "opaque", continuation: credential }, sameActor), path)).status).toBe(403)
+  expect((await proxyConnector(request(path.join("/"), "POST", { session_uri: "opaque" }, sameActor), path)).status).toBe(400)
   expect((await proxyConnector(request(path.join("/"), "POST", { session_uri: "opaque", site_id: siteId }), path)).status).toBe(400)
   expect(fetchMock).not.toHaveBeenCalled()
 })
@@ -435,14 +468,18 @@ it("requires verified identity and the same user's session", async () => {
   expect(fetchMock).not.toHaveBeenCalled()
 })
 
-it("clears only the completed attempt cookie with its original path", async () => {
+it.each([false, true])("clears only a completed attempt cookie on the original path for %#", async credentials => {
+  const nonce = randomBytes(32).toString("hex")
+  const input = credentials ? { hosted_credentials: true } : { session_uri: "proof", continuation: createHmac("sha256", nonce).update(`connector-tab:v1:${attemptId}`).digest("hex") }
   const cookieResponse = NextResponse.json({})
-  setAttemptCookie(cookieResponse, attemptId, { site_id: siteId, user_id: userId, nonce: randomBytes(32).toString("hex") })
-  fetchMock.mockResolvedValueOnce(Response.json({ status: "completed", connector_id: attemptId, toolkit_slug: "mail" }))
+  setAttemptCookie(cookieResponse, attemptId, { site_id: siteId, user_id: userId, nonce })
+  fetchMock.mockResolvedValueOnce(Response.json({ status: "completed", connector_id: attemptId, toolkit_slug: "mail", site_id: userId, upstream_extra: credential }))
   const path = ["auth-attempts", attemptId, "complete"]
-  const response = await proxyConnector(request(path.join("/"), "POST", { session_uri: "proof" }, { cookie: cookieResponse.headers.get("set-cookie")!.split(";")[0] }), path)
+  const response = await proxyConnector(request(path.join("/"), "POST", input, { cookie: cookieResponse.headers.get("set-cookie")!.split(";")[0] }), path)
   expect(response.status).toBe(200)
+  expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ ...input, site_id: siteId, nonce: expect.stringMatching(/^[a-f0-9]{64}$/) })
   expect(response.headers.get("set-cookie")).toContain(`mf_connector_${attemptId}=`)
   expect(response.headers.get("set-cookie")).toContain("Max-Age=0")
   expect(response.headers.get("set-cookie")).toContain("Path=/api/connectors")
+  expect(await response.json()).toEqual({ status: "completed", connector_id: attemptId, toolkit_slug: "mail", site_id: siteId })
 })

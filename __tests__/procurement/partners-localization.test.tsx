@@ -112,9 +112,10 @@ test('quotation source, amount and external-record dialog update without repeati
     expect(row).toHaveTextContent(rawLocaleMessages[locale]['procurement.common.taxesPending'])
     expect(row).toHaveTextContent(text(locale, 'quotes.supplierSubmitted'))
     expect(row).toHaveTextContent(text(locale, 'quotes.notAwarded'))
-    expect(fetch).toHaveBeenCalledTimes(2)
+    expect(fetch).toHaveBeenCalledTimes(1)
   }
   fireEvent.click(screen.getByRole('button', { name: text('ja', 'quotes.external') }))
+  await screen.findByText(text('ja', 'quotes.noTender'))
   for (const locale of locales) {
     view.rerender(shell(locale, child))
     expect(screen.getByRole('dialog')).toHaveAccessibleName(text(locale, 'quotes.recordTitle'))

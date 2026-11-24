@@ -90,20 +90,29 @@ export function useLocationPermissionRevision(siteId: string | null, resetDocume
       }
     }
     const visible = () => { if (document.visibilityState === 'visible') void check() }
-    window.addEventListener('focus', visible)
+    // One foreground transition often fires both focus and visibilitychange.
+    // This coalesces event triggers, not grants; reconnect and the revocation
+    // timer always perform their own verification when no request is in flight.
+    let nextWake = 0
+    const wake = () => {
+      if (running || resetting || document.visibilityState !== 'visible' || !navigator.onLine || Date.now() < nextWake) return
+      nextWake = Date.now() + 1_000
+      void check()
+    }
+    window.addEventListener('focus', wake)
     window.addEventListener('online', visible)
-    document.addEventListener('visibilitychange', visible)
+    document.addEventListener('visibilitychange', wake)
     const timer = window.setInterval(visible, 30000)
-    void check()
+    visible()
     return () => {
       disposed = true
       generation += 1
       clearTimeout(timeout)
       controller?.abort()
       window.clearInterval(timer)
-      window.removeEventListener('focus', visible)
+      window.removeEventListener('focus', wake)
       window.removeEventListener('online', visible)
-      document.removeEventListener('visibilitychange', visible)
+      document.removeEventListener('visibilitychange', wake)
     }
   }, [siteId, resetDocument, isPos])
 }

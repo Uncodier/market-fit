@@ -2,10 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react"
 import useSWR from "swr"
-import { getLeads, searchLeadsWithCount } from "../actions"
+import { getLeadsWithCount, searchLeadsWithCount } from "../actions"
 import { getSegments } from "@/app/segments/actions"
 import { getCampaigns } from "@/app/campaigns/actions/campaigns/read"
-import { createClient } from "@/lib/supabase/client"
 import { useUserData } from "@/app/hooks/use-user-data"
 import { normalizeOrigin } from "../list-helpers"
 import { isLeadSegmentId } from "../segment-scope"
@@ -16,7 +15,7 @@ const EMPTY_SEGMENTS: Segment[] = []
 
 export interface LeadsData {
   leads: Lead[]
-  totalCount: number
+  totalCount: number | null
   isSearch: boolean
 }
 
@@ -32,10 +31,12 @@ export function useLeadsData(currentSite: { id: string } | null, segmentId?: str
   }, [searchQuery])
 
   // Fetch leads with SWR
-  const { 
-    data: leadsData, 
+  const {
+    data: leadsData,
+    error: leadsError,
     isLoading: isLeadsLoading, 
-    mutate: mutateLeads 
+    isValidating: isLeadsValidating,
+    mutate: mutateLeads
   } = useSWR<LeadsData>(
     currentSite?.id ? ['leads', currentSite.id, debouncedSearchQuery, ...(segmentId === undefined ? [] : [segmentId])] : null,
     async ([, siteId, q, segment]: [string, string, string, string?]) => {
@@ -52,32 +53,26 @@ export function useLeadsData(currentSite: { id: string } | null, segmentId?: str
             origin: normalizeOrigin(lead.origin),
             personal_email: lead.personal_email || null
           })) || [],
-          totalCount: result.totalCount || 0,
+          totalCount: result.totalCount,
           isSearch: true
         }
       } else {
-        const result = await getLeads(siteId, ...segmentArgs)
+        // Read the exact total with the list under the same session and filters.
+        const result = await getLeadsWithCount(siteId, ...segmentArgs)
         if (result.error) throw new Error(result.error)
-        
-        const supabase = createClient()
-        const countQuery = supabase
-          .from('leads')
-          .select('*', { count: 'exact', head: true })
-          .eq('site_id', siteId)
-        const { count } = await (segment === undefined ? countQuery : countQuery.eq('segment_id', segment))
-          
+
         return {
           leads: result.leads?.map(lead => ({
             ...lead,
             origin: normalizeOrigin(lead.origin),
             personal_email: lead.personal_email || null
           })) || [],
-          totalCount: count || 0,
+          totalCount: result.totalCount,
           isSearch: false
         }
       }
     },
-    { revalidateOnFocus: false }
+    { revalidateOnFocus: false, shouldRetryOnError: false, keepPreviousData: false }
   )
 
   const dbLeads = leadsData?.leads || EMPTY_LEADS
@@ -115,5 +110,6 @@ export function useLeadsData(currentSite: { id: string } | null, segmentId?: str
   // Fetch user data for assignees
   const { userData } = useUserData(assigneeIds)
 
-  return { dbLeads, loading, searchTotalCount, allLeadsTotalCount, segments, campaigns, mutateLeads, searchQuery, setSearchQuery, userData }
+  return { dbLeads, loading, leadsError, isLeadsValidating, hasLeadsData: leadsData !== undefined,
+    searchTotalCount, allLeadsTotalCount, segments, campaigns, mutateLeads, searchQuery, setSearchQuery, userData }
 }

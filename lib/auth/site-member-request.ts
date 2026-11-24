@@ -51,6 +51,7 @@ export type SiteMemberAccess =
       error?: undefined
       supabase: Awaited<ReturnType<typeof createUserSupabase>>
       userId: string
+      callerStatus?: { emailConfirmed: boolean; lastSignIn: string }
       isOwner: boolean
       isAdmin: boolean
       isMember: boolean
@@ -101,6 +102,11 @@ export async function getSiteMemberAccess(siteId: string): Promise<SiteMemberAcc
   return {
     supabase,
     userId: user.id,
+    // Only enrich the caller's own row. A partial Auth response uses the normal lookup.
+    callerStatus: typeof user.last_sign_in_at === "string" && user.last_sign_in_at.length > 0 &&
+      (typeof user.email_confirmed_at === "string" || user.email_confirmed_at === null)
+      ? { emailConfirmed: Boolean(user.email_confirmed_at), lastSignIn: user.last_sign_in_at }
+      : undefined,
     isOwner,
     isAdmin,
     isMember: licensedRole !== null,

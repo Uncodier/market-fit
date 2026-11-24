@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { createClient } from "@/lib/supabase/server"
+import { readNotifications } from './read'
 
 // Schema for create notification
 const CreateNotificationSchema = z.object({
@@ -78,54 +79,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-  try {
-    const supabase = await createClient()
-    
-    // Verify session exists
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      )
-    }
-    
-    // Get site_id and user_id from query params
-    const { searchParams } = new URL(request.url)
-    const site_id = searchParams.get("site_id")
-    const user_id = searchParams.get("user_id") || session.user.id
-    
-    if (!site_id) {
-      return NextResponse.json(
-        { error: "Missing site_id parameter" },
-        { status: 400 }
-      )
-    }
-    
-    // Query notifications
-    const { data, error } = await supabase
-      .from("notifications")
-      .select("*")
-      .eq('site_id', site_id)
-      .eq('user_id', user_id)
-      .order("created_at", { ascending: false })
-    
-    if (error) {
-      console.error("Error fetching notifications:", error)
-      return NextResponse.json(
-        { error: `Error fetching notifications: ${error.message}` },
-        { status: 500 }
-      )
-    }
-    
-    return NextResponse.json({ notifications: data || [] })
-  } catch (error) {
-    console.error("Error in notifications API:", error)
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    )
-  }
+  return readNotifications(request)
 }
 
 export async function PATCH(request: NextRequest) {

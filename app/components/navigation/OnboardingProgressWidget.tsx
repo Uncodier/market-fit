@@ -1,6 +1,5 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { navigateOrAssign } from "@/lib/navigation/stale-router"
 import { cn } from "@/lib/utils"
@@ -13,11 +12,7 @@ import {
 } from "@/app/components/ui/tooltip"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useSite } from "@/app/context/SiteContext"
-import { createClient } from "@/lib/supabase/client"
-import {
-  countOnboardingProgress,
-  isOnboardingFullyComplete,
-} from "@/app/lib/onboarding-completion"
+import { useAuthContext } from "@/app/components/auth/auth-context"
 
 interface OnboardingProgressWidgetProps {
   className?: string
@@ -28,62 +23,19 @@ export function OnboardingProgressWidget({
   className,
   isCollapsed,
 }: OnboardingProgressWidgetProps) {
-  const { currentSite } = useSite()
+  const { currentSite, isLoading, requestScope } = useSite()
+  const auth = useAuthContext()
   const router = useRouter()
   const { t } = useLocalization()
-  const [loading, setLoading] = useState(true)
-  const [complete, setComplete] = useState(true)
-  const [pct, setPct] = useState(100)
-
-  useEffect(() => {
-    if (!currentSite?.id) {
-      setLoading(false)
-      setComplete(true)
-      return
-    }
-
-    if (currentSite.id.startsWith('demo-')) {
-      setLoading(false)
-      setComplete(true)
-      return
-    }
-
-    let cancelled = false
-    ;(async () => {
-      try {
-        const supabase = createClient()
-        const { data } = await supabase
-          .from("settings")
-          .select("onboarding")
-          .eq("site_id", currentSite.id)
-          .single()
-        const raw = data?.onboarding as Record<string, boolean> | undefined
-        if (cancelled) return
-        const done = isOnboardingFullyComplete(raw)
-        setComplete(done)
-        const { done: n, total } = countOnboardingProgress(raw)
-        setPct(total > 0 ? Math.round((n / total) * 100) : 0)
-      } catch {
-        if (!cancelled) {
-          setComplete(false)
-          setPct(0)
-        }
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [currentSite?.id])
+  const progress = currentSite?.onboardingProgress
+  if (isLoading || auth.isLoading || !auth.user || auth.user.is_anonymous || !currentSite ||
+      !requestScope || requestScope.actorId !== auth.user.id || requestScope.siteId !== currentSite.id ||
+      currentSite.id.startsWith('demo-') || !progress || progress.done === progress.total) return null
+  const pct = Math.round(progress.done / progress.total * 100)
 
   const openOnboarding = (e: React.MouseEvent) => {
     e.stopPropagation()
     navigateOrAssign(router, "/onboarding")
-  }
-
-  if (loading || complete) {
-    return null
   }
 
   if (isCollapsed) {

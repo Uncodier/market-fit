@@ -18,6 +18,7 @@ import {
 } from "@/app/components/ui/select"
 import { cn } from "@/lib/utils"
 import { campaignFormSchema } from "@/app/campaigns/schema"
+import { DialogOptionsFeedback, type DialogOptionsStatus } from './dialog-options-feedback'
 
 export const CAMPAIGN_TYPES = [
   { value: "inbound", label: "Inbound Marketing" },
@@ -41,10 +42,12 @@ type CampaignForm = z.infer<typeof campaignFormSchema>
 export function CreateCampaignFields({
   form,
   segments,
+  optionsStatus,
   t,
 }: {
   form: UseFormReturn<CampaignForm>
   segments: Array<{ id: string; name: string; description: string }>
+  optionsStatus?: DialogOptionsStatus
   t: (key: string) => string
 }) {
   const selectedSegments = form.watch("segments") || []
@@ -184,7 +187,7 @@ export function CreateCampaignFields({
         </div>
       </div>
 
-      <ToggleList
+      {optionsStatus && !optionsStatus.ready ? <DialogOptionsFeedback status={optionsStatus} /> : <ToggleList
         label={t("campaigns.create.targetSegments") || "Target segments"}
         empty={t("campaigns.create.noSegments") || "No segments available"}
         items={segments.map((segment) => ({
@@ -202,7 +205,7 @@ export function CreateCampaignFields({
             { shouldDirty: true }
           )
         }}
-      />
+      />}
 
       <div className="flex items-start justify-between gap-4 rounded-lg border p-4">
         <div className="grid gap-1.5">

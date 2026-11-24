@@ -32,6 +32,7 @@ export type LoadSitesDeps = {
   reload: () => void
   isCurrent?: () => boolean
   onAccessDenied?: () => void
+  onSelectionRemoved?: () => void
   sessionUserId?: string | null
   signal?: AbortSignal
   fresh?: boolean
@@ -244,6 +245,7 @@ export async function loadAccessibleSites(deps: LoadSitesDeps): Promise<{
       const selected = uniqueSites.find(site => site.id === selectedId)
       if (selected) cacheSiteSelection(userId, selected)
       else if (selectedId && authoritative) {
+        deps.onSelectionRemoved?.()
         clearSelection(selectedId)
         setIsLoading(false)
       }

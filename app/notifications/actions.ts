@@ -23,7 +23,7 @@ const NotificationsSchema = z.object({
   error: z.string().optional()
 })
 
-export type NotificationsResponse = z.infer<typeof NotificationsSchema> & { cancelled?: boolean }
+export type NotificationsResponse = z.infer<typeof NotificationsSchema> & { cancelled?: boolean; denied?: boolean }
 
 // Schema for create notification
 const CreateNotificationSchema = z.object({
@@ -73,8 +73,9 @@ async function readJsonBody(response: Response, signal?: AbortSignal): Promise<R
 
 export async function getNotifications(site_id: string, user_id: string, signal?: AbortSignal): Promise<NotificationsResponse> {
   try {
-    const response = await fetch(`/api/notifications?site_id=${site_id}&user_id=${user_id}`, {
+    const response = await fetch(`/api/notifications?${new URLSearchParams({ site_id, user_id })}`, {
       method: 'GET',
+      cache: 'no-store',
       headers: {
         'Content-Type': 'application/json',
       },
@@ -83,9 +84,10 @@ export async function getNotifications(site_id: string, user_id: string, signal?
 
     const data = await readJsonBody(response, signal)
     if (!response.ok) {
-      throw new Error(typeof data?.error === 'string' ? data.error : `Error fetching notifications (${response.status})`)
+      return { notifications: null, denied: response.status === 401 || response.status === 403,
+        error: typeof data?.error === 'string' ? data.error : `Error fetching notifications (${response.status})` }
     }
-    if (!data) {
+    if (!Array.isArray(data?.notifications) || data.notifications.some(row => row?.site_id !== site_id || row?.user_id !== user_id)) {
       throw new Error("Error fetching notifications: invalid response")
     }
 
@@ -96,6 +98,15 @@ export async function getNotifications(site_id: string, user_id: string, signal?
     console.error("Error loading notifications detail:", error)
     return { error: error instanceof Error ? error.message : "Error loading notifications", notifications: [] }
   }
+}
+
+export async function getUnreadNotificationCount(site_id: string, user_id: string, signal: AbortSignal): Promise<number> {
+  const response = await fetch(`/api/notifications?${new URLSearchParams({ site_id, user_id, view: 'unread' })}`,
+    { credentials: 'same-origin', cache: 'no-store', signal })
+  if (!response.ok) throw new Error('Notifications unavailable')
+  const data = await response.json()
+  if (!Number.isSafeInteger(data?.unreadCount) || data.unreadCount < 0 || data.unreadCount > 1000) throw new Error('Invalid notification count')
+  return data.unreadCount
 }
 
 export async function createNotification(data: CreateNotificationInput): Promise<{ error?: string; notification?: Notification }> {

@@ -1,8 +1,7 @@
 "use client"
 
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo, useRef } from "react"
-import { useSite } from "@/app/context/SiteContext"
-import { useAuth } from "@/app/hooks/use-auth"
+import React, { createContext, useContext, useState, useEffect, useLayoutEffect, ReactNode, useCallback, useMemo, useRef } from "react"
+import { useNotificationScope } from '@/app/notifications/use-notification-scope'
 import { 
   getNotifications, 
   updateNotification, 
@@ -15,7 +14,8 @@ import { toast } from "sonner"
 
 interface NotificationsContextType {
   notifications: Notification[]
-  loading: boolean
+  status: ReturnType<typeof useNotificationScope>['status'] | 'inactive' | 'loading' | 'failed'
+  retryVerification?: () => void
   filters: NotificationsFilters
   searchQuery: string
   updateFilters: (filters: NotificationsFilters) => void
@@ -28,9 +28,9 @@ interface NotificationsContextType {
   refreshNotifications: () => Promise<void>
 }
 
-const NotificationsContext = createContext<NotificationsContextType>({
+const emptyInbox: NotificationsContextType = {
   notifications: [],
-  loading: false,
+  status: 'inactive',
   filters: {},
   searchQuery: "",
   updateFilters: () => {},
@@ -41,7 +41,9 @@ const NotificationsContext = createContext<NotificationsContextType>({
   deleteOneNotification: async () => {},
   deleteAllUserNotifications: async () => {},
   refreshNotifications: async () => {}
-})
+}
+const pendingInbox: NotificationsContextType = { ...emptyInbox, status: 'loading' }
+const NotificationsContext = createContext<NotificationsContextType>(emptyInbox)
 
 export const useNotifications = () => useContext(NotificationsContext)
 
@@ -49,49 +51,70 @@ interface NotificationsProviderProps {
   children: ReactNode
 }
 
-export function NotificationsProvider({ children }: NotificationsProviderProps) {
+export function NotificationsProvider({ children, active }: NotificationsProviderProps & { active: boolean }) {
+  const verification = useNotificationScope()
+  const target = active && verification.status === 'ready' ? verification.target : undefined
+  const actor = target?.actorId
+  const siteId = target?.siteId
+  const scope = useMemo(() => actor && siteId ? { actor, siteId } : null, [actor, siteId])
+  const [snapshot, setSnapshot] = useState<{ scope: NonNullable<typeof scope>; value: NotificationsContextType } | null>(null)
+  const publish = useCallback((value: NotificationsContextType | null) => {
+    if (!scope) return
+    if (value) setSnapshot({ scope, value })
+    else setSnapshot(previous => previous?.scope === scope ? null : previous)
+  }, [scope])
+
+  // Key the private reader, NOT the workspace layout: arriving at the inbox must
+  // not restart the sidebar's queries, and leaving it must retire its rows.
+  const value = !active ? emptyInbox : verification.status !== 'ready'
+    ? { ...emptyInbox, status: verification.status, retryVerification: 'retry' in verification ? verification.retry : undefined }
+    : scope && snapshot?.scope === scope ? snapshot.value : pendingInbox
+  return <NotificationsContext.Provider value={value}>
+    {scope && <InboxState key={JSON.stringify([scope.actor, scope.siteId])} siteId={scope.siteId} userId={scope.actor} publish={publish} />}
+    {children}
+  </NotificationsContext.Provider>
+}
+
+function InboxState({ siteId, userId, publish }: { siteId: string; userId: string; publish: (value: NotificationsContextType | null) => void }) {
   const [notifications, setNotifications] = useState<Notification[]>([])
-  const [loading, setLoading] = useState(true)
+  const [status, setStatus] = useState<'loading' | 'ready' | 'failed' | 'denied'>('loading')
   const [filters, setFilters] = useState<NotificationsFilters>({})
   const [searchQuery, setSearchQuery] = useState("")
-  const { currentSite } = useSite()
-  const { user } = useAuth()
   const activeRead = useRef<AbortController | null>(null)
   
-  // Function to load notifications from database - wrapped in useCallback
-  const refreshNotifications = useCallback(async () => {
-    if (!currentSite?.id || !user?.id) return
+  const loadNotifications = useCallback(async () => {
+    if (!siteId || !userId) return
     activeRead.current?.abort()
     const controller = new AbortController()
     activeRead.current = controller
-    setLoading(true)
-    try {
-      const result = await getNotifications(currentSite.id, user.id, controller.signal)
+    await getNotifications(siteId, userId, controller.signal).then(result => {
       if (controller.signal.aborted || result.cancelled) return
       
-      if (result.error) {
+      if (result.denied || result.error || !Array.isArray(result.notifications)) {
         console.warn("Background notification fetch failed:", result.error)
+        setStatus(result.denied ? 'denied' : 'failed'); setNotifications([])
         return
       }
       
-      setNotifications(result.notifications || [])
-    } catch (error) {
-      if (!controller.signal.aborted) console.error("Error loading notifications:", error)
-    } finally {
+      setNotifications(result.notifications)
+      setStatus('ready')
+    }).catch(() => {
+      if (!controller.signal.aborted) { setStatus('failed'); setNotifications([]) }
+    }).finally(() => {
       if (activeRead.current === controller) {
         activeRead.current = null
-        if (!controller.signal.aborted) setLoading(false)
       }
-    }
-  }, [currentSite?.id, user?.id])
+    })
+  }, [siteId, userId])
+
+  const refreshNotifications = useCallback(() => {
+    setStatus('loading')
+    return loadNotifications()
+  }, [loadNotifications])
   
   // Load notifications when currentSite or user changes
   useEffect(() => {
     let isMounted = true;
-    // Discard the previous site's data immediately, not after a new request returns.
-    activeRead.current?.abort()
-    setNotifications([])
-    setLoading(Boolean(currentSite?.id && user?.id))
     const cancel = () => {
       isMounted = false
       activeRead.current?.abort()
@@ -109,34 +132,9 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
       window.removeEventListener('pageshow', resume)
     }
     
-    const fetchData = async () => {
-      if (isMounted) {
-        await refreshNotifications();
-      }
-    };
-    
-    if (currentSite?.id && user?.id) {
-      const idle = (window as Window & {
-        requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number
-      }).requestIdleCallback
-      if (typeof idle === "function") {
-        const id = idle(() => { void fetchData() }, { timeout: 2500 })
-        return () => {
-          cleanup()
-          ;(window as Window & { cancelIdleCallback?: (id: number) => void }).cancelIdleCallback?.(id)
-        }
-      }
-      const timer = window.setTimeout(() => { void fetchData() }, 1200)
-      return () => {
-        cleanup()
-        window.clearTimeout(timer)
-      }
-    }
-    
-    return () => {
-      cleanup();
-    };
-  }, [currentSite?.id, user?.id, refreshNotifications]);
+    void loadNotifications()
+    return cleanup
+  }, [loadNotifications, refreshNotifications]);
   
   // Function to update filters - wrapped in useCallback
   const updateFilters = useCallback((newFilters: NotificationsFilters) => {
@@ -156,7 +154,7 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
   
   // Function to mark notification as read - wrapped in useCallback
   const markAsRead = useCallback(async (id: string) => {
-    if (!currentSite?.id || !user?.id) {
+    if (!siteId || !userId) {
       toast.error("No site or user selected")
       return
     }
@@ -181,17 +179,17 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
       console.error("Error marking notification as read:", error)
       toast.error("Error marking notification as read")
     }
-  }, [currentSite?.id, user?.id])
+  }, [siteId, userId])
   
   // Function to mark all notifications as read - wrapped in useCallback
   const markAllNotificationsAsRead = useCallback(async () => {
-    if (!currentSite?.id || !user?.id) {
+    if (!siteId || !userId) {
       toast.error("No site or user selected")
       return
     }
     
     try {
-      const result = await markAllAsRead(currentSite.id, user.id)
+      const result = await markAllAsRead(siteId, userId)
       
       if (result.error) {
         toast.error(result.error)
@@ -208,11 +206,11 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
       console.error("Error marking all notifications as read:", error)
       toast.error("Error marking all notifications as read")
     }
-  }, [currentSite?.id, user?.id])
+  }, [siteId, userId])
   
   // Function to delete a notification - wrapped in useCallback
   const deleteOneNotification = useCallback(async (id: string) => {
-    if (!currentSite?.id || !user?.id) {
+    if (!siteId || !userId) {
       toast.error("No site or user selected")
       return
     }
@@ -235,17 +233,17 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
       console.error("Error deleting notification:", error)
       toast.error("Error deleting notification")
     }
-  }, [currentSite?.id, user?.id])
+  }, [siteId, userId])
   
   // Function to delete all notifications - wrapped in useCallback
   const deleteAllUserNotifications = useCallback(async () => {
-    if (!currentSite?.id || !user?.id) {
+    if (!siteId || !userId) {
       toast.error("No site or user selected")
       return
     }
     
     try {
-      const result = await deleteAllNotifications(currentSite.id, user.id)
+      const result = await deleteAllNotifications(siteId, userId)
       
       if (result.error) {
         toast.error(result.error)
@@ -260,12 +258,12 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
       console.error("Error deleting all notifications:", error)
       toast.error("Error deleting all notifications")
     }
-  }, [currentSite?.id, user?.id])
+  }, [siteId, userId])
   
   // Memoize the context value to prevent unnecessary re-renders
   const contextValue = useMemo(() => ({
     notifications,
-    loading,
+    status,
     filters,
     searchQuery,
     updateFilters,
@@ -278,7 +276,7 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
     refreshNotifications
   }), [
     notifications,
-    loading,
+    status,
     filters,
     searchQuery,
     updateFilters,
@@ -291,9 +289,7 @@ export function NotificationsProvider({ children }: NotificationsProviderProps) 
     refreshNotifications
   ])
   
-  return (
-    <NotificationsContext.Provider value={contextValue}>
-      {children}
-    </NotificationsContext.Provider>
-  )
+  useLayoutEffect(() => { publish(contextValue) }, [contextValue, publish])
+  useLayoutEffect(() => () => publish(null), [publish])
+  return null
 } 

@@ -1,395 +1,151 @@
-import { createClient } from "@/lib/supabase/client"
-import { ConversationListItem } from "@/app/types/chat"
-import {
-  buildConversationListSelect,
-  ConversationListRow,
-  limitEmbeddedConversationMessages,
-} from "@/app/services/conversations/conversation-list-query"
-import { buildConversationListItems } from "@/app/services/conversations/conversation-list-items"
+import { createClient } from '@/lib/supabase/client'
+import type { ConversationListItem } from '@/app/types/chat'
+import { buildConversationListItems } from './conversations/conversation-list-items'
+import { buildConversationListSelect, limitEmbeddedConversationMessages, type ConversationListRow } from './conversations/conversation-list-query'
+import { conversationReadError, prepareConversationQuery, readConversationQuery } from './conversations/conversation-read-error'
 
-/**
- * Client-safe version of getConversations used by ChatList
- */
-export async function getConversations(
-  siteId: string,
-  page: number = 1,
-  pageSize: number = 20,
-  channelFilter?: 'all' | 'web' | 'email' | 'whatsapp',
-  assigneeFilter?: 'all' | 'assigned' | 'ai',
-  currentUserId?: string,
-  searchQuery?: string,
-  initiatedByFilter?: 'all' | 'visitor' | 'agent' | 'replied',
-  tasksOnly?: boolean,
+export type ConversationFilter = 'all' | 'outbound' | 'inbound' | 'replied' | 'tasks' | 'assigned' | 'qualified'
+interface PageOptions {
+  siteId: string
+  page?: number
+  pageSize?: number
+  channelFilter?: 'all' | 'web' | 'email' | 'whatsapp'
+  assigneeFilter?: 'all' | 'assigned' | 'ai'
+  currentUserId?: string
+  searchQuery?: string
+  initiatedByFilter?: 'all' | 'visitor' | 'agent' | 'replied'
+  tasksOnly?: boolean
   qualifiedLeadsOnly?: boolean
-): Promise<ConversationListItem[]> {
+  signal?: AbortSignal
+}
+
+export interface ConversationPage {
+  items: ConversationListItem[]
+  page: number
+  hasMore: boolean
+}
+
+const BATCH_SIZE = 1000 // Existing initiation-filter candidate window per status group.
+const VISITOR_ROLES = new Set(['visitor', 'user'])
+const AGENT_ROLES = new Set(['agent', 'assistant', 'system', 'team_member'])
+const WEB_PREDICATE = 'channel.eq.web,channel.eq.website_chat,channel.is.null,custom_data->>channel.eq.web,custom_data->>channel.eq.website_chat,custom_data->>channel.is.null,custom_data.is.null'
+
+function matchesInitiation(row: ConversationListRow, filter: PageOptions['initiatedByFilter']) {
+  const role = row.first_message?.[0]?.role
+  if (!role) return false
+  if (filter === 'visitor') return VISITOR_ROLES.has(role)
+  return AGENT_ROLES.has(role) && (filter !== 'replied' || Boolean(row.visitor_messages?.length))
+}
+
+/** Pending rows sort first. A lookahead uses the normal 20-row stride, never a 21-row offset. */
+export async function getConversationPage({
+  siteId, page = 1, pageSize = 20, channelFilter = 'all', assigneeFilter = 'all', currentUserId,
+  searchQuery, initiatedByFilter = 'all', tasksOnly, qualifiedLeadsOnly, signal,
+}: PageOptions): Promise<ConversationPage> {
+  const controller = new AbortController()
+  const cancel = () => controller.abort()
+  if (signal?.aborted) cancel()
+  signal?.addEventListener('abort', cancel, { once: true })
+  const timer = setTimeout(cancel, 12_000)
   try {
-    const supabase = createClient();
+    const client = createClient()
+    const readSignal = controller.signal
+    const start = (page - 1) * pageSize
+    const count = pageSize + 1
+    const end = start + count
+    const needsInitiation = !tasksOnly && initiatedByFilter !== 'all'
+    const assigned = assigneeFilter === 'assigned' && Boolean(currentUserId)
+    const select = buildConversationListSelect({ includeInitiationData: needsInitiation, useInnerLead: assigned || !!qualifiedLeadsOnly })
 
-    // Initiation filters inspect compact first-message/reply embeds and then
-    // paginate in memory across a larger candidate set.
-    const needsPostFiltering = Boolean(
-      initiatedByFilter && initiatedByFilter !== 'all'
-    )
-    const fetchMultiplier = needsPostFiltering ? 50 : 1 // Fetch 50x more for inbound/outbound
-
-    // TASKS-ONLY: Two-step approach to search full history without row duplication
-    if (tasksOnly) {
-      const { data: taskRows, error: taskRowsError } = await supabase
-        .from('tasks')
-        .select('conversation_id')
-        .eq('status', 'pending')
-        .eq('site_id', siteId)
-        .not('conversation_id', 'is', null)
-        .limit(3000)
-      if (taskRowsError) {
-        console.error('Error fetching conversations with tasks:', taskRowsError)
-        throw taskRowsError
+    function scopedQuery(head = false) {
+      const countSelect = assigned || qualifiedLeadsOnly ? 'id, leads!inner(id)' : 'id'
+      let query = client.from('conversations').select(head ? countSelect : select, head ? { head: true, count: 'exact' } : {})
+        .eq('site_id', siteId).eq('is_archived', false)
+      if (assigned) query = query.eq('leads.assignee_id', currentUserId)
+      if (qualifiedLeadsOnly) query = query.in('leads.status', ['qualified', 'converted'])
+      if (searchQuery?.trim()) query = query.ilike('title', `%${searchQuery.trim().toLowerCase()}%`)
+      if (channelFilter === 'web') {
+        query = query.or(WEB_PREDICATE)
+      } else if (channelFilter !== 'all') {
+        query = query.or(`channel.eq.${channelFilter},custom_data->>channel.eq.${channelFilter}`)
       }
+      return query
+    }
 
-      const convIds = Array.from(new Set((taskRows || []).map((t: any) => t.conversation_id).filter(Boolean)))
-      if (convIds.length === 0) return []
-
-      const needsAssign = assigneeFilter === 'assigned' && currentUserId
-      const needsQual = qualifiedLeadsOnly === true
-      const tasksBaseSelect = buildConversationListSelect({
-        includeInitiationData: false,
-        useInnerLead: Boolean(needsAssign || needsQual),
-      })
-
-      let tasksQuery = limitEmbeddedConversationMessages(
-        supabase
-          .from('conversations')
-          .select(tasksBaseSelect)
-          .eq('site_id', siteId)
-          .eq('is_archived', false)
-          .in('id', convIds),
-        false
-      )
-      if (needsAssign) {
-        tasksQuery = tasksQuery.eq('leads.assignee_id', currentUserId)
-      }
-      if (needsQual) {
-        tasksQuery = tasksQuery.in('leads.status', ['qualified', 'converted'])
-      }
-      if (searchQuery?.trim()) {
-        tasksQuery = tasksQuery.ilike('title', `%${searchQuery.trim().toLowerCase()}%`)
-      }
-
-      const { data: allConvs, error } = await tasksQuery
+    function baseQuery() {
+      return limitEmbeddedConversationMessages(scopedQuery(), needsInitiation)
         .order('last_message_at', { ascending: false, nullsFirst: false })
-        .order('created_at', { ascending: false })
-      if (error) {
-        console.error('Error fetching conversations with tasks:', error)
-        throw error
+        .order('created_at', { ascending: false }).order('id', { ascending: false })
+    }
+
+    async function readGroup(pending: boolean, offset: number, length: number) {
+      const query = baseQuery()
+      const grouped = pending ? query.eq('status', 'pending') : query.neq('status', 'pending')
+      const data = await readConversationQuery<ConversationListRow[]>(grouped.range(offset, offset + length - 1), readSignal)
+      if (!Array.isArray(data)) throw conversationReadError(null)
+      return data
+    }
+
+    let candidates: ConversationListRow[]
+    if (tasksOnly) {
+      const taskRows = await readConversationQuery<{ conversation_id: string }[]>(client.from('tasks')
+        .select('conversation_id').eq('status', 'pending').eq('site_id', siteId)
+        .not('conversation_id', 'is', null).limit(3000), readSignal)
+      if (!Array.isArray(taskRows)) throw conversationReadError(null)
+      const ids = [...new Set(taskRows.map(row => row.conversation_id))]
+      if (!ids.length) return { items: [], page, hasMore: false }
+      const rows = await readConversationQuery<ConversationListRow[]>(baseQuery().in('id', ids), readSignal)
+      if (!Array.isArray(rows)) throw conversationReadError(null)
+      // Task view uses updated-or-created chronology, not the pending-status grouping.
+      const timestamp = (row: ConversationListRow) => new Date(row.last_message_at || row.created_at).getTime()
+      candidates = rows.sort((a, b) => timestamp(b) - timestamp(a)).slice(start, end)
+    } else if (needsInitiation) {
+      const pending = await readGroup(true, 0, Math.min(page * pageSize * 50, BATCH_SIZE))
+      const matching = pending.filter(row => matchesInitiation(row, initiatedByFilter))
+      const batches = initiatedByFilter === 'replied' ? 5 : 1
+      for (let batch = 0; batch < batches && matching.length < end; batch++) {
+        const rows = await readGroup(false, batch * BATCH_SIZE, BATCH_SIZE)
+        matching.push(...rows.filter(row => matchesInitiation(row, initiatedByFilter)))
+        if (rows.length < BATCH_SIZE) break
       }
-      const sorted = (allConvs || []).sort((a: any, b: any) => {
-        const dA = new Date(a.last_message_at || a.created_at || 0).getTime()
-        const dB = new Date(b.last_message_at || b.created_at || 0).getTime()
-        return dB - dA
-      })
-      const pageConvs = sorted.slice((page - 1) * pageSize, page * pageSize)
-      return buildConversationListItems(supabase, pageConvs as ConversationListRow[])
-    }
-
-    // Build base query parts - add leads!inner for assigned/qualified filters (DB-level, full history)
-    const needsAssigneeFilter = assigneeFilter === 'assigned' && currentUserId
-    const needsQualifiedFilter = qualifiedLeadsOnly === true
-    const QUALIFIED_STATUSES = ['qualified', 'converted']
-
-    const baseSelect = buildConversationListSelect({
-      includeInitiationData: Boolean(needsPostFiltering),
-      useInnerLead: Boolean(needsAssigneeFilter || needsQualifiedFilter),
-    })
-
-    // Query 1: Get pending conversations (by status)
-    let pendingQuery = limitEmbeddedConversationMessages(
-      supabase
-        .from("conversations")
-        .select(baseSelect)
-        .eq("site_id", siteId)
-        .eq("is_archived", false)
-        .eq("status", "pending"),
-      needsPostFiltering
-    )
-
-    // Query 2: Get non-pending conversations
-    let nonPendingQuery = limitEmbeddedConversationMessages(
-      supabase
-        .from("conversations")
-        .select(baseSelect)
-        .eq("site_id", siteId)
-        .eq("is_archived", false)
-        .neq("status", "pending"),
-      needsPostFiltering
-    )
-
-    // DB-level filter: assigned (search full history, paginate 20)
-    if (needsAssigneeFilter) {
-      pendingQuery = pendingQuery.eq("leads.assignee_id", currentUserId!)
-      nonPendingQuery = nonPendingQuery.eq("leads.assignee_id", currentUserId!)
-    }
-    // DB-level filter: qualified and above (qualified, converted)
-    if (needsQualifiedFilter) {
-      pendingQuery = pendingQuery.in("leads.status", QUALIFIED_STATUSES)
-      nonPendingQuery = nonPendingQuery.in("leads.status", QUALIFIED_STATUSES)
-    }
-
-    // Apply channel filter to both queries if specified
-    if (channelFilter && channelFilter !== 'all') {
-      if (channelFilter === 'web') {
-        const channelFilterStr = `channel.eq.web,channel.eq.website_chat,channel.is.null,custom_data->>channel.eq.web,custom_data->>channel.eq.website_chat,custom_data->>channel.is.null,custom_data.is.null`
-        pendingQuery = pendingQuery.or(channelFilterStr)
-        nonPendingQuery = nonPendingQuery.or(channelFilterStr)
-      } else {
-        const channelFilterStr = `channel.eq.${channelFilter},custom_data->>channel.eq.${channelFilter}`
-        pendingQuery = pendingQuery.or(channelFilterStr)
-        nonPendingQuery = nonPendingQuery.or(channelFilterStr)
-      }
-    }
-
-    // Apply search filter to both queries if specified
-    if (searchQuery && searchQuery.trim()) {
-      const searchTerm = searchQuery.trim().toLowerCase()
-      pendingQuery = pendingQuery.ilike('title', `%${searchTerm}%`)
-      nonPendingQuery = nonPendingQuery.ilike('title', `%${searchTerm}%`)
-    }
-
-    // Get the count of pending conversations
-    let pendingCountQuery = supabase
-      .from("conversations")
-      .select(
-        needsAssigneeFilter || needsQualifiedFilter
-          ? "id, leads!inner(id)"
-          : "id",
-        { count: 'exact', head: true }
-      )
-      .eq("site_id", siteId)
-      .eq("is_archived", false)
-      .eq("status", "pending")
-
-    if (needsAssigneeFilter) {
-      pendingCountQuery = pendingCountQuery.eq(
-        "leads.assignee_id",
-        currentUserId!
-      )
-    }
-    if (needsQualifiedFilter) {
-      pendingCountQuery = pendingCountQuery.in(
-        "leads.status",
-        QUALIFIED_STATUSES
-      )
-    }
-
-    // Apply the same channel filter to count query
-    if (channelFilter && channelFilter !== 'all') {
-      if (channelFilter === 'web') {
-        const channelFilterStr = `channel.eq.web,channel.eq.website_chat,channel.is.null,custom_data->>channel.eq.web,custom_data->>channel.eq.website_chat,custom_data->>channel.is.null,custom_data.is.null`
-        pendingCountQuery = pendingCountQuery.or(channelFilterStr)
-      } else {
-        const channelFilterStr = `channel.eq.${channelFilter},custom_data->>channel.eq.${channelFilter}`
-        pendingCountQuery = pendingCountQuery.or(channelFilterStr)
-      }
-    }
-
-    // Apply the same search filter to count query
-    if (searchQuery && searchQuery.trim()) {
-      const searchTerm = searchQuery.trim().toLowerCase()
-      pendingCountQuery = pendingCountQuery.ilike('title', `%${searchTerm}%`)
-    }
-
-    const { count: pendingCount, error: pendingCountError } = await pendingCountQuery
-    if (pendingCountError) {
-      console.error("Error counting pending conversations:", pendingCountError)
-      throw pendingCountError
-    }
-
-    const totalPending = pendingCount || 0
-    
-    // Calculate what we need from pending vs non-pending based on page
-    const requestedFrom = (page - 1) * pageSize
-    
-    let pendingConversations: any[] = []
-    let nonPendingConversations: any[] = []
-
-    if (needsPostFiltering) {
-      // When filtering by initiatedBy, we need to fetch more data for in-memory filtering.
-      // "replied" = agent started + visitor replied - most are non-pending, so we fetch
-      // multiple batches of non-pending (Supabase default limit ~1000 per query).
-      const fetchCount = Math.min(page * pageSize * fetchMultiplier, 1000) // cap per-query
-      const isRepliedFilter = initiatedByFilter === 'replied'
-      const nonPendingBatches = isRepliedFilter ? 5 : 1 // 5 batches of ~1000 = ~5000 for replied
-
-      const { data: pendingData, error: pendingError } = await pendingQuery
-        .order("last_message_at", { ascending: false, nullsFirst: false })
-        .order("created_at", { ascending: false })
-        .limit(fetchCount)
-
-      if (pendingError) {
-        console.error("Error fetching pending conversations:", pendingError)
-        throw pendingError
-      }
-      pendingConversations = pendingData || []
-
-      // For "replied", fetch multiple batches of non-pending to search deeper into history
-      for (let batch = 0; batch < nonPendingBatches; batch++) {
-        const from = batch * 1000
-        const to = from + 999
-        const { data: batchData, error: batchError } = await nonPendingQuery
-          .order("last_message_at", { ascending: false, nullsFirst: false })
-          .order("created_at", { ascending: false })
-          .range(from, to)
-        if (batchError) {
-          console.error("Error fetching non-pending batch:", batchError)
-          throw batchError
-        }
-        const batchConvs = batchData || []
-        nonPendingConversations.push(...batchConvs)
-        if (batchConvs.length < 1000) break // no more data
-      }
+      candidates = matching.slice(start, end)
     } else {
-      // Use database-level pagination for better performance
-      // We want: pending conversations first (sorted by last_message_at), then non-pending
-      
-      if (requestedFrom < totalPending) {
-        // We need some pending conversations
-        const pendingFrom = requestedFrom
-        const pendingLimit = Math.min(pageSize, totalPending - requestedFrom)
-        
-        const { data: pendingData, error: pendingError } = await pendingQuery
-          .order("last_message_at", { ascending: false, nullsFirst: false })
-          .order("created_at", { ascending: false })
-          .range(pendingFrom, pendingFrom + pendingLimit - 1)
-        
-        if (pendingError) {
-          console.error("Error fetching pending conversations:", pendingError)
-          throw pendingError
+      // No exact-count scan on page one. Later pages still need the real offset
+      // within the non-pending group; local moderation/realtime is not a count.
+      let pendingLimit = count
+      let otherOffset = 0
+      if (start > 0) {
+        const result = await prepareConversationQuery(scopedQuery(true).eq('status', 'pending'), readSignal)
+        const total = result.count
+        if (result.error || typeof total !== 'number' || !Number.isSafeInteger(total) || total < 0) {
+          throw conversationReadError(result.error, result.status)
         }
-        
-        pendingConversations = pendingData || []
-        
-        // If we need more to fill the page, get from non-pending
-        const remainingNeeded = pageSize - pendingConversations.length
-        if (remainingNeeded > 0) {
-          const { data: nonPendingData, error: nonPendingError } = await nonPendingQuery
-            .order("last_message_at", { ascending: false, nullsFirst: false })
-            .order("created_at", { ascending: false })
-            .range(0, remainingNeeded - 1)
-          
-          if (nonPendingError) {
-            console.error("Error fetching non-pending conversations:", nonPendingError)
-            throw nonPendingError
-          } else {
-            nonPendingConversations = nonPendingData || []
-          }
-        }
-      } else {
-        // All pending are before this page, only fetch non-pending
-        const nonPendingFrom = requestedFrom - totalPending
-        
-        const { data: nonPendingData, error: nonPendingError } = await nonPendingQuery
-          .order("last_message_at", { ascending: false, nullsFirst: false })
-          .order("created_at", { ascending: false })
-          .range(nonPendingFrom, nonPendingFrom + pageSize - 1)
-        
-        if (nonPendingError) {
-          console.error("Error fetching non-pending conversations:", nonPendingError)
-          throw nonPendingError
-        }
-        
-        nonPendingConversations = nonPendingData || []
+        otherOffset = Math.max(0, start - total)
+        pendingLimit = Math.min(count, Math.max(0, total - start))
       }
+      candidates = pendingLimit ? await readGroup(true, start, pendingLimit) : []
+      if (candidates.length < count) candidates.push(...await readGroup(false, otherOffset, count - candidates.length))
     }
-
-    // Combine: pending conversations first, then non-pending
-    const conversations = [...pendingConversations, ...nonPendingConversations]
-    
-    console.log(`✅ Pending conversations: ${pendingConversations.length} (total in DB: ${totalPending})`)
-    console.log(`✅ Non-pending conversations: ${nonPendingConversations.length}`)
-    console.log(`✅ Total conversations for page ${page}: ${conversations.length}`)
-
-    if (!conversations || conversations.length === 0) {
-      return []
-    }
-
-    let filteredConversations = conversations
-
-    // Apply initiatedBy filter using compact embedded message markers.
-    if (initiatedByFilter && initiatedByFilter !== 'all') {
-      console.log(`🔍 Filtering conversations by initiatedBy (${initiatedByFilter})`)
-      
-      const userRoles = ['visitor', 'user']
-      const systemRoles = ['agent', 'assistant', 'system', 'team_member']
-      
-      // First combine all fetched conversations
-      const allFetched = [...pendingConversations, ...nonPendingConversations]
-      
-      const allFiltered = allFetched.filter((conv: any) => {
-        const firstMessage = conv.first_message?.[0]
-
-        if (!firstMessage) {
-          // No messages = can't determine who initiated, exclude from filter
-          return false
-        }
-        const firstRole = firstMessage.role
-        
-        if (initiatedByFilter === 'visitor') {
-          // INBOUND: First message must be from user/visitor
-          return userRoles.includes(firstRole)
-        } else if (initiatedByFilter === 'agent') {
-          // OUTBOUND: First message must be from system/agent
-          return systemRoles.includes(firstRole)
-        } else if (initiatedByFilter === 'replied') {
-          // REPLIED: First message from system/agent, and AT LEAST one subsequent message from user/visitor
-          const isOutbound = systemRoles.includes(firstRole)
-          const hasVisitorReply = Boolean(conv.visitor_messages?.length)
-          return isOutbound && hasVisitorReply
-        }
-        
-        return false
-      })
-      
-      const totalFiltered = allFiltered.length
-      console.log(`✅ Filtered to ${totalFiltered} conversations matching ${initiatedByFilter} filter`)
-      
-      // Apply pagination in memory after filtering
-      const paginatedFrom = (page - 1) * pageSize
-      const paginatedTo = paginatedFrom + pageSize
-      filteredConversations = allFiltered.slice(paginatedFrom, paginatedTo)
-      
-      // If we have more filtered results than needed for this page, we know there are more
-      // The component checks if result.length === pageSize to determine hasMore
-      // So we ensure we return exactly pageSize when there are more results
-      const hasMoreResults = totalFiltered > paginatedTo
-      if (hasMoreResults && filteredConversations.length < pageSize) {
-        // This shouldn't happen if we fetched enough, but handle it gracefully
-        console.warn(`⚠️ Expected ${pageSize} results but got ${filteredConversations.length} after filtering`)
-      }
-      
-      console.log(`📄 Paginated: showing ${filteredConversations.length} conversations (page ${page}, ${pageSize} per page, hasMore: ${hasMoreResults})`)
-    } else {
-      // No initiatedBy filter - data is already paginated from DB
-      filteredConversations = conversations
-      console.log(`📄 DB Paginated: showing ${filteredConversations.length} conversations (page ${page}, ${pageSize} per page)`)
-    }
-
-    // Assignee filter
-    if (assigneeFilter && assigneeFilter !== 'all' && currentUserId) {
-      filteredConversations = filteredConversations.filter((conv: any) => {
-        const hasLead = conv.lead_id && conv.leads
-        const assigneeId = hasLead ? conv.leads.assignee_id : null
-        if (assigneeFilter === 'assigned') return assigneeId === currentUserId
-        if (assigneeFilter === 'ai') return !assigneeId
-        return true
-      })
-    }
-
-    return buildConversationListItems(
-      supabase,
-      filteredConversations as ConversationListRow[]
-    )
+    // The Assigned filter is already in PostgREST. Preserve the legacy AI-only projection.
+    if (assigneeFilter === 'ai' && currentUserId) candidates = candidates.filter(row => !row.leads?.assignee_id)
+    const items = await buildConversationListItems(client, candidates.slice(0, pageSize), readSignal)
+    if (readSignal.aborted) throw conversationReadError(null, 408)
+    return { items, page, hasMore: candidates.length > pageSize }
   } catch (error) {
-    console.error("Unexpected error in getConversations (client):", error)
-    throw error
+    cancel() // Stop sibling enrichment transport on failure.
+    throw conversationReadError(error)
+  } finally {
+    clearTimeout(timer)
+    signal?.removeEventListener('abort', cancel)
   }
 }
 
+// Keep the existing array-returning service contract for consumers that don't paginate.
+export async function getConversations(
+  siteId: string, page = 1, pageSize = 20, channelFilter?: PageOptions['channelFilter'],
+  assigneeFilter?: PageOptions['assigneeFilter'], currentUserId?: string, searchQuery?: string,
+  initiatedByFilter?: PageOptions['initiatedByFilter'], tasksOnly?: boolean, qualifiedLeadsOnly?: boolean,
+) {
+  return (await getConversationPage({ siteId, page, pageSize, channelFilter, assigneeFilter, currentUserId,
+    searchQuery, initiatedByFilter, tasksOnly, qualifiedLeadsOnly })).items
+}

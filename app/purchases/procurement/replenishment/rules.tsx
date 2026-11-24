@@ -14,6 +14,7 @@ import { ProcurementState } from '../ui/workspace'
 import { ProcurementListSkeleton } from '../ui/list-loading'
 import { replenishmentPageSize, type ReplenishmentRule } from './schema'
 import { ReplenishmentRuleDialog } from './rule-dialog'
+import { useProcurementScopeKey } from '../components/use-procurement-scope-key'
 import { isProcurementDemo as isDemoSiteId } from '../ui/is-demo'
 import { demoReplenishmentRules } from '@/lib/demo-data/procurement-replenishment'
 import { ProcurementDemoNotice } from '../ui/demo-notice'
@@ -22,7 +23,8 @@ type Result = { status: string; message?: string; request_id?: string | null; qu
 type Queue = { rule_id: string; generation: number; evaluated_generation: number; last_result: Result | null; last_error: string | null }
 
 export function ReplenishmentRules({ siteId, search = '', status = 'all' }: { siteId: string; search?: string; status?: 'all' | 'enabled' | 'disabled' }) {
-  return <ScopedRules key={siteId} siteId={siteId} search={search} status={status} />
+  const scope = useProcurementScopeKey(siteId)
+  return <ScopedRules key={scope} siteId={siteId} search={search} status={status} />
 }
 function ScopedRules({ siteId, search, status }: { siteId: string; search: string; status: 'all' | 'enabled' | 'disabled' }) {
   const demo = isDemoSiteId(siteId)
@@ -65,7 +67,7 @@ function ScopedRules({ siteId, search, status }: { siteId: string; search: strin
   return <>
     {demo && <ProcurementDemoNotice />}
     <TopBarPrimaryActions>
-      <Button type="button" size="sm" disabled={busy || loading} onClick={() => setEditing('new')}>
+      <Button type="button" size="sm" disabled={busy || loading || !!error} onClick={() => setEditing('new')}>
         <PlusCircle className="mr-2 h-4 w-4" />{t('procurement.workflow.replenishment.create')}
       </Button>
     </TopBarPrimaryActions>

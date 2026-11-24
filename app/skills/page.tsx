@@ -1,11 +1,10 @@
 "use client"
 
 import { useCallback, useState } from "react"
+import dynamic from "next/dynamic"
 import { useRouter, useSearchParams } from "next/navigation"
-import { SkillManager } from "@/app/components/settings/SkillManager"
 import { CommunitySkillsBrowser } from "@/app/components/settings/CommunitySkillsBrowser"
-import { SkillsSection } from "@/app/components/settings/SkillsSection"
-import { SystemSkillsCatalog } from "@/app/components/settings/SystemSkillsCatalog"
+import { SkillsLoading } from "@/app/components/settings/skills-loading"
 import { SkillDialog, type SkillDialogAction } from "@/app/components/settings/SkillDialog"
 import { TopBarPrimaryActions } from "@/app/components/navigation/topbar-primary-actions"
 import { Button } from "@/app/components/ui/button"
@@ -18,20 +17,30 @@ import { useSite } from "@/app/context/SiteContext"
 
 type SkillsTab = "manage" | "browse" | "makinari-skills"
 
+// Browse is the default. Load the editor list and built-in guides (including
+// MCP setup) only when their Radix tab content is mounted.
+const SkillManager = dynamic(() => import("@/app/components/settings/SkillManager").then(m => m.SkillManager), {
+  loading: () => <SkillsLoading kind="managed" />,
+})
+const SystemSkillsCatalog = dynamic(() => import("@/app/components/settings/SystemSkillsCatalog").then(m => m.SystemSkillsCatalog), {
+  loading: () => <SkillsLoading kind="system" />,
+})
+const SkillsSection = dynamic(() => import("@/app/components/settings/SkillsSection").then(m => m.SkillsSection))
+
 function isSkillsTab(value: string | null): value is SkillsTab {
   return value === "manage" || value === "browse" || value === "makinari-skills"
 }
 
 export default function SkillsPage() {
-  const { currentSite } = useSite()
-  return <SkillsWorkspace key={currentSite?.id} siteId={currentSite?.id} />
+  const { currentSite, isLoading } = useSite()
+  const requestedTab = useSearchParams().get('tab')
+  if (isLoading) return <SkillsLoading kind={requestedTab === 'manage' ? 'managed' : requestedTab === 'makinari-skills' ? 'system' : 'community'} />
+  return <SkillsWorkspace key={currentSite?.id} siteId={currentSite?.id} requestedTab={requestedTab} />
 }
 
-function SkillsWorkspace({ siteId }: { siteId?: string }) {
+function SkillsWorkspace({ siteId, requestedTab }: { siteId?: string; requestedTab: string | null }) {
   const { t } = useLocalization()
   const router = useRouter()
-  const params = useSearchParams()
-  const requestedTab = params.get("tab")
   const urlTab = isSkillsTab(requestedTab) ? requestedTab : "browse"
   const [selection, setSelection] = useState({ requestedTab, tab: urlTab })
   const tab = selection.requestedTab === requestedTab ? selection.tab : urlTab

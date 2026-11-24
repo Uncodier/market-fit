@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { hostedSetupKey } from "@/app/connectors/connection-setup"
 import { askAccessIntent, directPolicyUpdate } from "@/app/connectors/provider-direct-contract"
 import { toolActionFilterSchema } from "@/app/connectors/tool-action-types"
 
@@ -9,7 +10,8 @@ const member = z.object({ user_id: uuid, can_view: z.boolean(), can_use: z.boole
 const agent = z.object({ agent_id: uuid, enabled: z.boolean(), expires_at: expires }).strict()
 const site = z.object({ site_id: uuid }).strict()
 const versioned = site.extend({ expected_revision: z.number().int().min(0) })
-const slug = /^[a-z0-9][a-z0-9_-]{0,99}$/
+const slug = /^[a-z0-9_][a-z0-9_-]{0,99}$/
+const attemptStart = site.extend({ toolkit_slug: z.string().regex(slug), auth_config_id: z.string().regex(/^[a-zA-Z0-9_-]{1,150}$/) })
 
 export function connectorRoute(path: string[], method: string) {
   if (!path.length || path.length > 3 || path.some(value => !/^[a-zA-Z0-9_-]+$/.test(value))) return null
@@ -24,6 +26,7 @@ export function connectorRoute(path: string[], method: string) {
     if (path[0] === "auth-attempts" && path.length === 2 && uuid.safeParse(path[1]).success) return "attempt"
   }
   if (method === "POST" && path[0] === "auth-attempts" && (path.length === 1 || (path.length === 2 && path[1] === "ask"))) return "start"
+  if (method === "POST" && path.length === 2 && path[0] === "auth-attempts" && path[1] === "hosted") return "start-hosted"
   if (method === "POST" && path.length === 1 && path[0] === "managed-oauth") return "managed-oauth"
   if (method === "POST" && path.length === 1 && path[0] === "supabase-token") return "supabase-token"
   if (path.length === 3 && uuid.safeParse(path[1]).success) {
@@ -42,11 +45,13 @@ export function connectorRoute(path: string[], method: string) {
 export function parseConnectorBody(kind: string, input: unknown) {
   if (kind === "provider-direct") return directPolicyUpdate.parse(input)
   if (kind === "approval-decision") return site.parse(input)
-  if (kind === "start") return site.extend({ toolkit_slug: z.string().regex(slug), auth_config_id: z.string().regex(/^[a-zA-Z0-9_-]{1,150}$/) }).strict().parse(input)
+  if (kind === "start") return attemptStart.parse(input)
+  if (kind === "start-hosted") return attemptStart.extend({ auth_config_id: attemptStart.shape.auth_config_id.optional(), expected_setup: hostedSetupKey }).parse(input)
   if (kind === "managed-oauth") return site.extend({ toolkit_slug: z.string().regex(slug) }).strict().parse(input)
   if (kind === "supabase-token") return site.extend({ delegate_account: z.literal(true).optional(), project_ref: z.string().regex(/^[a-z0-9]{20}$/),
     token: z.string().min(24).max(512).regex(/^sbp_[A-Za-z0-9_-]+$/) }).strict().parse(input)
-  if (kind === "complete") return z.object({ session_uri: z.string().min(1).max(4096) }).strict().parse(input)
+  if (kind === "complete") return z.union([z.object({ continuation: z.string().regex(/^[a-f0-9]{64}$/), session_uri: z.string().min(1).max(4096) }).strict(),
+    z.object({ hosted_credentials: z.literal(true) }).strict()]).parse(input)
   if (kind === "disconnect") return versioned.parse(input)
   if (kind === "access") return versioned.extend({ members: z.array(member).max(100).default([]), agents: z.array(agent).max(100).default([]) }).strict().parse(input)
   if (kind === "policy") return z.union([versioned.extend({ catalog_reads: z.literal(false) }).strict(), versioned.extend({

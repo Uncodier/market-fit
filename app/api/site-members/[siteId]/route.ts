@@ -14,6 +14,17 @@ function invalidSiteResponse() {
   return NextResponse.json({ success: false, error: "Invalid site" }, { status: 400 })
 }
 
+function withAuthStatus(member: SiteMember, emailConfirmed: boolean, lastSignIn: string | undefined) {
+  return {
+    ...member,
+    blocked_screens: member.blocked_screens || [],
+    restrict_to_assigned_only: member.restrict_to_assigned_only || false,
+    emailConfirmed,
+    lastSignIn,
+    status: member.status === "active" && !lastSignIn ? "pending" : member.status,
+  }
+}
+
 async function withSiteOwner(
   admin: ReturnType<typeof createServiceSupabase>,
   siteId: string,
@@ -114,6 +125,10 @@ export async function GET(
           }
         }
 
+        if (member.user_id === access.userId && access.callerStatus) {
+          return withAuthStatus(member, access.callerStatus.emailConfirmed, access.callerStatus.lastSignIn)
+        }
+
         try {
           const {
             data: { user: authUser },
@@ -130,19 +145,7 @@ export async function GET(
             }
           }
 
-          let actualStatus = member.status
-          if (member.status === "active" && !authUser.last_sign_in_at) {
-            actualStatus = "pending"
-          }
-
-          return {
-            ...member,
-            blocked_screens: member.blocked_screens || [],
-            restrict_to_assigned_only: member.restrict_to_assigned_only || false,
-            emailConfirmed: !!authUser.email_confirmed_at,
-            lastSignIn: authUser.last_sign_in_at,
-            status: actualStatus,
-          }
+          return withAuthStatus(member, Boolean(authUser.email_confirmed_at), authUser.last_sign_in_at)
         } catch (err) {
           console.warn(`Error fetching user status for ${member.email}:`, err)
           return {
@@ -161,7 +164,7 @@ export async function GET(
     return NextResponse.json({
       success: true,
       members: membersWithStatus,
-    })
+    }, { headers: { "Cache-Control": "private, no-store" } })
   } catch (error) {
     console.error("Error fetching site members:", error)
     return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })

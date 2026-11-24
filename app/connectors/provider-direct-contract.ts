@@ -9,6 +9,7 @@ const status = z.object({
   authorization_mode: z.enum(["member_policy", "host_policy"]).optional(),
   explicitly_disabled: z.boolean().optional(),
   assistant_allowed: z.boolean().optional(),
+  ask_compatible: z.boolean().nullable().optional(),
   // Older servers do not report setup intent. Absence is not a pending grant.
   setup_pending: z.boolean().optional(),
   unsupported_reason: z.literal("shared_makinari_project").optional(),
@@ -19,7 +20,8 @@ const status = z.object({
 export type DirectPolicyStatus = z.infer<typeof status>
 
 export function isAskVerified(status: DirectPolicyStatus): boolean {
-  return (status.attested || status.authority_kind === "connected_account") && !status.unsupported_reason && !status.setup_pending
+  return status.ask_compatible !== false && status.ask_compatible !== null &&
+    (status.attested || status.authority_kind === "connected_account") && !status.unsupported_reason && !status.setup_pending
 }
 
 export const directPolicyUpdate = z.object({

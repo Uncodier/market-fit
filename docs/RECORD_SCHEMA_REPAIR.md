@@ -40,10 +40,11 @@ the original delete-category restriction and request-time-only version check bel
   category. Staff links use active enabled membership `user_id`, not the row ID.
 - Drafts allow missing required values so the existing title-first creation flow
   works; supplied values are always validated. Non-drafts require complete fields.
-- Category changes preserve existing keys. Populated fields cannot be removed,
-  retyped, retargeted, or tightened without explicit data migration. Unknown legacy
-  values can remain unchanged; new undeclared data/relations are rejected, with a
-  limited compatibility allowance for known AI-feedback metadata.
+- Category changes preserve existing keys. The original deployed guard blocks
+  contract changes on any populated category. The local value-aware replacement
+  described below checks only the affected fields. Unknown legacy values can
+  remain unchanged; new undeclared data/relations are rejected, with a limited
+  compatibility allowance for known AI-feedback metadata.
 - Record updates now compare the caller's loaded `updated_at`, not merely a version
   fetched at save time; stale editor saves return a conflict.
 - Category deletion now atomically trashes the active subtree and records, with
@@ -73,6 +74,31 @@ The four renumbered Records migrations were applied to linked project
 03:16:13 UTC. No customer records were trashed/restored. Other destinations still
 require explicit approval; do not replay applied migrations.
 
+## Value-aware field edits (local only)
+
+`20261124010000_records_field_value_compatibility.sql` replaces the installed
+category trigger function without rewriting stored records or changing RLS. It
+checks actual values in the same site/category, including hidden and trashed
+rows. Empty fields can be removed, retyped or retargeted. Text, description and
+select can switch without conversion when stored values meet the new rules.
+Compatible bounds, unused option removal and requiredness changes also succeed;
+missing required values only block non-drafts. Zero and false count as values;
+tables with no rows do not. Edits that check hidden values require an owner or
+admin without assignment or location restrictions. Presentation edits and
+changes that only relax constraints do not check record values.
+
+`20261124011000_records_schema_write_fence.sql` adds a user-scoped save RPC.
+It compares the template used for validation under the Records site lock,
+checks the document version on updates, and preserves the table's RLS and
+column admission triggers. The category editor compares its original category
+version and returns a conflict rather than overwriting a newer template.
+
+Apply both migrations on an approved target before deploying the application.
+Verify the installed category and record trash write guards use the same site
+fence. Direct Data API scalar writes retain their existing validation limits;
+the new application save path does not replace all record writers. The isolated
+PostgreSQL suites do not establish full target integration or browser acceptance.
+
 ## Remaining release gates
 
 1. JSON links are still not foreign keys. Reverse integrity for target deletion,
@@ -80,8 +106,8 @@ require explicit approval; do not replay applied migrations.
    including concurrent changes, requires a separate database design.
 2. The migration validates relation admission, field definitions and populated
    field contracts, but not scalar record values/requiredness through the direct Data API.
-   Concurrent first-insert/schema-edit constraint changes still need dedicated
-   review. The follow-up Trash migrations prevent physical category deletion and
+   Direct writers do not carry the application's template snapshot. The follow-up
+   Trash migrations prevent physical category deletion and
    convert permitted record DELETEs into recoverable trash.
 3. Existing assignment RLS matches user UUIDs inside relation JSON; attribution and
    assignment remain coupled. Existing location restrictions deliberately block

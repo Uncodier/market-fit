@@ -1,5 +1,5 @@
 /** @jest-environment node */
-import { getNotifications } from '@/app/notifications/actions'
+import { getNotifications, getUnreadNotificationCount } from '@/app/notifications/actions'
 
 describe('notification read cancellation', () => {
   let error: jest.SpyInstance
@@ -21,11 +21,11 @@ describe('notification read cancellation', () => {
     await expect(getNotifications('site', 'user')).resolves.toMatchObject({ error: 'Failed to fetch' })
     expect(error).toHaveBeenCalled()
   })
-  it('preserves successful data and HTTP authorization denial', async () => {
+  it.each([401, 403])('preserves successful data and HTTP %i authorization denial', async status => {
     jest.mocked(fetch).mockResolvedValueOnce(Response.json({ notifications: [] }))
     await expect(getNotifications('site', 'user')).resolves.toEqual({ notifications: [] })
-    jest.mocked(fetch).mockResolvedValueOnce(Response.json({ error: 'Forbidden' }, { status: 403 }))
-    await expect(getNotifications('site', 'user')).resolves.toMatchObject({ error: 'Forbidden' })
+    jest.mocked(fetch).mockResolvedValueOnce(Response.json({ error: 'Forbidden' }, { status }))
+    await expect(getNotifications('site', 'user')).resolves.toMatchObject({ error: 'Forbidden', denied: true })
   })
   it('does not log a body-reading error after the caller aborts the read', async () => {
     const controller = new AbortController()
@@ -34,5 +34,11 @@ describe('notification read cancellation', () => {
     } as unknown as Response)
     await expect(getNotifications('site', 'user', controller.signal)).resolves.toEqual({ notifications: null, cancelled: true })
     expect(error).not.toHaveBeenCalled()
+  })
+  it('does not publish a mismatched inbox or accept a list response as a badge count', async () => {
+    jest.mocked(fetch).mockResolvedValueOnce(Response.json({ notifications: [{ site_id: 'other', user_id: 'user' }] }))
+    await expect(getNotifications('site', 'user')).resolves.toMatchObject({ notifications: [], error: expect.any(String) })
+    jest.mocked(fetch).mockResolvedValueOnce(Response.json({ notifications: [] }))
+    await expect(getUnreadNotificationCount('site', 'user', new AbortController().signal)).rejects.toThrow('Invalid notification count')
   })
 })

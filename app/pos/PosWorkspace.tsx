@@ -257,6 +257,7 @@ export default function PosWorkspace() {
 
   const cartPanelProps = {
     cart: cartApi.cart,
+    sellerName: cartApi.sellerName,
     subtotal: cartApi.subtotal,
     taxTotal: cartApi.taxTotal,
     shippingTotal: cartApi.shippingTotal,

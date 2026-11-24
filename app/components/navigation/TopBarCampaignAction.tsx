@@ -1,31 +1,17 @@
 "use client"
 
 import { createCampaign } from "@/app/campaigns/actions/campaigns/create"
-import { useLocalization } from "@/app/context/LocalizationContext"
-import { Button } from "@/app/components/ui/button"
-import { Plus } from "@/app/components/ui/icons"
+import { useEffect, type ComponentProps } from "react"
 import { CreateCampaignDialog } from "@/app/components/create-campaign-dialog"
 
-export function TopBarCampaignAction({
-  segments,
-}: {
-  segments: Array<{ id: string; name: string; description: string }>
-}) {
-  const { t } = useLocalization()
+export function TopBarCampaignAction(props: Omit<ComponentProps<typeof CreateCampaignDialog>, 'onCreateCampaign'>) {
+  const { onOpenChange } = props
+  useEffect(() => {
+    // The Campaigns empty state requests the same permission-checked dialog.
+    const open = () => onOpenChange(true)
+    window.addEventListener('campaigns:create', open)
+    return () => window.removeEventListener('campaigns:create', open)
+  }, [onOpenChange])
 
-  return (
-    <CreateCampaignDialog
-      segments={segments}
-      onCreateCampaign={createCampaign}
-      trigger={
-        <Button
-          className="flex items-center justify-center gap-2 !min-w-0 sm:!min-w-[155px] md:!min-w-[200px] sm:!px-3.5 !w-9 sm:!w-auto !h-9 sm:!aspect-auto !aspect-square !p-0 rounded-full font-inter font-medium text-sm"
-          title={t("layout.topbar.newCampaign")}
-        >
-          <Plus className="h-4 w-4 shrink-0" />
-          <span className="hidden sm:inline ml-2">{t("layout.topbar.newCampaign")}</span>
-        </Button>
-      }
-    />
-  )
+  return <CreateCampaignDialog {...props} onCreateCampaign={createCampaign} />
 }

@@ -32,7 +32,8 @@ const LeadsContext = React.createContext<LeadsContextType>({
 export default function LeadsPage() {
   const { t } = useLocalization()
   const {
-    segments, segmentName, loading, searchTotalCount, allLeadsTotalCount, searchQuery, userData,
+    segments, segmentName, loading, leadsError, isLeadsValidating, hasLeadsData, mutateLeads,
+    searchTotalCount, allLeadsTotalCount, searchQuery, userData,
     currentPage, itemsPerPage, activeTab, setActiveTab, viewType, setViewType,
     isFilterModalOpen, setIsFilterModalOpen, filters, sortBy, handleSortChange,
     forceReload, leadJourneyStages, isLoadingJourneyStages, reloadingLeads,
@@ -42,7 +43,7 @@ export default function LeadsPage() {
     handleUpdateLeadStatus, handleAttributionConfirm, handleAttributionCancel,
     selectedLeads, setSelectedLeads, isBulkActionLoading,
     handleBulkDelete, handleBulkAssign, handleBulkStatusChange,
-    filteredLeads, companyGroups, handlePageChange, handleItemsPerPageChange,
+    dbLeads, filteredLeads, companyGroups, handlePageChange, handleItemsPerPageChange,
     handleToggleCompanyExpansion, handleSearchChange, handleLeadClick,
     handleApplyFilters, handleClearFilters, handleOpenFilterModal
   } = useLeadsPage()
@@ -205,9 +206,17 @@ export default function LeadsPage() {
         "bg-muted/30 flex-1 min-w-0 overflow-y-auto",
         viewType === "kanban" ? "py-4 md:py-8" : "p-4 md:p-8 space-y-4 overflow-x-hidden"
       )}>
+              {leadsError && (
+                <div role="alert" className="space-y-3 p-6">
+                  <p>Unable to load leads. Please try again.</p>
+                  <Button variant="outline" disabled={isLeadsValidating} onClick={() => void mutateLeads()}>
+                    {t('common.retry') || 'Retry'}
+                  </Button>
+                </div>
+              )}
               {loading ? (
               <LeadsTableSkeleton />
-            ) : (
+             ) : leadsError && !hasLeadsData ? null : (
               <>
                 {["all", "new", "contacted", "qualified", "cold", "converted", "lost", "not_qualified"].map(tabValue => (
                   <TabsContent key={tabValue} value={tabValue} className="mt-0 h-full min-w-0">
@@ -216,7 +225,8 @@ export default function LeadsPage() {
                         companyGroups={companyGroups}
                       currentPage={currentPage}
                       itemsPerPage={itemsPerPage}
-                      totalLeads={searchTotalCount ?? allLeadsTotalCount ?? filteredLeads.length}
+                      totalLeads={searchTotalCount ?? allLeadsTotalCount}
+                      loadedLeadCount={dbLeads.length}
                         totalCompanies={companyGroups.length}
                       onPageChange={handlePageChange}
                       onItemsPerPageChange={handleItemsPerPageChange}

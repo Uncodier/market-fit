@@ -15,6 +15,7 @@ import { isRealSiteId, isDemoSiteId, isDemoModeActive } from '@/lib/demo-utils'
 import type { ResolvedStage, SimulationResult } from '../procurement/domain'
 import type { RequestDocument, RequestItem, RequestSummary } from './schema'
 import { RequestEditor } from './request-editor'
+import { useProcurementScopeKey } from '../procurement/components/use-procurement-scope-key'
 import { RequestDocumentView } from './request-document'
 import { RequestDetailSidebar, canDecideStage } from './request-detail-sidebar'
 import { ChevronLeft, Pencil, RotateCw, Send, Check, X } from '@/app/components/ui/icons'
@@ -27,9 +28,10 @@ export type RequestDetailData = {
 export function RequestDetail({ id }: { id: string }) {
   const { t } = useProcurementI18n()
   const { currentSite } = useSite()
+  const scope = useProcurementScopeKey(currentSite?.id)
   if (!currentSite) return <RequestDetailSkeleton />
   if (!isRealSiteId(currentSite.id) && !isDemoSiteId(currentSite.id)) return <p className="p-6">{t('procurement.workflow.request.selectDetailWorkspace')}</p>
-  return <WorkspaceDetail key={`${currentSite.id}:${id}`} siteId={currentSite.id} id={id} />
+  return <WorkspaceDetail key={`${scope}:${id}`} siteId={currentSite.id} id={id} />
 }
 function WorkspaceDetail({ siteId, id }: { siteId: string; id: string }) {
   const demo = isDemoSiteId(siteId) || isDemoModeActive()

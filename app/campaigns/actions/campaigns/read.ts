@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { transformCampaignData, transformSubtaskData } from "../utils/transformers"
-import { Campaign } from "@/app/types"
+import type { Campaign, CampaignSubtaskData, CampaignData } from "@/app/types"
 
 // Get all campaigns
 export async function getCampaigns(siteId: string) {
@@ -11,7 +11,8 @@ export async function getCampaigns(siteId: string) {
 
     const { data, error } = await supabase
       .from("campaigns")
-      .select("*, metadata")
+      .select(`*, campaign_subtasks(id, campaign_id, title, status, created_at, updated_at),
+        campaign_segments(segment_id), campaign_requirements(requirement_id)`)
       .eq("site_id", siteId)
       .order("created_at", { ascending: false })
 
@@ -19,40 +20,18 @@ export async function getCampaigns(siteId: string) {
       throw new Error(`Error fetching campaigns: ${error.message}`)
     }
 
-    // Transform data to our Campaign type
-    const campaigns = data.map(transformCampaignData) as Campaign[]
-
-    // For each campaign, fetch related subtasks
-    for (const campaign of campaigns) {
-      const { data: subtasksData, error: subtasksError } = await supabase
-        .from("campaign_subtasks")
-        .select("*")
-        .eq("campaign_id", campaign.id)
-
-      if (!subtasksError && subtasksData) {
-        campaign.subtasks = subtasksData.map(transformSubtaskData)
-      }
-
-      // Fetch segment relations
-      const { data: segmentRelations, error: segmentError } = await supabase
-        .from("campaign_segments")
-        .select("segment_id")
-        .eq("campaign_id", campaign.id)
-
-      if (!segmentError && segmentRelations) {
-        campaign.segments = segmentRelations.map((relation: any) => relation.segment_id)
-      }
-
-      // Fetch requirement relations
-      const { data: requirementRelations, error: requirementError } = await supabase
-        .from("campaign_requirements")
-        .select("requirement_id")
-        .eq("campaign_id", campaign.id)
-
-      if (!requirementError && requirementRelations) {
-        campaign.requirements = requirementRelations.map((relation: any) => relation.requirement_id)
-      }
+    // Read children under the same user-scoped snapshot, not three more HTTP
+    // requests per campaign. An embed failure fails the list rather than being
+    // reported as a successful read with silently missing relations.
+    type CampaignWithRelations = CampaignData & {
+      campaign_subtasks: CampaignSubtaskData[]; campaign_segments: { segment_id: string }[];
+      campaign_requirements: { requirement_id: string }[]
     }
+    const campaigns: Campaign[] = (data as CampaignWithRelations[]).map(row => ({
+      ...transformCampaignData(row), subtasks: (row.campaign_subtasks ?? []).map(transformSubtaskData),
+      segments: (row.campaign_segments ?? []).map(relation => relation.segment_id),
+      requirements: (row.campaign_requirements ?? []).map(relation => relation.requirement_id),
+    }))
 
     return { data: campaigns, error: null }
   } catch (error) {

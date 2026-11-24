@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { toast } from "sonner"
 import type { RelationSelectValue } from "@/app/components/ui/relation-select"
 import { Button } from "@/app/components/ui/button"
@@ -21,10 +21,10 @@ import {
 } from "@/app/pos/print-after-checkout"
 import type { PosCartItem } from "./CartPanel"
 import { PosCustomerPickerDialog } from "./PosCustomerPickerDialog"
-import { loadCartSession } from "@/app/pos/local/cart-session"
 
 interface PosReceiptActionsProps {
   cart: PosCartItem[]
+  sellerName: string | null
   subtotal: number
   taxTotal: number
   total: number
@@ -59,6 +59,7 @@ const ACTION_BUTTON =
 
 export function PosReceiptActions({
   cart,
+  sellerName,
   subtotal,
   taxTotal,
   total,
@@ -80,22 +81,6 @@ export function PosReceiptActions({
   const { currentSite } = useSite()
   const [printing, setPrinting] = useState(false)
   const [customerPickerOpen, setCustomerPickerOpen] = useState(false)
-  const [requestedByName, setRequestedByName] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (siteId) {
-      void loadCartSession(siteId).then((session) => {
-        setRequestedByName(session.sellerName || null)
-      })
-    }
-    const handleSellerState = (event: Event) => {
-      const detail = (event as CustomEvent<{ name?: string }>).detail
-      setRequestedByName(detail?.name || null)
-    }
-    window.addEventListener("pos:seller-state", handleSellerState)
-    return () =>
-      window.removeEventListener("pos:seller-state", handleSellerState)
-  }, [siteId])
 
   const handlePrint = async () => {
     if (cart.length === 0 || printing) return
@@ -116,7 +101,7 @@ export function PosReceiptActions({
           notes,
           brand: ticketBrandFromSite(currentSite),
           customerName,
-          requestedByName,
+          requestedByName: sellerName,
           fulfillment,
           locationName,
           currency,

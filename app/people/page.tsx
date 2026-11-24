@@ -40,7 +40,8 @@ function PeopleSearchWorkspace({ isSessionCurrent, peopleTab, setPeopleTab }: {
     <div className="flex h-full relative">
       <PeopleSidebar workspace={workspace} />
       <PeopleResultsView workspace={workspace} />
-      <PeopleActionDialogs workspace={workspace} />
+      {(workspace.selectionLists.mode || workspace.isSegmentModalOpen || workspace.isIcpModalOpen ||
+        workspace.isConfirmModalOpen || workspace.isEditIcpModalOpen) && <PeopleActionDialogs workspace={workspace} />}
     </div>
   )
 }

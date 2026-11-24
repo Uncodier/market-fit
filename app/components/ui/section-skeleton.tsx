@@ -2,7 +2,7 @@ import { Skeleton } from "./skeleton"
 
 export function SectionSkeleton() {
   return (
-    <div className="flex-1 overflow-auto">
+    <div role="status" aria-label="Loading" aria-busy="true" className="flex-1 overflow-auto motion-reduce:[&_.animate-pulse]:animate-none">
       <div className="p-6 md:p-8 space-y-6">
         <div className="px-0 md:px-8">
           <div className="space-y-4">

@@ -38,6 +38,7 @@ import { useSite } from "@/app/context/SiteContext"
 import { toast } from "sonner"
 import { ConfirmDialog } from "@/app/components/ui/confirm-dialog"
 import { useDirtyDialogClose } from "@/app/components/ui/use-dirty-dialog-close"
+import { DialogOptionsFeedback, type DialogOptionsStatus } from './dialog-options-feedback'
 
 interface CreateLeadDialogProps {
   segments?: Array<{
@@ -62,13 +63,14 @@ interface CreateLeadDialogProps {
     notes?: string
     origin?: string
     site_id: string
-  }) => Promise<{ error?: string; lead?: any }>
+  }) => Promise<{ error?: string; lead?: unknown }>
   trigger?: React.ReactNode
   open?: boolean
   onOpenChange?: (open: boolean) => void
+  optionsStatus?: DialogOptionsStatus
 }
 
-export function CreateLeadDialog({ onCreateLead, segments = [], campaigns = [], trigger, open, onOpenChange }: CreateLeadDialogProps) {
+export function CreateLeadDialog({ onCreateLead, segments = [], campaigns = [], trigger, open, onOpenChange, optionsStatus }: CreateLeadDialogProps) {
   const [internalIsOpen, setInternalIsOpen] = useState(false)
   const isOpen = open !== undefined ? open : internalIsOpen
   const handleInternalOpenChange = (newOpen: boolean) => {
@@ -90,6 +92,8 @@ export function CreateLeadDialog({ onCreateLead, segments = [], campaigns = [], 
   const [origin, setOrigin] = useState("")
   const [error, setError] = useState<string | null>(null)
   const { currentSite } = useSite()
+  const relationsValid = (segmentValue?.mode !== 'existing' || segments.some(row => row.id === segmentValue.id)) &&
+    (campaignValue?.mode !== 'existing' || campaigns.some(row => row.id === campaignValue.id))
   const isDirty = Boolean(
     name ||
       email ||
@@ -110,6 +114,7 @@ export function CreateLeadDialog({ onCreateLead, segments = [], campaigns = [], 
     })
 
   const handleSubmit = async () => {
+    if (isLoading || !relationsValid || (optionsStatus && !optionsStatus.ready)) return
     // Validar que exista un sitio seleccionado
     if (!currentSite?.id) {
       setError("Please select a site first")
@@ -213,6 +218,8 @@ export function CreateLeadDialog({ onCreateLead, segments = [], campaigns = [], 
         </DialogHeader>
         
         <DialogBody className="space-y-5">
+          {!relationsValid && (!optionsStatus || optionsStatus.ready) &&
+            <p role="alert">A selected option is no longer available. Clear it or select another.</p>}
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md text-sm">
               {error}
@@ -327,7 +334,7 @@ export function CreateLeadDialog({ onCreateLead, segments = [], campaigns = [], 
               </div>
             </div>
             
-            <div className="space-y-2">
+            {optionsStatus && !optionsStatus.ready ? <DialogOptionsFeedback status={optionsStatus} /> : <div className="space-y-2">
               <label htmlFor="segment" className="text-sm font-medium">
                 Segment
               </label>
@@ -339,11 +346,11 @@ export function CreateLeadDialog({ onCreateLead, segments = [], campaigns = [], 
                 emptyMessage="No segments available"
                 className="h-12"
               />
-            </div>
+            </div>}
           </div>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
+            {(!optionsStatus || optionsStatus.ready) && <div className="space-y-2">
               <label htmlFor="campaign" className="text-sm font-medium flex justify-between">
                 <span>Campaign Attribution</span>
                 <span className="text-muted-foreground font-normal">Optional</span>
@@ -357,7 +364,7 @@ export function CreateLeadDialog({ onCreateLead, segments = [], campaigns = [], 
                 icon={<Target className="h-4 w-4" />}
                 className="h-12"
               />
-            </div>
+            </div>}
 
             <div className="space-y-2">
               <label htmlFor="status" className="text-sm font-medium">
@@ -418,6 +425,7 @@ export function CreateLeadDialog({ onCreateLead, segments = [], campaigns = [], 
         
         <DialogFooter>
           <Button 
+            type="button"
             variant="outline" 
             onClick={() => dirtyHandleOpenChange(false)}
           >
@@ -425,7 +433,7 @@ export function CreateLeadDialog({ onCreateLead, segments = [], campaigns = [], 
           </Button>
           <Button 
             type="submit"
-            disabled={isLoading || !name || !email}
+            disabled={isLoading || !name || !email || !relationsValid || (optionsStatus && !optionsStatus.ready)}
           >
             {isLoading ? "Creating..." : "Create lead"}
           </Button>

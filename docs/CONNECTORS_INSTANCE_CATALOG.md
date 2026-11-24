@@ -80,7 +80,7 @@ Instance connector reads return a **private receipt**, not the response payload,
 to the model. The assistant cannot automatically summarize those rows. Its own
 history, follow-up turns, shared instance logs and recovery therefore receive
 only the receipt and instructions to open it. The original user opens the link
-or **Connectors → Private reports** in their authenticated browser. The URL
+or visits `/connectors/results` in their authenticated browser. The URL
 alone is not a credential. Other workspace members who can view the instance
 do not gain access to the report. Do not paste private rows into a shared chat.
 

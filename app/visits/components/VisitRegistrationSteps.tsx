@@ -34,6 +34,7 @@ export function VisitRegistrationSteps({
   phoneError,
   contactHintError,
   resourceType,
+  resourceOptionsState,
   availableResourceTypes,
   services,
   locations,
@@ -95,6 +96,7 @@ export function VisitRegistrationSteps({
   phoneError: string | null
   contactHintError: string | null
   resourceType: ReservationResourceType
+  resourceOptionsState: "idle" | "loading" | "ready"
   availableResourceTypes: ReservationResourceType[]
   services: { id: string; label: string; hint?: string }[]
   locations: { id: string; label: string }[]
@@ -190,32 +192,37 @@ export function VisitRegistrationSteps({
             </Button>
           }
         >
-          <VisitResourcePicker
-            resourceType={resourceType}
-            onResourceTypeChange={setResourceType}
-            availableTypes={availableResourceTypes}
-            services={services}
-            locations={locations}
-            employees={employees}
-            catalogItemId={catalogItemId}
-            locationId={locationId}
-            assigneeUserId={assigneeUserId}
-            onSelectService={(id) => {
-              setCatalogItemId(id)
-              const next = nextAfter("resource")
-              if (next !== "success") setActiveStep(next)
-            }}
-            onSelectLocation={(id) => {
-              setLocationId(id)
-              const next = nextAfter("resource")
-              if (next !== "success") setActiveStep(next)
-            }}
-            onSelectEmployee={(id) => {
-              setAssigneeUserId(id)
-              const next = nextAfter("resource")
-              if (next !== "success") setActiveStep(next)
-            }}
-          />
+          {resourceOptionsState === "loading" && (
+            <p role="status" className="text-sm text-muted-foreground">{t("common.loading")}</p>
+          )}
+          {resourceOptionsState === "ready" && (
+            <VisitResourcePicker
+              resourceType={resourceType}
+              onResourceTypeChange={setResourceType}
+              availableTypes={availableResourceTypes}
+              services={services}
+              locations={locations}
+              employees={employees}
+              catalogItemId={catalogItemId}
+              locationId={locationId}
+              assigneeUserId={assigneeUserId}
+              onSelectService={(id) => {
+                setCatalogItemId(id)
+                const next = nextAfter("resource")
+                if (next !== "success") setActiveStep(next)
+              }}
+              onSelectLocation={(id) => {
+                setLocationId(id)
+                const next = nextAfter("resource")
+                if (next !== "success") setActiveStep(next)
+              }}
+              onSelectEmployee={(id) => {
+                setAssigneeUserId(id)
+                const next = nextAfter("resource")
+                if (next !== "success") setActiveStep(next)
+              }}
+            />
+          )}
         </VisitSliderCard>
       )}
 

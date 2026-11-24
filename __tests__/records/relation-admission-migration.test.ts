@@ -7,6 +7,8 @@ const pgBin = process.env.RECORDS_TEST_PG_BIN || "/opt/homebrew/opt/postgresql@1
 const available = ["initdb", "pg_ctl", "psql"].every(file => existsSync(path.join(pgBin, file)))
 const suite = available ? describe : describe.skip
 const migration = readFileSync(path.join(process.cwd(), "supabase/migrations/20261111032000_records_relation_admission.sql"), "utf8")
+const fieldCompatibility = readFileSync(path.join(process.cwd(), "supabase/migrations/20261124010000_records_field_value_compatibility.sql"), "utf8")
+const schemaFence = readFileSync(path.join(process.cwd(), "supabase/migrations/20261124011000_records_schema_write_fence.sql"), "utf8")
 const uuid = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`
 const env = { ...process.env, LC_ALL: "C", LANG: "C" }
 
@@ -25,13 +27,13 @@ suite("relation admission in isolated PostgreSQL", () => {
   const db = (sql: string) => execFileSync(path.join(pgBin, "psql"), [
     "-h", directory, "-p", "55443", "-U", "postgres", "-d", "postgres", "-X", "-qAt", "-v", "ON_ERROR_STOP=1", "-c", sql,
   ], { encoding: "utf8", stdio: "pipe", env, timeout: 15000 }).trim()
-  const actor = (sql: string) => db(`SET ROLE authenticated; ${sql}`)
+  const actor = (sql: string) => db(`SET ROLE authenticated; SET test.records_role = 'admin'; ${sql}`)
   const fields = (target: string, extra = "") => `[{"id":"link","name":"Link","type":"relation","relationTarget":"${target}"${extra}}]`
   const write = (id: string, value: unknown = uuid(3), category = uuid(2)) => actor(`
     INSERT INTO public.records(id, site_id, category_id, relations)
     VALUES ('${id}', '${uuid(1)}', '${category}', '${JSON.stringify({ Link: value })}'::jsonb);
   `)
-  const configure = (target: string, extra = "") => db(`UPDATE public.record_categories SET template_fields = '${fields(target, extra)}'::jsonb WHERE id = '${uuid(2)}'`)
+  const configure = (target: string, extra = "") => actor(`UPDATE public.record_categories SET template_fields = '${fields(target, extra)}'::jsonb WHERE id = '${uuid(2)}'`)
   const template = (value: unknown, insert = false) => actor(insert
     ? `INSERT INTO public.record_categories VALUES ('${uuid(20)}', '${uuid(1)}', '${JSON.stringify(value)}'::jsonb)`
     : `UPDATE public.record_categories SET template_fields = '${JSON.stringify(value)}'::jsonb WHERE id = '${uuid(2)}'`)
@@ -39,10 +41,12 @@ suite("relation admission in isolated PostgreSQL", () => {
   beforeAll(() => {
     // Socket-only disposable cluster; never consumes a configured database URL.
     directory = mkdtempSync("/tmp/records-pg-")
-    execFileSync(path.join(pgBin, "initdb"), ["-D", path.join(directory, "data"), "-U", "postgres", "-A", "trust", "--no-locale"], { stdio: "pipe", env, timeout: 20000 })
+    execFileSync(path.join(pgBin, "initdb"), ["-D", path.join(directory, "data"), "-U", "postgres", "-A", "trust", "--no-locale", "--encoding=UTF8"], { stdio: "pipe", env, timeout: 20000 })
     execFileSync(path.join(pgBin, "pg_ctl"), ["-D", path.join(directory, "data"), "-l", path.join(directory, "server.log"),
       "-o", `-F -p 55443 -k ${directory} -c listen_addresses='' -c lc_messages=C`, "-w", "start"], { stdio: "pipe", env, timeout: 20000 })
-    db("CREATE ROLE authenticated; CREATE ROLE anon;")
+    db(`CREATE ROLE authenticated; CREATE ROLE anon;
+      CREATE SCHEMA auth; GRANT USAGE ON SCHEMA auth TO authenticated;
+      CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$ SELECT '${uuid(90)}'::uuid $$;`)
   }, 30000)
   afterAll(() => {
     if (!directory) return
@@ -52,7 +56,8 @@ suite("relation admission in isolated PostgreSQL", () => {
   beforeEach(() => {
     db(`DROP SCHEMA public CASCADE; CREATE SCHEMA public;
       CREATE TABLE public.record_categories(id uuid PRIMARY KEY, site_id uuid, template_fields jsonb);
-      CREATE TABLE public.records(id uuid PRIMARY KEY, site_id uuid, category_id uuid, relations jsonb DEFAULT '{}');
+      CREATE TABLE public.records(id uuid PRIMARY KEY, site_id uuid, category_id uuid, relations jsonb DEFAULT '{}',
+        data jsonb DEFAULT '{}', status text DEFAULT 'draft', deleted_at timestamptz);
       CREATE TABLE public.companies(id uuid PRIMARY KEY);
       CREATE TABLE public.site_members(user_id uuid, site_id uuid, status text, license_suspended boolean, manually_disabled boolean);
       ${["leads", "deals", "suppliers", "sale_orders"].map(table => `CREATE TABLE public.${table}(id uuid PRIMARY KEY, site_id uuid, company_id uuid, visible boolean DEFAULT true);`).join("\n")}
@@ -196,6 +201,131 @@ suite("relation admission in isolated PostgreSQL", () => {
     template([{ ...number, min: null }])
     db(migration)
     expect(() => template([number])).toThrow("Populated field changes require a data migration")
+  })
+  describe("value-aware field edits", () => {
+    beforeEach(() => {
+      db(`CREATE FUNCTION public.current_user_site_role(uuid) RETURNS text LANGUAGE sql STABLE
+          AS $$ SELECT CASE WHEN current_setting('test.records_role', true) IN ('restricted','assigned') THEN 'admin'
+            ELSE current_setting('test.records_role', true) END $$;
+        CREATE FUNCTION public.current_user_has_site_location_restrictions(uuid) RETURNS boolean LANGUAGE sql STABLE
+          AS $$ SELECT current_setting('test.records_role', true) = 'restricted' $$;
+        CREATE FUNCTION public.record_row_access(uuid,uuid,jsonb) RETURNS boolean LANGUAGE sql STABLE
+          AS $$ SELECT current_setting('test.records_role', true) IS DISTINCT FROM 'assigned' $$;
+        CREATE FUNCTION public.user_can(uuid,text) RETURNS boolean LANGUAGE sql STABLE
+          AS $$ SELECT $1 = '${uuid(1)}'::uuid $$;
+        ALTER TABLE public.record_categories ADD COLUMN updated_at timestamptz DEFAULT now(), ADD COLUMN deleted_at timestamptz;
+        ALTER TABLE public.records ADD COLUMN updated_at timestamptz DEFAULT now(), ADD COLUMN title text, ADD COLUMN description text;
+        ALTER TABLE public.records ALTER COLUMN id SET DEFAULT gen_random_uuid();`)
+      db(fieldCompatibility)
+      db(schemaFence)
+    })
+
+    const text = { id: "n", name: "Note", type: "text" }
+    const number = { id: "q", name: "Quantity", type: "number" }
+    const flag = { id: "b", name: "Flag", type: "boolean" }
+    const record = (data: object, status = "draft") => db(`INSERT INTO public.records(id,site_id,category_id,data,status)
+      VALUES ('${uuid(10)}','${uuid(1)}','${uuid(2)}','${JSON.stringify(data)}','${status}')`)
+
+    it("removes or retypes empty fields in populated categories without rewriting records", () => {
+      template([text, number, flag])
+      record({ Note: null, Quantity: 0, Flag: "" }, "active")
+      template([{ ...text, type: "date" }, number])
+      template([number])
+      expect(db("SELECT data FROM public.records")).toBe('{"Flag": "", "Note": null, "Quantity": 0}')
+      expect(() => template(null)).toThrow('Cannot change "Quantity"')
+    })
+
+    it("permits compatible text conversions, valid bounds and unused option removal", () => {
+      template([text, number])
+      record({ Note: "Ready", Quantity: 0 }, "active")
+      template([{ ...text, type: "description", required: true }, { ...number, min: 0, max: 1, required: true }])
+      const choice = { ...text, type: "select", options: ["Ready", "Waiting"] }
+      template([choice, number])
+      template([{ ...choice, options: ["Ready"] }, number])
+      expect(() => template([{ ...choice, options: ["Waiting"] }, number])).toThrow('Cannot change "Note"')
+      expect(() => template([choice, { ...number, min: 1 }])).toThrow('Cannot change "Quantity"')
+      expect(() => template([choice, { ...number, type: "text" }])).toThrow('Cannot change "Quantity"')
+    })
+
+    it("allows missing required values in drafts, but not active records", () => {
+      const required = { ...text, required: true }
+      template([])
+      record({})
+      template([required])
+      template([text])
+      db("UPDATE public.records SET status = 'active'")
+      expect(() => template([required])).toThrow('Cannot change "Note"')
+      db(`UPDATE public.records SET data = '{"Note":"😀"}'`)
+      template([{ ...required, minLength: 2 }])
+      expect(() => template([{ ...required, maxLength: 1 }])).toThrow('Cannot change "Note"')
+    })
+
+    it("protects false values hidden by RLS and trash without making rows readable", () => {
+      template([flag, text])
+      record({ Flag: false })
+      db(`UPDATE public.records SET deleted_at = now();
+        ALTER TABLE public.records ENABLE ROW LEVEL SECURITY;
+        CREATE POLICY active_records ON public.records FOR SELECT TO authenticated USING (deleted_at IS NULL);`)
+      expect(actor("SELECT count(*) FROM public.records")).toBe("0")
+      template([flag])
+      expect(() => template([])).toThrow('Cannot change "Flag"')
+      expect(db(`SELECT has_function_privilege('authenticated',
+        'public.record_field_edit_conflicts(jsonb,jsonb,jsonb,jsonb,boolean)', 'EXECUTE')`)).toBe("f")
+    })
+
+    it("permits retargeting an empty relation but never reinterprets an existing link", () => {
+      const link = { id: "link", name: "Link", type: "relation" }
+      record({})
+      expect(() => configure("supplier")).not.toThrow()
+      template([link])
+      write(uuid(11))
+      expect(() => configure("supplier")).toThrow('Cannot change "Link"')
+      expect(() => template([{ ...link, type: "text" }])).toThrow('Cannot change "Link"')
+      expect(() => template([])).toThrow('Cannot change "Link"')
+    })
+
+    it("allows removal and retyping of tables with no rows but preserves tables with rows", () => {
+      const table = { ...text, type: "table" }
+      template([table])
+      record({ Note: [] }, "active")
+      template([text])
+      template([])
+      template([table])
+      db(`UPDATE public.records SET data = '{"Note":[{"Cell":"value"}]}'`)
+      expect(() => template([text])).toThrow('Cannot change "Note"')
+      expect(() => template([])).toThrow('Cannot change "Note"')
+    })
+
+    it("blocks value-dependent schema edits before inspection but permits labels", () => {
+      template([text])
+      const change = (role: string, fields: unknown) => actor(`SET test.records_role = '${role}';
+        UPDATE public.record_categories SET template_fields = '${JSON.stringify(fields)}' WHERE id = '${uuid(2)}'`)
+      for (const role of ["collaborator", "restricted", "assigned"]) {
+        expect(() => change(role, [{ ...text, label: "Presentation" }])).not.toThrow()
+        expect(() => change(role, [])).toThrow("Only unrestricted workspace owners or admins")
+      }
+      record({ Note: "Hidden" })
+      expect(() => change("collaborator", [])).toThrow("Only unrestricted workspace owners or admins")
+    })
+
+    it("checks both template and document version before a write and preserves omitted fields", () => {
+      template([text])
+      record({ Note: "keep" })
+      const version = db("SELECT updated_at FROM public.records")
+      const save = (fields: unknown, id: string | null, timestamp: string | null) => actor(`SELECT title FROM public.save_record_at_template(
+        ${id ? `'${id}'` : "NULL"}, ${timestamp ? `'${timestamp}'` : "NULL"}, '${uuid(1)}', '${uuid(2)}',
+        '${JSON.stringify(fields)}', '{"title":"Saved","data":{"Note":"keep"},"relations":{},"status":"draft"}')`)
+      expect(() => save([], uuid(10), version)).toThrow("template changed")
+      expect(() => save([], null, null)).toThrow("template changed")
+      expect(save([text], uuid(10), "2000-01-01")).toBe("")
+      expect(save([text], uuid(10), version)).toBe("Saved")
+      expect(save([text], null, null)).toBe("Saved")
+      const categoryVersion = db(`SELECT updated_at FROM public.record_categories WHERE id = '${uuid(2)}'`)
+      template([{ ...text, label: "New label" }])
+      expect(actor(`UPDATE public.record_categories SET template_fields = '[]'
+        WHERE id = '${uuid(2)}' AND updated_at = '${categoryVersion}' RETURNING id`)).toBe("")
+      expect(() => save([text], uuid(10), version)).toThrow("template changed")
+    })
   })
   it("preserves or clears opaque old relations without allowing new or moved opaque links", () => {
     db(`DROP TRIGGER records_relation_admission ON public.records;

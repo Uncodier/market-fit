@@ -1,7 +1,7 @@
 'use client'
 import { ProcurementDemoNotice } from '@/app/purchases/procurement/ui/demo-notice'
 import { useProcurementI18n } from '@/app/purchases/procurement/i18n/use-procurement-i18n'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ZodIssue } from 'zod'
 import { WorkflowValidation } from '@/app/purchases/requests/workflow-validation'
 import { useRouter } from 'next/navigation'
@@ -16,6 +16,9 @@ import { Textarea } from '@/app/components/ui/textarea'
 import { isRealSiteId, isDemoSiteId, isDemoModeActive } from '@/lib/demo-utils'
 import { demoRequestSummaries, demoTenderDocument, getDemoTenderDetail } from '@/lib/demo-data/procurement-workflow'
 import { ReferencePicker } from '@/app/purchases/procurement/components/reference-picker'
+import { useProcurementScopeKey } from '../procurement/components/use-procurement-scope-key'
+import { ReferenceOptions } from '../procurement/components/reference-options'
+import { useProcurementOptions } from '../procurement/components/use-procurement-options'
 import { tenderDocumentSchema, type TenderDocument } from './schema'
 
 const newLine = () => ({ id: crypto.randomUUID(), description: '', quantity: 1, unit: 'unit', unit_net_minor: 0, catalog_item_id: null })
@@ -23,30 +26,37 @@ function initialDocument(): TenderDocument {
   return { title: '', description: '', request_id: null, currency: 'USD', visibility: 'private', global_visible: false, participation: 'invitation_only', opening_policy: 'after_close',
     participation_deadline: new Date(Date.now() + 7 * 86400000).toISOString(), opening_at: new Date(Date.now() + 8 * 86400000).toISOString(), requirements: [newLine()] }
 }
+async function readApprovedRequests(url: string, signal: AbortSignal): Promise<{ id: string; title: string }[]> {
+  const response = await fetch(url, { signal, cache: 'no-store' })
+  const body = await response.json()
+  if (!response.ok || !Array.isArray(body.requests)) throw new Error(body.error || 'Unable to load requests')
+  return body.requests
+}
 export function TenderEditor({ id }: { id?: string }) {
   const { t } = useProcurementI18n()
   const { currentSite } = useSite()
+  const scope = useProcurementScopeKey(currentSite?.id)
   if (!currentSite) return <ProcurementEditorLoading />
   if (!isRealSiteId(currentSite.id) && !isDemoSiteId(currentSite.id)) return <p className="p-6">{t('procurement.workflow.tender.selectWorkspace')}</p>
-  return <Editor key={`${currentSite.id}:${id}`} siteId={currentSite.id} id={id} />
+  return <Editor key={`${scope}:${id}`} siteId={currentSite.id} id={id} />
 }
 function Editor({ siteId, id }: { siteId: string; id?: string }) {
   const demo = isDemoSiteId(siteId) || isDemoModeActive()
   const { t, message, formatNumber, formatMoney } = useProcurementI18n()
   const router = useRouter()
   const [document, setDocument] = useState<TenderDocument>(() => demo ? (id ? getDemoTenderDetail(siteId, id)?.tender ?? demoTenderDocument : demoTenderDocument) : initialDocument()), [version, setVersion] = useState(0)
-  const [requests, setRequests] = useState<{ id: string; title: string; status: string }[]>(demo ? demoRequestSummaries.filter(row => row.status === 'approved') : [])
   const [error, setError] = useState(''), [loading, setLoading] = useState(!demo && Boolean(id)), [saving, setSaving] = useState(false)
-  const [editable, setEditable] = useState(demo ? !id || !!getDemoTenderDetail(siteId, id) : !id), [optionsError, setOptionsError] = useState('')
+  const [editable, setEditable] = useState(demo ? !id || !!getDemoTenderDetail(siteId, id) : !id)
+  const { data, error: optionsError } = useProcurementOptions(!demo && editable ? `/api/procurement/requests?site_id=${encodeURIComponent(siteId)}&status=approved` : null, readApprovedRequests)
+  const requests = demo ? demoRequestSummaries.filter(row => row.status === 'approved') : data ?? []
+  const mounted = useRef(true)
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false } }, [])
   const [issues, setIssues] = useState<ZodIssue[]>([])
   const update = <K extends keyof TenderDocument>(key: K, value: TenderDocument[K]) => setDocument(current => ({ ...current, [key]: value }))
   useEffect(() => {
-    if (demo || isDemoModeActive()) return
+    if (!id || demo || isDemoModeActive()) return
     const controller = new AbortController()
-    fetch(`/api/procurement/requests?site_id=${siteId}&status=approved`, { signal: controller.signal, cache: 'no-store' })
-      .then(async response => { const result = await response.json(); if (!response.ok) throw new Error(result.error); return result })
-      .then(result => setRequests(result.requests)).catch(reason => { if (!controller.signal.aborted) setOptionsError(reason.message || 'Unable to load requests') })
-    if (id) fetch(`/api/procurement/tenders/${id}?site_id=${siteId}`, { signal: controller.signal, cache: 'no-store' })
+    fetch(`/api/procurement/tenders/${id}?site_id=${siteId}`, { signal: controller.signal, cache: 'no-store' })
       .then(async response => { const result = await response.json(); if (!response.ok) throw new Error(result.error); return result })
       .then(({ tender }) => { if (!controller.signal.aborted) { const { title, description, request_id, currency, visibility, global_visible, participation, opening_policy, participation_deadline, opening_at, requirements } = tender; setDocument({ title, description, request_id, currency, visibility, global_visible, participation, opening_policy, participation_deadline, opening_at, requirements }); setVersion(tender.version); setEditable(['draft', 'published'].includes(tender.status)) } })
       .catch(reason => { if (!controller.signal.aborted) setError(reason.message || 'Unable to load tender') }).finally(() => { if (!controller.signal.aborted) setLoading(false) })
@@ -61,7 +71,7 @@ function Editor({ siteId, id }: { siteId: string; id?: string }) {
     try {
       const response = await fetch(`/api/procurement/tenders${id ? `/${id}` : ''}?site_id=${siteId}`, { method: id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ expected_version: version, document: parsed.data }) })
       const result = await response.json(); if (!response.ok) throw new Error(result.error)
-      router.push(`/purchases/tenders/${result.id}`)
+      if (mounted.current) router.push(`/purchases/tenders/${result.id}`)
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Unable to save tender') } finally { setSaving(false) }
   }
   const close = () => router.push(id ? `/purchases/tenders/${id}` : '/purchases/tenders')
@@ -84,7 +94,7 @@ function Editor({ siteId, id }: { siteId: string; id?: string }) {
       <div className="grid gap-4 sm:grid-cols-2"><Choice disabled={saving} label={t('procurement.workflow.tender.participation')} value={document.participation} options={['invitation_only', 'approved_suppliers', 'open']} onChange={value => update('participation', value)} />
       <Choice disabled={saving} label={t('procurement.workflow.tender.openingPolicy')} value={document.opening_policy} options={['after_close', 'on_receipt']} onChange={value => update('opening_policy', value)} /></div>
       <div className="grid gap-4 sm:grid-cols-2">{(['participation_deadline', 'opening_at'] as const).map(key => <DateTimeField key={key} disabled={saving} label={key === 'opening_at' ? t('procurement.workflow.tender.openingLocal') : t('procurement.workflow.tender.closingLocal')} value={document[key]} onChange={value => update(key, value)} />)}</div>
-      <section className="space-y-4"><h2 className="text-sm font-semibold">{t('procurement.workflow.tender.structuredRequirements')}</h2>{document.requirements.map((line, index) => <fieldset className="space-y-3 rounded border p-4" key={line.id}><legend className="px-1 text-sm font-medium">{t('procurement.workflow.tender.requirementNumber', { number: formatNumber(index + 1) })}</legend>
+      <section className="space-y-4"><h2 className="text-sm font-semibold">{t('procurement.workflow.tender.structuredRequirements')}</h2><ReferenceOptions>{document.requirements.map((line, index) => <fieldset className="space-y-3 rounded border p-4" key={line.id}><legend className="px-1 text-sm font-medium">{t('procurement.workflow.tender.requirementNumber', { number: formatNumber(index + 1) })}</legend>
         {demo ? null : <ReferencePicker disabled={saving} siteId={siteId} kind="products" label={t('procurement.workflow.tender.catalogOptional')} single ids={line.catalog_item_id ? [line.catalog_item_id] : []} onChange={ids => update('requirements', document.requirements.map((row, i) => i === index ? { ...row, catalog_item_id: ids[0] ?? null } : row))} />}
         <Field label={t('procurement.workflow.tender.specification')}>{fieldId => <Textarea id={fieldId} required maxLength={2000} value={line.description} onChange={event => update('requirements', document.requirements.map((row, i) => i === index ? { ...row, description: event.target.value } : row))} />}</Field>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -92,7 +102,7 @@ function Editor({ siteId, id }: { siteId: string; id?: string }) {
         </div>
         <Field label={t('procurement.workflow.tender.unitEstimateMinor')}>{fieldId => <Input id={fieldId} required type="number" min={0} step="1" value={line.unit_net_minor} onChange={event => update('requirements', document.requirements.map((row, i) => i === index ? { ...row, unit_net_minor: Number(event.target.value) } : row))} />}</Field>
         <Button type="button" variant="outline" disabled={document.requirements.length === 1} onClick={() => update('requirements', document.requirements.filter((_, i) => i !== index))}>{t('procurement.workflow.tender.removeRequirement')}</Button>
-      </fieldset>)}<Button type="button" variant="outline" disabled={document.requirements.length >= 100} onClick={() => update('requirements', [...document.requirements, newLine()])}>{t('procurement.workflow.tender.addRequirement')}</Button></section>
+      </fieldset>)}</ReferenceOptions><Button type="button" variant="outline" disabled={document.requirements.length >= 100} onClick={() => update('requirements', [...document.requirements, newLine()])}>{t('procurement.workflow.tender.addRequirement')}</Button></section>
       <p>{t('procurement.workflow.tender.internalEstimate', { amount: formatMoney(document.requirements.reduce((sum, line) => sum + line.quantity * line.unit_net_minor, 0), document.currency) })}</p>
     </fieldset>}</DialogBody>
     <DialogFooter><Button type="button" variant="outline" disabled={saving} onClick={close}>{t('procurement.workflow.common.cancel')}</Button><Button type="submit" disabled={demo || saving || loading || !editable}>{saving ? t('procurement.workflow.common.saving') : t('procurement.workflow.tender.saveWorkingVersion')}</Button></DialogFooter>

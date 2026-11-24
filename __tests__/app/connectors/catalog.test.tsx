@@ -213,22 +213,14 @@ test("shows the tabs before search and the platform notices after the catalogue"
   expect(screen.getByRole("tablist").compareDocumentPosition(screen.getByRole("search")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 })
 
-test.each([false, true])("keeps Private reports visibly labeled in the real toolbar (mobile: %s)", async mobile => {
+test.each([false, true])("keeps search in the toolbar without a Private reports shortcut (mobile: %s)", async mobile => {
   mockMobile = mobile
   fetchMock.mockResolvedValue(jsonResponse(catalog))
   render(<ConnectorCatalog />)
   await screen.findByRole("link", { name: "Mail toolkit" })
 
-  const reports = screen.getByRole("button", { name: "Private reports" })
-  expect(within(reports).getByText("Private reports")).toBeVisible()
-  expect(reports).toHaveClass("h-10", "ring-input", "gap-2")
-  expect(reports).not.toHaveClass("!w-10")
-  expect(reports.querySelector("[aria-hidden='true'] svg path")).toBeInTheDocument()
-  expect(reports.querySelector("svg circle")).toBeNull()
-  expect(reports).toHaveAttribute("type", "submit")
-  const privateNavigation = reports.closest("form")
-  expect(privateNavigation).toHaveAttribute("method", "get")
-  expect(privateNavigation).toHaveAttribute("action", "/connectors/results")
+  expect(screen.queryByRole("button", { name: "Private reports" })).not.toBeInTheDocument()
+  expect(screen.queryByRole("link", { name: "Private reports" })).not.toBeInTheDocument()
   const search = screen.getByRole("button", { name: "Search connectors" })
   expect(search).toHaveClass("h-10", "w-10")
   expect(search.querySelector("svg")).toBeInTheDocument()

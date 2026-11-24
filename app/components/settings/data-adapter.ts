@@ -17,8 +17,6 @@ export type AdaptedSiteFormValues = Omit<SiteFormValues, 'competitors'> & {
 
 // Adaptar Site a SiteFormValues para el formulario
 export const adaptSiteToForm = (site: Site): AdaptedSiteFormValues => {
-  console.log("Adapting site to form:", site);
-  
   // Convertir los campos de goals al nuevo formato si existen
   const goalsData = site.settings?.goals 
     ? {
@@ -41,14 +39,12 @@ export const adaptSiteToForm = (site: Site): AdaptedSiteFormValues => {
 
   // Process team members data
   const teamMembers = site.settings?.team_members || [];
-  console.log("🔍 ADAPT: Raw team_members from site.settings:", teamMembers);
-  console.log("🔍 ADAPT: site.settings:", site.settings);
   
   // Make sure each team member has the required fields
   const processedTeamMembers = teamMembers.map(member => {
     if (!member) return null;
     
-    const processed = {
+    return {
       email: member.email || "",
       role: member.role || "view",
       name: member.name || "",
@@ -56,8 +52,6 @@ export const adaptSiteToForm = (site: Site): AdaptedSiteFormValues => {
       blocked_screens: "blocked_screens" in member && Array.isArray(member.blocked_screens)
         ? member.blocked_screens.filter((screen): screen is string => typeof screen === "string") : [],
     };
-    console.log("🔍 ADAPT: Processing member:", member, "→", processed);
-    return processed;
   }).filter(Boolean) as {
     email: string;
     role: "view" | "create" | "delete" | "admin";
@@ -66,17 +60,12 @@ export const adaptSiteToForm = (site: Site): AdaptedSiteFormValues => {
     blocked_screens: string[];
   }[]; // Type assertion and remove null entries
   
-  console.log("🔍 ADAPT: Final processed team members:", processedTeamMembers);
-  
   // Add business_hours
   const business_hours = site.settings?.business_hours?.map(bh => ({
     ...bh,
     force_closed: bh.force_closed ?? false,
     respectHolidays: bh.respectHolidays ?? true // Ensure it's always boolean, default to true
   })) || [];
-  
-  console.log("🔍 ADAPT: site.settings?.business_hours:", site.settings?.business_hours)
-  console.log("🔍 ADAPT: Final adapted data business_hours:", business_hours)
   
   const result: AdaptedSiteFormValues = {
     name: site.name,
@@ -90,17 +79,11 @@ export const adaptSiteToForm = (site: Site): AdaptedSiteFormValues => {
       name: comp.name || "" // Ensure name is always a string
     })) || [],
     focusMode: site.settings?.focus_mode || 50,
-    businessModel: (() => {
-      console.log("DATA ADAPTER: Raw site.settings:", JSON.stringify(site.settings, null, 2));
-      console.log("DATA ADAPTER: site.settings?.business_model:", site.settings?.business_model);
-      const businessModel = {
-        b2b: site.settings?.business_model?.b2b || false,
-        b2c: site.settings?.business_model?.b2c || false,
-        b2b2c: site.settings?.business_model?.b2b2c || false
-      };
-      console.log("DATA ADAPTER: Final businessModel:", businessModel);
-      return businessModel;
-    })(),
+    businessModel: {
+      b2b: site.settings?.business_model?.b2b || false,
+      b2c: site.settings?.business_model?.b2c || false,
+      b2b2c: site.settings?.business_model?.b2b2c || false,
+    },
     // Add company info
     currency: site.settings?.currency || "USD",
     default_locale: site.settings?.default_locale || "en",
@@ -374,6 +357,5 @@ export const adaptSiteToForm = (site: Site): AdaptedSiteFormValues => {
     }
   }
   
-  console.log("🔍 ADAPT: Final adapted data:", result);
   return result
 } 

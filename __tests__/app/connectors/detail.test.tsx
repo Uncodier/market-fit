@@ -1,12 +1,14 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { DetailContent } from "@/app/connectors/connector-detail"
+import ConnectorDetailPage, { DetailContent } from "@/app/connectors/connector-detail"
 import ConnectorDetailLoading from "@/app/connectors/[slug]/loading"
 import { connector, deferred, detail, jsonResponse, translate } from "./fixtures"
 
 jest.mock("@/app/context/LocalizationContext", () => ({ useLocalization: () => ({ t: translate }) }))
 jest.mock("@/app/components/ui/sticky-header", () => ({ StickyHeader: ({ children }: { children: React.ReactNode }) => <header>{children}</header> }))
 jest.mock("@/app/connectors/connector-access", () => ({ ConnectorAccessPanel: () => <div>Account permissions</div> }))
+jest.mock("@/app/context/SiteContext", () => ({ useSite: () => ({ currentSite: { id: "site-1" }, isLoading: false }) }))
+jest.mock("@/app/components/auth/auth-context", () => ({ useAuthContext: () => ({ user: { id: "actor" }, isLoading: false }) }))
 const fetchMock = jest.mocked(fetch)
 const push = jest.fn()
 const active = { ...connector, enabled: true }
@@ -42,6 +44,13 @@ test("the route fallback mirrors the summary sections and keeps the account plac
   expect(screen.queryByRole("combobox", { name: "Connected account" })).not.toBeInTheDocument()
 })
 
+test("a callback review link cannot fetch the account under a different active workspace", () => {
+  jest.mocked(useSearchParams).mockReturnValue(new URLSearchParams({ connector: connector.id, workspace: "original-site" }) as ReturnType<typeof useSearchParams>)
+  render(<ConnectorDetailPage slug="mail" />)
+  expect(screen.getByRole("status")).toHaveTextContent(/Switch to the workspace where you connected/)
+  expect(fetchMock).not.toHaveBeenCalled()
+})
+
 test("reserves the account selector in the sticky header while detail fetches", async () => {
   const pending = deferred<Response>()
   fetchMock.mockReturnValueOnce(pending.promise)
@@ -57,6 +66,14 @@ test("reserves the account selector in the sticky header while detail fetches", 
   expect(toolbar.queryByTestId("connector-account-skeleton")).not.toBeInTheDocument()
   expect(screen.queryByTestId("connector-summary-skeleton")).not.toBeInTheDocument()
   expect(screen.queryByText("Loading connectors…")).not.toBeInTheDocument()
+})
+
+test("shows no authentication required instead of an empty onboarding flow", async () => {
+  fetchMock.mockResolvedValueOnce(jsonResponse({ ...detail, auth_configs: [], connections: [], connection_setup: { kind: "no_auth" } }))
+  render(<DetailContent slug="mail" siteId="site-1" />)
+  expect(await screen.findByText("This connector does not require authentication. There is no account to connect.")).toBeVisible()
+  expect(screen.queryByRole("button", { name: /connect account|setup required/i })).not.toBeInTheDocument()
+  expect(fetchMock).toHaveBeenCalledTimes(1)
 })
 
 test("defaults to the most recently verified active account in the sticky header", async () => {

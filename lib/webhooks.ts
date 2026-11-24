@@ -29,13 +29,15 @@ export interface CreateWebhookEndpointParams {
   secret?: string;
 }
 
-export async function listWebhookEndpoints(siteId: string): Promise<WebhookEndpoint[]> {
+export type WebhookEndpointSummary = Pick<WebhookEndpoint, "id" | "name" | "target_url">
+
+export async function listWebhookEndpoints(siteId: string, signal: AbortSignal): Promise<WebhookEndpointSummary[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("webhooks_endpoints")
-    .select("*")
+    .select("id, name, target_url")
     .eq("site_id", siteId)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false }).abortSignal(signal);
 
   if (error) throw new Error(error.message);
   return data || [];
@@ -76,18 +78,19 @@ export interface WebhookSubscription {
   endpoint_id: string;
   event_type: WebhookEventType | string;
   is_active: boolean;
-  filters: any;
+  filters: unknown;
   created_at: string;
   updated_at: string;
 }
 
-export async function listWebhookSubscriptions(endpointId: string): Promise<WebhookSubscription[]> {
+export async function listWebhookSubscriptions(siteId: string, endpointId: string, signal: AbortSignal): Promise<Pick<WebhookSubscription, "event_type" | "is_active">[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("webhooks_subscriptions")
-    .select("*")
+    .select("event_type, is_active")
+    .eq("site_id", siteId)
     .eq("endpoint_id", endpointId)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false }).abortSignal(signal);
   if (error) throw new Error(error.message);
   return data || [];
 }

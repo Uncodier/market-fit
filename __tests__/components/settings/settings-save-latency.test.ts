@@ -5,8 +5,6 @@ import { persistSiteSettings } from "@/app/context/site-update-settings"
 import { updateSiteRecord } from "@/app/context/site-crud"
 import type { Site, SiteSettings } from "@/app/context/site-types"
 
-jest.mock("@/lib/sites/logo-cache", () => ({ saveLogoToCache: jest.fn().mockResolvedValue(undefined) }))
-
 const siteId = "00000000-0000-4000-8000-000000000001"
 const initialSettings = { site_id: siteId, about: "Old", channels: { connections: [] } } as unknown as SiteSettings
 const initialSite = { id: siteId, name: "Old name", settings: initialSettings } as Site

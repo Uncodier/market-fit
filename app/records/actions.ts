@@ -1,6 +1,7 @@
 "use server"
 
 import { z } from "zod"
+import { canCommand } from "@/lib/permissions/capabilities"
 import { getRecordActionError } from "./lib/action-error"
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
@@ -133,7 +134,7 @@ export async function createRecordCategory({
       template_fields,
     })
     const supabase = await getAuthenticatedClient()
-    const template = validateTemplateFieldUpdate([], input.template_fields, false)
+    const template = validateTemplateFieldUpdate([], input.template_fields)
     if (!template.valid) throw new Error(template.error)
     await validateTemplateTargets(supabase, input.site_id, template.fields)
     const { data, error } = await supabase
@@ -153,18 +154,20 @@ export async function createRecordCategory({
 
 export async function updateRecordCategory(
   id: string,
-  updates: Partial<RecordCategory>
+  updates: Partial<RecordCategory>,
+  expectedUpdatedAt: string,
 ) {
   try {
     const categoryId = categoryIdSchema.parse(id)
     const safeUpdates = categoryMutationSchema.partial().parse(updates)
+    const expectedVersion = z.string().datetime({ offset: true }).parse(expectedUpdatedAt)
     const supabase = await getAuthenticatedClient()
     if (safeUpdates.template_fields !== undefined) {
-      const previous = await supabase.from('record_categories').select('site_id, template_fields').eq('id', categoryId).maybeSingle()
+      const previous = await supabase.from('record_categories').select('site_id, template_fields, updated_at').eq('id', categoryId).maybeSingle()
       if (previous.error || !previous.data) throw new Error("Category not found or access denied")
-      const records = await supabase.from('records').select('id', { count: 'exact', head: true }).eq('category_id', categoryId)
-      if (records.error) throw new Error("Unable to verify category contents")
-      const template = validateTemplateFieldUpdate(previous.data.template_fields, safeUpdates.template_fields, (records.count || 0) > 0)
+      if (previous.data.updated_at !== expectedVersion) return { error: "This category changed elsewhere. Reopen the editor before saving again.", conflict: true }
+      // The category trigger checks stored values, including rows hidden by RLS.
+      const template = validateTemplateFieldUpdate(previous.data.template_fields, safeUpdates.template_fields)
       if (!template.valid) throw new Error(template.error)
       await validateTemplateTargets(supabase, previous.data.site_id, template.fields)
     }
@@ -172,10 +175,12 @@ export async function updateRecordCategory(
       .from('record_categories')
       .update(safeUpdates)
       .eq('id', categoryId)
+      .eq('updated_at', expectedVersion)
       .select()
-      .single()
+      .maybeSingle()
     
     if (error) throw error
+    if (!data) return { error: "This category changed or is no longer available. Reopen the editor before saving again.", conflict: true }
     revalidatePath("/records")
     return { category: data }
   } catch (error: unknown) {
@@ -282,12 +287,15 @@ export async function createRecord({
       status,
     })
     const supabase = await getAuthenticatedClient()
+    if (!canCommand("insert")) throw new Error("You do not have permission to create records")
     const validation = await validateRecordWrite(supabase, input)
     if (!validation.valid) throw new Error(validation.error)
+    const { site_id: siteId, category_id: categoryId, ...changes } = input
     const { data: record, error } = await supabase
-      .from('records')
-      .insert(input)
-      .select()
+      .rpc('save_record_at_template', {
+        p_record_id: null, p_updated_at: null, p_site_id: siteId, p_category_id: categoryId,
+        p_template_fields: validation.templateFields, p_changes: changes,
+      })
       .single()
     
     if (error) throw error
@@ -310,6 +318,7 @@ export async function updateRecord(
     const safeUpdates = updateRecordSchema.parse(updates)
     const expectedVersion = z.string().datetime({ offset: true }).parse(expectedUpdatedAt)
     const supabase = await getAuthenticatedClient()
+    if (!canCommand("update")) throw new Error("You do not have permission to update records")
     const previous = await supabase.from('records')
       .select('site_id, category_id, data, relations, status, updated_at').eq('id', recordId).maybeSingle()
     if (previous.error || !previous.data) throw new Error("Record not found or access denied")
@@ -319,14 +328,15 @@ export async function updateRecord(
     const persisted = { ...previous.data, data: previous.data.data ?? {}, relations: previous.data.relations ?? {} }
     const validation = await validateRecordWrite(supabase, { ...persisted, ...safeUpdates }, persisted)
     if (!validation.valid) throw new Error(validation.error)
+    const { category_id: categoryId = persisted.category_id, ...changes } = safeUpdates
     const { data: record, error } = await supabase
-      .from('records')
-      .update(safeUpdates)
-      .eq('id', recordId)
-      .eq('updated_at', expectedVersion)
-      .select()
+      .rpc('save_record_at_template', {
+        p_record_id: recordId, p_updated_at: expectedVersion, p_site_id: persisted.site_id, p_category_id: categoryId,
+        p_template_fields: validation.templateFields, p_changes: changes,
+      })
       .maybeSingle()
     
+    if (error?.code === "40001") return { error: "The field template changed or is unavailable. Reload before saving again.", conflict: true }
     if (error) throw error
     if (!record) return { error: "This record changed elsewhere. Reload before saving again.", conflict: true }
     revalidatePath("/records")

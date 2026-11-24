@@ -14,7 +14,8 @@ function show(value: ConnectorDetail, onChanged = jest.fn()) {
   return render(<><TopBarPrimaryActionsSlot /><ConnectAccount siteId="site-1" detail={value} onChanged={onChanged} /></>)
 }
 
-beforeEach(() => fetchMock.mockReset())
+beforeEach(() => { fetchMock.mockReset(); sessionStorage.clear() })
+beforeAll(() => { HTMLElement.prototype.scrollIntoView ??= jest.fn() })
 
 test("creates OAuth only after confirmation and refreshes rather than claiming an account is connected", async () => {
   const changed = jest.fn()
@@ -158,4 +159,99 @@ test("opens a hosted API-key link for a new toolkit without collecting the crede
   fireEvent.click(screen.getByRole("button",{name:"Continue to authorization"}))
   await screen.findByRole("alert")
   expect(fetchMock).toHaveBeenCalledWith("/api/connectors/auth-attempts/ask",expect.objectContaining({body:JSON.stringify({site_id:"site-1",toolkit_slug:"examplecrm",auth_config_id:"config-key"})}))
+})
+
+const setupKey = randomBytes(32).toString("hex")
+const meta: ConnectorDetail = { ...detail, connections: [], auth_configs: [],
+  toolkit: { ...detail.toolkit, slug: "metaads", name: "Meta Ads", auth_schemes: ["API_KEY", "OAUTH2"] },
+  connection_setup: { kind: "managed_oauth", auth_scheme: "OAUTH2", setup_key: setupKey } }
+
+test("Meta Ads uses one hosted authorization request and does not claim a connection before the callback", async () => {
+  const virtualNavigation = jest.spyOn(console, "error").mockImplementation((error: unknown) => {
+    if (!String(error).includes("Not implemented: navigation")) throw error
+  })
+  const response = deferred<Response>()
+  const changed = jest.fn()
+  fetchMock.mockReturnValue(response.promise)
+  show(meta, changed)
+  fireEvent.click(screen.getByRole("button", { name: "Connect account" }))
+  expect(screen.getByRole("dialog")).toHaveAccessibleDescription(/prepare the provider’s managed sign-in.*does not enable Robots Ask/)
+  expect(screen.queryByRole("button", { name: "Create OAuth configuration" })).not.toBeInTheDocument()
+  expect(fetchMock).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole("button", { name: "Continue to authorization" }))
+  expect(screen.getByRole("button", { name: "Preparing authorization…" })).toBeDisabled()
+  expect(fetchMock).toHaveBeenCalledWith("/api/connectors/auth-attempts/hosted", expect.objectContaining({ method: "POST",
+    body: JSON.stringify({ site_id: "site-1", toolkit_slug: "metaads", expected_setup: setupKey }) }))
+  response.resolve(jsonResponse({ attempt_id: "11111111-1111-4111-8111-111111111111", continuation: randomBytes(32).toString("hex"), redirect_url: "https://connect.composio.dev/link" }))
+  await waitFor(() => expect(screen.getByRole("dialog")).toHaveAttribute("aria-busy", "true"))
+  expect(virtualNavigation).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringContaining("Not implemented: navigation") }))
+  virtualNavigation.mockRestore()
+  expect(changed).not.toHaveBeenCalled()
+  expect(fetchMock).toHaveBeenCalledTimes(1)
+})
+
+test.each(["api", "mcp"] as const)("discloses Ask incompatibility before authorizing a %s connection", type => {
+  const setup_key = "e".repeat(64)
+  show({ ...meta, toolkit: { ...meta.toolkit, toolkit_type: type }, connection_setup: type === "api"
+    ? { kind: "hosted_credentials", auth_scheme: "BEARER_TOKEN", setup_key } : { kind: "managed_oauth", auth_scheme: "OAUTH2", setup_key } })
+  fireEvent.click(screen.getByRole("button", { name: "Connect account" }))
+  expect(screen.getByRole("dialog")).toHaveAccessibleDescription(/Robots Ask does not support this connection method/)
+  expect(screen.getByRole("button", { name: type === "api" ? "Continue to secure form" : "Continue to authorization" })).toBeEnabled()
+  expect(fetchMock).not.toHaveBeenCalled()
+})
+
+test("opens the secure credentials flow for a toolkit without a prior config", async () => {
+  fetchMock.mockResolvedValueOnce(jsonResponse({ error: { code: "AUTH_CONFIG_PROVIDER_SETUP_REQUIRED" } }, 422))
+  show({ ...meta, toolkit: { ...meta.toolkit, slug: "_1password", auth_schemes: ["API_KEY"] },
+    connection_setup: { kind: "hosted_credentials", auth_scheme: "API_KEY", setup_key: setupKey } })
+  fireEvent.click(screen.getByRole("button", { name: "Connect account" }))
+  expect(screen.getByRole("dialog")).toHaveAccessibleDescription(/secure form to enter the credentials/)
+  expect(screen.queryByRole("textbox")).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole("button", { name: "Continue to secure form" }))
+  expect(await screen.findByRole("alert")).toHaveTextContent(/check the provider configuration and project key permissions/)
+  expect(fetchMock).toHaveBeenCalledWith("/api/connectors/auth-attempts/hosted", expect.objectContaining({
+    body: JSON.stringify({ site_id: "site-1", toolkit_slug: "_1password", expected_setup: setupKey }) }))
+  expect(fetchMock).toHaveBeenCalledTimes(1)
+})
+
+test("only lets the manager select currently eligible configurations", async () => {
+  fetchMock.mockResolvedValueOnce(jsonResponse({ error: { code: "AUTH_CONFIG_UNAVAILABLE" } }, 422))
+  show({ ...meta, auth_configs: [
+    { id: "first", setup_key: randomBytes(32).toString("hex"), name: "Provider OAuth", auth_scheme: "OAUTH2" }, { id: "second", setup_key: setupKey, name: "A different OAuth app", auth_scheme: "OAUTH2" },
+    { id: "blocked", name: "Shared key", auth_scheme: "API_KEY" },
+  ], connection_setup: { kind: "existing", config_ids: ["first", "second"] } })
+  fireEvent.click(screen.getByRole("button", { name: "Connect account" }))
+  const button = screen.getByRole("button", { name: "Continue to authorization" })
+  expect(button).toBeDisabled()
+  fireEvent.keyDown(screen.getByRole("combobox", { name: "Authorization configuration" }), { key: "ArrowDown" })
+  expect(screen.queryByRole("option", { name: "Shared key" })).not.toBeInTheDocument()
+  fireEvent.click(await screen.findByRole("option", { name: "A different OAuth app" }))
+  expect(button).toBeEnabled()
+  fireEvent.click(button)
+  expect(await screen.findByRole("alert")).toHaveTextContent("Available sign-in options changed")
+  expect(fetchMock).toHaveBeenCalledWith("/api/connectors/auth-attempts/hosted", expect.objectContaining({
+    body: JSON.stringify({ site_id: "site-1", toolkit_slug: "metaads", auth_config_id: "second", expected_setup: setupKey }) }))
+})
+
+test("does not submit or fall back when an older API omits the selected config's setup key", async () => {
+  show({ ...meta, auth_configs: [{ id: "first", name: "Provider OAuth", auth_scheme: "OAUTH2" }],
+    connection_setup: { kind: "existing", config_ids: ["first"] } })
+  fireEvent.click(screen.getByRole("button", { name: "Connect account" }))
+  fireEvent.click(screen.getByRole("button", { name: "Continue to authorization" }))
+  expect(await screen.findByRole("alert")).toHaveTextContent("Available sign-in options changed")
+  expect(fetchMock).not.toHaveBeenCalled()
+})
+
+test("gives project-admin instructions for custom OAuth and never asks to connect a no-auth toolkit", () => {
+  const refreshed = jest.fn()
+  const page = show({ ...meta, connection_setup: { kind: "admin_oauth" } }, refreshed)
+  fireEvent.click(screen.getByRole("button", { name: "Setup required" }))
+  expect(screen.getByRole("dialog")).toHaveAccessibleDescription(/project administrator.*provider’s own OAuth app/)
+  expect(screen.queryByRole("button", { name: "Continue to authorization" })).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole("button", { name: "Refresh status" }))
+  expect(refreshed).toHaveBeenCalledTimes(1)
+  expect(fetchMock).not.toHaveBeenCalled()
+  page.unmount()
+  show({ ...meta, connection_setup: { kind: "no_auth" } })
+  expect(screen.queryByRole("button")).not.toBeInTheDocument()
 })

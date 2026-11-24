@@ -360,6 +360,7 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
       return [entry.id]
     })
     setVisibleSidebarShortcutKeys(ids)
+    return () => setVisibleSidebarShortcutKeys([])
   }, [visibleShortcuts])
 
   let bestMatchId: string | null = null;

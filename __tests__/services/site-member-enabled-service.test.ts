@@ -1,6 +1,7 @@
 import { siteMembersService, type SiteMember } from '@/app/services/site-members-service'
 import { BillingUpgradeRequired } from '@/lib/billing-limit-errors'
 import { createClient } from '@/lib/supabase/client'
+import { onScreenScopeChanged } from '@/lib/permissions/screen-scope-invalidation'
 
 jest.mock('@/lib/supabase/client', () => ({ createClient: jest.fn() }))
 
@@ -28,6 +29,19 @@ beforeEach(() => {
 })
 
 describe('siteMembersService.setMemberEnabled', () => {
+  it('invalidates only after confirmed success and only for the changed workspace', async () => {
+    const ours = jest.fn(), other = jest.fn()
+    const stop = onScreenScopeChanged(siteId, ours), stopOther = onScreenScopeChanged(foreignId, other)
+    try {
+      jest.spyOn(global, 'fetch').mockResolvedValueOnce(response({ success: false }, 503))
+        .mockResolvedValueOnce(response({ success: true, member }))
+      await expect(siteMembersService.setMemberEnabled(siteId, memberId, false)).rejects.toThrow()
+      expect(ours).not.toHaveBeenCalled()
+      await siteMembersService.setMemberEnabled(siteId, memberId, false)
+      expect(ours).toHaveBeenCalledTimes(1)
+      expect(other).not.toHaveBeenCalled()
+    } finally { stop(); stopOther() }
+  })
   it.each([true, false])('posts only the target and enabled=%s, returning the retained member', async enabled => {
     const updated = { ...member, manually_disabled: !enabled, license_suspended: !enabled }
     const fetch = jest.spyOn(global, 'fetch').mockResolvedValue(response({ success: true, member: updated }))

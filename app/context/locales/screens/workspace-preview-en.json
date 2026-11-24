@@ -1,0 +1,9 @@
+{
+  "workspacePreview.title": "Read-only preview",
+  "workspacePreview.stalled": "The preview timed out. Wait until Retry is available, or reload the page now.",
+  "workspacePreview.reload": "Reload page",
+  "workspacePreview.syncFailed": "Read-only preview · Workspace settings could not be loaded.",
+  "workspacePreview.failed": "The workspace preview could not be loaded.",
+  "workspacePreview.denied": "This screen is not available for your account in this workspace.",
+  "workspacePreview.empty": "No items to preview."
+}

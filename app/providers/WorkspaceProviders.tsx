@@ -5,6 +5,7 @@ import { LayoutProvider } from '../context/LayoutContext';
 import { SiteProvider } from '@/app/context/SiteContext';
 import { PermissionProvider } from '@/app/context/PermissionContext';
 import { ScreenAccessProvider } from '@/app/context/ScreenAccessContext';
+import { WorkspaceAccessSnapshot } from '@/app/context/WorkspaceAccessSnapshot';
 import { WidgetProvider } from '../context/WidgetContext';
 import { BillingLimitProvider } from '../context/BillingLimitContext';
 import { RobotsProvider } from '../context/RobotsContext';
@@ -30,19 +31,19 @@ export default function WorkspaceProviders({ children }: { children: React.React
       <SiteProvider>
         <WorkspaceSiteSWRScope>
           <WorkspaceSiteBootstraps />
-          <PermissionProvider>
-            <ScreenAccessProvider>
-              <RobotsProvider>
-                <WidgetProvider>
-                  <BillingLimitProvider>
-                    <TooltipProvider>
-                      {children}
-                    </TooltipProvider>
-                  </BillingLimitProvider>
-                </WidgetProvider>
-              </RobotsProvider>
-            </ScreenAccessProvider>
-          </PermissionProvider>
+          <WorkspaceAccessSnapshot>
+            <PermissionProvider>
+              <ScreenAccessProvider>
+                <RobotsProvider>
+                  <WidgetProvider>
+                    <BillingLimitProvider>
+                      <TooltipProvider>{children}</TooltipProvider>
+                    </BillingLimitProvider>
+                  </WidgetProvider>
+                </RobotsProvider>
+              </ScreenAccessProvider>
+            </PermissionProvider>
+          </WorkspaceAccessSnapshot>
         </WorkspaceSiteSWRScope>
       </SiteProvider>
     </LayoutProvider>

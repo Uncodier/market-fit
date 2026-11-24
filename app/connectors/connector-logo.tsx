@@ -22,5 +22,5 @@ export function ConnectorLogo({ src, name, compact = false }: { src: string | nu
 }
 
 export function connectorToolkitLogo(slug: string) {
-  return /^[a-z0-9][a-z0-9_-]{0,79}$/i.test(slug) ? `https://logos.composio.dev/api/${slug}` : null
+  return /^[a-z0-9_][a-z0-9_-]{0,99}$/i.test(slug) ? `https://logos.composio.dev/api/${slug}` : null
 }

@@ -1,17 +1,11 @@
 import { ALL_TASK_IDS } from "@/app/lib/onboarding-task-ids"
 
-export function countOnboardingProgress(
-  onboarding: Record<string, boolean> | null | undefined
-): { done: number; total: number } {
-  const total = ALL_TASK_IDS.length
-  if (!onboarding) return { done: 0, total }
-  const done = ALL_TASK_IDS.filter((id) => onboarding[id] === true).length
-  return { done, total }
-}
+export interface OnboardingProgress { done: number; total: number }
 
-export function isOnboardingFullyComplete(
-  onboarding: Record<string, boolean> | null | undefined
-): boolean {
-  if (!onboarding) return false
-  return ALL_TASK_IDS.every((id) => onboarding[id] === true)
+/** A null JSON column means no tasks completed; a missing column/read is unknown. */
+export function readOnboardingProgress(raw: unknown): OnboardingProgress | undefined {
+  if (raw === null) return { done: 0, total: ALL_TASK_IDS.length }
+  if (typeof raw !== 'object' || Array.isArray(raw) || !raw) return undefined
+  const tasks = raw as Record<string, unknown>
+  return { done: ALL_TASK_IDS.filter(id => tasks[id] === true).length, total: ALL_TASK_IDS.length }
 }

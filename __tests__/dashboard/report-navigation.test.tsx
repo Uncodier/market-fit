@@ -6,14 +6,16 @@ import DashboardPage from "@/app/dashboard/page"
 import { TopBarTitle } from "@/app/components/navigation/TopBarTitle"
 import { REPORTS, type ReportId } from "@/app/dashboard/report-sections"
 
-let mockSite = "site-one"
+const readySite = '11111111-1111-4111-8111-111111111111'
+let mockSite = readySite
 let mockSiteLoading = false
 let mockMaxRangeDays = 93
 const mockLimits: { isLoading: boolean; isValidating: boolean; signedOut: boolean; error?: Error; mutate: jest.Mock } = {
   isLoading: false, isValidating: false, signedOut: false, error: undefined, mutate: jest.fn(),
 }
 const mockContent = jest.fn()
-jest.mock("@/app/context/SiteContext", () => ({ useSite: () => ({ currentSite: { id: mockSite }, isLoading: mockSiteLoading }) }))
+jest.mock("@/app/context/SiteContext", () => ({ useSite: () => ({ currentSite: { id: mockSite }, isLoading: mockSiteLoading,
+  requestScope: { siteId: mockSite, actorId: 'user-one' } }) }))
 jest.mock("@/app/hooks/use-auth", () => ({ useAuth: () => ({ user: { id: "user-one" }, isLoading: false }) }))
 jest.mock("@/app/context/LocalizationContext", () => ({ useLocalization: () => ({ t: () => "" }) }))
 jest.mock("@/app/hooks/use-prevent-refresh", () => ({ usePageRefreshPrevention: () => ({ shouldPreventRefresh: false }) }))
@@ -61,7 +63,7 @@ afterAll(() => {
 
 beforeEach(() => {
   localStorage.clear(); sessionStorage.clear()
-  mockContent.mockClear(); mockSite = "site-one"; mockSiteLoading = false; mockMaxRangeDays = 93
+  mockContent.mockClear(); mockSite = readySite; mockSiteLoading = false; mockMaxRangeDays = 93
   mockLimits.isLoading = false; mockLimits.isValidating = false; mockLimits.signedOut = false; mockLimits.error = undefined
   mockLimits.mutate.mockReset()
   jest.mocked(usePathname).mockReturnValue("/dashboard")

@@ -419,7 +419,7 @@ export default function RecordDetailPage() {
           </div>
 
           <div className="h-full">
-            <div className={activeView === "document" ? "h-full pt-14" : "hidden"}>
+            <div className={activeView === "document" ? "h-full" : "hidden"}>
               <RecordDocumentView
                 editor={editor}
                 record={record}

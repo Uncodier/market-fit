@@ -100,7 +100,9 @@ transport errors, malformed responses or its eight-second verification timeout.
 RPC transport is aborted at the deadline; SDK work remains single-flight until it
 settles. Confirmed authentication/membership denials and changed permission scopes
 still retire private data, including late denials. Cached UI is not authorization:
-server checks and RLS remain mandatory. Hidden tabs do not run interval checks.
+server checks and RLS remain mandatory. Hidden tabs do not initiate startup or
+interval checks. Focus and visibility events from the same foreground transition
+coalesce for one second; reconnect and periodic revocation checks remain independent.
 
 ### Robots file-picker recovery
 
@@ -173,7 +175,14 @@ RLS remain enforced. Regression coverage lives in
 ### Other workspace screens
 
 `WorkspaceSiteSWRScope` defers workspace SWR requests while `SiteContext.isLoading`
-is true, regardless of array, object, or URL key shape. It keeps previously loaded
+is true, regardless of array, object, or URL key shape. The sole exception is
+the conversation index inside its verified read boundary: the five-part key
+must match the authenticated actor and selected request target. This does not
+resume messages, mutations, reviews or other workspace reads. See the
+[independent inbox contract](ARCHITECTURE.md#independent-conversation-list).
+Other [reviewed workspace indexes](WORKSPACE_SCREEN_STARTUP.md) can show a separate,
+short read-only preview without unpausing their normal SWR keys or page actions.
+The general gate keeps previously loaded
 data mounted for the same actor, site and resource during that pause. Initial
 loads and scope/key changes report loading rather than borrowing previous data.
 Terminal request errors invalidate the retained snapshot. Cross-key SWR

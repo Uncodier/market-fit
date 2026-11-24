@@ -28,7 +28,7 @@ const notification: Notification = {
 
 const makeContext = () => ({
   notifications: [notification, { ...notification, id: 'notification-2', title: 'Already reviewed', is_read: true }],
-  loading: false, filters: {}, searchQuery: '', updateFilters: jest.fn(), updateSearchQuery: jest.fn(),
+  status: 'ready' as ReturnType<typeof useNotifications>['status'], filters: {}, searchQuery: '', updateFilters: jest.fn(), updateSearchQuery: jest.fn(),
   clearFilters: jest.fn(), markAsRead: jest.fn().mockResolvedValue(undefined),
   markAllNotificationsAsRead: jest.fn().mockResolvedValue(undefined),
   deleteOneNotification: jest.fn().mockResolvedValue(undefined),
@@ -218,10 +218,10 @@ describe('notification inbox toolbar', () => {
     expect(context.updateSearchQuery).toHaveBeenCalledWith('')
   })
 
-  it('disables bulk actions while loading', () => {
-    context.loading = true
-    render(<NotificationsPage />)
-    expect(screen.getByRole('button', { name: 'Mark all as read' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Delete all' })).toBeDisabled()
+  it('only mounts the skeleton while loading', () => {
+    context.status = 'loading'
+    const { container } = render(<NotificationsPage />)
+    expect(container.textContent).toBe('')
+    expect(screen.queryByRole('button')).toBeNull()
   })
 })

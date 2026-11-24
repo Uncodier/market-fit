@@ -12,7 +12,7 @@ import { Copy } from "@/app/components/ui/icons"
 import { toast } from "sonner"
 import { MARKETPLACE_COUNTRIES, MARKETPLACE_PROVIDER_NAMES, RAPPI_COUNTRIES, type MarketplaceConfigurationResponse, type MarketplaceIntegrationDTO } from "@/lib/marketplace/config-types"
 import type { MarketplaceProvider } from "@/lib/marketplace/providers/types"
-import { MarketplaceMerchantConnect } from "./MarketplaceMerchantConnect"
+import { MarketplaceMerchantConnect, type MerchantConnection } from "./MarketplaceMerchantConnect"
 
 type FormProps = {
   siteId: string
@@ -131,7 +131,7 @@ function MarketplaceStoreForm({ siteId, provider, existing, locations, canManage
   )
 }
 
-function ProviderCard(props: Omit<FormProps, "existing" | "formId" | "saving" | "setSaving"> & { integrations: MarketplaceIntegrationDTO[];
+function ProviderCard(props: Omit<FormProps, "existing" | "formId" | "saving" | "setSaving"> & { integrations: MarketplaceIntegrationDTO[]; connections: MerchantConnection[];
   platformApps?: { production: boolean; sandbox: boolean }; onChanged: () => void }) {
   const [selectedId, setSelectedId] = useState(props.integrations.find(integration => integration.credential_mode !== "platform" && !integration.merchant_connection_id)?.id || "new")
   const [advancedOpen, setAdvancedOpen] = useState(false)
@@ -141,7 +141,7 @@ function ProviderCard(props: Omit<FormProps, "existing" | "formId" | "saving" | 
   return <SectionCard id={`marketplace-${props.provider}`}>
     <SectionCardHeader><SectionCardTitle>{MARKETPLACE_PROVIDER_NAMES[props.provider]}</SectionCardTitle></SectionCardHeader>
     <MarketplaceMerchantConnect provider={props.provider} siteId={props.siteId} canManage={props.canManage}
-      platformApps={props.platformApps} locations={props.locations} integrations={props.integrations} onChanged={props.onChanged}
+      platformApps={props.platformApps} locations={props.locations} integrations={props.integrations} connections={props.connections} onChanged={props.onChanged}
       renderCard={(content, actions) => <>
         <SectionCardContent className="space-y-4">
           {content}
@@ -191,13 +191,32 @@ export function MarketplaceConfigurationCards({ siteId }: { siteId: string }) {
   }, [siteId, retry])
   if (!loaded || loaded.siteId !== siteId) return <Skeleton className="h-40 w-full" />
   if (!loaded.data) return <div role="alert" className="space-y-2"><p>{loaded.error}</p><Button variant="outline" onClick={() => setRetry(value => value + 1)}>Retry</Button></div>
-  const data = loaded.data
+  return <ProviderCards key={`${siteId}:${loaded.data.can_manage}`} siteId={siteId} data={loaded.data}
+    onChanged={() => setRetry(value => value + 1)}
+    onSaved={integration => setLoaded(previous => previous?.data && previous.siteId === siteId ? {
+      siteId, data: { ...previous.data, integrations: [...previous.data.integrations.filter(item => item.id !== integration.id), integration] },
+    } : previous)} />
+}
+
+function ProviderCards({ siteId, data, onChanged, onSaved }: {
+  siteId: string; data: MarketplaceConfigurationResponse; onChanged: () => void; onSaved: FormProps['onSaved'];
+}) {
+  const [connections, setConnections] = useState<MerchantConnection[]>([])
+  useEffect(() => {
+    if (!data.can_manage) return
+    const controller = new AbortController()
+    void fetch(`/api/marketplace/merchant-connections?siteId=${encodeURIComponent(siteId)}`, { signal: controller.signal, cache: "no-store" })
+      .then(async response => {
+        if (!response.ok) return
+        const result = await response.json()
+        if (!controller.signal.aborted && Array.isArray(result.connections)) setConnections(result.connections)
+      }).catch(() => undefined)
+    return () => controller.abort()
+  }, [siteId, data.can_manage])
   return <div className="space-y-6">
     {(["rappi", "uber_eats"] as const).map(provider => <ProviderCard key={`${siteId}:${provider}`} siteId={siteId} provider={provider}
       integrations={data.integrations.filter(integration => integration.provider === provider)} locations={data.locations} canManage={data.can_manage}
-      platformApps={data.platform_apps?.[provider]} onChanged={() => setRetry(value => value + 1)}
-      onSaved={integration => setLoaded(previous => previous?.data && previous.siteId === siteId ? {
-        siteId, data: { ...previous.data, integrations: [...previous.data.integrations.filter(item => item.id !== integration.id), integration] },
-      } : previous)} />)}
+      platformApps={data.platform_apps?.[provider]} connections={connections.filter(connection => connection.provider === provider)}
+      onChanged={onChanged} onSaved={onSaved} />)}
   </div>
 }

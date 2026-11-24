@@ -21,7 +21,7 @@ The shared runner/config integrates `--suite records`, one native admin
 project, one worker, zero retries, existing admin UI authentication, and
 `recordsPolicy()` in preflight. Smoke/regression must never discover these files.
 Discovery does not invoke fixtures or authorize subsequent execution. There are
-13 deterministic cases, no placeholder assertions, conditional skips, mocks,
+15 deterministic cases, no placeholder assertions, conditional skips, mocks,
 route fulfillment, or private Server Action calls from test code.
 
 Live execution is intentionally not a copy/paste command here. First obtain
@@ -58,7 +58,8 @@ approval for the exact installer-owned QA stack. Follow
   filtered runs, rather than skipping preview tests. Tests never create orders,
   bills, suppliers, stock, payments, or company associations.
 - `TEST_RECORDS_RELATION_GUARD_READY=1`: operator attests that the reviewed
-  `20261111032000_records_relation_admission.sql` is installed **locally**, with
+  `20261111032000_records_relation_admission.sql` and both value-aware field edit
+  migrations in [Records schema repair](../../docs/RECORD_SCHEMA_REPAIR.md) are installed **locally**, with
   application/RLS/column grants compatible with the checkout. This flag cannot
   install a migration or prove it works; the direct DB cases verify admission.
 - `TEST_RECORDS_TRASH_READY=1`: the three local recoverable Trash migrations
@@ -120,8 +121,9 @@ an arbitrary first row or a privileged client. Supplied targets are never edited
 | --- | --- | --- |
 | Zero/date/false/unset/enum | UI field edits | Exact JSON `0`, browser-local `YYYY-MM-DD`, `false`, then `null`, configured enum; reload controls; no create option for unlisted enum |
 | Immutable key/display label | UI category create/edit and Record edit | Key disabled in editor, persisted key unchanged after label rename, old-key value remains `0`, reloaded new label |
-| Populated schema guard | UI template retype/save | Explicit migration-required error; original template and Record data unchanged |
+| Value-aware schema edits | UI template retype/remove/save | Empty fields can be retyped and removed; incompatible edits name the affected field and preserve the template and Record data |
 | Required active transition | UI status/save | Missing required field rejects without changing timestamp/data/draft; zero then permits active status and reload |
+| Floating document selector | Scroll a populated document | The title starts below the selector and remains reachable beside it when scrolled into the same row; the selector stays fixed |
 | Category-specific link | UI picker/save/preview | Settled backend search excludes wrong category; exact allowed ID in JSON, reload label and preview link |
 | Site isolation | UI picker/detail plus independent user reads | Settled search excludes foreign ID, direct route returns to list, main RLS read empty; foreign owner verifies unchanged target; local link persists |
 | Supplier/company previews | UI picker/save/Relations | Exact supplier/global associated company IDs persisted and labels/industry resolved after reload |

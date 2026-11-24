@@ -115,12 +115,13 @@ async function fetchRequirementTitles(requirementIds: string[]) {
 export function RobotsProvider({ children }: RobotsProviderProps) {
   const pathname = usePathname()
   const loadRobots = shouldLoadRobots(pathname)
-  const { currentSite } = useSite()
-  const siteId = currentSite?.id
+  const { currentSite, isLoading: siteLoading } = useSite()
+  // Instance controllers and live channels are not a read-only list preview.
+  const siteId = siteLoading ? undefined : currentSite?.id
   const { user } = useAuth()
   const userId = user?.id
   const { revision: permissionRevision, pending: permissionPending } = useRobotsPermissionRevision(
-    loadRobots ? currentSite?.id ?? null : null, userId ?? null)
+    loadRobots ? siteId ?? null : null, userId ?? null)
   const [lastRefreshAt, setLastRefreshAt] = useState<number | null>(null)
   const [refreshCount, setRefreshCount] = useState(0)
   // Kept for API compatibility; Realtime always mutates (never gated).

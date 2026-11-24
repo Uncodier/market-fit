@@ -46,6 +46,7 @@ import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
 
 interface CartPanelProps {
   cart: PosCartItem[];
+  sellerName?: string | null;
   subtotal: number;
   taxTotal: number;
   shippingTotal: number;
@@ -101,6 +102,7 @@ interface CartPanelProps {
 
 export function CartPanel({
   cart,
+  sellerName = null,
   subtotal,
   taxTotal,
   shippingTotal,
@@ -398,6 +400,7 @@ export function CartPanel({
               actions={onSplitBill ? (
                 <PosReceiptActions
                   cart={cart}
+                  sellerName={sellerName}
                   subtotal={subtotal}
                   taxTotal={taxTotal}
                   total={total}

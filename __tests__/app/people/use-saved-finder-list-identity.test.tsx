@@ -121,6 +121,18 @@ it('rejects a late initial session after an auth event', async () => {
   expect(order).toHaveBeenCalledTimes(1)
 })
 
+it('starts one RLS read if the initial session notification follows the same session lookup', async () => {
+  const pending = deferred<Response>()
+  order.mockReturnValueOnce(pending.promise)
+  const { result } = renderHook(() => useSavedFinderLists('site-a', true))
+  await flush()
+  act(() => { authCallback('INITIAL_SESSION', session('actor-a')) })
+  await runDeferredLoad()
+  expect(order).toHaveBeenCalledTimes(1)
+  await act(async () => { pending.resolve(response(['allowed'])) })
+  expect(result.current.lists).toEqual([list('allowed')])
+})
+
 it('settles an initial signed-out auth event without leaving the view loading', async () => {
   const lateSession = deferred<{ data: { session: Session }; error: null }>()
   getSession.mockReturnValueOnce(lateSession.promise)

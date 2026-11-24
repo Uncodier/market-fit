@@ -1,60 +1,75 @@
-import { useEffect, useState } from 'react';
-import { isDemoSiteId, isDemoModeActive } from '@/lib/demo-utils';
-import { demoProcurementReferences } from '@/lib/demo-data/procurement-suppliers';
-import { RelationSelect, type RelationSelectOption } from '@/app/components/ui/relation-select';
-import { Button } from '@/app/components/ui/button';
-import { useProcurementI18n } from '../i18n/use-procurement-i18n';
+import { useId, useState } from 'react'
+import { isDemoSiteId, isDemoModeActive } from '@/lib/demo-utils'
+import { demoProcurementReferences } from '@/lib/demo-data/procurement-suppliers'
+import { Button } from '@/app/components/ui/button'
+import { Label } from '@/app/components/ui/label'
+import { ChevronDown } from '@/app/components/ui/icons'
+import { Popover, PopoverContent, PopoverTrigger } from '@/app/components/ui/popover'
+import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from '@/app/components/ui/command'
+import { useProcurementI18n } from '../i18n/use-procurement-i18n'
+import { useProcurementOptions } from './use-procurement-options'
+import { readChoices, useReferenceBrowse } from './reference-options'
 
-export function ReferencePicker({ siteId, kind = 'people', label, ids, onChange, single = false, disabled = false }: {
-  siteId: string; kind?: 'people' | 'products' | 'categories' | 'agents' | 'locations'; label: string;
-  ids: string[]; onChange: (ids: string[]) => void; single?: boolean; disabled?: boolean;
-}) {
-  const { t, message } = useProcurementI18n();
-  const [query, setQuery] = useState('');
-  const [options, setOptions] = useState<RelationSelectOption[]>([]);
-  const [labels, setLabels] = useState<Record<string, string>>({});
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [hasMore, setHasMore] = useState(false);
-  useEffect(() => {
-    if (isDemoSiteId(siteId)) {
-      const timer = setTimeout(() => {
-        const choices = demoProcurementReferences[kind];
-        setOptions(choices.filter(item => item.label.toLowerCase().includes(query.toLowerCase())));
-        setLabels(Object.fromEntries(choices.map(item => [item.id, item.label])));
-        setLoading(false); setHasMore(false); setError('');
-      }, 0)
-      return () => clearTimeout(timer)
-    }
-    if (isDemoModeActive()) return;
-    const controller = new AbortController();
-    const timer = setTimeout(async () => {
-      setLoading(true); setError(''); setOptions([]);
-      try {
-        const params = new URLSearchParams({ site_id: siteId, kind, q: query.slice(0, 100) });
-        const response = await fetch(`/api/procurement/references?${params}`, { signal: controller.signal, cache: 'no-store' });
-        if (!response.ok) throw new Error('Could not load choices. Check your access or try searching again.');
-        const data = await response.json();
-        if (!Array.isArray(data.options)) throw new Error('Invalid reference response.');
-        if (controller.signal.aborted) return;
-        setOptions(data.options); setHasMore(data.has_more === true);
-        setLabels((previous) => ({ ...previous, ...Object.fromEntries(data.options.map((item: RelationSelectOption) => [item.id, item.label])) }));
-      } catch (failure) {
-        if (!controller.signal.aborted) setError(failure instanceof Error ? failure.message : 'Could not load choices.');
-      } finally { if (!controller.signal.aborted) setLoading(false); }
-    }, 200);
-    return () => { clearTimeout(timer); controller.abort(); };
-  }, [siteId, kind, query]);
+type Option = { id: string; label: string }
+type Props = {
+  siteId: string; kind?: 'people' | 'products' | 'categories' | 'agents' | 'locations'; label: string
+  ids: string[]; onChange: (ids: string[]) => void; single?: boolean; disabled?: boolean
+}
+
+export function ReferencePicker(props: Props) {
+  const demo = isDemoSiteId(props.siteId)
+  const blocked = !demo && isDemoModeActive()
+  return <ScopedPicker key={`${props.siteId}:${props.kind ?? 'people'}:${blocked}`} {...props} demo={demo} blocked={blocked} disabled={props.disabled || blocked} />
+}
+
+function ScopedPicker({ siteId, kind = 'people', label, ids, onChange, single, disabled, demo, blocked }: Props & { demo: boolean; blocked: boolean }) {
+  const { t, message } = useProcurementI18n()
+  const triggerId = useId()
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const [labels, setLabels] = useState<Record<string, string>>({})
+  if (disabled && open) setOpen(false)
+  const readBrowse = useReferenceBrowse()
+  const needsNames = ids.some(id => !labels[id])
+  const search = query.trim().slice(0, 100)
+  const url = (q: string) => `/api/procurement/references?${new URLSearchParams({ site_id: siteId, kind, q })}`
+  const browse = useProcurementOptions(!blocked && !demo && (needsNames || (open && !search)) ? url('') : null, readBrowse, 200)
+  const searched = useProcurementOptions(!blocked && !demo && open && search ? url(search) : null, readChoices, 200)
+  const { data, error, loading, retry } = search ? searched : browse
+  const fixtures = demo ? demoProcurementReferences[kind] : []
+  const options = (demo ? fixtures.filter(item => item.label.toLowerCase().includes(query.toLowerCase())) : data?.options ?? [])
+    .filter(item => !ids.includes(item.id))
+
+  function select(item: Option) {
+    if (disabled) return
+    setLabels(previous => ({ ...previous, [item.id]: item.label }))
+    onChange(single ? [item.id] : [...ids, item.id])
+    setOpen(false)
+  }
   return <div className="space-y-2">
-    <RelationSelect disabled={disabled} label={label} placeholder={t('procurement.common.searchFor', { label })} searchPlaceholder={t('procurement.common.search')} clearLabel={t('procurement.common.clearSelection')} loadingLabel={t('procurement.common.loadingSelection')} value={null}
-      options={options.filter((item) => !ids.includes(item.id))} allowCreate={false} clearAfterSelect
-      emptyMessage={loading ? t('procurement.common.loadingChoices') : t('procurement.common.noChoices')} onSearchChange={setQuery}
-      onValueChange={(value) => { if (!disabled && value?.mode === 'existing') onChange(single ? [value.id] : [...ids, value.id]); }} />
-    {hasMore && <p className="text-xs text-muted-foreground">{t('procurement.common.moreChoices')}</p>}
-    {error && <p role="alert" className="text-sm text-destructive">{message(error)}</p>}
-    <div className="flex flex-wrap gap-2">{ids.map((id) => <Button disabled={disabled} key={id} type="button" variant="outline" size="sm"
-      aria-label={t('procurement.common.removeReference', { name: labels[id] ?? id, label })} onClick={() => onChange(ids.filter((value) => value !== id))}>
-      {labels[id] ?? t('procurement.common.savedReference', { id })} ×
-    </Button>)}</div>
-  </div>;
+    <Label htmlFor={triggerId}>{label}</Label>
+    <Popover open={open} onOpenChange={next => { if (!disabled) { setQuery(''); setOpen(next) } }}>
+      <PopoverTrigger asChild><Button id={triggerId} type="button" variant="outline" disabled={disabled} aria-label={label}
+        className="w-full justify-between font-normal text-muted-foreground"><span className="truncate">{t('procurement.common.searchFor', { label })}</span><ChevronDown className="h-4 w-4 shrink-0" /></Button></PopoverTrigger>
+      {open && <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] p-0">
+        <Command shouldFilter={false} label={label}>
+          <CommandInput value={query} onValueChange={setQuery} maxLength={100} placeholder={t('procurement.common.search')} />
+          <CommandList>
+            {loading ? <p role="status" className="p-3 text-sm">{t('procurement.common.loadingChoices')}</p>
+              : error ? <div role="alert" className="p-3 text-sm text-destructive">{message(error)} <Button type="button" size="sm" variant="outline" onClick={retry}>{t('procurement.common.retry')}</Button></div>
+              : options.length ? <CommandGroup>{options.map(item => <CommandItem key={item.id} value={item.id} data-relation-id={item.id}
+                className="data-[disabled=false]:!pointer-events-auto data-[disabled=false]:!opacity-100" onSelect={() => select(item)}>{item.label}</CommandItem>)}</CommandGroup>
+              : <p className="p-3 text-sm text-muted-foreground">{t('procurement.common.noChoices')}</p>}
+          </CommandList>
+          {data?.has_more && <p className="px-3 py-2 text-xs text-muted-foreground">{t('procurement.common.moreChoices')}</p>}
+        </Command>
+      </PopoverContent>}
+    </Popover>
+    <div className="flex flex-wrap gap-2">{ids.map(id => {
+      const name = labels[id] ?? (demo ? fixtures : browse.data?.options)?.find(item => item.id === id)?.label
+      return <Button disabled={disabled} key={id} type="button" variant="outline" size="sm" aria-label={t('procurement.common.removeReference', { name: name ?? id, label })}
+        onClick={() => onChange(ids.filter(value => value !== id))}>{name ?? t('procurement.common.savedReference', { id })} ×</Button>
+    })}</div>
+    {!open && browse.error && <p role="alert" className="text-sm text-destructive">{message(browse.error)}</p>}
+  </div>
 }

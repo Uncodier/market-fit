@@ -1,4 +1,5 @@
 {
+  "notifications.settingsUnavailable": "Die Einstellungen des Arbeitsbereichs konnten nicht geladen werden.",
   "billing.salePaymentFee.label": "Kartenzahlungsgebühr: {{percent}}% · Zahlungsabwicklung enthalten",
   "billing.salePaymentFee.defaultLabel": "Standard-Kartenzahlungsgebühr: {{percent}}% · Zahlungsabwicklung enthalten · aktueller Tarif nicht verfügbar",
   "billing.salePaymentFee.planUnavailable": "Aktueller Tarif nicht verfügbar",

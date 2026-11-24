@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react"
 import { useAuthContext } from "@/app/components/auth/auth-context"
+import { notifyScreenScopeChanged } from '@/lib/permissions/screen-scope-invalidation'
 import {
   teamLocationAccessResponseSchema, memberLocationReplacementResponseSchema, sameLocationIds,
   type TeamLocationAccessResponse,
@@ -121,6 +122,7 @@ function LocationAccessProvider({ siteId, enabled, children }: { siteId?: string
         members: previous.data.members.map(member => member.id.toLowerCase() === memberId.toLowerCase()
           ? { ...member, restricted_location_ids: parsed.data.restricted_location_ids } : member),
       } }))
+      notifyScreenScopeChanged(siteId)
       return { status: "saved" }
     } catch {
       return !mounted.current ? { status: "stale" } : unconfirmed

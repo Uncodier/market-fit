@@ -4,6 +4,7 @@ import { useSiteLoadingLifecycle, SITE_HYDRATION_TIMEOUT_MS } from "@/app/contex
 import { fetchAccessibleSitesClient } from "@/lib/sites/fetch-accessible-sites"
 import { refreshSiteBillingRecord } from "@/app/context/site-refresh-billing"
 import type { Site } from "@/app/context/site-types"
+import { cacheSiteSelection } from '@/app/context/site-selection-cache'
 
 jest.mock("@/lib/sites/fetch-accessible-sites", () => ({ fetchAccessibleSitesClient: jest.fn() }))
 jest.mock("@/app/context/site-refresh-billing", () => ({ refreshSiteBillingRecord: jest.fn() }))
@@ -33,7 +34,7 @@ function mount(initialized = true, initialSite: Site | null = first,
       currentSite, setCurrentSite,
       setSites, isInitialized, setIsInitialized, isMounted: true,
       supabaseRef: useRef({ auth: { getSession: async () => ({ data: { session: null } }) },
-        from: () => ({ select: () => ({ eq: () => ({ single: readSettings }) }) }) }),
+        from: () => ({ select: () => ({ eq: () => ({ abortSignal: () => ({ maybeSingle: readSettings }), single: readSettings }) }) }) }),
       authUserIdRef, unauthorizedRetryRef: useRef(0), setIsLoading,
       setSitesLoaded, setSitesLoadAttempted: jest.fn(),
       setError: jest.fn(), setHasValidSession: jest.fn(),
@@ -47,6 +48,27 @@ beforeEach(() => {
   localStorage.setItem("currentSiteId", first.id)
   jest.mocked(fetchAccessibleSitesClient).mockReset().mockResolvedValue(response([first]))
   jest.mocked(refreshSiteBillingRecord).mockReset().mockResolvedValue(undefined)
+})
+
+it('retains a read target, not an operational site, after a settings timeout; authoritative removal retires it', async () => {
+  jest.useFakeTimers()
+  try {
+    cacheSiteSelection('owner', first)
+    const settings = deferred<{ data: Site['settings']; error: null }>()
+    const pendingList = deferred<ReturnType<typeof response>>()
+    jest.mocked(fetchAccessibleSitesClient).mockReturnValueOnce(pendingList.promise)
+    const { result } = mount(false, null, () => settings.promise)
+    await act(async () => { void result.current.loadSites() })
+    expect(result.current.requestScope).toEqual({ actorId: 'owner', siteId: first.id })
+    await act(async () => jest.advanceTimersByTime(SITE_HYDRATION_TIMEOUT_MS))
+    expect(result.current.currentSite).toBeNull()
+    expect(result.current.requestScope?.siteId).toBe(first.id)
+    jest.mocked(fetchAccessibleSitesClient).mockResolvedValueOnce(response([]))
+    await act(async () => { void result.current.loadSites(true) })
+    await act(async () => { settings.resolve({ data: first.settings, error: null }); pendingList.resolve(response([first])) })
+    expect(result.current.requestScope).toBeNull()
+    expect(result.current.currentSite).toBeNull()
+  } finally { jest.useRealTimers() }
 })
 
 it.each([false, true])("keeps an absent selection on the first cache hit (initialized=%s), then revalidates", async initialized => {

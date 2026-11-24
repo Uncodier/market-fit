@@ -10,12 +10,12 @@ import { clearCurrentSiteCookie, persistCurrentSiteCookie } from "@/lib/auth/cur
 import { getWorkspaceSiteRedirect } from "@/lib/auth/workspace-site-redirect"
 import { navigateOrAssign } from "@/lib/navigation/stale-router"
 import type { Site, SiteSettings, SiteContextType, UpdateSiteOptions } from "./site-types"
+import { hasSettledSiteSettings } from './site-types'
 import { cleanUUID } from "./site-storage"
 import { persistSiteSettings } from "./site-update-settings"
 import { fetchSiteSettings } from "./site-set-current"
 import { useSiteLoadingLifecycle } from "./site-loading-lifecycle"
 import { updateSiteRecord, createSiteRecord, deleteSiteRecord } from "./site-crud"
-import { syncSiteLogosInBackground } from "@/lib/sites/logo-background-sync"
 import { refreshSiteBillingRecord } from "./site-refresh-billing"
 import { useSiteResourceSync } from "./site-resource-sync"
 import { canRecoverMissingPosSite, type SiteRefreshOptions } from "./site-refresh-policy"
@@ -60,6 +60,8 @@ export function SiteProvider({ children }: SiteProviderProps) {
   const [currentSite, setCurrentSite] = useState<Site | null>(null)
   const [sites, setSites] = useState<Site[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  // Billing/CRUD may independently finish while a selection is still hydrating.
+  const workspaceLoading = isLoading || (!!currentSite && !currentSite.id.startsWith('demo-') && !hasSettledSiteSettings(currentSite))
   const [error, setError] = useState<Error | null>(null)
   const [isInitialized, setIsInitialized] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
@@ -109,7 +111,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
     return () => setIsMounted(false)
   }, [])
   
-  const { loadSites, selectSite: handleSetCurrentSite, invalidate } = useSiteLoadingLifecycle({
+  const { loadSites, selectSite: handleSetCurrentSite, invalidate, requestScope } = useSiteLoadingLifecycle({
     supabaseRef, isMounted, isInitialized, currentSite, unauthorizedRetryRef, authUserIdRef,
     setSitesLoaded, setSitesLoadAttempted, setIsLoading, setError,
     setHasValidSession, setIsInitialized, setSites, setCurrentSite,
@@ -281,7 +283,7 @@ export function SiteProvider({ children }: SiteProviderProps) {
         !isMounted ||
         !isInitialized ||
         isLoading ||
-        !sitesLoaded ||
+        !sitesLoaded || (!currentSite && requestScope && error) ||
         !supabaseRef.current
       ) {
         return
@@ -304,9 +306,10 @@ export function SiteProvider({ children }: SiteProviderProps) {
     }, 1000) // ✅ Increased delay from 100ms to 1000ms
 
     return () => clearTimeout(redirectTimer)
-  }, [isMounted, isInitialized, isLoading, sitesLoaded, hasValidSession, sites.length, currentSite?.id, pathname, router])
+  }, [isMounted, isInitialized, isLoading, sitesLoaded, hasValidSession, sites.length, currentSite?.id, requestScope, error, pathname, router])
   
-  useSiteResourceSync(currentSite?.id, setSites, setCurrentSite)
+  useSiteResourceSync(!workspaceLoading && requestScope?.siteId === currentSite?.id ? currentSite?.id : undefined,
+    requestScope?.actorId, setSites, setCurrentSite)
 
   const shouldPreventRefresh = () => {
     if (typeof window === "undefined") return false
@@ -443,18 +446,12 @@ export function SiteProvider({ children }: SiteProviderProps) {
     return loadSites(true)
   }
 
-  // ✅ NEW EFFECT: Sync logos in background
-  useEffect(() => {
-    if (isMounted && sitesLoaded && sites.length > 0) {
-      syncSiteLogosInBackground(sites, setSites, currentSite, setCurrentSite)
-    }
-  }, [sitesLoaded, isMounted, sites.length]) // only trigger when length changes or initial load completes
-
   // Valor del contexto
   const value = {
     sites,
     currentSite: currentSite || null,
-    isLoading,
+    requestScope,
+    isLoading: workspaceLoading,
     error,
     setCurrentSite: handleSetCurrentSite,
     updateSite: handleUpdateSite,

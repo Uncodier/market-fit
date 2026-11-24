@@ -6,8 +6,8 @@ jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: jest.fn(), replace: jest.fn() }),
 }))
 
-jest.mock("@/app/hooks/use-auth", () => ({
-  useAuth: () => ({ user: { id: "user-1" } }),
+jest.mock("@/app/components/auth/auth-context", () => ({
+  useAuthContext: () => ({ user: { id: "user-1" }, isLoading: false }),
 }))
 
 jest.mock("@/app/context/LocalizationContext", () => ({

@@ -9,6 +9,8 @@ import { ConfirmDialog } from '@/app/components/ui/confirm-dialog';
 import { isDemoModeActive, isDemoSiteId, isRealSiteId } from '@/lib/demo-utils';
 import { ProcurementDemoNotice } from '../ui/demo-notice';
 import { usePolicyDocument } from './use-policy-document';
+import { useProcurementScopeKey } from './use-procurement-scope-key';
+import { ReferenceOptions } from './reference-options';
 import { SettingsEditor } from './settings-editor';
 import { RulesEditor } from './rules-editor';
 import { PolicySimulator } from './policy-simulator';
@@ -25,10 +27,11 @@ import Link from 'next/link';
 
 export function ProcurementPage({ screen, embedded = false }: { screen: 'settings' | 'rules'; embedded?: boolean }) {
   const { currentSite } = useSite();
+  const scope = useProcurementScopeKey(currentSite?.id);
   const { t } = useProcurementI18n();
   if (!currentSite) return screen === 'rules' ? <RuleScreenLoading /> : <div className="mx-auto w-full max-w-[880px] px-4 py-8 md:px-16"><ProcurementSettingsSkeleton /></div>;
   if (!isDemoSiteId(currentSite.id) && (!isRealSiteId(currentSite.id) || isDemoModeActive())) return <div className="p-6">{t('procurement.policy.page.realWorkspace')}</div>;
-  return <WorkspacePolicy key={`${currentSite.id}:${screen}`} siteId={currentSite.id} siteName={currentSite.name} screen={screen} embedded={embedded} />;
+  return <WorkspacePolicy key={`${scope}:${screen}`} siteId={currentSite.id} siteName={currentSite.name} screen={screen} embedded={embedded} />;
 }
 
 function WorkspacePolicy({ siteId, siteName, screen, embedded }: { siteId: string; siteName: string; screen: 'settings' | 'rules'; embedded: boolean }) {
@@ -79,14 +82,14 @@ function WorkspacePolicy({ siteId, siteName, screen, embedded }: { siteId: strin
     <ConfirmDialog open={confirmReload} onOpenChange={setConfirmReload} title={t('procurement.policy.page.discardTitle')}
       description={t('procurement.policy.page.discardDescription')}
       confirmLabel={t('procurement.policy.page.discard')} cancelLabel={t('procurement.policy.page.cancel')} variant="destructive" onConfirm={policy.reload} />
-    {policy.draft && <div className="min-w-0 space-y-6">
+    {policy.draft && <ReferenceOptions><div className="min-w-0 space-y-6">
       {screen === 'settings' ? <fieldset disabled={policy.saving || demo}><SettingsEditor siteId={siteId} value={policy.draft.settings} saveProps={saveProps}
         onChange={(settings) => policy.edit({ ...policy.draft!, settings })} /></fieldset>
         : <RulesEditor status={status} onStatusChange={setStatus} search={search} onSearchChange={setSearch} disabled={policy.saving || demo} siteId={siteId} rules={policy.draft.rules} timeZone={policy.draft.settings.timeZone} ruleSaveProps={id => ({ ...saveProps, onSave: () => void policy.save(id),
             saving: policy.savingRuleId === id, saveDisabled: policy.saving || policy.conflict || demo || !policy.isRuleDirty(id) })}
           onChange={(rules) => policy.edit({ ...policy.draft!, rules })} />}
       <PolicySimulator siteId={siteId} document={policy.draft} />
-    </div>}
+    </div></ReferenceOptions>}
     </div>
     {policy.draft && <QuickNav sections={policyNavigation(screen, 'policy', (policy.draft?.rules ?? []).filter(rule => (status === 'all' || rule.status === status) && rule.name.toLowerCase().includes(search.toLowerCase())), t)} />}
     {screen === 'rules' && policy.loading && <RuleIndexSkeleton />}

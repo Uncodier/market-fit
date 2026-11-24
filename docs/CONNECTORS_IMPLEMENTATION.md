@@ -322,16 +322,11 @@ uses the server's platform key; usage can therefore charge the platform project.
 No new Makinari charge or plan entitlement is introduced.
 Only read actions in the reviewed operation inventory are initially supported.
 
-## Self-service OAuth and API-key guidance
+## Connector onboarding
 
-A manager can create a Composio-managed Google Calendar OAuth configuration from
-the connector detail when no enabled OAuth 2.0 configuration exists. The API
-requires a verified provider binding and a project-wide Upstash lock, and only
-requests the reviewed read-only Calendar events scope when the provider
-advertises it for the default managed app. No client credentials or scopes are
-accepted from the browser. An existing OAuth configuration takes precedence.
-After setup, the manager still explicitly connects and authorizes an account;
-setup grants no member or agent access.
+See [self-service connector onboarding](CONNECTOR_ONBOARDING.md) for the current
+hosted path, provider prerequisites and rollout. The previous two-step Calendar
+setup remains available to older clients.
 
 When no OAuth configuration is available, a manager can connect managed-cloud
 Supabase with a project reference and a personal access token (`sbp_`), not a
@@ -405,15 +400,15 @@ a setup/revalidation error. Credential rotation does not silently transfer accou
 authority or re-enable existing connections. Existing provider records require
 an explicitly reviewed revalidation/migration procedure before use after rotation.
 
-Use an enabled OAuth2 auth configuration belonging to the selected toolkit.
-Other auth methods, dashboard-wide adoption, shared accounts and custom MCP are
-not supported in this local increment.
+Onboarding uses the selected toolkit and the workspace's verified Composio
+project. Dashboard-wide adoption, shared accounts and custom MCP registration
+are not part of this flow.
 
 ## OAuth callback behavior
 
-The verifier can return only `session_uri`. When no attempt ID is available, the
-callback page lists the current actor's browser-bound pending attempts and asks
-for an explicit selection; it never guesses the latest tab or current workspace.
+The verifier can return only `session_uri`. The callback uses the initiating
+tab's continuation and the actor-bound attempt cookie; it never asks the user to
+guess between pending accounts. Ambiguous OAuth attempts stop before redemption.
 Completion compares the provider's returned account against the account recorded
 before redirect. A mismatch is not adopted and cannot acquire local access grants.
 

@@ -9,9 +9,13 @@ import { PurchaseOrderDetailSkeleton } from './order-detail-skeleton'
 import { PurchaseOrderDetailShell } from './PurchaseOrderDetailShell'
 import { OrderDocument } from './OrderDocument'
 import { orderLines, type WorkspaceOrder } from './order-document-data'
+import { useProcurementScopeKey } from '../procurement/components/use-procurement-scope-key'
 
 export function WorkspaceOrderDetailView({ orderId }: { orderId: string }) {
-  return <OrderDetail key={orderId} orderId={orderId} />
+  const { currentSite } = useSite()
+  const scope = useProcurementScopeKey(currentSite?.id)
+  if (!currentSite) return <PurchaseOrderDetailSkeleton />
+  return <OrderDetail key={`${scope}:${orderId}`} orderId={orderId} />
 }
 
 function OrderDetail({ orderId }: { orderId: string }) {

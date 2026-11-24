@@ -42,7 +42,17 @@ export function connectorErrorKey(error: unknown): string {
   if (error.code === "catalog_opt_out_separate") return "catalogOptOutSeparate"
   if (error.code === "api_not_configured" || error.code === "upstream_unavailable") return "apiUnavailable"
   if (error.code === "provider_invalid_response") return "providerResponse"
+  if (error.code === "credential_check_unavailable") return "credentialCheckUnavailable"
+  if (error.code === "auth_attempt_ambiguous") return "attemptAmbiguous"
   if (error.code === "auth_config_pending") return "unknown"
+  if (["auth_config_unavailable", "auth_config_selection_required"].includes(error.code)) return "authConfigChanged"
+  if (["auth_config_provider_setup_required", "auth_config_admin_required", "auth_config_limit"].includes(error.code)) return "authConfigAdmin"
+  if (error.code === "auth_config_setup_required") return "authConfigCoordination"
+  if (error.code === "auth_not_required") return "authNotRequired"
+  if (error.code === "connector_not_active") return "accountNotActive"
+  if (error.code === "connector_setup_unavailable") return "connectorSetupUnavailable"
+  if (error.code === "hosted_starts_paused") return "hostedStartsPaused"
+  if (error.code === "ask_incompatible") return "askIncompatible"
   if (error.code === "managed_oauth_unavailable") return "setup"
   if (error.code === "supabase_token_rejected") return "supabaseTokenRejected"
   if (error.code === "supabase_token_check_unavailable") return "supabaseTokenCheckUnavailable"
@@ -71,10 +81,11 @@ export function exactToolIds(input: string): string[] | null {
   return values.length <= 100 && values.every(value => exactToolIdPattern.test(value)) ? values : null
 }
 
-/** The BFF validates provider hosts; this additional guard excludes active URL schemes. */
+/** Only the approved hosted Connect Link origins may receive the browser. */
 export function safeAuthorizationUrl(input: string): string | null {
   try {
     const url = new URL(input)
-    return url.protocol === "https:" && !url.username && !url.password ? url.href : null
+    return url.protocol === "https:" && !url.username && !url.password && !url.port && !url.hash &&
+      ["connect.composio.dev", "backend.composio.dev"].includes(url.hostname) ? url.href : null
   } catch { return null }
 }

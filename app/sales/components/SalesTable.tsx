@@ -14,6 +14,7 @@ import { formatCurrency } from "@/app/components/dashboard/campaign-revenue-donu
 import { format } from "date-fns"
 import { DueDateSummary } from "@/app/components/finance/DueDateSummary"
 import { Sale } from "@/app/types"
+import type { SalesListRow } from "../sales-list-row"
 import { cn } from "@/lib/utils"
 import {
   DocumentListHead,
@@ -28,11 +29,10 @@ import {
 } from "@/app/components/documents/document-list"
 
 interface SalesTableProps {
-  sales: Sale[]
+  sales: SalesListRow[]
   currentPage: number
   itemsPerPage: number
   totalSales: number
-  segments: Array<{ id: string; name: string }>
   onPageChange: (page: number) => void
   onItemsPerPageChange: (value: string) => void
   onSaleClick: (sale: Sale) => void
@@ -59,7 +59,6 @@ export function SalesTable({
   currentPage,
   itemsPerPage,
   totalSales,
-  segments,
   onPageChange,
   onItemsPerPageChange,
   onSaleClick,
@@ -69,12 +68,6 @@ export function SalesTable({
   const { t } = useLocalization()
   const indexOfFirstItem = (currentPage - 1) * itemsPerPage
   const totalPages = Math.ceil(totalSales / itemsPerPage)
-
-  const getSegmentName = (segmentId: string | null) => {
-    if (!segmentId) return null
-    const segment = segments.find((s) => s.id === segmentId)
-    return segment?.name || null
-  }
 
   const activeSales = sales.filter((sale) => !["cancelled", "canceled", "refunded", "failed", "rejected", "expired"].includes(sale.status))
   const totalAmount = activeSales.reduce((sum, sale) => sum + (sale.amount || 0), 0)
@@ -124,7 +117,7 @@ export function SalesTable({
                   ? statusLabel
                   : null
             const productLine = [sale.productName, sale.title].filter(Boolean).find((value) => value && !String(value).startsWith("Order -"))
-            const meta = [productLine, getSegmentName(sale.segmentId)].filter(Boolean).join(" · ") || null
+            const meta = [productLine, sale.segmentName].filter(Boolean).join(" · ") || null
 
             return (
               <DocumentListRow

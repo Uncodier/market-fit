@@ -1,86 +1,65 @@
 "use client"
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
-import { createClient } from "@/lib/supabase/client"
+import { createContext, useContext, useMemo, type ReactNode } from "react"
 import { useOptionalSite } from "@/app/context/SiteContext"
 import { useOptionalPermissions } from "@/app/context/PermissionContext"
-import { useAuth } from "@/app/hooks/use-auth"
 import { isAdminScreenRole, isScreenBlocked } from "@/lib/auth/screen-access"
-import { isRealSiteId } from "@/lib/demo-utils"
-import type { SiteMemberRole } from "@/lib/permissions/types"
+import type { AllowedWorkspaceListScope, ScreenScope } from '@/lib/permissions/workspace-screen-scope'
+import type { WorkspaceRequestScope } from './site-types'
+import { useWorkspaceAccessSnapshot, WorkspaceAccessSnapshot } from './WorkspaceAccessSnapshot'
 
 type ScreenAccessContextValue = {
   blockedScreens: string[]
   isSiteAdmin: boolean
   isReady: boolean
   canAccessNavKey: (key: string) => boolean
+  screenScopeStatus: 'loading' | ScreenScope['status']
+  verifiedListScope?: WorkspaceRequestScope
+  /** Verified once per selection/invalidation. Callers still check their own screen key. */
+  verifiedWorkspaceLists?: AllowedWorkspaceListScope
+  legacyListAllowed: boolean
+  legacyWorkspaceListsAllowed: boolean
+  retryScreenScope: () => void
 }
 
 const ScreenAccessContext = createContext<ScreenAccessContextValue | null>(null)
 
 export function ScreenAccessProvider({ children }: { children: ReactNode }) {
+  const shared = useWorkspaceAccessSnapshot()
+  // Also support standalone consumers; the full workspace already has a single
+  // snapshot above both providers, so never schedule a second read here.
+  return shared ? <ScreenProjection>{children}</ScreenProjection> :
+    <WorkspaceAccessSnapshot><ScreenProjection>{children}</ScreenProjection></WorkspaceAccessSnapshot>
+}
+
+function ScreenProjection({ children }: { children: ReactNode }) {
   const site = useOptionalSite()
   const permissions = useOptionalPermissions()
-  const { user } = useAuth()
-  const siteId = site?.currentSite?.id ?? null
-  const [blockedScreens, setBlockedScreens] = useState<string[]>([])
-  const [memberRole, setMemberRole] = useState<SiteMemberRole | null>(null)
-  const [loadedSiteId, setLoadedSiteId] = useState<string | null>(null)
-
-  const capabilityRole = permissions?.capabilities?.role ?? null
-  const isOwner = !!permissions?.capabilities?.is_owner
-  const isSiteAdmin = isOwner || isAdminScreenRole(capabilityRole) || isAdminScreenRole(memberRole)
-
-  useEffect(() => {
-    let cancelled = false
-    setBlockedScreens([])
-    setMemberRole(null)
-    setLoadedSiteId(null)
-
-    if (!siteId || !user?.id || !isRealSiteId(siteId)) {
-      setLoadedSiteId(siteId)
-      return
-    }
-
-    const supabase = createClient()
-    supabase
-      .from("site_members")
-      .select("role, blocked_screens")
-      .eq("site_id", siteId)
-      .eq("user_id", user.id)
-      .eq("status", "active")
-      .maybeSingle()
-      .then(({ data }: { data: { role: SiteMemberRole | null; blocked_screens: unknown } | null }) => {
-        if (cancelled) return
-        setMemberRole(data?.role || null)
-        setBlockedScreens(Array.isArray(data?.blocked_screens)
-          ? data.blocked_screens.filter((screen): screen is string => typeof screen === "string") : [])
-        setLoadedSiteId(siteId)
-      })
-      .catch(() => {
-        if (cancelled) return
-        setLoadedSiteId(siteId)
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [siteId, user?.id])
-
-  const canAccessNavKey = useCallback(
-    (key: string) => !isScreenBlocked(isSiteAdmin ? "admin" : memberRole, blockedScreens, key),
-    [blockedScreens, isSiteAdmin, memberRole]
-  )
-
-  const value = useMemo<ScreenAccessContextValue>(
-    () => ({
-      blockedScreens,
-      isSiteAdmin,
-      isReady: loadedSiteId === siteId,
-      canAccessNavKey,
-    }),
-    [blockedScreens, canAccessNavKey, isSiteAdmin, loadedSiteId, siteId]
-  )
+  const { actor, siteId, read, retry: retryScreenScope } = useWorkspaceAccessSnapshot()!
+  const current = site?.currentSite?.id
+  const value = useMemo<ScreenAccessContextValue>(() => {
+    const loaded = read?.status === 'ready' || read?.status === 'legacy' ? read : null
+    const demo = !!current?.startsWith('demo-')
+    const role = loaded?.role ?? null
+    const blockedScreens = loaded?.blockedScreens ?? []
+    // Capabilities are for the old membership-only navigation projection. A
+    // missing/failed/mismatched read must never promote an independent list.
+    const isSiteAdmin = isAdminScreenRole(role) || ((demo || loaded?.status === 'legacy') &&
+      permissions?.siteId === current && isAdminScreenRole(permissions?.capabilities?.role))
+    const canAccessNavKey = (key: string) => !isScreenBlocked(isSiteAdmin ? 'admin' : role, blockedScreens, key)
+    const verifiedWorkspaceLists = actor && siteId && loaded?.status === 'ready' && !loaded.locationRestricted
+      ? { actorId: actor, siteId, blockedScreens, isAdmin: isAdminScreenRole(loaded.role) } : undefined
+    const verifiedListScope = verifiedWorkspaceLists && canAccessNavKey('chat') ? verifiedWorkspaceLists : undefined
+    // A cached selector entry and an absent membership row cannot establish
+    // legacy access. Require the existing server-derived capability for this
+    // site as well; only a verified owner may have no site_members row.
+    const capability = permissions?.siteId === siteId ? permissions?.capabilities : null
+    const legacyWorkspaceListsAllowed = loaded?.status === 'legacy' && capability?.select === true &&
+      (capability.role === 'owner' || (!!role && capability.role === role))
+    const legacyListAllowed = legacyWorkspaceListsAllowed && canAccessNavKey('chat')
+    return { blockedScreens, isSiteAdmin, isReady: demo || !!loaded, canAccessNavKey, verifiedListScope, verifiedWorkspaceLists,
+      screenScopeStatus: read?.status ?? 'loading', legacyWorkspaceListsAllowed, legacyListAllowed, retryScreenScope }
+  }, [read, actor, siteId, current, permissions, retryScreenScope])
 
   return (
     <ScreenAccessContext.Provider value={value}>

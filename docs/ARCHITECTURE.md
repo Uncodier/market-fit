@@ -20,7 +20,7 @@ An ordinary lookup can join an in-flight authoritative fill. A fresh request doe
 not reuse an earlier cache-miss scan: it supersedes that scan, and process-local
 write ordering keeps its replacement from being overwritten by the older fill.
 This is not a distributed lease or cross-instance ordering guarantee.
-There is no cached role, billing, settings, credential or mutation authorization.
+There is no role, billing, settings, credential or mutation authorization in Redis.
 Hits are marked `authoritative: false`; `fresh=1` bypasses the cache for current
 membership reconciliation. A cache miss reads the complete list before writing.
 Membership/site changes may remain visible as presentation hints until fresh
@@ -57,6 +57,7 @@ reports auth/location/list/total and performed Redis I/O timings. `X-Sites-Cache
 reports hit/miss; `X-Sites-Cache-Reason` distinguishes bypass, unavailable/disabled
 Redis, expired/invalid entries, empty cache and coalesced work.
 `X-Sites-Timeout-Stage` identifies the stage active at the eight-second deadline.
+Selector 503s also log the last measured/timeout stage and timings without request identifiers or payloads.
 None contain tokens, keys, actor IDs or customer payloads. Authentication and the
 location gate remain fresh and sequential, even on a cache hit. The legacy enriched endpoint remains for
 compatibility and is not stored in Redis.
@@ -74,8 +75,11 @@ independently of pending settings; they do not re-enter hydration deduplication.
 The sidebar never selects the first workspace automatically: a missing or revoked
 selection requires an explicit choice in `/projects`.
 
-The site selector renders the recovered active identity even while the list is
-empty. Its menu distinguishes an unavailable list from zero matching projects and
+The sidebar can show a **name only** from an unexpired same-account hint while the
+saved selection is synchronizing or temporarily unavailable. It does not load a
+cached logo URL or mount switching/creation actions from that hint. A confirmed
+denial/removal or account change retires it; a manual retry requests a fresh list.
+Once hydrated, its menu distinguishes an unavailable list from zero matching projects and
 offers retry/picker navigation. Missing-list recovery retries after 15, 30 and 60
 seconds (three automatic attempts), on reconnection, and on explicit menu opening
 or retry. It stops when the list arrives or the actor/site scope disappears.
@@ -101,6 +105,32 @@ network dependency and failed recovery does not supply invented checkout default
 POS waits for settings hydration and retains its independent permission checks,
 local snapshot restrictions and server-side mutation authorization. No payment or
 mutation is automatically retried by site recovery.
+
+### Independent conversation list
+
+The inbox and [reviewed workspace lists](WORKSPACE_SCREEN_STARTUP.md) may read while settings synchronize.
+The target is an account-bound site identity, not a grant from local storage.
+Navigation and capability hints share one user-scoped `read_workspace_screen_scope` RPC. It
+checks effective membership/license and archival, the current user's blocked
+screens and global location restrictions. Only a matching, non-anonymous actor
+and allowed scope may start early. Each data read still uses the user's JWT and
+table RLS. If the RPC is **missing** during rollout, the old navigation lookup may
+run, but the list must wait for the selector and settings; other RPC errors never
+fall back to broader access. A transient settings failure preserves the read
+target, not an operational workspace for payments, settings or other modules.
+
+The provisional list has no row actions, auto-selection, realtime or pagination.
+Scope loss retires the list's memory cache; completing hydration does not refetch
+page one. The normal first page reads at most 21 candidate rows across the two
+status groups for a 20-row page; it skips the previous exact count. Lead labels
+reuse the RLS embed and assignee profiles use one batch, never an Auth lookup by
+assignee. Task and initiation filters keep their existing bounded history windows.
+List failures expose retry separately from confirmed empty and denied results.
+
+Successful member/access edits invalidate the in-memory screen snapshot in this
+tab and, best effort, other same-origin tabs. Notifications never carry grants.
+No persistent permission cache, global revocation broadcast, service-role shortcut
+or Supabase outage immunity is implied. See the [local-only RPC and release gates](DATABASE_MIGRATIONS.md#workspace-screen-scope-local-only).
 
 Regression coverage: `__tests__/context/site-selection-cache.test.ts`,
 `__tests__/context/site-background-refresh.test.tsx` and

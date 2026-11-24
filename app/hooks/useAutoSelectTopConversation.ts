@@ -8,6 +8,7 @@ import { ConversationListItem } from "@/app/types/chat"
 const DESKTOP_MIN_WIDTH = 768
 
 interface UseAutoSelectTopConversationOptions {
+  enabled?: boolean
   conversations: ConversationListItem[]
   isLoading: boolean
   isInitialLoad: boolean
@@ -25,6 +26,7 @@ interface UseAutoSelectTopConversationOptions {
  * Mobile keeps the list-first flow so users can pick a thread before opening it.
  */
 export function useAutoSelectTopConversation({
+  enabled = true,
   conversations,
   isLoading,
   isInitialLoad,
@@ -32,7 +34,7 @@ export function useAutoSelectTopConversation({
   onSelectConversation,
 }: UseAutoSelectTopConversationOptions) {
   useEffect(() => {
-    if (isLoading || isInitialLoad) return
+    if (!enabled || isLoading || isInitialLoad) return
     if (hasValidConversationSelection(selectedConversationId)) return
     if (typeof window !== "undefined" && window.innerWidth < DESKTOP_MIN_WIDTH) return
 
@@ -46,6 +48,7 @@ export function useAutoSelectTopConversation({
       topConversation.title
     )
   }, [
+    enabled,
     conversations,
     isLoading,
     isInitialLoad,

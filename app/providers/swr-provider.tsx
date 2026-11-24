@@ -4,6 +4,7 @@ import React from 'react';
 import { SWRConfig, type Cache, type Middleware } from 'swr';
 import { loadSWRCache, persistSWRCache } from '@/lib/swr/persist-cache';
 import { isTerminalRequestError } from '@/lib/swr/retry-policy';
+import { isConversationListKey } from './conversation-list-read-scope';
 import {
   OPTIMISTIC_ERROR_DELAY_MS,
   OPTIMISTIC_RETRY_COUNT,
@@ -38,7 +39,7 @@ const optimisticErrorMiddleware: Middleware = (useSWRNext) => {
     const terminalError = isTerminalRequestError(swr.error);
     const hasData = swr.data !== undefined;
     const [debouncedError, isMaskingError] = useOptimisticError(
-      hasData || terminalError ? undefined : swr.error,
+      hasData || terminalError || isConversationListKey(key) ? undefined : swr.error,
       OPTIMISTIC_ERROR_DELAY_MS
     );
 
@@ -46,6 +47,9 @@ const optimisticErrorMiddleware: Middleware = (useSWRNext) => {
     const isActuallyMasking = !hasData && (isMaskingError || waitingForRetry);
 
     if (terminalError) return { ...swr, data: undefined, error: swr.error, isLoading: false };
+    // The inbox offers an explicit retry and distinguishes stale same-scope rows
+    // from an authoritative empty page. Do not mask its failure as more loading.
+    if (isConversationListKey(key)) return swr;
     return {
       ...swr,
       error: isActuallyMasking || hasData ? undefined : debouncedError,

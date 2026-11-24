@@ -1,7 +1,7 @@
 /** @jest-environment jsdom */
 import "@testing-library/jest-dom"
 import { randomBytes, randomUUID } from "node:crypto"
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import { MarketplaceConfigurationCards } from "@/app/integrations/components/MarketplaceConfigurationCards"
 import { toast } from "sonner"
 
@@ -43,6 +43,31 @@ describe("native marketplace configuration cards", () => {
     expect(within(rappi as HTMLElement).getByLabelText("Provider webhook URL")).toHaveValue(integration.webhook_url)
     expect(screen.queryByText("Connected")).not.toBeInTheDocument()
   })
+  it("loads one manager directory for both providers and discards its late result on site change", async () => {
+    const nextSite = randomUUID()
+    const directory = (site: string) => `/api/marketplace/merchant-connections?siteId=${site}`
+    const rows = (provider: string) => ({ ok: true, json: async () => ({ connections: [{
+      id: 'connection', provider, authorization_expired: true, stores: [],
+    }] }) } as Response)
+    let deliver!: (response: Response) => void
+    jest.mocked(fetch).mockImplementation(async url => {
+      if (url === directory(siteId)) return new Promise(resolve => { deliver = resolve })
+      if (url === directory(nextSite)) return rows('uber_eats')
+      return { ok: true, json: async () => ({ ...data, integrations: [] }) } as Response
+    })
+    const view = render(<MarketplaceConfigurationCards siteId={siteId} />)
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith(directory(siteId), expect.anything()))
+    const requests = jest.mocked(fetch).mock.calls.filter(([url]) => url === directory(siteId))
+    expect(requests).toHaveLength(1)
+    view.rerender(<MarketplaceConfigurationCards siteId={nextSite} />)
+    expect(requests[0][1]?.signal?.aborted).toBe(true)
+    await screen.findByText(/merchant authorization expired/)
+    await act(async () => deliver(rows('rappi')))
+    const rappi = within(view.container.querySelector('#marketplace-rappi') as HTMLElement)
+    const uber = within(view.container.querySelector('#marketplace-uber_eats') as HTMLElement)
+    expect(rappi.queryByText(/merchant authorization expired/)).toBeNull()
+    expect(uber.getByText(/merchant authorization expired/)).toBeInTheDocument()
+  })
   it("preserves blank saved credentials, submits explicit ready configuration and clears replacements after success", async () => {
     fetchMock.mockResolvedValueOnce({ ok: true, json: async () => data })
     fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ integration: { ...integration, manual_ready: true } }) })
@@ -76,6 +101,7 @@ describe("native marketplace configuration cards", () => {
     openAdvanced(view.container)
     expect(screen.getAllByRole("button", { name: "Save configuration" }).every(button => button.hasAttribute("disabled"))).toBe(true)
     expect(screen.queryByRole("button", { name: "Add store" })).not.toBeInTheDocument()
+    expect(fetch).not.toHaveBeenCalledWith(expect.stringContaining('merchant-connections'), expect.anything())
     view.unmount()
     fetchMock.mockRejectedValueOnce(new Error("Offline"))
     render(<MarketplaceConfigurationCards siteId={siteId} />)

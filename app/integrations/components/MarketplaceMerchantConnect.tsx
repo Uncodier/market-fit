@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, type ReactNode } from "react"
+import { useState, type ReactNode } from "react"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
@@ -10,12 +10,13 @@ import type { MarketplaceProvider } from "@/lib/marketplace/providers/types"
 import { MARKETPLACE_COUNTRIES, RAPPI_COUNTRIES, type MarketplaceIntegrationDTO } from "@/lib/marketplace/config-types"
 import { SectionCardFooter } from "@/app/components/ui/section-card"
 
-type Connection = { id: string; provider: MarketplaceProvider; environment: string; country: string;
+export type MerchantConnection = { id: string; provider: MarketplaceProvider; environment: string; country: string;
   authorization_expired: boolean; stores: Array<{ id: string; name: string; location?: { address?: string; city?: string } }> }
 
-export function MarketplaceMerchantConnect({ provider, siteId, canManage, platformApps, locations, integrations, onChanged, renderCard }: {
+export function MarketplaceMerchantConnect({ provider, siteId, canManage, platformApps, locations, integrations, connections, onChanged, renderCard }: {
   provider: MarketplaceProvider; siteId: string; canManage: boolean; platformApps?: { production: boolean; sandbox: boolean };
   locations: Array<{ id: string; name: string }>; integrations: MarketplaceIntegrationDTO[]; onChanged: () => void;
+  connections: MerchantConnection[];
   renderCard?: (content: ReactNode, actions: ReactNode) => ReactNode;
 }) {
   const [mode, setMode] = useState<"platform" | "custom">("platform")
@@ -23,19 +24,9 @@ export function MarketplaceMerchantConnect({ provider, siteId, canManage, platfo
   const [country, setCountry] = useState("MX")
   const [credentials, setCredentials] = useState({ client_id: "", client_secret: "", integration_id: "" })
   const [busy, setBusy] = useState(false)
-  const [connections, setConnections] = useState<Connection[]>([])
   const [selected, setSelected] = useState("")
   const [location, setLocation] = useState("")
   const name = provider === "rappi" ? "Rappi" : "Uber Eats"
-  useEffect(() => {
-    const controller = new AbortController()
-    if (!canManage) return
-    void fetch(`/api/marketplace/merchant-connections?siteId=${encodeURIComponent(siteId)}`, { signal: controller.signal, cache: "no-store" })
-      .then(async response => { if (!response.ok) return; const result = await response.json();
-        if (!controller.signal.aborted) setConnections(result.connections.filter((item: Connection) => item.provider === provider)) })
-      .catch(() => undefined)
-    return () => controller.abort()
-  }, [siteId, provider, canManage])
 
   async function connect() {
     setBusy(true)

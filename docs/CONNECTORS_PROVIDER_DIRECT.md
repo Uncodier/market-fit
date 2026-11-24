@@ -42,7 +42,7 @@ The private, interactive **Ask** session uses the authenticated member’s own i
 
 An allowed call is still subject to the provider’s permissions and fees. Private delivery does not hide or reverse a write at its destination. **Allow requests for access** is for members or agents without local permission to use a supported action. It is not a connection setup step, a per-write approval, or a way around the provider’s denial. For a generic Ask tool without a review flow, denial does not create a request. This path does not enable public chat, Customer Support, shared reports, voice, plans or background execution.
 
-Robots receives a **private receipt**, not the provider payload or a row summary. Open it while signed in as the requester, or go to **Connectors → Private reports**. The link alone grants nothing. The report is bounded and may omit fields or be truncated. The latest 20 private reports per owner are available for at most one hour, subject to current authorization. Revoking or replacing the enrollment prevents reopening its direct receipts; re-enabling does not revive them. Do not paste their contents into a shared conversation. If dispatch or delivery is unconfirmed, reconcile in the original system before considering another action: a missing receipt does not mean nothing happened.
+Robots receives a **private receipt**, not the provider payload or a row summary. Open it while signed in as the requester, or visit `/connectors/results` directly. The link alone grants nothing. The report is bounded and may omit fields or be truncated. The latest 20 private reports per owner are available for at most one hour, subject to current authorization. Revoking or replacing the enrollment prevents reopening its direct receipts; re-enabling does not revive them. Do not paste their contents into a shared conversation. If dispatch or delivery is unconfirmed, reconcile in the original system before considering another action: a missing receipt does not mean nothing happened.
 
 ## Operator prerequisites (not workspace settings)
 
@@ -57,7 +57,7 @@ Existing OAuth and toolkit-specific onboarding remain separate setup paths. Cata
 
 ### Retired shared-project report
 
-The local Ask implementation no longer offers the scoped Makinari metrics report on any account. An old report reference or saved report search cannot start a new read or switch to the native `report` tool. Selecting a connection, enabling legacy catalogue reads, or having a previous receipt does not restore this action. Authorized requesters can still open unexpired historical results under **Connectors → Private reports**; their access checks have not changed.
+The local Ask implementation no longer offers the scoped Makinari metrics report on any account. An old report reference or saved report search cannot start a new read or switch to the native `report` tool. Selecting a connection, enabling legacy catalogue reads, or having a previous receipt does not restore this action. Authorized requesters can still open unexpired historical results at `/connectors/results`; their access checks have not changed.
 
 For rollout, deploy the matching API, worker and web, drain old workers, then apply `20261123090000_retire_instance_scoped_report.sql`. This is a forward-only retirement, not a change to saved connections or OAuth onboarding. It has not been applied as part of this local change.
 

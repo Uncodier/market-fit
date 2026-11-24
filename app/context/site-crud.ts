@@ -2,7 +2,6 @@
 
 import type { Site, SiteSettings, UpdateSiteOptions } from "./site-types"
 import type { Dispatch, SetStateAction } from "react"
-import { saveLogoToCache } from "@/lib/sites/logo-cache"
 import { requestVoiceAgentResync } from "@/app/agents/voice-sync"
 
 type CrudDeps = {
@@ -72,11 +71,6 @@ export async function updateSiteRecord(site: Site, deps: CrudDeps, options: Upda
         .select()
       
       if (updateError) throw updateError;
-      
-      // Update the logo cache if it was changed
-      if (site.logo_url !== undefined) {
-        await saveLogoToCache(site.id, site.logo_url).catch(console.error);
-      }
       
       // If settings provided, update them as well
       if (site.settings) {
@@ -159,11 +153,6 @@ export async function createSiteRecord(newSite: Omit<Site, 'id' | 'created_at' |
         throw createError;
       }
       if (!createdSiteData || createdSiteData.length === 0) throw new Error("Could not create site");
-      
-      // Save logo to cache if provided
-      if (logoUrl) {
-        await saveLogoToCache(createdSiteData[0].id, logoUrl).catch(console.error);
-      }
       
       // Iniciar con un sitio vacío
       const createdSite = {

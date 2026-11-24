@@ -69,6 +69,9 @@ test("sanitizes URL filters and preserves their intersection through pagination"
 })
 
 test("authorization navigation excludes active schemes, credentials and insecure URLs", () => {
-  expect(safeAuthorizationUrl("https://connect.example.test/authorize?a=1")).toBe("https://connect.example.test/authorize?a=1")
-  for (const url of ["javascript:alert(1)", "http://connect.test", "//connect.test", "https://user:pass@connect.test"]) expect(safeAuthorizationUrl(url)).toBeNull()
+  expect(safeAuthorizationUrl("https://connect.composio.dev/authorize?a=1")).toBe("https://connect.composio.dev/authorize?a=1")
+  for (const url of ["javascript:alert(1)", "http://connect.composio.dev", "//connect.composio.dev", "https://user:pass@connect.composio.dev",
+    "https://connect.composio.dev:8080/link", "https://connect.composio.dev/authorize#fragment", "https://connect.example.test/authorize"]) {
+    expect(safeAuthorizationUrl(url)).toBeNull()
+  }
 })

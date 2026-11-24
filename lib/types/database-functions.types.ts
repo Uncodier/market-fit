@@ -11,6 +11,10 @@ export interface DatabaseFunctions<TSite> extends AccountingDatabaseFunctions, B
     Args: Record<PropertyKey, never>
     Returns: TSite[]
   }
+  read_workspace_screen_scope: {
+    Args: { p_site_id: string }
+    Returns: { actor_id: string; site_id: string; role: string; blocked_screens: string[]; location_restricted: boolean } | null
+  }
   current_user_site_role: {
     Args: { p_site_id: string }
     Returns: string | null

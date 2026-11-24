@@ -102,21 +102,31 @@ const ACTIVITIES: { key: ActivityKey; title: string; description: string }[] = [
 ]
 
 export function ActivitiesSection({ active, onSave, siteId }: ActivitiesSectionProps) {
+  const { currentSite } = useSite()
+  const activeSiteId = siteId || currentSite?.id
+  return active ? <ActivityCards key={activeSiteId} activeSiteId={activeSiteId} currentSite={currentSite} onSave={onSave} /> : null
+}
+
+function ActivityCards({ activeSiteId, currentSite, onSave }: {
+  activeSiteId?: string; currentSite: ReturnType<typeof useSite>['currentSite']; onSave: ActivitiesSectionProps['onSave']
+}) {
   const { t } = useLocalization()
   const form = useFormContext<SiteFormValues>()
   const [savingCard, setSavingCard] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string[]>>({})
   const [expandedSetups, setExpandedSetups] = useState<Record<string, boolean>>({})
-  const { currentSite } = useSite()
-  const activeSiteId = siteId || currentSite?.id
   const saveScope = useRef({ siteId: activeSiteId })
   useEffect(() => {
     saveScope.current = { siteId: activeSiteId }
-    setSavingCard(null)
-    setExpandedSetups({})
     return () => { saveScope.current = { siteId: undefined } }
   }, [activeSiteId])
-  const segments = useOutreachSegments(active ? siteId || currentSite?.id : undefined)
+  // A collapsed editor doesn't need options unless a saved active rule needs
+  // segment membership validated (Save validates all cards, including hidden ones).
+  const needsSegments = (["leads_initial_cold_outreach", "leads_follow_up"] as const).some(key => {
+    const rule = normalizeOutreachSettings(form.watch(`activities.${key}`), key)
+    return rule.status === "active" && (expandedSetups[key] || !rule.all_segments || rule.segment_ids.length > 0)
+  })
+  const segments = useOutreachSegments(needsSegments ? activeSiteId : undefined)
   const accounts = getUsableOutreachAccounts(currentSite?.settings?.channels)
   const businessHours = form.watch("business_hours")
   const timezone = getOutreachTimezone(currentSite?.settings?.business_hours ?? businessHours)
@@ -127,7 +137,6 @@ export function ActivitiesSection({ active, onSave, siteId }: ActivitiesSectionP
       form.setValue("activities.assign_leads_to_team.status", "inactive", { shouldDirty: true })
     }
   }, [coldOutreachStatus, assignStatus, form])
-  useEffect(() => { setErrors({}) }, [siteId, currentSite?.id])
   const sectionTitle = t("settings.nav.activities") || "AI Activities"
 
   const validate = (key: typeof OUTREACH_ACTIVITY_KEYS[number]) => {
@@ -176,8 +185,6 @@ export function ActivitiesSection({ active, onSave, siteId }: ActivitiesSectionP
       if (saveScope.current === scope) setSavingCard(null)
     }
   }
-
-  if (!active) return null
 
   return (
     <div id="activities" className="space-y-6">
@@ -351,10 +358,10 @@ export function ActivitiesSection({ active, onSave, siteId }: ActivitiesSectionP
               />}
               {canToggleSetup && <Collapsible open={setupOpen}>
                 <CollapsibleContent id={setupId} forceMount hidden={!setupOpen} className={cn(!setupOpen && "hidden")}>
-                  {isIcp && <IcpLeadGenerationFields siteId={activeSiteId} />}
-                  {isOutreach && <OutreachActivityFields activityKey={key} accounts={accounts} {...segments} timezone={timezone} />}
-                  {isDailyResumeAndStandUp && <DailyStandupFields timezone={timezone} />}
-                  {key === "conversation_automation_snooze" && <AutomationSnoozeFields />}
+                  {setupOpen && isIcp && <IcpLeadGenerationFields siteId={activeSiteId} />}
+                  {setupOpen && isOutreach && <OutreachActivityFields activityKey={key} accounts={accounts} {...segments} timezone={timezone} />}
+                  {setupOpen && isDailyResumeAndStandUp && <DailyStandupFields timezone={timezone} />}
+                  {setupOpen && key === "conversation_automation_snooze" && <AutomationSnoozeFields />}
                 </CollapsibleContent>
               </Collapsible>}
               {!!errors[key]?.length && <ul role="alert" className="mt-4 space-y-1 text-sm text-destructive">{errors[key].map(message => <li key={message}>{message}</li>)}</ul>}

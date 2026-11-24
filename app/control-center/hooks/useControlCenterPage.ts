@@ -31,6 +31,7 @@ export function useControlCenterPage() {
   const isMobile = useIsMobile()
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useAutoCollapseSidebar()
   const [selectedItem, setSelectedItem] = useState<string>("all")
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
   const {
     categories,
     leads,
@@ -43,7 +44,7 @@ export function useControlCenterPage() {
     isLoading,
     refreshTasks,
     updateTasksCache,
-  } = useControlCenterData(currentSite?.id, currentSite?.user_id)
+  } = useControlCenterData(currentSite?.id, isFilterModalOpen)
   const [searchQuery, setSearchQuery] = useState("")
   const view = searchParams.get("view")
   const viewType: TaskListView = view === "table" || view === "calendar" ? view : "kanban"
@@ -55,7 +56,6 @@ export function useControlCenterPage() {
   }
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
-  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false)
   const [filters, setFilters] = useState<TaskFilters>({
     stage: [],
     status: [],

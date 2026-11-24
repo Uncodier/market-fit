@@ -1,6 +1,13 @@
-import { recordFieldDate, recordFieldLabel, serializeRecordFieldDate } from "@/app/records/lib/field-values"
+import { recordFieldDate, recordFieldLabel, recordScalarFieldValue, serializeRecordFieldDate } from "@/app/records/lib/field-values"
 
 describe("record field values", () => {
+  it("reads an empty table as unset after retyping without changing nonempty or falsy values", () => {
+    expect(recordScalarFieldValue("select", [])).toBeNull()
+    expect(recordScalarFieldValue("table", [])).toEqual([])
+    expect(recordScalarFieldValue("number", 0)).toBe(0)
+    expect(recordScalarFieldValue("boolean", false)).toBe(false)
+    expect(recordScalarFieldValue("text", [{ Cell: "value" }])).toEqual([{ Cell: "value" }])
+  })
   it("round trips date-only values as local calendar dates", () => {
     for (const value of ["2026-01-01", "2026-03-08", "2026-11-01", "2024-02-29"]) {
       const date = recordFieldDate(value)!

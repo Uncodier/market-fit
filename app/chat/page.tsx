@@ -10,7 +10,7 @@ import { markUINavigation } from "@/lib/navigation/navigation-helpers"
 import { useSite } from "@/app/context/SiteContext"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
-import { ChatList } from "@/app/components/chat/chat-list"
+import { WorkspaceConversationList } from './WorkspaceConversationList'
 import { PrivateReviewScope } from "@/app/components/chat/private-reviews"
 import { useCommandK } from "@/app/hooks/use-command-k"
 // Chat service functions are imported dynamically where used to avoid client bundling issues
@@ -40,9 +40,12 @@ export default function ChatPage() {
   const { t } = useLocalization()
   const auth = useAuthContext()
   const site = useSite()
+  const reviewSiteId = !auth.user?.is_anonymous && site.requestScope?.actorId === auth.user?.id ? site.requestScope?.siteId : undefined
+  const reviewEnabled = !site.isLoading && !!site.currentSite && site.currentSite.id === reviewSiteId
   return (
     <Suspense fallback={<div className="flex justify-center items-center min-h-screen">{t("details.chat.loading")}</div>}>
-      <PrivateReviewScope actorId={auth.isLoading ? undefined : auth.user?.id} siteId={site.isLoading ? undefined : site.currentSite?.id}>
+      <PrivateReviewScope actorId={auth.isLoading ? undefined : auth.user?.id} siteId={reviewSiteId}
+        enabled={reviewEnabled}>
         {/* Never use the previous thread's routing metadata during navigation. */}
         <SWRConfig value={{ keepPreviousData: false }}>
           <ChatPageContent />
@@ -70,14 +73,9 @@ function ChatPageContent() {
   // Optimized message state management - debounced re-renders
   const chatCacheKey = conversationId && !conversationId.startsWith("new-") ? `chat-${conversationId}` : 'chat-new'
   const { setMessage, messageRef, clearMessage, handleMessageChange, textareaRef } = useOptimizedMessageState("", chatCacheKey)
-  const { user } = useAuthContext()
   const { currentSite } = useSite()
-  const [, setUserAvatarUrl] = useState<string | null>(null)
   
   const [isChatListCollapsed, setIsChatListCollapsed] = useAutoCollapseSidebar()
-  
-  // Track API server availability.
-  const [, setIsApiServerAvailable] = useState<boolean | null>(null)
   
   const { isLayoutCollapsed } = useLayout()
   
@@ -105,7 +103,6 @@ function ChatPageContent() {
   const allowMessageActions = isConversationReady && !internalReview
 
   // State for invalidated lead modal
-  const [showInvalidatedModal, setShowInvalidatedModal] = useState(false)
   const [isDeletingConversation, setIsDeletingConversation] = useState(false)
   
   const {
@@ -159,50 +156,6 @@ function ChatPageContent() {
     onSendMessage: handleSendMessageSubmit
   })
 
-  // Fetch user avatar
-  useEffect(() => {
-    const fetchUserAvatar = async () => {
-      if (!user) return
-      
-      try {
-        const supabase = createClient()
-        
-        // First try to get the user's profile from the database using email
-        const { data: profile, error } = await supabase
-          .from('profiles')
-          .select('avatar_url')
-          .eq('email', user.email)
-          .single()
-          
-        if (!error && profile && profile.avatar_url) {
-          setUserAvatarUrl(profile.avatar_url)
-          return
-        }
-        
-        // If no avatar in profile, try with user_metadata
-        if (user.user_metadata?.avatar_url) {
-          setUserAvatarUrl(user.user_metadata.avatar_url)
-          return
-        }
-        
-        // Try with identities if available
-        if (user.identities?.[0]?.identity_data?.avatar_url) {
-          setUserAvatarUrl(user.identities[0].identity_data.avatar_url)
-          return
-        }
-        
-        // If no avatar anywhere, use initial with color generated from email
-        setUserAvatarUrl(null)
-      } catch (error) {
-        console.error("Error fetching user avatar:", error)
-        // Default to null to use initials
-        setUserAvatarUrl(null)
-      }
-    }
-    
-    fetchUserAvatar()
-  }, [user])
-
   // Function to toggle chat list visibility - memoized for performance
   const toggleChatList = useCallback(() => {
     setIsChatListCollapsed(!isChatListCollapsed)
@@ -226,22 +179,6 @@ function ChatPageContent() {
     router.replace(newUrl);
   }, [conversationId, clearMessagesForTransition, router])
 
-  // Check API server availability when the page loads
-  useEffect(() => {
-    const checkApiServer = async () => {
-      try {
-        const { checkApiServerAvailability } = await import("@/app/services/chat-service.client")
-        const isAvailable = await checkApiServerAvailability()
-        setIsApiServerAvailable(isAvailable)
-      } catch (error) {
-        console.error("Error checking API server:", error)
-        setIsApiServerAvailable(false)
-      }
-    }
-    
-    checkApiServer()
-  }, [])
-
   // Memoize conversation validation to avoid unnecessary calculations
   const hasSelectedConversation = useMemo(() => {
     return Boolean(conversationId && !conversationId.startsWith("new-"))
@@ -258,19 +195,7 @@ function ChatPageContent() {
     }
   }, [hasActiveChatRequest, conversationId, setIsAgentResponding])
 
-  // Show modal when lead is invalidated (only for valid conversations)
-  useEffect(() => {
-    const hasValidConversation = conversationId && conversationId !== "" && !conversationId.startsWith("new-")
-    
-    if (isLeadInvalidated && hasValidConversation && !showInvalidatedModal) {
-      setShowInvalidatedModal(true)
-    }
-    
-    // Reset modal state when conversation changes
-    if (!hasValidConversation && showInvalidatedModal) {
-      setShowInvalidatedModal(false)
-    }
-  }, [isLeadInvalidated, showInvalidatedModal, conversationId])
+  const showInvalidatedModal = hasSelectedConversation && isLeadInvalidated
 
   // Function to delete conversation and messages
   const handleDeleteConversation = useCallback(async () => {
@@ -321,7 +246,6 @@ function ChatPageContent() {
       }))
       
       // Close modal first
-      setShowInvalidatedModal(false)
       setIsDeletingConversation(false)
       
       // Redirect to chat page (without conversation ID)
@@ -335,7 +259,6 @@ function ChatPageContent() {
   }, [conversationId, router])
 
   const handleCancelDelete = useCallback(() => {
-    setShowInvalidatedModal(false)
     // Redirect to chat list
     markUINavigation();
     router.push("/chat")
@@ -362,8 +285,7 @@ function ChatPageContent() {
           : "w-full md:w-[319px] md:min-w-[319px] translate-x-0",
         !isChatListCollapsed && !hasSelectedConversation && "w-full md:w-[319px] md:min-w-[319px]"
       )} style={{ overflow: 'hidden' }}>
-        <ChatList 
-          siteId={currentSite?.id || ""}
+        <WorkspaceConversationList
           selectedConversationId={conversationId}
           onSelectConversation={handleSelectConversation}
           className="w-full h-full relative"

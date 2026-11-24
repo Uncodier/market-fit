@@ -10,8 +10,9 @@ import { Button } from '@/app/components/ui/button'
 import { Input } from '@/app/components/ui/input'
 import { Textarea } from '@/app/components/ui/textarea'
 import { ReferencePicker } from '../procurement/components/reference-picker'
+import { ReferenceOptions } from '../procurement/components/reference-options'
 import { requestDocumentSchema, type RequestDocument } from './schema'
-import { ServiceEstimate } from './service-estimate'
+import { ServiceEstimate, useServiceTaxes } from './service-estimate'
 import { WorkflowValidation } from './workflow-validation'
 
 const emptyDocument: RequestDocument = { title: '', description: '', currency: 'USD', lines: [{ catalog_item_id: null, description: '', quantity: 1 }] }
@@ -22,6 +23,7 @@ export function RequestEditor({ siteId, initial = emptyDocument, busy, onSave, o
   const demo = isDemoSiteId(siteId) || isDemoModeActive()
   const [draft, setDraft] = useState(initial)
   const [issues, setIssues] = useState<ZodIssue[]>([])
+  const taxes = useServiceTaxes(!demo && draft.lines.some(line => !line.catalog_item_id) ? siteId : null)
   return <Dialog open onOpenChange={open => { if (!open && !busy) onCancel?.() }}><DialogContent closeLabel={t('procurement.navigation.closeDialog')} size="lg" busy={busy}><DialogForm onSubmit={event => {
     event.preventDefault(); if (busy || demo || isDemoModeActive()) return; const parsed = requestDocumentSchema.safeParse(draft)
     if (!parsed.success) { setIssues(parsed.error.issues); return }
@@ -34,15 +36,16 @@ export function RequestEditor({ siteId, initial = emptyDocument, busy, onSave, o
       <label className="block">{t('procurement.workflow.common.description')}<Textarea maxLength={5000} value={draft.description} onChange={event => setDraft({ ...draft, description: event.target.value })} /></label>
       <Choice disabled={busy} label={t('procurement.workflow.common.currency')} value={draft.currency} options={['USD', 'MXN', 'EUR', 'GBP', 'CAD']} onChange={currency => setDraft({ ...draft, currency })} />
       <p className="text-sm text-muted-foreground">{t('procurement.workflow.request.costDescription')}</p>
-      {draft.lines.map((line, index) => <section key={index} className="space-y-3 rounded border p-4">
+      {taxes.error && <div role="alert" className="text-sm text-destructive">{message(taxes.error)} <Button type="button" variant="outline" size="sm" onClick={taxes.retry}>{t('procurement.common.retry')}</Button></div>}
+      <ReferenceOptions>{draft.lines.map((line, index) => <section key={index} className="space-y-3 rounded border p-4">
         <h3 className="font-medium">{t('procurement.workflow.request.line', { number: index + 1 })}</h3>
         {demo ? null : <ReferencePicker disabled={busy} siteId={siteId} kind="products" label={t('procurement.workflow.request.catalogOptionalServices')} single ids={line.catalog_item_id ? [line.catalog_item_id] : []}
           onChange={values => setDraft({ ...draft, lines: draft.lines.map((item, position) => position === index ? { catalog_item_id: values[0] ?? null, description: item.description, quantity: item.quantity } : item) })} />}
         {!line.catalog_item_id && <label className="block">{t('procurement.workflow.request.serviceDescription')}<Input required value={line.description} maxLength={500} onChange={event => setDraft({ ...draft, lines: draft.lines.map((item, position) => position === index ? { ...item, description: event.target.value } : item) })} /></label>}
-        {!line.catalog_item_id && <ServiceEstimate siteId={siteId} line={line} onChange={value => setDraft({ ...draft, lines: draft.lines.map((item, position) => position === index ? value : item) })} />}
+        {!line.catalog_item_id && <ServiceEstimate taxes={taxes.data ?? []} line={line} onChange={value => setDraft({ ...draft, lines: draft.lines.map((item, position) => position === index ? value : item) })} />}
         <label className="block">{t('procurement.workflow.common.quantity')}<Input type="number" min={1} max={1000000} step={1} required value={line.quantity} onChange={event => setDraft({ ...draft, lines: draft.lines.map((item, position) => position === index ? { ...item, quantity: Number(event.target.value) } : item) })} /></label>
         <Button type="button" variant="outline" disabled={draft.lines.length === 1} onClick={() => setDraft({ ...draft, lines: draft.lines.filter((_, position) => position !== index) })}>{t('procurement.workflow.request.removeLine')}</Button>
-      </section>)}
+      </section>)}</ReferenceOptions>
       <Button type="button" variant="outline" disabled={draft.lines.length >= 100} onClick={() => setDraft({ ...draft, lines: [...draft.lines, { catalog_item_id: null, description: '', quantity: 1 }] })}>{t('procurement.workflow.request.addLine')}</Button>
       <WorkflowValidation issues={issues} kind="request" />
     </fieldset></DialogBody>

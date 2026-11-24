@@ -14,7 +14,7 @@ import {
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
 import { PlusCircle, FlaskConical, FileText, Users, XCircle, Tag } from "@/app/components/ui/icons"
-import { useForm } from "react-hook-form"
+import { useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useState, useEffect } from "react"
 import { Switch } from "@/app/components/ui/switch"
@@ -24,10 +24,9 @@ import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { useAuth } from "@/app/hooks/use-auth"
 import { useSite } from "@/app/context/SiteContext"
-import { createClient } from "@/lib/supabase/client"
 import { type ExperimentFormValues } from "@/app/experiments/actions"
 import { experimentFormSchema } from "@/app/experiments/schema"
-import * as z from "zod"
+import { DialogOptionsFeedback, type DialogOptionsStatus } from './dialog-options-feedback'
 import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
 import { resolveRelationId } from "@/app/commerce/resolve-relation"
 
@@ -46,31 +45,20 @@ interface Campaign {
 interface CreateExperimentDialogProps {
   segments: Segment[]
   campaigns?: Campaign[]
-  onCreateExperiment: (values: ExperimentFormValues) => Promise<{ data?: any; error?: string }>
+  onCreateExperiment: (values: ExperimentFormValues) => Promise<{ data?: unknown; error?: string }>
   trigger?: React.ReactNode
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  optionsStatus: DialogOptionsStatus
 }
 
-export function CreateExperimentDialog({ segments, campaigns = [], onCreateExperiment, trigger }: CreateExperimentDialogProps) {
-  const [isOpen, setIsOpen] = useState(false)
+export function CreateExperimentDialog({ segments, campaigns = [], onCreateExperiment, trigger,
+  open, onOpenChange, optionsStatus }: CreateExperimentDialogProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [campaignValue, setCampaignValue] = useState<RelationSelectValue>(null)
-  const [dialogState, setDialogState] = useState({
-    isFormValid: false,
-    lastAction: 'initial',
-    submitAttempts: 0,
-    formData: null as any
-  })
   
   const { user } = useAuth()
   const { currentSite } = useSite()
-
-  // Log segments and campaigns when dialog opens
-  useEffect(() => {
-    if (isOpen) {
-      console.log('CreateExperimentDialog opened with segments:', segments);
-      console.log('CreateExperimentDialog opened with campaigns:', campaigns);
-    }
-  }, [isOpen, segments, campaigns]);
 
   const form = useForm<ExperimentFormValues>({
     resolver: zodResolver(experimentFormSchema),
@@ -92,8 +80,11 @@ export function CreateExperimentDialog({ segments, campaigns = [], onCreateExper
       updated_at: new Date().toISOString(),
     },
   })
+  const selectedSegments = useWatch({ control: form.control, name: 'segments' })
+  const relationsValid = selectedSegments.every(id => segments.some(s => s.id === id)) &&
+    (campaignValue?.mode !== 'existing' || campaigns.some(c => c.id === campaignValue.id))
+  const canSubmit = optionsStatus.ready && !isLoading && relationsValid && selectedSegments.length > 0
 
-  // Actualizar user_id y site_id cuando cambien
   useEffect(() => {
     if (user?.id) {
       form.setValue("user_id", user.id)
@@ -102,39 +93,15 @@ export function CreateExperimentDialog({ segments, campaigns = [], onCreateExper
       form.setValue("site_id", currentSite.id)
       form.setValue("preview_url", currentSite.url || null)
     }
-  }, [user?.id, currentSite?.id, form])
-
-  // Monitorear cambios en el formulario
-  useEffect(() => {
-    setDialogState(prev => ({
-      ...prev,
-      isFormValid: form.formState.isValid,
-      formData: form.getValues()
-    }))
-  }, [form.formState.isValid, form.formState.isDirty, form])
-
-  // Debug component renders and updates to find segment display issue
-  useEffect(() => {
-    console.log('CreateExperimentDialog segments updated:', {
-      count: segments.length,
-      firstSegment: segments.length > 0 ? segments[0] : null,
-      isArrayType: Array.isArray(segments)
-    });
-  }, [segments]);
+  }, [user?.id, currentSite?.id, currentSite?.url, form])
 
   const handleClose = () => {
     if (isLoading) return
-    setDialogState(prev => ({ ...prev, lastAction: 'close' }))
-    setIsOpen(false)
+    onOpenChange(false)
   }
 
   const onSubmit = async (values: ExperimentFormValues) => {
-    setDialogState(prev => ({ 
-      ...prev, 
-      lastAction: 'submit',
-      submitAttempts: prev.submitAttempts + 1,
-      formData: values
-    }))
+    if (!canSubmit) return
 
     try {
       // Validar que exista un usuario y sitio seleccionado
@@ -149,7 +116,6 @@ export function CreateExperimentDialog({ segments, campaigns = [], onCreateExper
       }
 
       setIsLoading(true)
-      setDialogState(prev => ({ ...prev, lastAction: 'loading' }))
 
       // Actualizar los timestamps y datos del sitio
       values.created_at = new Date().toISOString()
@@ -167,24 +133,16 @@ export function CreateExperimentDialog({ segments, campaigns = [], onCreateExper
       
       values.campaign_id = resolvedCampaignId;
 
-      console.log("Submitting experiment with data:", {
-        ...values,
-        campaign: resolvedCampaignId ? campaigns.find(c => c.id === resolvedCampaignId)?.title : null
-      });
-
-      const { data, error } = await onCreateExperiment(values)
+      const { error } = await onCreateExperiment(values)
 
       if (error) {
-        setDialogState(prev => ({ ...prev, lastAction: 'error' }))
         toast.error(error)
         return
       }
 
-      setDialogState(prev => ({ ...prev, lastAction: 'success' }))
       toast.success("Experiment created successfully")
-      setIsOpen(false)
+      onOpenChange(false)
     } catch (error) {
-      setDialogState(prev => ({ ...prev, lastAction: 'error' }))
       toast.error(error instanceof Error ? error.message : "Error creating experiment")
     } finally {
       setIsLoading(false)
@@ -193,11 +151,11 @@ export function CreateExperimentDialog({ segments, campaigns = [], onCreateExper
 
   return (
     <Dialog 
-      open={isOpen}
+      open={open}
       modal={true}
       onOpenChange={(open) => {
         if (!isLoading) {
-          setIsOpen(open)
+          onOpenChange(open)
         }
       }}
     >
@@ -270,6 +228,14 @@ export function CreateExperimentDialog({ segments, campaigns = [], onCreateExper
               )}
             </div>
             
+            {!optionsStatus.ready ? <DialogOptionsFeedback status={optionsStatus} /> : <>
+            {!relationsValid && <div role="alert" className="space-y-2">
+              <p>A selected option is no longer available.</p>
+              <Button type="button" variant="outline" onClick={() => {
+                form.setValue('segments', selectedSegments.filter(id => segments.some(s => s.id === id)))
+                if (campaignValue?.mode === 'existing' && !campaigns.some(c => c.id === campaignValue.id)) setCampaignValue(null)
+              }}>Clear unavailable options</Button>
+            </div>}
             <div className="grid gap-2">
               <div className="flex items-center gap-2">
                 <Users className="h-4 w-4 text-muted-foreground" />
@@ -303,6 +269,7 @@ export function CreateExperimentDialog({ segments, campaigns = [], onCreateExper
                         </div>
                         <Switch
                           id={`segment-${segment.id}`}
+                          checked={selectedSegments.includes(segment.id)}
                           onCheckedChange={(checked) => {
                             const currentSegments = form.getValues("segments")
                             if (checked) {
@@ -346,6 +313,7 @@ export function CreateExperimentDialog({ segments, campaigns = [], onCreateExper
                 Link this experiment to a marketing campaign to track performance
               </p>
             </div>
+            </>}
           </DialogBody>
           <DialogFooter>
             <Button
@@ -356,7 +324,7 @@ export function CreateExperimentDialog({ segments, campaigns = [], onCreateExper
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading}>
+            <Button type="submit" disabled={!canSubmit}>
               {isLoading ? "Creating..." : "Create Experiment"}
             </Button>
           </DialogFooter>

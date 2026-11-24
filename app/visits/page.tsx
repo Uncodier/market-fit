@@ -50,6 +50,7 @@ function VisitsPageContent() {
   return (
     <VisitsPageShell>
       <VisitRegistrationForm
+        key={JSON.stringify([currentSite.id, reservationId])}
         siteId={currentSite.id}
         mode="kiosk"
         reservationId={reservationId}

@@ -3,6 +3,10 @@ import path from "path"
 import { render, screen } from "@testing-library/react"
 import { usePathname } from "next/navigation"
 import { Sidebar } from "@/app/components/navigation/Sidebar"
+import { DynamicShortcuts } from '@/app/components/navigation/DynamicShortcuts'
+import { NotificationBadge } from '@/app/components/navigation/NotificationBadge'
+import { OnboardingProgressWidget } from '@/app/components/navigation/OnboardingProgressWidget'
+import { StartupTrialWidget } from '@/app/components/navigation/StartupTrialWidget'
 
 jest.mock("next/dynamic", () => ({
   __esModule: true,
@@ -30,12 +34,13 @@ jest.mock("@/app/components/navigation/NavigationLink", () => {
 
 jest.mock("@/app/components/navigation/SiteSelector", () => ({ SiteSelector: () => null }))
 jest.mock("@/app/components/navigation/ConfigurationSection", () => ({ ConfigurationSection: () => null }))
-jest.mock("@/app/components/navigation/NotificationBadge", () => ({ NotificationBadge: () => null }))
+jest.mock("@/app/components/navigation/NotificationBadge", () => ({ NotificationBadge: jest.fn(() => null) }))
 jest.mock("@/app/components/navigation/RobotsNavItems", () => ({
   RobotsNavItems: () => <a href="/robots">AI Workspace</a>,
 }))
-jest.mock("@/app/components/navigation/DynamicShortcuts", () => ({ DynamicShortcuts: () => null }))
-jest.mock("@/app/components/navigation/OnboardingProgressWidget", () => ({ OnboardingProgressWidget: () => null }))
+jest.mock("@/app/components/navigation/DynamicShortcuts", () => ({ DynamicShortcuts: jest.fn(() => null) }))
+jest.mock("@/app/components/navigation/OnboardingProgressWidget", () => ({ OnboardingProgressWidget: jest.fn(() => null) }))
+jest.mock("@/app/components/navigation/StartupTrialWidget", () => ({ StartupTrialWidget: jest.fn(() => null) }))
 jest.mock("@/app/components/navigation/CreditsWidget", () => ({ CreditsWidget: () => null }))
 
 const layoutSource = readFileSync(path.join(process.cwd(), "app/layout-client.tsx"), "utf8")
@@ -56,7 +61,19 @@ function renderMobileSidebar(isCollapsed = false) {
 
 describe("mobile sidebar viewport", () => {
   beforeEach(() => {
+    jest.clearAllMocks()
     jest.mocked(usePathname).mockReturnValue("/robots")
+  })
+
+  it('does not start invisible readers on mobile, including when site recovery and keyboard navigation remain mounted', () => {
+    const props = { isCollapsed: false, onCollapse: jest.fn(), desktopVisible: false }
+    const view = render(<Sidebar {...props} />)
+    for (const reader of [DynamicShortcuts, NotificationBadge, OnboardingProgressWidget, StartupTrialWidget]) expect(reader).not.toHaveBeenCalled()
+    view.rerender(<Sidebar {...props} isMobileOpen />)
+    expect(DynamicShortcuts).toHaveBeenCalled(); expect(NotificationBadge).toHaveBeenCalled()
+    expect(OnboardingProgressWidget).not.toHaveBeenCalled(); expect(StartupTrialWidget).not.toHaveBeenCalled()
+    view.rerender(<Sidebar {...props} desktopVisible />)
+    expect(OnboardingProgressWidget).toHaveBeenCalled(); expect(StartupTrialWidget).toHaveBeenCalled()
   })
 
   it("keeps the dynamic viewport height with the actual workspace layout classes", () => {

@@ -24,7 +24,7 @@ export function cacheSiteSelection(userId: string | null, site: Site) {
   } catch { /* Optional cache must never prevent selecting a workspace. */ }
 }
 
-export function readSiteSelection(userId: string | null): Site | null {
+function readSelectionRecord(userId: string | null): { site: Site; expiresAt: number } | null {
   if (!userId) return null
   try {
     const value = JSON.parse(localStorage.getItem(SITE_SELECTION_CACHE_KEY) || "null")
@@ -38,8 +38,21 @@ export function readSiteSelection(userId: string | null): Site | null {
       if (site[field] != null && typeof site[field] !== "string") return null
     }
     // Re-project on read too: a browser cache is never a trusted Site payload.
-    return identity(site)
+    // The final millisecond at the TTL is valid (see the age check above).
+    return { site: identity(site), expiresAt: value.savedAt + SITE_SELECTION_CACHE_TTL_MS + 1 }
   } catch { return null }
+}
+
+export function readSiteSelection(userId: string | null): Site | null {
+  return readSelectionRecord(userId)?.site ?? null
+}
+
+/** Text-only UI hint. The caller cannot use this result as an active Site. */
+export function readSiteSelectionLabel(userId: string | null, currentSiteId?: string) {
+  const hint = readSelectionRecord(userId)
+  if (!hint || (currentSiteId && currentSiteId !== hint.site.id)) return null
+  const name = hint.site.name.trim()
+  return name ? { name, expiresAt: hint.expiresAt } : null
 }
 
 export function clearSiteSelectionCache() {

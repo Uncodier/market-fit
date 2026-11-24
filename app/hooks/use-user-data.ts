@@ -1,49 +1,25 @@
-import { useState, useEffect } from 'react'
-import { getUserData } from '@/app/services/user-service'
-
-interface UserData {
-  name: string
-  avatar_url: string | null
-}
+import { useState, useEffect, useMemo } from 'react'
+import { useAuthContext } from '@/app/components/auth/auth-context'
+import { useSite } from '@/app/context/SiteContext'
+import { createClient } from '@/lib/supabase/client'
+import { readVisibleProfiles, type VisibleProfile } from '@/app/services/read-visible-profile'
 
 export function useUserData(userIds: string[]) {
-  const [userData, setUserData] = useState<Record<string, UserData>>({})
-  const [loading, setLoading] = useState(false)
-
+  const { currentSite, isLoading } = useSite()
+  const auth = useAuthContext()
+  const key = currentSite && !isLoading && !auth.isLoading && auth.user && !auth.user.is_anonymous && userIds.length
+    ? JSON.stringify([auth.user.id, currentSite.id, [...new Set(userIds)].sort()]) : null
+  const scope = useMemo(() => key ? { ids: (JSON.parse(key) as [string, string, string[]])[2] } : null, [key])
+  const [snapshot, setSnapshot] = useState<{ scope: object; data: Record<string, VisibleProfile> } | null>(null)
   useEffect(() => {
-    const fetchUserData = async () => {
-      if (userIds.length === 0) return
-
-      // Filter out IDs we already have
-      const missingUserIds = userIds.filter(id => !userData[id])
-      if (missingUserIds.length === 0) return
-
-      setLoading(true)
-      try {
-        const promises = missingUserIds.map(async (userId) => {
-          const data = await getUserData(userId)
-          return { userId, data }
-        })
-
-        const results = await Promise.all(promises)
-        const newUserData: Record<string, UserData> = {}
-        
-        results.forEach(({ userId, data }) => {
-          if (data) {
-            newUserData[userId] = data
-          }
-        })
-
-        setUserData(prev => ({ ...prev, ...newUserData }))
-      } catch (error) {
-        console.error('Error fetching user data:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchUserData()
-  }, [userIds.join(',')]) // Only re-run if the userIds array changes
-
-  return { userData, loading }
+    if (!scope) return
+    const controller = new AbortController()
+    const timer = setTimeout(() => { controller.abort(); setSnapshot({ scope, data: {} }) }, 5_000)
+    void readVisibleProfiles(createClient(), scope.ids, controller.signal).then(
+      data => { if (!controller.signal.aborted) setSnapshot({ scope, data }) },
+      () => { if (!controller.signal.aborted) setSnapshot({ scope, data: {} }) },
+    ).finally(() => clearTimeout(timer))
+    return () => { clearTimeout(timer); controller.abort() }
+  }, [scope])
+  return { userData: snapshot?.scope === scope ? snapshot.data : {}, loading: !!scope && snapshot?.scope !== scope }
 } 

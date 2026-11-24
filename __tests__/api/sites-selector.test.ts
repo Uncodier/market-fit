@@ -13,13 +13,16 @@ const getUser = jest.fn()
 const gate = jest.fn()
 const rpc = jest.fn(() => ({ abortSignal: gate }))
 const request = () => new Request('https://example.test/api/sites?view=selector')
+let warning: jest.SpyInstance
 beforeEach(() => {
   jest.clearAllMocks()
+  warning = jest.spyOn(console, 'warn').mockImplementation(() => {})
   getUser.mockReset().mockResolvedValue({ data: { user: { id: 'actor' } }, error: null })
   gate.mockReset().mockResolvedValue({ data: false, error: null })
   jest.mocked(createUserSupabase).mockResolvedValue({ auth: { getUser }, rpc } as never)
   jest.mocked(readSelectorSites).mockResolvedValue({ sites: [{ id: 'site' }], authoritative: false, cache: 'hit', cacheReason: 'hit' })
 })
+afterEach(() => warning.mockRestore())
 
 it('verifies identity and location before reading cache without legacy billing/detail queries', async () => {
   const response = await GET(request())
@@ -35,6 +38,7 @@ it('verifies identity and location before reading cache without legacy billing/d
   expect(response.headers.get('server-timing')).toContain('auth;dur=')
   expect(response.headers.get('server-timing')).toContain('location;dur=')
   expect(response.headers.get('server-timing')).toContain('list;dur=')
+  expect(warning).not.toHaveBeenCalled()
 })
 
 it.each([401, 403, 429, 500, 503, 0])('classifies auth status %s without leaking diagnostics', async status => {
@@ -43,11 +47,13 @@ it.each([401, 403, 429, 500, 503, 0])('classifies auth status %s without leaking
   expect(response.status).toBe([401, 403].includes(status) ? 401 : 503)
   expect(await response.text()).not.toContain('Sensitive')
   expect(readSelectorSites).not.toHaveBeenCalled()
+  if (response.status === 401) expect(warning).not.toHaveBeenCalled()
 })
 
 it.each([true, null])('does not bypass failed or restricted location verification (%s)', async data => {
   gate.mockResolvedValue({ data, error: null })
   expect((await GET(request())).status).toBe(data ? 403 : 503)
+  if (data) expect(warning).not.toHaveBeenCalled()
   expect(readSelectorSites).not.toHaveBeenCalled()
 })
 
@@ -207,6 +213,33 @@ it('preserves the timeout stage when abort immediately rejects the underlying re
     const response = await pending
     expect(response.status).toBe(503)
     expect(response.headers.get('x-sites-timeout-stage')).toBe('auth')
+    expect(warning.mock.calls).toEqual([['Selector request unavailable', {
+      stage: 'auth', timedOut: true, serverTiming: 'auth;dur=8000.0,total;dur=8000.0',
+    }]])
     expect(readSelectorSites).not.toHaveBeenCalled()
   } finally { jest.useRealTimers() }
+})
+
+it.each(['auth', 'location', 'list'] as const)('logs one fixed-stage diagnostic for a non-deadline %s 503', async stage => {
+  const providerError = { message: 'private-provider-error', status: 503 }
+  if (stage === 'auth') getUser.mockResolvedValueOnce({ data: { user: null }, error: providerError })
+  if (stage === 'location') gate.mockResolvedValueOnce({ data: null, error: providerError })
+  if (stage === 'list') jest.mocked(readSelectorSites).mockRejectedValueOnce(new Error(providerError.message))
+
+  const response = await GET(new Request('https://example.test/api/sites?view=selector&debug=private-query', {
+    headers: { cookie: 'private-cookie', authorization: 'Bearer private-bearer' },
+  }))
+  const timings = response.headers.get('server-timing')
+  expect(response.status).toBe(503)
+  expect(response.headers.has('x-sites-timeout-stage')).toBe(false)
+  expect(timings).toMatch(/^(auth;dur=\d+\.\d,)(location;dur=\d+\.\d,)?(list;dur=\d+\.\d,)?total;dur=\d+\.\d$/)
+  expect(warning.mock.calls).toEqual([['Selector request unavailable', { stage, timedOut: false, serverTiming: timings }]])
+})
+
+it('does not report a disconnected selector or a legacy read as a selector outage', async () => {
+  const disconnected = new Request(request(), { signal: AbortSignal.abort() })
+  expect((await GET(disconnected)).status).toBe(503)
+  getUser.mockRejectedValueOnce(new Error('auth transport unavailable'))
+  expect((await GET(new Request('https://example.test/api/sites'))).status).toBe(503)
+  expect(warning).not.toHaveBeenCalled()
 })

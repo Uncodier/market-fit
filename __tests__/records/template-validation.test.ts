@@ -20,22 +20,18 @@ describe("record template validation", () => {
   ])("rejects malformed schemas %j", fields => {
     expect(validateTemplateFields(fields).valid).toBe(false)
   })
-  it("blocks populated destructive schema changes while allowing labels/reordering", () => {
-    expect(validateTemplateFieldUpdate([field], [{ ...field, label: "New label" }], true).valid).toBe(true)
-    expect(validateTemplateFieldUpdate([field], [{ ...field, name: "New key" }], false).valid).toBe(false)
-    expect(validateTemplateFieldUpdate([field], [], true).valid).toBe(false)
-    expect(validateTemplateFieldUpdate([field], [{ ...field, id: "replacement", name: "Renamed" }], true).valid).toBe(false)
-    expect(validateTemplateFieldUpdate([field], [{ ...field, id: "replacement" }], true).valid).toBe(false)
-    expect(validateTemplateFieldUpdate(null, [{ ...field, required: false }], true).valid).toBe(true)
-    expect(validateTemplateFieldUpdate([field], [{ id: field.id, name: field.name, type: "text" }], true).valid).toBe(false)
+  it("keeps storage keys immutable and defers value compatibility to PostgreSQL", () => {
+    expect(validateTemplateFieldUpdate([field], [{ ...field, label: "New label" }]).valid).toBe(true)
+    expect(validateTemplateFieldUpdate([field], [{ ...field, name: "New key" }]).valid).toBe(false)
+    expect(validateTemplateFieldUpdate([field], []).valid).toBe(true)
+    expect(validateTemplateFieldUpdate(null, [field]).valid).toBe(true)
+    expect(validateTemplateFieldUpdate([field], [{ id: field.id, name: field.name, type: "text" }]).valid).toBe(true)
+    expect(validateTemplateFieldUpdate([field], [{ ...field, max: 4 }]).valid).toBe(true)
     const link = { id: "link", name: "Link", type: "relation", relationTarget: "lead" }
-    expect(validateTemplateFieldUpdate([link], [{ ...link, relationTarget: "supplier" }], true).valid).toBe(false)
+    expect(validateTemplateFieldUpdate([link], [{ ...link, relationTarget: "supplier" }]).valid).toBe(true)
   })
-  it("rejects tightening populated constraints and introducing person fields", () => {
-    expect(validateTemplateFieldUpdate([field], [{ ...field, max: 4 }], true).valid).toBe(false)
-    expect(validateTemplateFieldUpdate([field], [{ ...field, max: 6 }], true).valid).toBe(true)
-    expect(validateTemplateFieldUpdate([], [field], true).valid).toBe(false)
-    expect(validateTemplateFieldUpdate([], [{ id: "p", name: "Person", type: "relation", relationTarget: "person" }], false).valid).toBe(false)
+  it("still rejects introducing person fields", () => {
+    expect(validateTemplateFieldUpdate([], [{ id: "p", name: "Person", type: "relation", relationTarget: "person" }]).valid).toBe(false)
   })
 })
 

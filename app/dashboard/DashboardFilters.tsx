@@ -3,17 +3,20 @@
 import { MobileFiltersDrawer, FilterContainer, FilterSection } from "@/app/components/ui/mobile-filters-drawer"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { TabsList, TabsTrigger } from "@/app/components/ui/tabs"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { CalendarDateRangePicker } from "@/app/components/ui/date-range-picker"
 import { ReportExportButton } from "@/app/components/navigation/ReportExportButton"
 import { format } from "date-fns"
-import type { Segment } from "@/app/types/segments"
+import { ReportFilterSelect } from "./ReportFilterSelect"
+import type { ReportOption } from "./use-report-filter"
 import { REPORTS, type ReportId } from "./report-sections"
 
 export function DashboardFilters({
   t,
   selectedSegment,
   onSegmentChange,
+  onRequestSegments,
+  retrySegments,
+  segmentsDisabled,
   isLoadingSegments,
   segments,
   dateRange,
@@ -25,8 +28,11 @@ export function DashboardFilters({
   t: (key: string) => string
   selectedSegment: string
   onSegmentChange: (segmentId: string) => void
+  onRequestSegments?: () => void
+  retrySegments?: () => void
+  segmentsDisabled?: boolean
   isLoadingSegments: boolean
-  segments: Segment[]
+  segments: ReportOption[]
   dateRange: { startDate: Date; endDate: Date }
   onDateRangeChange: (start: Date, end: Date) => void
   report: ReportId
@@ -51,29 +57,9 @@ export function DashboardFilters({
               {report !== "social" && report !== "traffic" && <FilterSection>
                 <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2">
                   <span className="text-sm text-muted-foreground">{t("dashboard.filters.segment") || "Segment:"}</span>
-                  <Select
-                    value={selectedSegment}
-                    onValueChange={onSegmentChange}
-                    disabled={isLoadingSegments}
-                  >
-                    <SelectTrigger aria-label="Segment" className="w-full md:w-[180px]">
-                      <div className="flex-1 overflow-hidden">
-                        <span style={{ pointerEvents: "none" }}>
-                          <SelectValue placeholder={t("dashboard.filters.allSegments") || "All segments"} />
-                        </span>
-                      </div>
-                    </SelectTrigger>
-                    <SelectContent className="min-w-[180px] w-auto">
-                      <SelectItem value="all" className="flex-wrap whitespace-normal">
-                        <span style={{ pointerEvents: "none" }}>{t("dashboard.filters.allSegments") || "All segments"}</span>
-                      </SelectItem>
-                      {segments.map((segment) => (
-                        <SelectItem key={segment.id} value={segment.id} className="flex-wrap whitespace-normal">
-                          <span style={{ pointerEvents: "none" }}>{segment.name}</span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <ReportFilterSelect label="Segment" all={t("dashboard.filters.allSegments") || "All segments"}
+                    value={selectedSegment} onChange={onSegmentChange} options={segments} loading={isLoadingSegments}
+                    request={onRequestSegments} retry={retrySegments} disabled={segmentsDisabled} />
                 </div>
               </FilterSection>}
               <FilterSection>

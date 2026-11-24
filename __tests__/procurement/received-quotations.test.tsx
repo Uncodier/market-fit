@@ -135,6 +135,7 @@ test('embedded quotations align add at the right edge and status filters inside 
   expect(screen.getByText('Chair supplier')).toBeInTheDocument()
   fireEvent.click(within(heading.parentElement!).getByRole('button', { name: 'Record external quotation' }))
   expect(screen.getByRole('dialog')).toBeInTheDocument()
+  await screen.findByText('No eligible open tender is available.')
 })
 
 test('embedded empty quotations keep all table columns visible and filters remain interactive', async () => {

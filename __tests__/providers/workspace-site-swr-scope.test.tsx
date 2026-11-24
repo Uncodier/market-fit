@@ -60,6 +60,29 @@ it("does not unmount interactive children while site loading changes", async () 
   expect(fetcher).toHaveBeenCalledTimes(1)
 })
 
+it('resumes two readers of the same key with one request, not one mutate per subscriber', async () => {
+  const tree = <Wrapper><List name="shared" /><List name="shared" /></Wrapper>
+  const view = render(tree)
+  expect(fetcher).not.toHaveBeenCalled()
+  mockLoading = false
+  view.rerender(<Wrapper><List name="shared" /><List name="shared" /></Wrapper>)
+  await waitFor(() => expect(screen.getAllByText('Loaded')).toHaveLength(2))
+  expect(fetcher).toHaveBeenCalledTimes(1)
+})
+
+it('does not revalidate twice when a conditional SWR key first becomes usable at hydration', async () => {
+  function Conditional() {
+    const { data } = useSWR(mockLoading ? null : ['locations', mockSiteId], fetcher)
+    return <p>{data}</p>
+  }
+  const view = render(<Wrapper><Conditional /></Wrapper>)
+  expect(fetcher).not.toHaveBeenCalled()
+  mockLoading = false
+  view.rerender(<Wrapper><Conditional /></Wrapper>)
+  await screen.findByText('Loaded')
+  expect(fetcher).toHaveBeenCalledTimes(1)
+})
+
 it.each(['site', 'actor', 'resource'])('does not retain data across a changed %s while paused', async change => {
   mockLoading = false
   const { rerender } = render(<Wrapper><List name="inventory" /></Wrapper>)

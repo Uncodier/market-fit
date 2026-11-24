@@ -1,5 +1,6 @@
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
+import { act, render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import Page from '@/app/purchases/procurement/approvals/page'
+import { notifyScreenScopeChanged } from '@/lib/permissions/screen-scope-invalidation'
 
 jest.mock('@/app/context/LayoutContext', () => ({ useLayout: () => ({ isLayoutCollapsed: false }) }))
 jest.mock('@/app/context/LocalizationContext', () => ({ useLocalization: () => ({ t: (key: string) => key, locale: 'en' }) }))
@@ -9,6 +10,37 @@ beforeAll(() => {
   Element.prototype.scrollIntoView = jest.fn()
 })
 const id = '22222222-2222-4222-8222-222222222222'
+test('only Review requests stages; close or a same-site scope change retires a pending review', async () => {
+  let resolveReview!: (value: Response) => void
+  const site = '11111111-1111-4111-8111-111111111111'
+  const inbox = { rows: [{ id: `event:${id}`, target_id: id, title: 'Document to review', stage: 'award', status: 'pending', revision: 1, date: '2026-10-28' }], count: 1 }
+  let denied = false
+  const reads = jest.mocked(fetch).mockReset().mockImplementation(async url => String(url).includes('/inbox?')
+    ? { ok: !denied, status: denied ? 403 : 200, json: async () => inbox } as Response
+    : new Promise(resolve => { resolveReview = resolve }))
+  render(<Page />)
+  await screen.findByText('Document to review')
+  expect(reads).toHaveBeenCalledTimes(1)
+  fireEvent.click(screen.getByRole('button', { name: 'Review' }))
+  const [url, init] = reads.mock.calls[1]
+  expect(url).toBe(`/api/procurement/approvals?site_id=${site}&target_id=${id}`)
+  expect(init?.cache).toBe('no-store')
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+  expect(init?.signal?.aborted).toBe(true)
+  const first = resolveReview
+  fireEvent.click(screen.getByRole('button', { name: 'Review' }))
+  await act(async () => first({ ok: true, json: async () => ({ approvals: [] }) } as Response))
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  const latest = reads.mock.calls[2][1]!.signal!
+  denied = true
+  act(() => notifyScreenScopeChanged(site))
+  expect(latest.aborted).toBe(true)
+  await act(async () => resolveReview({ ok: true, json: async () => ({ approvals: [] }) } as Response))
+  expect(await screen.findByRole('alert')).toHaveTextContent('Unable to load approvals')
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  expect(screen.queryByText('Document to review')).not.toBeInTheDocument()
+  expect(reads.mock.calls.every(([, options]) => !options?.method)).toBe(true)
+})
 test('labels deprecated approvals in the inbox and keeps their review read-only', async () => {
   jest.mocked(fetch).mockImplementation(async url => ({ ok: true, json: async () => String(url).includes('/inbox?')
     ? { rows: [{ id: `event:${id}`, target_id: id, title: 'Old tender', stage: 'publication', status: 'pending', revision: 1, date: '2026-10-28', is_deprecated: true }], count: 1 }

@@ -13,7 +13,6 @@ import { toast } from "sonner"
 import { createContent } from "./actions"
 import { useSite } from "@/app/context/SiteContext"
 import { 
-  Plus, 
   X, 
   Users, 
   Target, 
@@ -23,11 +22,9 @@ import {
   LayoutGrid 
 } from "@/app/components/ui/icons"
 import { Badge } from "@/app/components/ui/badge"
-import { Switch } from "@/app/components/ui/switch"
-import { ScrollArea } from "@/app/components/ui/scroll-area"
-import { cn } from "@/lib/utils"
-import { ContentType, CONTENT_TYPE_NAMES } from "./utils"
+import { CONTENT_TYPE_NAMES } from "./utils"
 import { useLocalization } from "@/app/context/LocalizationContext"
+import { DialogOptionsFeedback, type DialogOptionsStatus } from '@/app/components/dialog-options-feedback'
 
 interface Segment {
   id: string
@@ -46,6 +43,7 @@ interface CreateContentDialogProps {
   onOpenChange?: (open: boolean) => void
   segments: Segment[]
   campaigns?: Campaign[]
+  optionsStatus?: DialogOptionsStatus
   onSuccess?: () => void
   trigger?: React.ReactNode
 }
@@ -55,6 +53,7 @@ export function CreateContentDialog({
   onOpenChange: controlledOnOpenChange, 
   segments,
   campaigns = [],
+  optionsStatus,
   onSuccess,
   trigger
 }: CreateContentDialogProps) {
@@ -74,10 +73,12 @@ export function CreateContentDialog({
   const isControlled = controlledIsOpen !== undefined
   const open = isControlled ? controlledIsOpen : isOpen
   const onOpenChange = isControlled ? controlledOnOpenChange : setIsOpen
+  const relationsValid = (segmentValue?.mode !== 'existing' || segments.some(row => row.id === segmentValue.id)) &&
+    (campaignValue?.mode !== 'existing' || campaigns.some(row => row.id === campaignValue.id))
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!currentSite?.id) return
+    if (!currentSite?.id || isCreating || !title.trim() || !relationsValid || (optionsStatus && !optionsStatus.ready)) return
 
     setIsCreating(true)
     try {
@@ -123,7 +124,7 @@ export function CreateContentDialog({
       setTagInput('')
       
       if (onOpenChange) onOpenChange(false)
-      onSuccess && onSuccess()
+      onSuccess?.()
     } catch (error) {
       console.error("Error creating content:", error)
       toast.error("Failed to create content")
@@ -150,9 +151,6 @@ export function CreateContentDialog({
     }
   }
 
-
-
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {trigger && (
@@ -169,6 +167,8 @@ export function CreateContentDialog({
             </DialogDescription>
           </DialogHeader>
           <DialogBody className="grid gap-4">
+            {!relationsValid && (!optionsStatus || optionsStatus.ready) &&
+              <p role="alert">A selected option is no longer available. Clear it or select another.</p>}
             <div className="grid gap-2">
               <Label htmlFor="title" className="flex items-center gap-2">
                 <Type className="h-4 w-4 text-muted-foreground" />
@@ -227,6 +227,7 @@ export function CreateContentDialog({
                 </SelectContent>
               </Select>
             </div>
+            {optionsStatus && !optionsStatus.ready ? <DialogOptionsFeedback status={optionsStatus} /> : <>
             <div className="grid gap-2">
               <Label htmlFor="segment" className="flex items-center gap-2">
                 <Users className="h-4 w-4 text-muted-foreground" />
@@ -256,6 +257,7 @@ export function CreateContentDialog({
                 className="h-12"
               />
             </div>
+            </>}
 
             <div className="grid gap-2">
               <Label htmlFor="tags" className="flex items-center gap-2">
@@ -303,7 +305,7 @@ export function CreateContentDialog({
             </div>
           </DialogBody>
           <DialogFooter>
-            <Button type="submit" disabled={isCreating}>
+            <Button type="submit" disabled={isCreating || !title.trim() || !relationsValid || (optionsStatus && !optionsStatus.ready)}>
               {isCreating ? (t('layout.nav.content.creating') || 'Creating...') : t('layout.nav.content.create') || "Create Content"}
             </Button>
           </DialogFooter>

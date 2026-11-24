@@ -55,7 +55,7 @@ export default function CampaignsPage() {
 
   useCommandK()
 
-  const { data: campaignsData = [], isLoading } = useSWR(
+  const { data: campaignsData = [], error: campaignsError, isLoading, mutate: reloadCampaigns } = useSWR(
     currentSite?.id ? ["campaigns", currentSite.id] : null,
     async ([_, siteId]) => {
       const response = await getCampaigns(siteId)
@@ -65,12 +65,12 @@ export default function CampaignsPage() {
   )
 
   const { data: requirements = [] } = useSWR(
-    currentSite?.id ? ["requirements", currentSite.id] : null,
+    currentSite?.id && viewType === 'kanban' ? ["campaign-board-requirements", currentSite.id] : null,
     async ([_, siteId]) => {
       const supabase = createClient()
       const { data, error } = await supabase
         .from("requirements")
-        .select("*, requirement_segments(segment_id), campaign_requirements(campaign_id)")
+        .select("id, title, description, status, priority, completion_status, campaign_requirements(campaign_id)")
         .eq("site_id", siteId)
 
       if (error) throw error
@@ -257,6 +257,10 @@ export default function CampaignsPage() {
         ) : (
           <CampaignsKanbanSkeleton />
         )
+      ) : campaignsError ? (
+        <div role="alert" className="space-y-3 p-6 text-sm"><p>{t('campaigns.error.fetch')}</p>
+          <Button variant="outline" size="sm" onClick={() => void reloadCampaigns()}>{t('common.retry')}</Button>
+        </div>
       ) : filteredCampaigns.length === 0 ? (
         <EmptyState
           icon={<Target className="h-12 w-12 text-muted-foreground" />}

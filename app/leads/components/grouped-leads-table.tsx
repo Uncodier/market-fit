@@ -22,7 +22,6 @@ import {
 } from "@/app/components/ui/alert-dialog"
 import { Lead } from "@/app/leads/types"
 import { JOURNEY_STAGES } from "@/app/leads/types"
-import { cn } from "@/lib/utils"
 import {
   DocumentListHead,
   DocumentListRow,
@@ -74,7 +73,8 @@ interface GroupedLeadsTableProps {
   companyGroups: CompanyGroup[]
   currentPage: number
   itemsPerPage: number
-  totalLeads: number
+  totalLeads: number | null
+  loadedLeadCount: number
   totalCompanies: number
   onPageChange: (page: number) => void
   onItemsPerPageChange: (value: string) => void
@@ -98,6 +98,7 @@ export function GroupedLeadsTable({
   currentPage,
   itemsPerPage,
   totalLeads,
+  loadedLeadCount,
   totalCompanies,
   onPageChange,
   onItemsPerPageChange,
@@ -351,7 +352,8 @@ export function GroupedLeadsTable({
               {" of "}
               <span className="font-medium text-foreground">{totalCompanies}</span>
               {" companies · "}
-              <span className="font-medium text-foreground">{totalLeads}</span> leads
+              <span className="font-medium text-foreground">{totalLeads ?? loadedLeadCount}</span>
+              {totalLeads === null ? " leads loaded (total unavailable)" : " leads"}
             </p>
             <Select value={itemsPerPage.toString()} onValueChange={onItemsPerPageChange}>
               <SelectTrigger className="h-8 w-[70px]">
@@ -375,7 +377,7 @@ export function GroupedLeadsTable({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Lead</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{actions.leadToDelete?.name}"? This action cannot be undone.
+              Are you sure you want to delete &quot;{actions.leadToDelete?.name}&quot;? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

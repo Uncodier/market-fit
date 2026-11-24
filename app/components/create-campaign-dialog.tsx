@@ -13,7 +13,7 @@ import {
   DialogTrigger,
 } from "@/app/components/ui/dialog"
 import { PlusCircle } from "@/app/components/ui/icons"
-import { useForm } from "react-hook-form"
+import { useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useState } from "react"
 import { toast } from "sonner"
@@ -26,21 +26,25 @@ import { useRouter } from "next/navigation"
 import { ConfirmDialog } from "@/app/components/ui/confirm-dialog"
 import { useDirtyDialogClose } from "@/app/components/ui/use-dirty-dialog-close"
 import { CreateCampaignFields } from "@/app/components/create-campaign-fields"
+import type { DialogOptionsStatus } from './dialog-options-feedback'
 
 interface CreateCampaignDialogProps {
   segments?: Array<{ id: string; name: string; description: string }>
   onCreateCampaign: (values: CampaignFormValues) => Promise<{ data?: { id: string } | null; error?: string | null }>
   trigger?: React.ReactNode
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  optionsStatus: DialogOptionsStatus
 }
 
 export function CreateCampaignDialog({
   segments = [],
   onCreateCampaign,
   trigger,
+  open, onOpenChange, optionsStatus,
 }: CreateCampaignDialogProps) {
   const { t } = useLocalization()
   const router = useRouter()
-  const [isOpen, setIsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const { user } = useAuth()
   const { currentSite } = useSite()
@@ -67,11 +71,15 @@ export function CreateCampaignDialog({
       busy: isLoading,
       onOpenChange: (open) => {
         if (!open) form.reset()
-        setIsOpen(open)
+        onOpenChange(open)
       },
     })
 
+  const selectedSegments = useWatch({ control: form.control, name: 'segments' }) ?? []
+  const segmentsValid = selectedSegments.every(id => segments.some(s => s.id === id))
+
   const onSubmit = async (values: z.infer<typeof campaignFormSchema>) => {
+    if (!optionsStatus.ready || isLoading || !segmentsValid) return
     if (!user || !currentSite) {
       toast.error("You must be logged in and have a site selected to create a campaign")
       return
@@ -91,7 +99,7 @@ export function CreateCampaignDialog({
       toast.success(values.createWithAi ? "Campaign and AI requirement created" : "Campaign created")
       const id = response.data?.id
       form.reset()
-      setIsOpen(false)
+      onOpenChange(false)
       if (id) router.push(`/campaigns/${id}`)
     } catch (error) {
       toast.error("An error occurred while creating the campaign")
@@ -102,7 +110,7 @@ export function CreateCampaignDialog({
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         {trigger || (
           <Button>
@@ -121,9 +129,15 @@ export function CreateCampaignDialog({
             </DialogDescription>
           </DialogHeader>
           <DialogBody className="grid gap-6">
+            {optionsStatus.ready && !segmentsValid && <div role="alert" className="space-y-2">
+              <p>A selected segment is no longer available.</p>
+              <Button type="button" variant="outline" onClick={() => form.setValue('segments',
+                selectedSegments.filter(id => segments.some(s => s.id === id)), { shouldDirty: true })}>Clear unavailable segments</Button>
+            </div>}
             <CreateCampaignFields
               form={form}
               segments={segments}
+              optionsStatus={optionsStatus}
               t={t}
             />
           </DialogBody>
@@ -136,7 +150,7 @@ export function CreateCampaignDialog({
             >
               {t("campaigns.create.cancel") || "Cancel"}
             </Button>
-            <Button type="submit" disabled={isLoading}>
+            <Button type="submit" disabled={isLoading || !optionsStatus.ready || !segmentsValid}>
               {isLoading
                 ? t("campaigns.create.creating") || "Creating..."
                 : t("campaigns.create.submit") || "Create campaign"}

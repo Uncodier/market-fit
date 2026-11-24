@@ -4,22 +4,19 @@ import { useState, useEffect } from "react"
 import useSWR from "swr"
 import { Button } from "@/app/components/ui/button"
 import { SearchInput } from "@/app/components/ui/search-input"
-import { Filter, ListOrdered, Check, ChevronDown, Download } from "@/app/components/ui/icons"
+import { Download } from "@/app/components/ui/icons"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { MobileFiltersDrawer, FilterContainer, FilterSection, FilterSeparator } from "@/app/components/ui/mobile-filters-drawer"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
-import { useSite } from "@/app/context/SiteContext"
+import { MobileFiltersDrawer, FilterContainer, FilterSection } from "@/app/components/ui/mobile-filters-drawer"
+import { useFinanceWorkspace } from "@/app/finance/use-finance-workspace"
 import { getSales, updateSale } from "./actions"
-import { listLocations } from "@/app/inventory/actions"
 import { toast } from "sonner"
-import { getSegments } from "@/app/segments/actions"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { formatCurrency } from "@/app/components/dashboard/campaign-revenue-donut"
 import { subDays, isWithinInterval, parseISO, startOfDay, endOfDay } from "date-fns"
 import { Sale } from "@/app/types"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/app/components/ui/dialog"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { navigateToSale } from "@/lib/navigation/navigation-helpers"
 import { RegisterPaymentDialog } from "./components/RegisterPaymentDialog"
 import { ViewSelector } from "@/app/components/view-selector"
@@ -30,7 +27,7 @@ import { SalesTable, SalesTableSkeleton } from "./components/SalesTable"
 import { useCommandK } from "@/app/hooks/use-command-k"
 import { CalendarDateRangePicker } from "@/app/components/ui/date-range-picker"
 import { SortDropdown } from "@/app/components/ui/sort-dropdown"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
+import { SalesLocationFilter } from "./components/SalesLocationFilter"
 import { cn } from "@/lib/utils"
 
 // PrintSaleDialog component
@@ -72,6 +69,13 @@ function PrintSaleDialog({ sale, open, onOpenChange, onConfirm }: PrintSaleDialo
 }
 
 export default function SalesPage() {
+  const workspace = useFinanceWorkspace()
+  if (workspace.loading) return <SalesTableSkeleton />
+  if (!workspace.ready || !workspace.siteId || !workspace.actorId) return <p role="status">Select a workspace to view sales.</p>
+  return <WorkspaceSales key={workspace.key} siteId={workspace.siteId} actorId={workspace.actorId} />
+}
+
+function WorkspaceSales({ siteId, actorId }: { siteId: string; actorId: string }) {
   const { t } = useLocalization()
   const [searchQuery, setSearchQuery] = useState("")
   const [activeTab, setActiveTab] = useState("all")
@@ -85,11 +89,7 @@ export default function SalesPage() {
     startDate: startOfDay(subDays(new Date(), 30)),
     endDate: endOfDay(new Date())
   })
-  const { currentSite } = useSite()
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const urlSort = searchParams ? searchParams.get('sort') : null
-  const defaultSort = urlSort === 'updated_at' ? 'newest' : (urlSort === 'created_at' || urlSort === 'newest' ? 'newest' : (urlSort === 'oldest' ? 'oldest' : (urlSort === 'value_desc' ? 'value_desc' : (urlSort === 'value_asc' ? 'value_asc' : 'newest'))))
   
   // Use the command+k hook
   useCommandK()
@@ -97,35 +97,11 @@ export default function SalesPage() {
   const [registerPaymentOpen, setRegisterPaymentOpen] = useState(false)
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null)
 
-  const { data: salesData, isLoading: isLoadingSales, mutate: mutateSales } = useSWR(
-    currentSite?.id ? ['sales', currentSite.id] : null,
-    async ([_, siteId]) => {
-      const result = await getSales(siteId)
-      if (result.error) throw new Error(result.error)
-      return result.sales || []
-    },
-    {}
+  const { data: result, error, isLoading: loading, mutate: mutateSales } = useSWR(
+    ['sales-list', siteId, actorId], ([, id]) => getSales(id).catch(() => ({ error: 'Sales unavailable', sales: undefined })),
+    { keepPreviousData: false }
   )
-
-  const { data: locationsData } = useSWR(
-    currentSite?.id ? ['locations', currentSite.id] : null,
-    () => listLocations(currentSite!.id)
-  )
-  const locations = locationsData?.data || []
-
-  const { data: segmentsData, isLoading: isLoadingSegments } = useSWR(
-    currentSite?.id ? ['segments', currentSite.id] : null,
-    async ([_, siteId]) => {
-      const { segments, error } = await getSegments(siteId)
-      if (error) throw new Error(error)
-      return segments ? segments.map(s => ({ id: s.id, name: s.name })) : []
-    },
-    {}
-  )
-
-  const sales = salesData || []
-  const segments = segmentsData || []
-  const loading = isLoadingSales || isLoadingSegments
+  const sales = result?.sales ?? []
 
   const loadSales = async () => {
     setCurrentPage(1)
@@ -139,10 +115,9 @@ export default function SalesPage() {
   }
 
   const handleExportSales = async () => {
-    if (!currentSite?.id) return;
     try {
       const response = await fetch(
-        `/api/sales/export?siteId=${currentSite.id}`,
+        `/api/sales/export?siteId=${siteId}`,
         {
           method: "GET",
           headers: {
@@ -252,7 +227,6 @@ export default function SalesPage() {
   }
   
   const filteredSales = getFilteredSales(activeTab)
-  const totalPages = Math.ceil(filteredSales.length / itemsPerPage)
   
   // Get sales for current page
   const indexOfLastItem = currentPage * itemsPerPage
@@ -263,11 +237,6 @@ export default function SalesPage() {
   function handlePageChange(page: number) {
     setCurrentPage(page)
   }
-
-  // Reset page when tab changes, location filter changes or date range changes
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [activeTab, locationFilter, dateRange])
 
   // Items per page change handler
   function handleItemsPerPageChange(value: string) {
@@ -298,8 +267,6 @@ export default function SalesPage() {
 
   // Handle payment success
   const handlePaymentSuccess = async () => {
-    if (!currentSite?.id) return
-    
     // Refresh the sales data
     await loadSales()
     toast.success("Payment registered successfully")
@@ -315,18 +282,18 @@ export default function SalesPage() {
   // Function to update sale status (for Kanban view)
   const handleUpdateSaleStatus = async (saleId: string, newStatus: string) => {
     const sale = sales.find(s => s.id === saleId)
-    if (!sale || !currentSite?.id) return
+    if (!sale) return
     
     // Optimistic update
     mutateSales(
-      (prev) => prev?.map((s) => s.id === saleId ? { ...s, status: newStatus as any } : s),
+      (prev) => prev?.sales ? { sales: prev.sales.map(s => s.id === saleId ? { ...s, status: newStatus as Sale['status'] } : s) } : prev,
       { revalidate: false }
     )
     
     try {
-      const result = await updateSale(currentSite.id, {
+      const result = await updateSale(siteId, {
         ...sale,
-        status: newStatus as any
+        status: newStatus as Sale['status']
       })
       
       if (result.error) {
@@ -345,7 +312,7 @@ export default function SalesPage() {
 
   return (
       <div className="flex-1 min-w-0 w-full p-0 min-h-[calc(100dvh-var(--topbar-height,64px))] flex flex-col">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col w-full h-full min-h-0">
+        <Tabs value={activeTab} onValueChange={value => { setActiveTab(value); setCurrentPage(1) }} className="flex-1 flex flex-col w-full h-full min-h-0">
           <StickyHeader>
             <div className="w-full pt-0">
               <div className="flex items-center justify-between w-full">
@@ -377,23 +344,10 @@ export default function SalesPage() {
                       </TabsList>
                     </FilterSection>
 
-                    {locations.length > 0 && (
-                      <FilterSection className={cn(searchQuery && "max-md:hidden")} title={t('common.location') || 'Location'}> 
-                      <Select value={locationFilter}
-                          onValueChange={(val) => { setLocationFilter(val); setCurrentPage(1); }}
-                        >
-                          <SelectTrigger className="w-[160px] h-8 text-xs bg-muted/30 border-0 rounded-full">
-                            <SelectValue placeholder={t('common.allLocations') || 'All Locations'} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">{t('common.allLocations') || 'All Locations'}</SelectItem>
-                            {locations.map((loc) => (
-                              <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </FilterSection>
-                    )}
+                    <FilterSection className={cn(searchQuery && "max-md:hidden")} title={t('common.location') || 'Location'}>
+                      <SalesLocationFilter siteId={siteId} actorId={actorId} value={locationFilter}
+                        onChange={value => { setLocationFilter(value); setCurrentPage(1) }} />
+                    </FilterSection>
 
                     <FilterSection mobileOnly className={cn(searchQuery && "hidden")} title={t('common.dateRange') || 'Date Range'}> 
                     <CalendarDateRangePicker 
@@ -438,7 +392,10 @@ export default function SalesPage() {
           "bg-muted/30 flex-1 min-h-0 min-w-0 overflow-y-auto",
           viewType === "kanban" ? "py-4 md:py-8" : "p-4 md:p-8 space-y-4 overflow-x-hidden"
         )}>
-          {viewType === "kanban" ? (
+          {error || result?.error ? <div role="alert" className="space-y-2 rounded-lg border p-4">
+            <p>Sales could not be loaded.</p>
+            <Button variant="outline" onClick={() => { void mutateSales() }}>Retry sales</Button>
+          </div> : viewType === "kanban" ? (
             <div className="h-full min-w-0 w-full">
               {loading ? (
                 <SalesTableSkeleton />
@@ -446,7 +403,6 @@ export default function SalesPage() {
                 <KanbanView
                   sales={filteredSales}
                   onUpdateSaleStatus={handleUpdateSaleStatus}
-                  segments={segments}
                   onSaleClick={handleSaleClick}
                   onPrintSale={handlePrintSale}
                   onRegisterPayment={handleRegisterPayment} />
@@ -462,7 +418,6 @@ export default function SalesPage() {
                   currentPage={currentPage}
                   itemsPerPage={itemsPerPage}
                   totalSales={filteredSales.length}
-                  segments={segments}
                   onPageChange={handlePageChange}
                   onItemsPerPageChange={handleItemsPerPageChange}
                   onSaleClick={handleSaleClick}

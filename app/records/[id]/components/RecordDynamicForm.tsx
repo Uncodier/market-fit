@@ -24,7 +24,7 @@ import { useSite } from "@/app/context/SiteContext"
 import { RecordItem } from "../../actions"
 import { useRelationOptions } from "./use-relation-options"
 import { relationFieldTargetKey } from "../../lib/relation-target"
-import { recordFieldDate, recordFieldLabel, serializeRecordFieldDate } from "../../lib/field-values"
+import { recordFieldDate, recordFieldLabel, recordScalarFieldValue, serializeRecordFieldDate } from "../../lib/field-values"
 
 interface RecordDynamicFormProps {
   fields: any[]
@@ -50,6 +50,7 @@ export function RecordDynamicForm({ fields, formData, relationsData, status, rec
   
   const renderField = (field: any) => {
     const commonInputClass = "bg-transparent border-0 hover:bg-muted/30 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:bg-transparent shadow-none px-2 h-8 rounded-md w-full"
+    const value = recordScalarFieldValue(field.type, formData[field.name])
     
     switch (field.type) {
       case "text":
@@ -57,7 +58,7 @@ export function RecordDynamicForm({ fields, formData, relationsData, status, rec
           <div className="w-full">
             <Input 
               aria-label={recordFieldLabel(field)}
-              value={formData[field.name] || ""} 
+              value={value || ""}
               onChange={(e) => onChange(field.name, e.target.value, "field")}
               placeholder="Empty"
               className={commonInputClass}
@@ -66,7 +67,7 @@ export function RecordDynamicForm({ fields, formData, relationsData, status, rec
               <div className="flex flex-col gap-2 pt-1 px-2">
                 <AIFieldPreview 
                   promptTemplate={field.aiPreview.promptTemplate}
-                  value={formData[field.name]}
+                  value={value}
                   fieldName={field.name}
                 />
               </div>
@@ -79,7 +80,7 @@ export function RecordDynamicForm({ fields, formData, relationsData, status, rec
           <div className="w-full py-1">
             <Textarea 
               aria-label={recordFieldLabel(field)}
-              value={formData[field.name] || ""} 
+              value={value || ""}
               onChange={(e) => onChange(field.name, e.target.value, "field")}
               placeholder="Empty"
               className="min-h-[80px] bg-transparent border-0 hover:bg-muted/30 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:bg-transparent shadow-none px-2 rounded-md resize-y"
@@ -88,7 +89,7 @@ export function RecordDynamicForm({ fields, formData, relationsData, status, rec
               <div className="flex flex-col gap-2 pt-1 px-2">
                 <AIFieldPreview 
                   promptTemplate={field.aiPreview.promptTemplate}
-                  value={formData[field.name]}
+                  value={value}
                   fieldName={field.name}
                 />
               </div>
@@ -101,7 +102,7 @@ export function RecordDynamicForm({ fields, formData, relationsData, status, rec
           <Input 
             type="number"
             aria-label={recordFieldLabel(field)}
-            value={formData[field.name] ?? ""}
+            value={value ?? ""}
             required={field.required}
             min={field.min}
             max={field.max}
@@ -116,7 +117,7 @@ export function RecordDynamicForm({ fields, formData, relationsData, status, rec
         return (
           <Input 
             aria-label={recordFieldLabel(field)}
-            value={formData[field.name] || ""} 
+            value={value || ""}
             onChange={(e) => onChange(field.name, e.target.value, "field")}
             placeholder="Empty"
             className={commonInputClass}
@@ -127,7 +128,7 @@ export function RecordDynamicForm({ fields, formData, relationsData, status, rec
         return (
           <div className="w-full flex items-center">
             <DatePicker 
-              date={recordFieldDate(formData[field.name])}
+              date={recordFieldDate(value)}
               setDate={(date) => onChange(field.name, serializeRecordFieldDate(date), "field")}
               className="bg-transparent border-0 hover:bg-muted/30 focus-visible:ring-1 focus-visible:ring-primary/30 shadow-none px-2 h-8 rounded-md w-full sm:w-auto min-w-[200px]"
               placeholder="Empty"
@@ -141,7 +142,7 @@ export function RecordDynamicForm({ fields, formData, relationsData, status, rec
             <RelationSelect
               label={recordFieldLabel(field)}
               options={(field.options || []).map((opt: string) => ({ id: opt, label: opt }))}
-              value={formData[field.name] ? { mode: "existing", id: formData[field.name], label: formData[field.name] } : null}
+              value={value ? { mode: "existing", id: value, label: value } : null}
               onValueChange={(val) => {
                 if (!val) {
                   onChange(field.name, null, "field")
@@ -159,7 +160,7 @@ export function RecordDynamicForm({ fields, formData, relationsData, status, rec
       case "boolean":
         return (
           <Select
-            value={formData[field.name] === true ? "true" : formData[field.name] === false ? "false" : "unset"}
+            value={value === true ? "true" : value === false ? "false" : "unset"}
             onValueChange={(value) => onChange(field.name, value === "unset" ? null : value === "true", "field")}
           >
             <SelectTrigger aria-label={recordFieldLabel(field)} className={commonInputClass}>
@@ -208,10 +209,10 @@ export function RecordDynamicForm({ fields, formData, relationsData, status, rec
       case "file":
         return (
           <div className="flex items-center gap-2 px-2 py-1 w-full">
-            {formData[field.name] ? (
+            {value ? (
               <div className="flex items-center gap-2 max-w-full">
-                <a href={formData[field.name]} target="_blank" rel="noreferrer" className="text-sm text-primary hover:underline truncate">
-                  {typeof formData[field.name] === 'string' ? formData[field.name].split('/').pop() : 'Attached file'}
+                <a href={value} target="_blank" rel="noreferrer" className="text-sm text-primary hover:underline truncate">
+                  {typeof value === 'string' ? value.split('/').pop() : 'Attached file'}
                 </a>
                 <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-muted-foreground" onClick={() => onChange(field.name, "", "field")}>×</Button>
               </div>
@@ -222,7 +223,7 @@ export function RecordDynamicForm({ fields, formData, relationsData, status, rec
                 </Button>
                 <Input 
                   placeholder="Or URL..." 
-                  value={formData[field.name] || ""} 
+                  value={value || ""}
                   onChange={(e) => onChange(field.name, e.target.value, "field")}
                   className="bg-transparent border-0 hover:bg-muted/30 focus-visible:ring-1 focus-visible:ring-primary/30 shadow-none px-2 h-8 rounded-md flex-1 min-w-0"
                 />
@@ -235,7 +236,7 @@ export function RecordDynamicForm({ fields, formData, relationsData, status, rec
         return (
           <div className="w-full pt-1 px-2 pb-2">
             <TableWidget 
-              value={formData[field.name] || []}
+              value={Array.isArray(value) ? value : []}
               onChange={(data) => onChange(field.name, data, "field")}
             />
           </div>

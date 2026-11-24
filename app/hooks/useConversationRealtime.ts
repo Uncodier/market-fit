@@ -5,18 +5,20 @@ import { createClient } from '@/lib/supabase/client'
 import { buildConversationListItems } from '@/app/services/conversations/conversation-list-items'
 import type { ConversationListRow } from '@/app/services/conversations/conversation-list-query'
 import type { ConversationListItem } from '@/app/types/chat'
+import { createRealtimeInvalidation } from '@/app/orders/hooks/realtime-invalidation'
 
 export type UpdateConversations = (updater: (previous: ConversationListItem[]) => ConversationListItem[]) => void
 type ConversationPayload = { new: Record<string, unknown>; old: { id?: string } }
 
 export function useConversationRealtime({
-  siteId, selectedConversationId, updateConversations, refreshConversations, onLoadConversations,
+  siteId, selectedConversationId, updateConversations, refreshConversations, onLoadConversations, filtered = false,
 }: {
   siteId: string
   selectedConversationId?: string
   updateConversations: UpdateConversations
   refreshConversations: () => Promise<void>
   onLoadConversations?: (refresh: () => Promise<void>) => void
+  filtered?: boolean
 }) {
   const router = useRouter()
   const { mutate } = useSWRConfig()
@@ -29,6 +31,8 @@ export function useConversationRealtime({
     if (!siteId) return
     const supabase = createClient()
     let active = true
+    const invalidation = createRealtimeInvalidation(refreshConversations)
+    const controller = new AbortController()
 
     const update = async (row: ConversationListRow & { is_archived?: boolean; last_message?: string }, insert: boolean) => {
       if (!row.id || !active) return
@@ -38,9 +42,15 @@ export function useConversationRealtime({
         updateConversations(previous => previous.filter(item => item.id !== row.id))
         return
       }
+      // A realtime payload does not prove a match for the active search, lead,
+      // task or initiation filter. Invalidate the exact key, not the unfiltered list.
+      if (filtered) {
+        invalidation.request(250)
+        return
+      }
       try {
         // Use the same identity and moderation mapping as initial load and pagination.
-        const [item] = await buildConversationListItems(supabase, [row])
+        const [item] = await buildConversationListItems(supabase, [row], controller.signal)
         item.lastMessage = item.lastMessage ?? row.last_message
         if (!active) return
         updateConversations(previous => {
@@ -51,7 +61,7 @@ export function useConversationRealtime({
             : conversation)
         })
       } catch {
-        if (active) void refreshConversations()
+        if (active) invalidation.request(250)
       }
     }
 
@@ -71,12 +81,16 @@ export function useConversationRealtime({
 
       return () => {
         active = false
+        controller.abort()
+        invalidation.dispose()
         void supabase.removeChannel(channel)
       }
     } catch {
       // Keep the normal list read usable if realtime is unavailable.
       active = false
+      controller.abort()
+      invalidation.dispose()
       console.warn('Conversation realtime is unavailable')
     }
-  }, [siteId, selectedConversationId, updateConversations, refreshConversations, router, mutate])
+  }, [siteId, selectedConversationId, updateConversations, refreshConversations, filtered, router, mutate])
 }

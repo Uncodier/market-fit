@@ -32,8 +32,9 @@ export function RecordDocumentView({
   const templateFields = record.category?.template_fields || []
 
   return (
-    <div className="h-full overflow-auto">
-      <div className="mx-auto h-full max-w-4xl p-4 md:p-8">
+    <div data-testid="record-document-scroll" className="h-full overflow-auto scroll-pt-14">
+      {/* Keep the floating selector's initial clearance inside the scroll area. */}
+      <div className="mx-auto h-full max-w-4xl px-4 pb-4 pt-[4.5rem] md:px-8 md:pb-8 md:pt-[5.5rem]">
         {templateFields.length === 0 ? (
           <div className="flex h-full flex-col space-y-4">
             <Input

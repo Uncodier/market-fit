@@ -8,6 +8,7 @@ import type { TabItem } from '@/app/components/ui/responsive-tabs-list';
 
 const mockTranslate = (key: string) => key === 'procurement.workflow.tender.tenders' ? 'Tenders' : key;
 const mockRefreshSites = jest.fn().mockResolvedValue(undefined);
+const mockMountForm = jest.fn();
 const mockSite = { id: 'site-1', name: 'Test site' };
 let mockCurrentSite: typeof mockSite | null = mockSite;
 let mockLoading = false;
@@ -20,7 +21,11 @@ jest.mock('@/app/hooks/use-prevent-refresh', () => ({ useSimpleRefreshPrevention
 jest.mock('@/app/components/settings/data-adapter', () => ({ adaptSiteToForm: (site: unknown) => site }));
 jest.mock('@/app/components/settings/save-handlers', () => ({}));
 jest.mock('@/app/components/settings/site-form', () => ({
-  SiteForm: ({ activeSegment }: { activeSegment: string }) => <div data-testid="site-form">{activeSegment}</div>,
+  SiteForm: function Form({ activeSegment, siteId }: { activeSegment: string; siteId: string }) {
+    const { useEffect } = jest.requireActual('react');
+    useEffect(() => { mockMountForm(siteId) }, [siteId]);
+    return <div data-testid="site-form">{activeSegment}<input aria-label="draft" /></div>;
+  },
 }));
 jest.mock('@/app/purchases/procurement/components/procurement-page', () => ({
   ProcurementPage: ({ screen: value, embedded }: { screen: string; embedded?: boolean }) => <div data-testid="procurement-page" data-embedded={embedded}>{value}</div>,
@@ -38,6 +43,7 @@ function setQuery(query: string) {
 }
 
 beforeEach(() => {
+  mockMountForm.mockClear();
   mockCurrentSite = mockSite;
   mockLoading = false;
   setQuery('');
@@ -46,6 +52,20 @@ beforeEach(() => {
 afterEach(() => jest.restoreAllMocks());
 
 describe('Settings navigation', () => {
+  it('starts section effects once for a ready site and discards drafts only on a selection change', () => {
+    setQuery('tab=team');
+    const view = render(<SettingsPage />);
+    expect(mockMountForm.mock.calls).toEqual([['site-1']]);
+    fireEvent.change(screen.getByLabelText('draft'), { target: { value: 'unsaved' } });
+    mockCurrentSite = { ...mockSite, name: 'Updated metadata' };
+    view.rerender(<SettingsPage />);
+    expect(screen.getByLabelText('draft')).toHaveValue('unsaved');
+    mockCurrentSite = { id: 'site-2', name: 'Another site' };
+    view.rerender(<SettingsPage />);
+    expect(screen.getByLabelText('draft')).toHaveValue('');
+    expect(mockMountForm.mock.calls).toEqual([['site-1'], ['site-2']]);
+  });
+
   it('uses the existing localized Tenders label and preserves existing tab order', () => {
     const tabs = getSettingsTabs(mockTranslate);
     expect(tabs.find(tab => tab.value === 'tenders')?.label).toBe('Tenders');
@@ -105,11 +125,13 @@ describe('Settings navigation', () => {
     expect(screen.queryByTestId('settings-tabs')).not.toBeInTheDocument();
   });
 
-  it('shows the Tenders tab during loading without mounting its screen', () => {
+  it.each(['channels', 'tenders'])('renders only skeletons while %s is loading', segment => {
     mockLoading = true;
-    setQuery('tab=tenders');
-    render(<SettingsPage />);
-    expect(screen.getByRole('button', { name: 'Tenders' })).toBeInTheDocument();
+    setQuery(`tab=${segment}`);
+    const { container } = render(<SettingsPage />);
+    expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
+    expect(screen.queryByTestId('settings-tabs')).toBeNull();
+    expect(screen.queryByTestId('site-form')).toBeNull();
     expect(screen.queryByTestId('procurement-page')).not.toBeInTheDocument();
   });
 

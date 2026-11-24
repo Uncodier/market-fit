@@ -1,15 +1,13 @@
 "use client"
 
-import { useEffect, useState, useMemo } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/utils/supabase/client"
 import { useSite } from "@/app/context/SiteContext"
 import { Skeleton } from "@/app/components/ui/skeleton"
-import { Badge } from "@/app/components/ui/badge"
 import { Button } from "@/app/components/ui/button"
-import { Github, Folder, ExternalLink, Copy, Database, Bot, FileText } from "@/app/components/ui/icons"
+import { Github, Folder, ExternalLink, Database, Bot } from "@/app/components/ui/icons"
 import { format } from "date-fns"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/app/components/ui/card"
 import { ViewType } from "@/app/components/view-selector"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { useLocalization } from "@/app/context/LocalizationContext"
@@ -21,7 +19,6 @@ import {
   EntityCell, 
   StatusDot, 
   documentListShellClassName,
-  documentRowAccent
 } from "@/app/components/documents/document-list"
 
 interface RequirementStatusRepo {
@@ -40,36 +37,58 @@ interface RequirementStatusRepo {
   schema?: string | null
 }
 
+type TenantRequirement = { id: string; apps_tenants?: { tenant_id: string; schema: string }[] }
+type RepositoryLinks = Pick<RequirementStatusRepo, "instance_id" | "source_code" | "repo_url" | "preview_url">
+
+async function loadRepositoryLinks(siteId: string, requirementIds: string[], signal: AbortSignal) {
+  // The tenant directory and the RLS status projection are separate authority
+  // boundaries. Neither is input to the other, and neither needs instance logs.
+  const [tenants, details] = await Promise.all([
+    fetch(`/api/applications/tenants?siteId=${encodeURIComponent(siteId)}`, { signal })
+      .then(async res => res.ok ? (await res.json()).tenants as TenantRequirement[] : []).catch(() => []),
+    fetch('/api/applications/requirements-details', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, signal,
+      body: JSON.stringify({ requirementIds, includeLatestLog: false }),
+    }).then(async res => res.ok ? (await res.json()).details as Record<string, RepositoryLinks> : null).catch(() => null),
+  ])
+  return { byRequirement: new Map((tenants || []).map(row => [row.id, row.apps_tenants?.[0]])), details }
+}
+
 export function RepositoriesSection({ searchQuery = "", viewMode = "table" }: { searchQuery?: string, viewMode?: ViewType }) {
-  const { t } = useLocalization()
   const { currentSite, isLoading: isSiteLoading } = useSite()
-  const router = useRouter()
-  const supabase = createClient()
+  if (isSiteLoading) return <RepositoryListSkeleton viewMode={viewMode} />
+  return <RepositoryList key={currentSite?.id} siteId={currentSite?.id} searchQuery={searchQuery} viewMode={viewMode} />
+}
+
+function RepositoryListSkeleton({ viewMode }: { viewMode: ViewType }) {
+  return <div className={viewMode === "table" ? "space-y-4" : "grid gap-4 md:grid-cols-2"}>
+    {[0, 1, 2].map(index => <Skeleton key={index} className="h-[120px] w-full rounded-lg" />)}
+  </div>
+}
+
+function RepositoryList({ siteId, searchQuery, viewMode }: { siteId?: string; searchQuery: string; viewMode: ViewType }) {
+  const { t } = useLocalization()
   
   const [repos, setRepos] = useState<RequirementStatusRepo[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    let cancelled = false
+    if (!siteId) return
+    const controller = new AbortController()
+    const { signal } = controller
 
-    async function fetchRepos() {
-      if (isSiteLoading) return
-      if (!currentSite?.id) {
-        setRepos([])
-        setLoading(false)
-        return
-      }
-      
-      setLoading(true)
-      const { data, error } = await supabase
+    async function fetchRepos(siteId: string) {
+      const { data, error } = await createClient()
         .from("requirement_status")
         .select(`
           id, stage, repo_url, source_code, preview_url, created_at,
           requirements:requirements!requirement_id ( id, title )
         `)
-        .eq("site_id", currentSite.id)
+        .eq("site_id", siteId)
         .not("repo_url", "is", null)
         .order("created_at", { ascending: false })
+        .abortSignal(signal)
+      if (signal.aborted) return
         
       if (error) {
         const err = error as { message?: string; code?: string; details?: string; hint?: string }
@@ -79,114 +98,45 @@ export function RepositoriesSection({ searchQuery = "", viewMode = "table" }: { 
           details: err.details,
           hint: err.hint,
         })
-        if (!cancelled) setLoading(false)
+        setLoading(false)
         return
       } 
       
-      if (data && !cancelled) {
-        let enhancedRepos = data as RequirementStatusRepo[]
-        
-        // Fetch tenants
-        try {
-          const tenantsRes = await fetch(`/api/applications/tenants?siteId=${currentSite.id}`)
-          if (tenantsRes.ok) {
-            const tenantsData = await tenantsRes.json()
-            const reqToTenant = new Map<string, { tenant_id: string, schema: string }>()
-            for (const tenantReq of (tenantsData.tenants || [])) {
-              if (tenantReq.apps_tenants && tenantReq.apps_tenants.length > 0) {
-                reqToTenant.set(tenantReq.id, {
-                  tenant_id: tenantReq.apps_tenants[0].tenant_id,
-                  schema: tenantReq.apps_tenants[0].schema
-                })
-              }
-            }
-            
-            enhancedRepos = enhancedRepos.map(repo => {
-              const reqId = repo.requirements?.id
-              const tenantInfo = reqId ? reqToTenant.get(reqId) : undefined
-              return {
-                ...repo,
-                tenant_id: tenantInfo?.tenant_id,
-                schema: tenantInfo?.schema
-              }
-            })
-          }
-        } catch (e) {
-          console.error("Failed to fetch tenants:", e)
-        }
-
-        // Fetch requirements details (instance_id)
-        try {
-          const reqIds = enhancedRepos.map(r => r.requirements?.id).filter(Boolean)
-          if (reqIds.length > 0) {
-            const detailsRes = await fetch('/api/applications/requirements-details', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ requirementIds: reqIds })
-            })
-            if (detailsRes.ok) {
-              const detailsData = await detailsRes.json()
-              enhancedRepos = enhancedRepos.map(repo => {
-                const reqId = repo.requirements?.id
-                const reqDetails = reqId && detailsData.details ? detailsData.details[reqId] : null
-                return {
-                  ...repo,
-                  instance_id: reqDetails?.instance_id || repo.instance_id || null,
-                  source_code: reqDetails?.source_code || repo.source_code || null,
-                  repo_url: reqDetails?.repo_url || repo.repo_url || null,
-                  preview_url: reqDetails?.preview_url || repo.preview_url || null
-                }
-              })
-            }
-          }
-        } catch (e) {
-          console.error("Failed to fetch requirement details:", e)
-        }
-
-        if (!cancelled) {
-          setRepos(enhancedRepos)
-        }
-      }
-      
-      if (!cancelled) setLoading(false)
+      const rows = (data ?? []) as RequirementStatusRepo[]
+      const reqIds = [...new Set(rows.flatMap(repo => repo.requirements ? [repo.requirements.id] : []))]
+      if (reqIds.length) {
+        const links = await loadRepositoryLinks(siteId, reqIds, signal)
+        if (signal.aborted) return
+        setRepos(rows.map(row => {
+          const id = row.requirements?.id
+          const details = id ? links.details?.[id] : null
+          const tenant = id ? links.byRequirement.get(id) : null
+          return { ...row, instance_id: details?.instance_id || null, source_code: details?.source_code || row.source_code,
+            repo_url: details?.repo_url || row.repo_url, preview_url: details?.preview_url || row.preview_url,
+            tenant_id: tenant?.tenant_id, schema: tenant?.schema }
+        }))
+      } else setRepos(rows)
+      setLoading(false)
     }
 
-    fetchRepos()
+    void fetchRepos(siteId).catch(() => { if (!signal.aborted) setLoading(false) })
     
-    return () => {
-      cancelled = true
-    }
-  }, [currentSite?.id, supabase, isSiteLoading])
+    return () => controller.abort()
+  }, [siteId])
 
   const filteredRepos = repos.filter(r => 
     r.requirements?.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     r.repo_url.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  const latestRepos = useMemo(() => {
-    const map = new Map<string, RequirementStatusRepo>()
-    for (const repo of filteredRepos) {
-      const reqId = repo.requirements?.id || 'unknown'
-      if (!map.has(reqId)) {
-        map.set(reqId, repo)
-      }
-    }
-    return Array.from(map.values())
-  }, [filteredRepos])
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text)
+  const map = new Map<string, RequirementStatusRepo>()
+  for (const repo of filteredRepos) {
+    const reqId = repo.requirements?.id || 'unknown'
+    if (!map.has(reqId)) map.set(reqId, repo)
   }
+  const latestRepos = Array.from(map.values())
 
-  if (isSiteLoading || loading) {
-    return (
-      <div className={viewMode === "table" ? "space-y-4" : "grid gap-4 md:grid-cols-2"}>
-        <Skeleton className="h-[120px] w-full rounded-lg" />
-        <Skeleton className="h-[120px] w-full rounded-lg" />
-        <Skeleton className="h-[120px] w-full rounded-lg" />
-      </div>
-    )
-  }
+  if (siteId && loading) return <RepositoryListSkeleton viewMode={viewMode} />
 
   if (latestRepos.length === 0) {
     return (
@@ -215,7 +165,6 @@ export function RepositoriesSection({ searchQuery = "", viewMode = "table" }: { 
             <RepositoryItem 
               key={repo.id} 
               repo={repo} 
-              copyToClipboard={copyToClipboard} 
             />
           ))}
         </TableBody>
@@ -226,10 +175,8 @@ export function RepositoriesSection({ searchQuery = "", viewMode = "table" }: { 
 
 function RepositoryItem({ 
   repo, 
-  copyToClipboard,
 }: { 
   repo: RequirementStatusRepo,
-  copyToClipboard: (text: string) => void,
 }) {
   const router = useRouter()
   const title = repo.requirements?.title || 'Unknown Requirement'

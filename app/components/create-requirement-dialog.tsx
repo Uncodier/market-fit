@@ -22,7 +22,7 @@ import {
   CheckCircle2,
   LayoutGrid,
 } from "@/app/components/ui/icons"
-import { useForm } from "react-hook-form"
+import { useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useState, useEffect, useRef } from "react"
 import { ScrollArea } from "@/app/components/ui/scroll-area"
@@ -42,6 +42,7 @@ import {
 import { requirementFormSchema } from "../requirements/schema"
 import type { RequirementFormValues } from "../requirements/actions"
 import * as z from "zod"
+import { DialogOptionsFeedback, type DialogOptionsStatus } from './dialog-options-feedback'
 
 interface Segment {
   id: string
@@ -58,14 +59,16 @@ interface Campaign {
 interface CreateRequirementDialogProps {
   segments: Segment[]
   campaigns?: Campaign[]
-  onCreateRequirement: (values: RequirementFormValues) => Promise<{ data?: any; error?: string }>
+  onCreateRequirement: (values: RequirementFormValues) => Promise<{ data?: unknown; error?: string }>
   trigger?: React.ReactNode
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  optionsStatus: DialogOptionsStatus
 }
 
-export function CreateRequirementDialog({ segments, campaigns = [], onCreateRequirement, trigger }: CreateRequirementDialogProps) {
-  const [isOpen, setIsOpen] = useState(false)
+export function CreateRequirementDialog({ segments, campaigns = [], onCreateRequirement, trigger,
+  open, onOpenChange, optionsStatus }: CreateRequirementDialogProps) {
   const [isLoading, setIsLoading] = useState(false)
-  const [selectedSegments, setSelectedSegments] = useState<string[]>([])
   const { user } = useAuth()
   const { currentSite } = useSite()
   const formRef = useRef<HTMLFormElement>(null)
@@ -90,6 +93,10 @@ export function CreateRequirementDialog({ segments, campaigns = [], onCreateRequ
       updated_at: new Date().toISOString(),
     },
   })
+  const selectedSegments = useWatch({ control: form.control, name: 'segments' })
+  const validSegments = selectedSegments.length > 0 && selectedSegments.every(id => segments.some(s => s.id === id))
+  const selectedCampaign = useWatch({ control: form.control, name: 'campaigns' })[0]
+  const validCampaign = !selectedCampaign || campaigns.some(c => c.id === selectedCampaign)
 
   // Update form when user or site changes
   useEffect(() => {
@@ -103,21 +110,17 @@ export function CreateRequirementDialog({ segments, campaigns = [], onCreateRequ
   const handleClose = () => {
     if (!isLoading) {
       form.reset();
-      setSelectedSegments([]);
-      setIsOpen(false);
+      onOpenChange(false);
     }
   }
 
   // Form submission handler
   const onSubmit = async (data: z.infer<typeof requirementFormSchema>) => {
-    console.log("CreateRequirementDialog SUBMIT DATA:", data);
+    if (!optionsStatus.ready || isLoading || !validSegments || !validCampaign) return
     if (!user?.id || !currentSite?.id) {
       toast.error("Missing user or site information");
       return;
     }
-
-    // Make sure segments from local state are in the form data
-    data.segments = selectedSegments;
 
     setIsLoading(true);
 
@@ -148,16 +151,15 @@ export function CreateRequirementDialog({ segments, campaigns = [], onCreateRequ
 
   return (
     <Dialog 
-      open={isOpen}
+      open={open}
       modal={true}
       onOpenChange={(open) => {
         if (!isLoading) {
-          setIsOpen(open)
+          onOpenChange(open)
           
           // When opening the dialog, initialize segments to empty array
           if (open) {
             const initialSegments: string[] = [];
-            setSelectedSegments(initialSegments);
             form.setValue("segments", initialSegments);
           }
         }
@@ -172,7 +174,7 @@ export function CreateRequirementDialog({ segments, campaigns = [], onCreateRequ
         )}
       </DialogTrigger>
       <DialogContent size="lg" busy={isLoading}>
-        <DialogForm onSubmit={form.handleSubmit(onSubmit, (errors) => console.log("CreateRequirementDialog VALIDATION ERRORS:", errors))} ref={formRef}>
+        <DialogForm onSubmit={form.handleSubmit(onSubmit)} ref={formRef}>
           <DialogHeader>
             <DialogTitle>New requirement</DialogTitle>
             <DialogDescription>
@@ -306,7 +308,7 @@ export function CreateRequirementDialog({ segments, campaigns = [], onCreateRequ
                 )}
               </div>
             </div>
-            <div className="grid gap-2">
+            {!optionsStatus.ready ? <DialogOptionsFeedback status={optionsStatus} /> : <div className="grid gap-2">
               <Label>Campaign</Label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
@@ -327,7 +329,7 @@ export function CreateRequirementDialog({ segments, campaigns = [], onCreateRequ
                       form.setValue("source", "Campaign");
                     }
                   }}
-                  defaultValue="none"
+                  value={selectedCampaign ?? 'none'}
                 >
                   <SelectTrigger className="h-12 pl-10">
                     <SelectValue placeholder="Select campaign" />
@@ -341,8 +343,9 @@ export function CreateRequirementDialog({ segments, campaigns = [], onCreateRequ
                     ))}
                   </SelectContent>
                 </Select>
+                {!validCampaign && <p role="alert">The selected campaign is no longer available. Select another campaign or None.</p>}
               </div>
-            </div>
+            </div>}
             <div className="grid gap-2">
               <Label>Budget</Label>
               <div className="relative">
@@ -380,7 +383,7 @@ export function CreateRequirementDialog({ segments, campaigns = [], onCreateRequ
                 </p>
               )}
             </div>
-            <div className="grid gap-2">
+            {optionsStatus.ready && <div className="grid gap-2">
               <Label className="flex items-center gap-2">
                 <Users className="h-4 w-4 text-muted-foreground" />
                 Segments
@@ -408,10 +411,6 @@ export function CreateRequirementDialog({ segments, campaigns = [], onCreateRequ
                                 ? [...selectedSegments, segment.id]
                                 : selectedSegments.filter(id => id !== segment.id);
                               
-                              // Update local state
-                              setSelectedSegments(newSelectedSegments);
-                              
-                              // Also update form value
                               form.setValue("segments", newSelectedSegments);
                             }}
                           >
@@ -437,10 +436,6 @@ export function CreateRequirementDialog({ segments, campaigns = [], onCreateRequ
                                     ? [...selectedSegments, segment.id]
                                     : selectedSegments.filter(id => id !== segment.id);
                                   
-                                  // Update local state
-                                  setSelectedSegments(newSelectedSegments);
-                                  
-                                  // Also update form value
                                   form.setValue("segments", newSelectedSegments, {
                                     shouldDirty: true,
                                     shouldTouch: true,
@@ -466,7 +461,7 @@ export function CreateRequirementDialog({ segments, campaigns = [], onCreateRequ
                   {form.formState.errors.segments.message}
                 </p>
               )}
-            </div>
+            </div>}
           </DialogBody>
           <DialogFooter>
               <Button
@@ -477,7 +472,7 @@ export function CreateRequirementDialog({ segments, campaigns = [], onCreateRequ
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isLoading}>
+              <Button type="submit" disabled={isLoading || !optionsStatus.ready || !validSegments || !validCampaign}>
                 {isLoading ? "Creating..." : "Create requirement"}
               </Button>
           </DialogFooter>

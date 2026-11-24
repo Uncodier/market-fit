@@ -75,8 +75,8 @@ export function validateTemplateFields(fields: unknown): TemplateValidation {
   return { valid: true, fields: fields as ValidatedTemplateField[] }
 }
 
-/** Storage keys never rename. Populated schemas require an explicit data migration. */
-export function validateTemplateFieldUpdate(previous: unknown, next: unknown, populated: boolean): TemplateValidation {
+/** Validate definitions here; the database checks compatibility with persisted values. */
+export function validateTemplateFieldUpdate(previous: unknown, next: unknown): TemplateValidation {
   const result = validateTemplateFields(next)
   if (!result.valid) return result
   if (previous === null) previous = [] // Nullable legacy templates have no fields.
@@ -84,25 +84,11 @@ export function validateTemplateFieldUpdate(previous: unknown, next: unknown, po
   for (const field of result.fields) {
     const old = previous.find(candidate => isRecordObject(candidate) && candidate.id === field.id)
     if (field.relationTarget === "person" && (!old || old.relationTarget !== "person")) return { valid: false, error: "New person fields are unsupported" }
-    if (populated && field.required && !old) return { valid: false, error: "Adding required fields to populated categories requires a data migration" }
   }
   for (const old of previous) {
     if (!isRecordObject(old)) return { valid: false, error: "Existing template is invalid" }
     const field = result.fields.find(candidate => candidate.id === old.id)
     if (field && field.name !== old.name) return { valid: false, error: "Existing field storage names are immutable; edit the display label instead" }
-    if (!populated) continue
-    if (!field || field.type !== old.type
-      || (field.type === "relation" && ((field.relationTarget ?? "lead") !== (old.relationTarget ?? "lead") || field.targetCategoryId !== old.targetCategoryId))) {
-      return { valid: false, error: "Populated fields cannot be removed, retyped, or retargeted without a data migration" }
-    }
-    if ((field.required && !old.required)
-      || (field.min !== undefined && (typeof old.min !== "number" || field.min > old.min))
-      || (field.max !== undefined && (typeof old.max !== "number" || field.max < old.max))
-      || (field.minLength !== undefined && (typeof old.minLength !== "number" || field.minLength > old.minLength))
-      || (field.maxLength !== undefined && (typeof old.maxLength !== "number" || field.maxLength < old.maxLength))
-      || (field.type === "select" && Array.isArray(old.options) && old.options.some(option => !field.options?.includes(option)))) {
-      return { valid: false, error: "Tightening populated field constraints requires a data migration" }
-    }
   }
   return result
 }

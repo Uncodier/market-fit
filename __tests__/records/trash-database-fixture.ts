@@ -35,7 +35,7 @@ export function localDatabase() {
       // No configured URLs; this disposable cluster listens ONLY on its private Unix socket.
       directory = mkdtempSync("/tmp/records-trash-pg-")
       execFileSync(path.join(pgBin, "initdb"), ["-D", `${directory}/data`, "-U", "postgres",
-        "-A", "trust", "--no-locale"], { env, stdio: "pipe", timeout: 20000 })
+        "-A", "trust", "--no-locale", "--encoding=UTF8"], { env, stdio: "pipe", timeout: 20000 })
       execFileSync(path.join(pgBin, "pg_ctl"), ["-D", `${directory}/data`, "-l", `${directory}/server.log`,
         "-o", `-F -p 55448 -k ${directory} -c listen_addresses='' -c lc_messages=C`, "-w", "start"],
       { env, stdio: "pipe", timeout: 20000 })
@@ -64,13 +64,13 @@ export function localDatabase() {
           ('${id(6)}','${id(10)}','admin',true,true,true,true),
           ('${id(7)}','${id(10)}','admin',true,false,false,false);
         CREATE FUNCTION current_user_site_role(s uuid) RETURNS text LANGUAGE sql STABLE SECURITY DEFINER AS $$
-          SELECT role FROM actors WHERE site_id=s AND user_id=auth.uid() AND active $$;
+          SELECT role FROM public.actors WHERE site_id=s AND user_id=auth.uid() AND active $$;
         CREATE FUNCTION current_user_has_site_location_restrictions(s uuid) RETURNS boolean
-          LANGUAGE sql STABLE SECURITY DEFINER AS $$ SELECT COALESCE((SELECT restricted FROM actors
+          LANGUAGE sql STABLE SECURITY DEFINER AS $$ SELECT COALESCE((SELECT restricted FROM public.actors
             WHERE site_id=s AND user_id=auth.uid() AND active),true) $$;
         CREATE FUNCTION user_can(s uuid, action text) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER AS $$
           SELECT COALESCE((SELECT CASE action WHEN 'delete' THEN can_delete WHEN 'update' THEN can_update ELSE true END
-            FROM actors WHERE site_id=s AND user_id=auth.uid() AND active), false) $$;
+            FROM public.actors WHERE site_id=s AND user_id=auth.uid() AND active), false) $$;
         CREATE TABLE record_categories (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), site_id uuid NOT NULL,
           name text, description text, icon text, parent_category_id uuid REFERENCES record_categories,
           template_fields jsonb DEFAULT '[]');

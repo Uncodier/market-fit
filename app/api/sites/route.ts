@@ -6,6 +6,7 @@ import { selectorResponse } from './selector-response'
 import { SitesRequestTiming } from './request-timing'
 
 export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url)
   const controller = new AbortController()
   const signal = AbortSignal.any([request.signal, controller.signal])
   const timing = new SitesRequestTiming()
@@ -21,17 +22,21 @@ export async function GET(request: Request) {
     }, 8_000)
   })
   try {
-    const response = await Promise.race([loadSitesResponse(request, signal, timing), deadline])
+    const response = await Promise.race([loadSitesResponse(searchParams, signal, timing), deadline])
     response.headers.set('Cache-Control', 'private, no-store')
-    timing.apply(response.headers, timedOut)
-    if (response.status === 503) response.headers.set('Retry-After', '2')
+    const stages = timing.apply(response.headers, timedOut)
+    if (response.status === 503) {
+      response.headers.set('Retry-After', '2')
+      if (searchParams.get('view') === 'selector' && !request.signal.aborted) {
+        console.warn('Selector request unavailable', stages)
+      }
+    }
     return response
   } finally { clearTimeout(timer); controller.abort() }
 }
 
-async function loadSitesResponse(request: Request, signal: AbortSignal, timing: SitesRequestTiming) {
+async function loadSitesResponse(searchParams: URLSearchParams, signal: AbortSignal, timing: SitesRequestTiming) {
   try {
-    const { searchParams } = new URL(request.url)
     const detailId = searchParams.get('detail')
     const view = searchParams.get('view')
     const fresh = searchParams.get('fresh')

@@ -19,8 +19,8 @@ beforeEach(() => {
   jest.useFakeTimers(); jest.clearAllMocks()
   jest.mocked(usePathname).mockReturnValue('/catalog')
   Object.defineProperty(navigator, 'onLine', { configurable: true, value: true })
-  rpc.mockResolvedValue({ data: scope, error: null })
-  getUser.mockResolvedValue({ data: { user: { id: 'actor' } }, error: null })
+  rpc.mockReset().mockResolvedValue({ data: scope, error: null })
+  getUser.mockReset().mockResolvedValue({ data: { user: { id: 'actor' } }, error: null })
   jest.mocked(createClient).mockReturnValue({
     rpc: (...args: unknown[]) => ({ abortSignal: (signal: AbortSignal) => { signals.push(signal); return rpc(...args) } }),
     auth: { getUser },
@@ -53,9 +53,11 @@ it('keeps warm data on auth transport failures and malformed scope responses', a
   act(() => window.dispatchEvent(new Event('focus')))
   await settle()
   rpc.mockResolvedValueOnce({ data: {}, error: null })
+  act(() => jest.advanceTimersByTime(1_001))
   act(() => window.dispatchEvent(new Event('focus')))
   await settle()
   rpc.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+  act(() => jest.advanceTimersByTime(1_001))
   act(() => window.dispatchEvent(new Event('focus')))
   await settle()
   expect(reset).not.toHaveBeenCalled()
@@ -111,6 +113,23 @@ it('does not run periodic checks while the tab is hidden', async () => {
   try {
     act(() => jest.advanceTimersByTime(60_000))
     expect(getUser).toHaveBeenCalledTimes(1)
+  } finally { visibility.mockRestore() }
+})
+
+it('does no background startup Auth read and coalesces a focus/visibility burst even after a fast result', async () => {
+  const visibility = jest.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')
+  try {
+    renderHook(() => useLocationPermissionRevision(site, reset))
+    await settle()
+    expect(getUser).not.toHaveBeenCalled()
+    visibility.mockReturnValue('visible')
+    act(() => document.dispatchEvent(new Event('visibilitychange'))); await settle()
+    act(() => window.dispatchEvent(new Event('focus'))); await settle()
+    expect(getUser).toHaveBeenCalledTimes(1)
+    expect(rpc).toHaveBeenCalledTimes(1)
+    rpc.mockResolvedValueOnce({ data: null, error: { code: '42501' } })
+    act(() => window.dispatchEvent(new Event('online'))); await settle()
+    expect(reset).toHaveBeenCalledTimes(1)
   } finally { visibility.mockRestore() }
 })
 

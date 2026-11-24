@@ -4,6 +4,10 @@ import { createClient, createServiceClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import { deleteContentRecord } from "./delete-content"
 import type { DeleteContentOptions, DeleteContentResult } from "./delete-content-types"
+import { isKnownDemoSite } from '@/lib/demo-data'
+import { isPersistedSiteId } from '@/lib/auth/current-site-cookie'
+import { readLocationRestrictionState } from '@/lib/permissions/location-boundary'
+import { lookupCurrentUserSiteRole } from '@/lib/auth/site-role-lookup'
 
 export type ContentAssetRow = {
   asset_id: string
@@ -56,56 +60,26 @@ export interface ContentResponse {
 }
 
 export async function getContent(siteId: string): Promise<ContentResponse> {
+  const failure = (error: string): ContentResponse => ({ content: null, error, count: 0 })
   try {
-    // Use service client to bypass RLS
-    const supabase = await createServiceClient()
-
-    // Check current user ID for debugging
-    const authClient = await createClient()
-    const { data: userData } = await authClient.auth.getUser()
-    console.log("Current user ID:", userData.user?.id)
-
-    // Log site ID
-    console.log("Fetching content for site ID:", siteId)
-
-    const { data, error, count } = await supabase
-      .from("content")
-      .select("*", { count: "exact" })
-      .eq("site_id", siteId)
-      .order("created_at", { ascending: false })
-
-    if (error) {
-      console.error("Error fetching content:", error)
-      return { content: null, error: error.message, count: 0 }
+    if (typeof siteId !== 'string' || !isPersistedSiteId(siteId)) return failure('Invalid workspace')
+    const demo = isKnownDemoSite(siteId)
+    const supabase = await createClient(!demo)
+    if (demo !== (supabase._isDemo === true) || (siteId.startsWith('demo-') && !demo)) return failure('Forbidden')
+    if (!demo) {
+      const { data: { user }, error } = await supabase.auth.getUser()
+      if (error || !user || user.is_anonymous) return failure(error && (error.status ?? 0) >= 500 ? 'Content unavailable' : 'Not authenticated')
+      // Same unscoped boundary as before, with explicit effective membership.
+      // The actual list still runs with this caller's RLS, not a service key.
+      const [role, restricted] = await Promise.all([lookupCurrentUserSiteRole(supabase, siteId), readLocationRestrictionState(supabase)])
+      if (restricted === null) return failure('Content unavailable')
+      if (restricted || !['owner', 'admin', 'collaborator', 'marketing'].includes(role ?? '')) return failure('Forbidden')
     }
-
-    // Log content count
-    console.log(`Found ${data?.length || 0} content items for site ${siteId}`)
-    
-    // Debug: Log the first item if it exists
-    if (data && data.length > 0) {
-      console.log("First content item:", {
-        id: data[0].id,
-        title: data[0].title,
-        site_id: data[0].site_id,
-        user_id: data[0].user_id,
-        author_id: data[0].author_id
-      })
-    }
-
-    return { 
-      content: data as ContentItem[], 
-      error: null, 
-      count: count || 0 
-    }
-  } catch (error) {
-    console.error("Error in getContent:", error)
-    return { 
-      content: null, 
-      error: "Failed to fetch content items", 
-      count: 0 
-    }
-  }
+    const { data, error, count } = await supabase.from('content').select('*', { count: 'exact' })
+      .eq('site_id', siteId).order('created_at', { ascending: false })
+    if (error || !Array.isArray(data)) return failure(error?.code === '42501' ? 'Forbidden' : 'Failed to load content items')
+    return { content: data as ContentItem[], error: null, count: count ?? data.length }
+  } catch { return failure('Content unavailable') }
 }
 
 export async function createContent({

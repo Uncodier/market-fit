@@ -5,10 +5,13 @@ Use the guides below before relying on older implementation notes.
 
 ## Start here
 
+- [Workspace screen startup](WORKSPACE_SCREEN_STARTUP.md) — shared access reads, bounded preview coverage, security boundaries and rollout checks.
+
 - [Agents and channels review — 2026-11-20](MULTI_AGENT_REVIEW_2026-11-20.md) — original delivery failures, local repairs, offline evidence and the required rollout checks before live routing.
 
 - [Agent reporting hierarchy](AGENT_REPORTING_HIERARCHY.md) — the Supervisor field in agent profiles, ID-based diagram, hierarchy validation and rollout boundaries.
 - [Projects performance and contention audit — 2026-11-20](PROJECTS_PERFORMANCE_2026-11-20.md) — selector visibility, bounded cache/query work, timing diagnostics, index evidence and rollout boundaries.
+- [Leads list and count performance](LEADS_READ_PERFORMANCE.md) — measured row-policy work, unchanged access rules, single-request totals and rollout checks.
 - [Finder selected-person lists](FINDER_SELECTED_LISTS.md) — add selected people,
   create a selected-only list, immediate enrichment and coordinated rollout.
 
@@ -172,6 +175,7 @@ environment variables before changing production configuration.
 - [Historical Robots connector catalog reads](CONNECTORS_INSTANCE_CATALOG.md) — saved read-only policies, earlier reporting adapters and rollout history; not provider-direct authority.
 - [Connector validation archive](CONNECTORS_VALIDATION_HISTORY.md) — historical offline test results for the initial connector release, not live provider acceptance.
 - [Connectors implementation and rollout](CONNECTORS_IMPLEMENTATION.md) — local implementation boundaries, provider attestation/configuration, version-pinned REST execution, migrations and remaining live/deployment gates.
+- [Self-service connector onboarding](CONNECTOR_ONBOARDING.md) — on-demand hosted setup, callback verification, and release checks.
 - [Connectors and skill-aware discovery](CONNECTORS_ARCHITECTURE.md) — approved target architecture for the native catalogue, connector resources, domain/skill registry and phased rollout; current local coverage is in the implementation guide.
 - [Connector resources and delegated access](CONNECTORS_ACCESS_MODEL.md) — per-account resources, member/agent grants and policy intersection; background delegation remains a target contract, not implemented execution.
 - [Multiple channels and multiple agents](MULTI_CHANNEL_MULTI_AGENT_REQUIREMENTS.md) — independent agent creation, a Channels tab per saved profile and shared assignments in Settings. The [channel integration contract](MULTI_CHANNEL_ROUTE_COMPATIBILITY.md#integration-contract-migrate-callers-before-changing-the-responder) distinguishes saved assignments from live routing and tracks the remaining rollout gates.

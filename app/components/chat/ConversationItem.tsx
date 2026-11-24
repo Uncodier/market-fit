@@ -23,6 +23,7 @@ import { AutomationPausedBadge } from "./AutomationPausedBadge"
 import { useLocalization } from "@/app/context/LocalizationContext"
 
 interface ConversationItemProps {
+  readOnly?: boolean
   reviewCount?: number
   conversation: ConversationListItem
   isSelected: boolean
@@ -104,6 +105,7 @@ function getChannelIcon(channel: string | undefined, isAgentConversation?: boole
 }
 
 export function ConversationItem({ 
+  readOnly = false,
   reviewCount,
   conversation, 
   isSelected, 
@@ -123,7 +125,7 @@ export function ConversationItem({
     <div
       className={cn(
         "w-full text-left py-3 px-4 rounded-none transition-colors border-b dark:border-white/5 border-black/5",
-        "hover:bg-accent/20 group",
+        !readOnly && "hover:bg-accent/20 group",
         isSelected && isDarkMode 
           ? "bg-primary/15" 
           : isSelected && "bg-primary/10"
@@ -131,9 +133,9 @@ export function ConversationItem({
       style={{ 
         boxSizing: 'border-box',
         position: 'relative',
-        cursor: 'pointer'
+        cursor: readOnly ? 'default' : 'pointer'
       }}
-      onClick={onSelect}
+      onClick={readOnly ? undefined : onSelect}
     >
       <div
         className="w-full text-left min-w-0"
@@ -141,7 +143,6 @@ export function ConversationItem({
           background: 'transparent',
           border: 'none',
           padding: 0,
-          cursor: 'pointer',
           display: 'block'
         }}
       >
@@ -206,7 +207,7 @@ export function ConversationItem({
       </div>
       
       {/* Dropdown Menu */}
-      <div 
+      {!readOnly && <div
         className="absolute right-2 top-2 transition-opacity duration-150 ease-in-out opacity-0 group-hover:opacity-100 z-10"
         onClick={(e) => e.stopPropagation()}
       >
@@ -241,7 +242,7 @@ export function ConversationItem({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-      </div>
+      </div>}
     </div>
   )
 } 

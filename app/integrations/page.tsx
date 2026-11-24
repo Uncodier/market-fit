@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
@@ -32,7 +32,7 @@ import {
   deleteWebhookEndpoint,
   listWebhookSubscriptions,
   upsertSubscription,
-  type WebhookEndpoint,
+  type WebhookEndpointSummary,
 } from "@/lib/webhooks"
 import {
   buildWebhookTestRequest,
@@ -65,16 +65,30 @@ function IntegrationsSkeleton() {
 }
 
 export default function IntegrationsPage() {
+  const { currentSite, isLoading } = useSite()
+  const [activeSegment, setActiveSegment] = useState("webhooks")
+  // Tab selection survives hydration; endpoint IDs, drafts and test records do
+  // not survive leaving the ready webhooks screen.
+  const webhookScope = !isLoading && activeSegment === 'webhooks' ? currentSite?.id : undefined
+  return <IntegrationsWorkspace key={currentSite?.id} webhookScope={webhookScope} currentSite={currentSite} isLoading={isLoading}
+    activeSegment={activeSegment} setActiveSegment={setActiveSegment} />
+}
+
+function IntegrationsWorkspace({ webhookScope: siteId, currentSite, isLoading, activeSegment, setActiveSegment }: {
+  webhookScope?: string;
+  currentSite: ReturnType<typeof useSite>["currentSite"]; isLoading: boolean;
+  activeSegment: string; setActiveSegment: (value: string) => void;
+}) {
   const { t } = useLocalization()
   const translateRef = useRef(t)
   useEffect(() => { translateRef.current = t }, [t])
-  const { currentSite, isLoading } = useSite()
-  const siteId = currentSite?.id
-  const [activeSegment, setActiveSegment] = useState("webhooks")
 
-  const [endpoints, setEndpoints] = useState<WebhookEndpoint[]>([])
+  const [endpoints, setEndpoints] = useState<WebhookEndpointSummary[]>([])
+  const [revision, setRevision] = useState(0)
+  const reload = useCallback(() => setRevision(value => value + 1), [])
   const [selectedEndpointId, setSelectedEndpointId] = useState<string | null>(null)
-  const [subscriptions, setSubscriptions] = useState<Record<string, boolean>>({})
+  const subscriptionScope = useMemo(() => ({ siteId, endpointId: selectedEndpointId }), [siteId, selectedEndpointId])
+  const [subscriptions, setSubscriptions] = useState<{ scope: typeof subscriptionScope; events: Record<string, boolean> } | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Test dialog state
@@ -85,6 +99,18 @@ export default function IntegrationsPage() {
   const [testRecords, setTestRecords] = useState<Record<string, unknown>[]>([])
   const [testRecordId, setTestRecordId] = useState<string>("")
   const [isLoadingRecords, setIsLoadingRecords] = useState(false)
+
+  const [previousWebhookScope, setPreviousWebhookScope] = useState(siteId)
+  if (previousWebhookScope !== siteId) {
+    setPreviousWebhookScope(siteId)
+    setEndpoints([])
+    setSelectedEndpointId(null)
+    setSubscriptions(null)
+    setIsTestOpen(false)
+    setTestEndpointId(null)
+    setTestRecords([])
+    setTestRecordId("")
+  }
 
   const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://your-domain.com"}/api/workflows/webhook`
 
@@ -135,52 +161,41 @@ export default function IntegrationsPage() {
     }
   }
 
-  const loadData = useCallback(async () => {
+  useEffect(() => {
     if (!siteId) return
-    try {
-      const list = await listWebhookEndpoints(siteId)
-      // Sort so newest first (assuming they have created_at or similar)
+    const controller = new AbortController()
+    void listWebhookEndpoints(siteId, controller.signal).then(list => {
+      if (controller.signal.aborted) return
       setEndpoints(list)
-      if (list.length > 0) {
-        setSelectedEndpointId((prev) => prev ?? list[0].id)
-      } else {
-        setSelectedEndpointId(null)
-      }
-    } catch (e) {
-      console.error(e)
+      setSelectedEndpointId(previous => list.some(ep => ep.id === previous) ? previous : list[0]?.id ?? null)
+    }).catch(() => {
+      if (controller.signal.aborted) return
+      setEndpoints([])
+      setSelectedEndpointId(null)
       toast.error(translateRef.current("operations.integrations.loadEndpointsFailed"))
-    }
-  }, [siteId])
+    })
+    return () => controller.abort()
+  }, [siteId, revision])
 
   useEffect(() => {
-    loadData()
-  }, [loadData])
-
-  useEffect(() => {
-    const loadSubs = async () => {
-      if (!selectedEndpointId) {
-        setSubscriptions({})
-        return
-      }
-      try {
-        const subs = await listWebhookSubscriptions(selectedEndpointId)
-        const map: Record<string, boolean> = {}
-        subs.forEach((s) => { map[s.event_type] = s.is_active })
-        setSubscriptions(map)
-      } catch (e) {
-        console.error(e)
-        toast.error(translateRef.current("operations.integrations.loadSubscriptionsFailed"))
-      }
-    }
-    loadSubs()
-  }, [selectedEndpointId])
+    const { siteId, endpointId } = subscriptionScope
+    if (!siteId || !endpointId) return
+    const controller = new AbortController()
+    void listWebhookSubscriptions(siteId, endpointId, controller.signal).then(subs => {
+      if (controller.signal.aborted) return
+      setSubscriptions({ scope: subscriptionScope, events: Object.fromEntries(subs.map(s => [s.event_type, s.is_active])) })
+    }).catch(() => {
+      if (!controller.signal.aborted) toast.error(translateRef.current("operations.integrations.loadSubscriptionsFailed"))
+    })
+    return () => controller.abort()
+  }, [subscriptionScope])
 
   const handleToggleEvent = async (event: WebhookEventType, checked: boolean) => {
-    if (!currentSite || !selectedEndpointId) return
+    if (!siteId || !selectedEndpointId || subscriptions?.scope !== subscriptionScope) return
     try {
       setIsSubmitting(true)
-      await upsertSubscription(currentSite.id, selectedEndpointId, event, checked)
-      setSubscriptions((prev) => ({ ...prev, [event]: checked }))
+      await upsertSubscription(siteId, selectedEndpointId, event, checked)
+      setSubscriptions(prev => prev?.scope === subscriptionScope ? { ...prev, events: { ...prev.events, [event]: checked } } : prev)
       toast.success(t("operations.integrations.subscriptionUpdated"))
     } catch (e: unknown) {
       toast.error(providerErrorMessage(e) || t("operations.integrations.updateSubscriptionFailed"))
@@ -195,8 +210,7 @@ export default function IntegrationsPage() {
       setIsSubmitting(true)
       await deleteWebhookEndpoint(endpointId, currentSite.id)
       toast.success(t("operations.integrations.endpointDeleted"))
-      await loadData()
-      setSelectedEndpointId((prev) => (prev === endpointId ? null : prev))
+      reload()
     } catch (e: unknown) {
       toast.error(providerErrorMessage(e) || t("operations.integrations.deleteEndpointFailed"))
     } finally {
@@ -239,8 +253,9 @@ export default function IntegrationsPage() {
   }
   // Load real records for the selected table filtered by current site
   useEffect(() => {
+    if (!isTestOpen || !siteId) return
+    const controller = new AbortController()
     const loadRecords = async () => {
-      if (!isTestOpen || !siteId) return
       try {
         setIsLoadingRecords(true)
         const supabase = createSbClient()
@@ -254,7 +269,7 @@ export default function IntegrationsPage() {
             .select('id, content, created_at, lead_id, leads!inner(site_id)')
             .eq('leads.site_id', siteId)
             .order('created_at', { ascending: false })
-            .limit(50)
+            .limit(50).abortSignal(controller.signal)
           data = resp.data as Record<string, unknown>[] | null
           error = resp.error
         } else {
@@ -263,10 +278,11 @@ export default function IntegrationsPage() {
             .select('*')
             .eq('site_id', siteId)
             .order('created_at', { ascending: false })
-            .limit(50)
+            .limit(50).abortSignal(controller.signal)
           data = resp.data as Record<string, unknown>[] | null
           error = resp.error
         }
+        if (controller.signal.aborted) return
         if (error) {
           console.error(error)
           toast.error(translateRef.current("operations.integrations.loadRecordsFailed"))
@@ -275,14 +291,16 @@ export default function IntegrationsPage() {
           setTestRecords(data || [])
         }
       } catch (e) {
+        if (controller.signal.aborted) return
         console.error(e)
         toast.error(translateRef.current("operations.integrations.loadRecordsFailed"))
         setTestRecords([])
       } finally {
-        setIsLoadingRecords(false)
+        if (!controller.signal.aborted) setIsLoadingRecords(false)
       }
     }
     loadRecords()
+    return () => controller.abort()
   }, [isTestOpen, testTable, siteId])
 
   if (isLoading) {
@@ -339,7 +357,7 @@ export default function IntegrationsPage() {
             <div className="space-y-8">
           {activeSegment === "webhooks" && (
             <>
-              <TestEndpointDialog
+              {isTestOpen && <TestEndpointDialog
                 open={isTestOpen}
                 onOpenChange={setIsTestOpen}
                 operation={testOperation}
@@ -361,7 +379,7 @@ export default function IntegrationsPage() {
                   setIsTestOpen(false)
                   void handleTestEndpoint(testEndpointId, { operation: testOperation, table: testTable, record: selected })
                 }}
-              />
+              />}
 
               <div id="outbound-webhooks" className="space-y-6">
                 {/* Header Section */}
@@ -372,7 +390,7 @@ export default function IntegrationsPage() {
                       {t("operations.integrations.outboundDescription")}
                     </p>
                   </div>
-                  <CreateEndpointDialog onSuccess={loadData} triggerLabel={t("operations.integrations.addWebhook")} />
+                  <CreateEndpointDialog onSuccess={reload} triggerLabel={t("operations.integrations.addWebhook")} />
                 </div>
 
                 {/* Webhook Endpoint Cards */}
@@ -384,9 +402,12 @@ export default function IntegrationsPage() {
                       endpoint={ep}
                       index={index}
                       isExpanded={isExpanded}
-                      subscriptions={subscriptions}
+                      subscriptions={isExpanded && subscriptions?.scope === subscriptionScope ? subscriptions.events : {}}
+                      subscriptionsReady={isExpanded && subscriptions?.scope === subscriptionScope}
                       isSubmitting={isSubmitting}
-                      onToggle={() => setSelectedEndpointId((prev) => (prev === ep.id ? null : ep.id))}
+                      onToggle={() => {
+                        setSelectedEndpointId(prev => prev === ep.id ? null : ep.id)
+                      }}
                       onToggleEvent={(event, checked) => void handleToggleEvent(event, checked)}
                       onDelete={() => void handleDeleteEndpoint(ep.id)}
                       onTest={() => openTestDialog(ep.id)}

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, useSyncExternalStore } from "react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { z } from "zod"
@@ -10,72 +10,73 @@ import { Button } from "@/app/components/ui/button"
 import { SectionCard, SectionCardContent, SectionCardHeader } from "@/app/components/ui/section-card"
 import { ConnectorError, ConnectorLoading } from "../connector-feedback"
 import { connectorRequest, ConnectorRequestError } from "../connector-request"
-import { useConnectorResource } from "../use-connector-resource"
+import { clearCompletedTabAttempt, readTabAttempt } from "./tab-continuation"
 
-const completionSchema = z.object({ connector_id: z.string(), toolkit_slug: z.string(), status: z.literal("completed") })
+const completionSchema = z.object({ connector_id: z.string(), toolkit_slug: z.string(), status: z.literal("completed"), site_id: z.string().uuid().optional() })
+const credentialAttemptSchema = z.string().uuid()
 type Completion = z.infer<typeof completionSchema>
-const pendingSchema = z.object({ items: z.array(z.object({
-  attempt_id: z.string(), site_id: z.string(), toolkit_slug: z.string(), status: z.string(),
-})) })
-
-function PendingAttempts({ onSelect }: { onSelect: (attempt: string) => void }) {
-  const { t } = useLocalization()
-  const { data, error, reload } = useConnectorResource("/api/connectors/pending-auth", pendingSchema)
-  if (error) return <ConnectorError error={error} retry={reload} />
-  if (!data) return <ConnectorLoading />
-  const pending = data.items.filter(attempt => attempt.status === "pending")
-  return <div className="space-y-4">
-    <h3 className="font-medium">{t("connectors.selectAttempt")}</h3><p className="text-sm text-muted-foreground">{t("connectors.selectAttemptHelp")}</p>
-    {!pending.length && <p>{t("connectors.noAttempts")}</p>}
-    {pending.map(attempt => <div key={attempt.attempt_id} className="space-y-2 rounded-lg border p-3">
-      <p>{attempt.toolkit_slug}</p><p className="text-xs text-muted-foreground">{t("connectors.attemptWorkspace", { site: attempt.site_id })}</p>
-      <Button variant="outline" onClick={() => onSelect(attempt.attempt_id)}>{t("connectors.completeAttempt")}</Button>
-    </div>)}
-  </div>
-}
-
 export default function ConnectorCallback() {
   const params = useSearchParams()
   const { user, isLoading } = useAuthContext()
   const { t } = useLocalization()
   // Capture once in memory. Never persist or display provider proof, or trust account IDs from the URL.
-  const [proof] = useState(() => ({ attempt: params.get("attempt_id"), session: params.get("session_uri"), denied: params.get("error") }))
-  const [attempt, setAttempt] = useState(proof.attempt)
+  const [proof] = useState(() => ({ attempt: params.get("attempt_id"), session: params.get("session_uri"),
+    credentialAttempt: params.get("credential_attempt"), duplicate: ["attempt_id", "session_uri", "credential_attempt", "error", "status"].some(key => params.getAll(key).length > 1),
+    denied: params.has("error") || params.get("status")?.toLowerCase() === "failed" }))
+  // Read sessionStorage after hydration, never from a server-rendered snapshot.
+  const hydrated = useSyncExternalStore(subscribeHydration, clientReady, serverReady)
+  const [tab] = useState(readTabAttempt)
   const [identity, setIdentity] = useState<{ actor?: string; changed: boolean }>({ actor: user?.id, changed: false })
-  // Bind proof and manual selection to the first authenticated actor, even before
+  // Bind this callback to the first authenticated actor, even before
   // completion starts. Switching back must not revive this callback.
   const actorChanged = identity.changed || (!isLoading && !!identity.actor && identity.actor !== user?.id)
   if (!isLoading && !identity.actor && user) setIdentity({ actor: user.id, changed: false })
   else if (actorChanged && !identity.changed) setIdentity({ ...identity, changed: true })
-  const started = useRef(false)
+  const startedCheck = useRef(-1)
+  const [check, setCheck] = useState(0)
   const mounted = useRef(false)
   const [state, setState] = useState<{ actor: string; result?: Completion; error?: unknown }>()
-  const invalidProof = proof.denied || (attempt && !/^[a-z0-9-]{1,100}$/i.test(attempt)) || !proof.session || proof.session.length > 8192
+  const credentialFlow = proof.session === null && credentialAttemptSchema.safeParse(proof.credentialAttempt).success
+  const target = credentialFlow ? proof.credentialAttempt : tab?.attempt_id
+  const invalidProof = proof.denied || proof.duplicate || !target ||
+    (proof.attempt !== null && proof.attempt !== target) || (tab && tab.attempt_id !== target) ||
+    (!credentialFlow && (proof.credentialAttempt !== null || !proof.session || proof.session.length > 4096))
   useEffect(() => {
     mounted.current = true
     window.history.replaceState(window.history.state, "", "/connectors/callback")
     return () => { mounted.current = false }
   }, [])
   useEffect(() => {
-    if (isLoading || !user || actorChanged || started.current || invalidProof || !attempt) return
-    started.current = true
+    if (!hydrated || isLoading || !user || actorChanged || startedCheck.current === check || invalidProof || !target) return
+    startedCheck.current = check
     const actor = user.id
-    // One submission, including under StrictMode. A lost response is not automatically replayed.
-    connectorRequest(`/api/connectors/auth-attempts/${encodeURIComponent(attempt)}/complete`, completionSchema, {
-      method: "POST", body: JSON.stringify({ session_uri: proof.session }),
+    // One submission per explicit check, including under StrictMode. A lost
+    // response and single-use OAuth proofs are never replayed.
+    connectorRequest(`/api/connectors/auth-attempts/${encodeURIComponent(target)}/complete`, completionSchema, {
+      method: "POST", body: JSON.stringify(credentialFlow ? { hosted_credentials: true } : { session_uri: proof.session, continuation: tab?.continuation }),
     }).then(
-      result => { if (mounted.current) setState({ actor, result }) },
+      result => { clearCompletedTabAttempt(target); if (mounted.current) setState({ actor, result }) },
       error => { if (mounted.current) setState({ actor, error }) },
     )
-  }, [isLoading, user, proof, attempt, invalidProof, actorChanged])
+  }, [hydrated, isLoading, user, proof, tab, target, invalidProof, actorChanged, credentialFlow, check])
   const current = state?.actor === user?.id ? state : undefined
+  const retryableCredential = credentialFlow && current?.error instanceof ConnectorRequestError && ["connector_not_active", "credential_check_unavailable"].includes(current.error.code)
   return <div className="mx-auto max-w-2xl px-4 py-10">
     <SectionCard><SectionCardHeader title={t("connectors.callbackTitle")} description={t("connectors.callbackHelp")} />
       <SectionCardContent>
-        {!isLoading && !user ? <p>{t("connectors.errors.unauthorized")}</p> : invalidProof ? <ConnectorError error={new ConnectorRequestError(proof.denied ? "cancelled" : "invalid_callback")} /> : actorChanged ? <ConnectorError error={new ConnectorRequestError("forbidden", 403)} /> : current?.error ? <ConnectorError error={current.error} /> : !isLoading && user && !attempt ? <PendingAttempts key={user.id} onSelect={setAttempt} /> : current?.result ?
-          <div className="space-y-4"><p role="status">{t("connectors.callbackSuccess")}</p><Button asChild><Link href={`/connectors/${encodeURIComponent(current.result.toolkit_slug)}?connector=${encodeURIComponent(current.result.connector_id)}`}>{t("connectors.reviewAccess")}</Link></Button></div> : <ConnectorLoading />}
+        {!hydrated ? <ConnectorLoading /> : !isLoading && !user ? <p>{t("connectors.errors.unauthorized")}</p> : invalidProof ? <ConnectorError error={new ConnectorRequestError(proof.denied ? "cancelled" : "invalid_callback")} /> : actorChanged ? <ConnectorError error={new ConnectorRequestError("forbidden", 403)} /> : current?.error ? <>
+          <ConnectorError error={current.error} />
+          {retryableCredential && <Button variant="outline" onClick={() => { setState(undefined); setCheck(value => value + 1) }}>{t("connectors.checkCredentialAccount")}</Button>}
+        </> : current?.result ?
+          <div className="space-y-4"><p role="status">{t("connectors.callbackSuccess")}</p><Button asChild><Link href={`/connectors/${encodeURIComponent(current.result.toolkit_slug)}?${new URLSearchParams({ connector: current.result.connector_id, ...(current.result.site_id && { workspace: current.result.site_id }) })}`}>{t("connectors.reviewAccess")}</Link></Button></div> : <ConnectorLoading />}
         <Button asChild variant="outline"><Link href="/connectors">{t("connectors.backToCatalog")}</Link></Button>
       </SectionCardContent>
     </SectionCard>
   </div>
 }
+
+// Render the same loading state on the server and during hydration; the captured
+// tab marker stays stable even after the successful request clears storage.
+const subscribeHydration = () => () => {}
+const clientReady = () => true
+const serverReady = () => false

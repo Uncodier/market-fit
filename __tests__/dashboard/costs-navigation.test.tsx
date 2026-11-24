@@ -3,7 +3,9 @@ import { usePathname, useSearchParams } from "next/navigation"
 import CostsPage from "@/app/costs/page"
 import { NAVIGATION_AREAS, buildNavItemHref, isNavItemActive } from "@/app/config/navigation-areas"
 
-jest.mock("@/app/context/SiteContext", () => ({ useSite: () => ({ currentSite: { id: "site-a" } }) }))
+const mockSiteId = '11111111-1111-4111-8111-111111111111'
+jest.mock("@/app/context/SiteContext", () => ({ useSite: () => ({ currentSite: { id: mockSiteId },
+  requestScope: { actorId: 'user-one', siteId: mockSiteId }, isLoading: false }) }))
 jest.mock("@/app/hooks/use-auth", () => ({ useAuth: () => ({ user: { id: "user-one" }, isLoading: false }) }))
 jest.mock("@/app/context/LocalizationContext", () => ({ useLocalization: () => ({ t: () => "" }) }))
 jest.mock("@/app/segments/actions", () => ({ getSegments: jest.fn() }))

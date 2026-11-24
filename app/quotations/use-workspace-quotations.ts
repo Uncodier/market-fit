@@ -23,9 +23,10 @@ export function useWorkspaceQuotations(params: Parameters<typeof listWorkspaceQu
   const [reloadCount, setReloadCount] = useState(0)
   const key = JSON.stringify([params, reloadCount])
   const [state, setState] = useState<LoadState>({ key, error: null, isLoading: true })
-  // Mark changed requests as pending during render, not synchronously in an effect.
+  // The list shows a skeleton on refresh. Never retain another filter's rows
+  // in the pending snapshot or restore them when a later read fails.
   if (state.key !== key) {
-    setState({ key, data: state.data, error: null, isLoading: true })
+    setState({ key, error: null, isLoading: true })
   }
 
   useEffect(() => {
@@ -41,9 +42,7 @@ export function useWorkspaceQuotations(params: Parameters<typeof listWorkspaceQu
         if (!obsolete) setState({ key, data, error: null, isLoading: false })
       },
       (error: unknown) => {
-        if (!obsolete) setState((previous) => ({
-          key, data: previous.data, error: error instanceof Error ? error : new Error(String(error)), isLoading: false,
-        }))
+        if (!obsolete) setState({ key, data: undefined, error: error instanceof Error ? error : new Error(String(error)), isLoading: false })
       },
     )
     return () => { obsolete = true }

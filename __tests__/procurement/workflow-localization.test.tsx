@@ -109,13 +109,14 @@ test('tender pending-publication notice and working terms switch locale without 
   const view = render(shell('en', <TenderDetail id={site} />))
   fireEvent.click(await screen.findByRole('button', { name: copy('en', 'tender.requestPublication') }))
   await screen.findByText(copy('en', 'tender.publicationPending'))
-  await waitFor(() => expect(fetch).toHaveBeenCalledTimes(5))
+  await waitFor(() => expect(fetch).toHaveBeenCalledTimes(3))
+  expect(jest.mocked(fetch).mock.calls.some(([url]) => String(url).includes('/suppliers?'))).toBe(false)
   for (const locale of locales) {
     view.rerender(shell(locale, <TenderDetail id={site} />))
     expect(screen.getByText(copy(locale, 'tender.publicationPending'))).toBeInTheDocument()
     expect(screen.getByRole('button', { name: copy(locale, 'tender.requestPublication') })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Saved tender', level: 2 })).toBeInTheDocument()
-    expect(fetch).toHaveBeenCalledTimes(5)
+    expect(fetch).toHaveBeenCalledTimes(3)
   }
   const mutation = jest.mocked(fetch).mock.calls.find(([, init]) => init?.method === 'POST')!
   expect(mutation[1]?.body).toBe(JSON.stringify({ expected_version: 2 }))

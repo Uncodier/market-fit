@@ -4,6 +4,7 @@ import type { Site } from "./site-types"
 import { setLocalStorage } from "./site-storage"
 import { normalizeActivitySettings } from "@/app/components/settings/activity-settings"
 import { preserveHydratedBilling } from "./site-billing-freshness"
+import { readOnboardingProgress } from "@/app/lib/onboarding-completion"
 
 export function parseJsonField(field: any, defaultValue: any) {
   if (!field) return defaultValue
@@ -35,6 +36,69 @@ type SetCurrentArgs = {
   setCurrentSite: (site: Site | ((current: Site | null) => Site | null)) => void
   setSites: (updater: (prev: Site[]) => Site[]) => void
   requireSettings?: boolean
+  signal?: AbortSignal
+}
+
+export const SITE_DETAIL_TIMEOUT_MS = 8_000
+type ReadResult<T> = { data: T | null; error: { code?: string } | null }
+type FilteredRead<T> = { single(): PromiseLike<ReadResult<T>>; abortSignal?(signal: AbortSignal): FilteredRead<T> }
+function readSelectedRow<T>(query: FilteredRead<T>, signal?: AbortSignal) {
+  // PostgREST and the lazy demo client accept a signal on the filtered builder.
+  return (signal && query.abortSignal ? query.abortSignal(signal) : query).single()
+}
+
+function readSelectionSettings(site: Site, supabase: SetCurrentArgs['supabase'], requireSettings: boolean, signal?: AbortSignal) {
+  if (!requireSettings && site.settings) return { data: site.settings, error: null }
+  const query = supabase.from('settings').select('*').eq('site_id', site.id)
+  if (!requireSettings) return readSelectedRow(query, signal)
+  // maybeSingle distinguishes a successful zero-row result from PGRST116 for
+  // multiple rows. An ambiguous response is not an absent configuration.
+  return (signal ? query.abortSignal(signal) : query).maybeSingle()
+}
+
+type SiteDetail = Partial<Pick<Site, 'name' | 'description' | 'logo_url' | 'tracking' | 'resource_urls'>>
+
+function startDetailRead({ site, supabase, signal, setCurrentSite, setSites }: SetCurrentArgs) {
+  if (site.logo_url != null && site.description != null) return
+  const controller = new AbortController()
+  const cancel = () => controller.abort()
+  const timer = setTimeout(cancel, SITE_DETAIL_TIMEOUT_MS)
+  const cleanup = () => { clearTimeout(timer); signal?.removeEventListener('abort', cancel) }
+  controller.signal.addEventListener('abort', cleanup, { once: true })
+  signal?.addEventListener('abort', cancel, { once: true })
+
+  let settingsAccepted = false
+  let readyDetail: SiteDetail | null = null
+  function publish() {
+    if (!settingsAccepted || !readyDetail || signal?.aborted || controller.signal.aborted) return
+    const detail = readyDetail
+    readyDetail = null
+    // Patch only the read columns on live state. A metadata refresh or edit
+    // after this read began wins over its corresponding older field.
+    const merge = (current: Site): Site => {
+      if (current.id !== site.id || signal?.aborted || controller.signal.aborted) return current
+      const next = { ...current }
+      if (detail.name && current.name === site.name) next.name = detail.name
+      if (detail.description != null && current.description === site.description) next.description = detail.description
+      if (detail.logo_url !== undefined && current.logo_url === site.logo_url) next.logo_url = detail.logo_url
+      if (detail.tracking !== undefined && current.tracking === site.tracking) next.tracking = detail.tracking
+      if (detail.resource_urls !== undefined && current.resource_urls === site.resource_urls) next.resource_urls = detail.resource_urls
+      return next
+    }
+    setSites(previous => previous.map(merge))
+    setCurrentSite(previous => previous ? merge(previous) : previous)
+  }
+  void (async () => {
+    try {
+      const { data, error } = await readSelectedRow<SiteDetail>(supabase.from('sites')
+        .select('logo_url, tracking, resource_urls, description, name').eq('id', site.id), controller.signal)
+      if (error || !data || signal?.aborted || controller.signal.aborted) return
+      readyDetail = data
+      publish()
+    } catch { /* Optional metadata cannot fail or complete required settings. */ }
+    finally { cleanup(); controller.signal.removeEventListener('abort', cleanup) }
+  })()
+  return { accept: () => { settingsAccepted = true; publish() }, cancel }
 }
 
 export async function applyCurrentSite({
@@ -44,72 +108,42 @@ export async function applyCurrentSite({
   setCurrentSite,
   setSites,
   requireSettings = false,
+  signal,
 }: SetCurrentArgs) {
     
     // Skip if we're setting the same site (avoid unnecessary reloads on focus changes)
-    if (currentSite && site && currentSite.id === site.id) {
+    if (signal?.aborted || (currentSite && site && currentSite.id === site.id)) {
       return;
     }
     
-    // Solo guardar si es un sitio válido y no es el 'default'
     if (site && site.id) {
-      // ACTUALIZACIÓN OPTIMISTA: Cambiar el UI inmediatamente sin bloquear
+      // Publish the identity immediately; operational readiness still waits for settings.
       setLocalStorage("currentSiteId", site.id)
-      const optimisticSite = { ...site, settings: site.settings ? { ...site.settings, activities: normalizeActivitySettings(site.settings.activities) } : site.settings }
-      setCurrentSite(current => current ? preserveHydratedBilling(current, optimisticSite) : optimisticSite)
+      // Directory/CRUD rows may contain a resource mirror or a settings patch.
+      // Neither proves that checkout, currency and printer settings have loaded.
+      const supplied = requireSettings ? undefined : site.settings
+      const optimisticSite = { ...site, settings_read_status: undefined, settings: supplied ? { ...supplied, activities: normalizeActivitySettings(supplied.activities) } : undefined }
+      setCurrentSite(current => signal?.aborted ? current : current ? preserveHydratedBilling(current, optimisticSite) : optimisticSite)
       
+      let details: ReturnType<typeof startDetailRead>
       try {
-        // Cargar los settings y detalles de sitio en background
-        if (supabase) {
-
-        let settingsData = null;
-        let settingsError = null;
-        let siteDetailData = null;
-
-        const [settingsResult, siteDetailResult] = await Promise.all([
-          !site.settings ? supabase
-            .from('settings')
-            .select('*')
-            .eq('site_id', site.id)
-            .single() : Promise.resolve({ data: site.settings, error: null }),
-          site.logo_url === undefined || site.logo_url === null || site.description === undefined || site.description === null ? supabase
-            .from('sites')
-            .select('logo_url, tracking, resource_urls, description, name')
-            .eq('id', site.id)
-            .single() : Promise.resolve({ data: null, error: null })
-        ]);
-
-        settingsData = unwrapSettingsRow(settingsResult.data);
-        settingsError = settingsResult.error;
-        siteDetailData = siteDetailResult.data;
-
-        if (requireSettings && settingsError && settingsError.code !== 'PGRST116') {
-          throw new Error("Selected site settings could not be loaded. Please try again.");
+        if (requireSettings && (!supabase || supabase._isMock || supabase._isDemo)) {
+          throw new Error('Selected site settings could not be loaded. Please try again.')
         }
-          
-          if (settingsError && settingsError.code !== 'PGRST116') {
-            // PGRST116 significa que no se encontraron registros (es normal para un sitio nuevo)
-            console.error(`Error loading settings for site ${site.id}:`, settingsError);
+        if (supabase) {
+          const settingsRead = readSelectionSettings(site, supabase, requireSettings, signal)
+          details = startDetailRead({ site, currentSite, supabase, setCurrentSite, setSites, signal })
+          const { data, error: settingsError } = await settingsRead
+          if (signal?.aborted) return
+          if (settingsError && (requireSettings || settingsError.code !== 'PGRST116')) {
+            details?.cancel()
+            if (requireSettings) throw new Error("Selected site settings could not be loaded. Please try again.")
+            console.error(`Error loading settings for site ${site.id}:`, settingsError)
+            return
           }
-          
-          // Si tenemos detalles (logo_url, etc), actualizar el objeto site primero
-          let mergedSite = site;
-          if (siteDetailData) {
-            mergedSite = {
-              ...site,
-              name: siteDetailData.name || site.name,
-              description: siteDetailData.description ?? site.description,
-              logo_url: siteDetailData.logo_url,
-              tracking: siteDetailData.tracking,
-              resource_urls: siteDetailData.resource_urls
-            };
-            
-            // Actualizar también en la lista de sitios y el sitio actual
-            setSites(prev => prev.map(s => s.id === site.id ? preserveHydratedBilling(s, mergedSite) : s));
-            setCurrentSite(current => current?.id === mergedSite.id ? preserveHydratedBilling(current, mergedSite) : current);
-          }
-          
-          // Si tenemos settings, los agregamos al sitio
+          if (requireSettings && data !== null && (!data || typeof data !== 'object' || Array.isArray(data) ||
+              (data.site_id !== undefined && data.site_id !== site.id))) throw new Error('Selected site settings could not be loaded. Please try again.')
+          const settingsData = unwrapSettingsRow(data)
           if (settingsData) {
             
             let parsedGoals = {
@@ -133,9 +167,7 @@ export async function applyCurrentSite({
             // Parse business_hours specifically
             const parsedBusinessHours = parseJsonField(settingsData.business_hours, []);
             
-            const enrichedSite = {
-              ...mergedSite,
-              settings: {
+            const settings = {
                 id: settingsData.id,
                 site_id: settingsData.site_id,
                 about: settingsData.about,
@@ -263,21 +295,26 @@ export async function applyCurrentSite({
                   return parsed;
                 })()
                 // allowed_domains is handled in a separate table, not in settings
-              }
             };
-            
-            // Actualizar solo si sigue siendo el mismo sitio actual (por si el usuario cambió rápido)
-            setCurrentSite(current => current?.id === enrichedSite.id ? preserveHydratedBilling(current, enrichedSite) : current);
+
+            const progress = 'onboarding' in settingsData ? { onboardingProgress: readOnboardingProgress(settingsData.onboarding) } : {}
+            setCurrentSite(current => !signal?.aborted && current?.id === site.id ? { ...current, settings,
+              ...(requireSettings ? { settings_read_status: 'loaded' as const } : {}), ...progress } : current)
+          } else if (requireSettings) {
+            setCurrentSite(current => !signal?.aborted && current?.id === site.id
+              ? { ...current, settings_read_status: 'missing', settings: undefined } : current)
           }
-        } else {
+          // Already resolved detail is published before the selection promise
+          // resolves. An unresolved read remains optional and independently bounded.
+          details?.accept()
         }
       } catch (err) {
+        details?.cancel()
+        if (signal?.aborted) return
         if (requireSettings) throw err;
         console.error(`Error handling settings for site ${site.id}:`, err);
-        // Continuamos con el sitio sin settings en caso de error
       }
     } else {
-      // Establecer el sitio como actual (para casos sin ID válido)
       setCurrentSite(site)
     }
 }

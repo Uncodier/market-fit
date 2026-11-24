@@ -88,6 +88,23 @@ Document the exact deployment command only after the repository has a canonical,
 checked-in workflow. Until then, do not copy ad hoc dashboard or CLI commands
 into automation.
 
+## Workspace screen scope (local only)
+
+`20261123233000_workspace_screen_scope.sql` adds a stable `SECURITY INVOKER`
+function with an empty search path. It accepts only a site UUID, derives the
+actor from Auth and returns the actor's own screen metadata, not customer rows.
+Only `authenticated` receives execute; Supabase anonymous accounts are denied.
+It does not change table policies, membership data, roles or other RPCs. Installed
+dependencies include effective site roles, archival, licensing, `blocked_screens`
+and the global location-restriction predicate.
+
+Apply this migration only after separate approval of the target, then roll out
+the app. Without it the early inbox and [workspace list previews](WORKSPACE_SCREEN_STARTUP.md) remain disabled. In staging,
+compare cold/warm selector `Server-Timing`, Auth requests per page opening,
+time to first inbox row and denial/revocation behavior using dedicated accounts.
+The isolated PostgreSQL test and browser-state Jest coverage do not measure
+production latency or deploy the migration.
+
 ## November 20, 2026 contention candidates
 
 The two contention changes have different rollout states:

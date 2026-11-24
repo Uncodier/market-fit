@@ -1,7 +1,7 @@
 'use client'
 import { ProcurementDemoNotice } from '@/app/purchases/procurement/ui/demo-notice'
 import { useProcurementI18n } from '@/app/purchases/procurement/i18n/use-procurement-i18n'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { TenderDetailSkeleton } from './tender-detail-skeleton'
@@ -19,13 +19,14 @@ import { Tabs, TabsContent } from '@/app/components/ui/tabs'
 import { ResponsiveTabsList } from '@/app/components/ui/responsive-tabs-list'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/app/components/ui/table'
 import { SectionCard } from '@/app/components/ui/section-card'
-import { RelationSelect } from '@/app/components/ui/relation-select'
+import { TenderInvitationPicker } from './tender-invitation-picker'
+import { useProcurementScopeKey } from '../procurement/components/use-procurement-scope-key'
 import { ConfirmDialog } from '@/app/components/ui/confirm-dialog'
 import { Button } from '@/app/components/ui/button'
 import { EmptyCard } from '@/app/components/ui/empty-card'
 import { Users, MoreHorizontal, Trash2, XCircle } from '@/app/components/ui/icons'
 import { TopBarPrimaryActions } from '@/app/components/navigation/topbar-primary-actions'
-import { getDemoTenderDetail, demoTenderSuppliers } from '@/lib/demo-data/procurement-workflow'
+import { getDemoTenderDetail } from '@/lib/demo-data/procurement-workflow'
 import { isRealSiteId, isDemoSiteId, isDemoModeActive } from '@/lib/demo-utils'
 import { EventApprovals } from '@/app/purchases/procurement/approvals/event-approvals'
 import type { Tender, TenderPublication } from './schema'
@@ -35,9 +36,10 @@ export type TenderDetailData = { tender: Tender; publications: TenderPublication
 export function TenderDetail({ id }: { id: string }) {
   const { t } = useProcurementI18n()
   const { currentSite } = useSite()
+  const scope = useProcurementScopeKey(currentSite?.id)
   if (!currentSite) return <TenderDetailSkeleton />
   if (!isRealSiteId(currentSite.id) && !isDemoSiteId(currentSite.id)) return <p className="p-6">{t('procurement.workflow.tender.selectWorkspace')}</p>
-  return <DetailView key={`${currentSite.id}:${id}`} siteId={currentSite.id} siteSlug={toSiteSlug(currentSite.name)} id={id} />
+  return <DetailView key={`${scope}:${id}`} siteId={currentSite.id} siteSlug={toSiteSlug(currentSite.name)} id={id} />
 }
 function DetailView({ siteId, siteSlug, id }: { siteId: string; siteSlug: string; id: string }) {
   const demo = isDemoSiteId(siteId) || isDemoModeActive()
@@ -50,7 +52,8 @@ function DetailView({ siteId, siteSlug, id }: { siteId: string; siteSlug: string
   const [detail, setDetail] = useState<TenderDetailData | null>(() => demo ? getDemoTenderDetail(siteId, id) : null), [error, setError] = useState(demo && !getDemoTenderDetail(siteId, id) ? 'Demo tender not found.' : ''), [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false), [reload, setReload] = useState(0), [loading, setLoading] = useState(!demo)
   const [loadedAt, setLoadedAt] = useState(0)
-  const [suppliers, setSuppliers] = useState<{ id: string; name: string }[]>(demo ? demoTenderSuppliers : []), [supplier, setSupplier] = useState(''), [supplierError, setSupplierError] = useState('')
+  const mounted = useRef(true)
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false } }, [])
   useEffect(() => {
     if (demo || isDemoModeActive()) return
     const controller = new AbortController()
@@ -59,10 +62,6 @@ function DetailView({ siteId, siteSlug, id }: { siteId: string; siteSlug: string
       .then(result => { if (!controller.signal.aborted) { setDetail(result); setLoadedAt(Date.now()); setError('') } })
       .catch(reason => { if (!controller.signal.aborted) setError(reason.message || 'Unable to load tender') })
       .finally(() => { if (!controller.signal.aborted) setLoading(false) })
-    fetch(`/api/procurement/suppliers?site_id=${siteId}&status=approved`, { signal: controller.signal, cache: 'no-store' })
-      .then(async response => { const result = await response.json(); if (!response.ok) throw new Error(result.error); return result })
-      .then(result => { if (!controller.signal.aborted) setSuppliers(result.suppliers) })
-      .catch(reason => { if (!controller.signal.aborted) setSupplierError(reason.message || 'Unable to load suppliers') })
     return () => controller.abort()
   }, [demo, id, siteId, reload])
   async function action(path: string, body: Record<string, unknown>, method = 'POST') {
@@ -72,6 +71,7 @@ function DetailView({ siteId, siteSlug, id }: { siteId: string; siteSlug: string
     try {
       const response = await fetch(`/api/procurement/tenders/${id}${path}?site_id=${siteId}`, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...body, expected_version: detail.tender.version }) })
       const result = await response.json(); if (!response.ok) throw new Error(result.error)
+      if (!mounted.current) return
       if (body.action === 'delete') { router.push('/purchases/tenders'); return }
       if (path === '/publish' && result.status === 'pending') setDetail(current => current ? { ...current, publication_pending: true } : current)
       setNotice(result.status === 'pending' ? 'procurement.workflow.tender.publicationPending' : path === '/publish' ? 'procurement.workflow.tender.publicationCompleted' : 'procurement.workflow.tender.updatedNotice')
@@ -130,8 +130,8 @@ function DetailView({ siteId, siteSlug, id }: { siteId: string; siteSlug: string
       <TabsContent value="lines" className="mt-0"><SectionCard className="space-y-3 p-5"><h2 className="text-lg font-semibold">{t('procurement.workflow.tender.workingRequirements')}</h2>
         <Table><TableHeader><TableRow><TableHead>{t('procurement.workflow.tender.requirement')}</TableHead><TableHead>{t('procurement.workflow.common.quantity')}</TableHead><TableHead>{t('procurement.workflow.tender.unitEstimate')}</TableHead></TableRow></TableHeader><TableBody>{tender.requirements.map(line => <TableRow key={line.id}><TableCell className="font-medium">{line.description}</TableCell><TableCell>{formatNumber(line.quantity)} {line.unit}</TableCell><TableCell>{formatMoney(line.unit_net_minor, tender.currency)}</TableCell></TableRow>)}</TableBody></Table>
       </SectionCard></TabsContent><TabsContent value="suppliers" className="mt-0"><SectionCard className="space-y-3 p-5"><h2 className="text-lg font-semibold">{t('procurement.workflow.tender.invitedSuppliers')}</h2><p className="text-sm text-muted-foreground">{t('procurement.workflow.tender.invitationDescription')}</p>
-        {supplierError && <p role="alert">{message(supplierError)}</p>}
-        {['draft', 'published'].includes(tender.status) && <div className="flex flex-wrap gap-3"><RelationSelect label={t('procurement.workflow.tender.approvedSupplier')} disabled={demo || busy} allowCreate={false} placeholder={t('procurement.workflow.tender.selectSupplier')} value={supplier ? { mode: 'existing', id: supplier, label: suppliers.find(row => row.id === supplier)?.name ?? t('procurement.workflow.common.supplier') } : null} options={suppliers.map(row => ({ id: row.id, label: row.name }))} onValueChange={value => setSupplier(value?.mode === 'existing' ? value.id : '')} /><Button disabled={!supplier || busy} onClick={() => action('/participants', { supplier_id: supplier, status: 'invited' })}>{t('procurement.workflow.tender.registerInvitation')}</Button></div>}
+        {tab === 'suppliers' && ['draft', 'published'].includes(tender.status) && <TenderInvitationPicker key={reload} siteId={siteId} demo={demo} busy={busy}
+          onInvite={supplier_id => action('/participants', { supplier_id, status: 'invited' })} />}
         {!detail.participants.length ? <EmptyCard icon={<Users size={24} />} title={t('procurement.workflow.tender.noSuppliers')}
           description="" showHint={false} showShadow={false} contentClassName="min-h-0 py-6" /> : <ul className="space-y-2">{detail.participants.map(participant => <li key={participant.id} className="flex items-center gap-3 rounded border p-3"><Link className="underline" href={`/suppliers/${participant.supplier_id}`}>{participant.suppliers?.name ?? t('procurement.workflow.common.supplier')}</Link><span>{valueLabel(participant.status)}</span>{participant.status === 'invited' && ['draft', 'published'].includes(tender.status) && <Button variant="outline" disabled={demo || busy} onClick={() => action('/participants', { supplier_id: participant.supplier_id, status: 'withdrawn' })}>{t('procurement.workflow.tender.withdrawInvitation')}</Button>}</li>)}</ul>}
       </SectionCard></TabsContent><TabsContent value="quotes" className="mt-0">

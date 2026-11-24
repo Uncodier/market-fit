@@ -23,13 +23,14 @@ import {
   SectionCardTitle,
 } from "@/app/components/ui/section-card"
 import { WEBHOOK_EVENT_OPTIONS, type WebhookEventType } from "@/lib/webhook-events"
-import type { WebhookEndpoint } from "@/lib/webhooks"
+import type { WebhookEndpointSummary } from "@/lib/webhooks"
 
 interface WebhookEndpointCardProps {
-  endpoint: WebhookEndpoint
+  endpoint: WebhookEndpointSummary
   index: number
   isExpanded: boolean
   subscriptions: Record<string, boolean>
+  subscriptionsReady: boolean
   isSubmitting: boolean
   onToggle: () => void
   onToggleEvent: (event: WebhookEventType, checked: boolean) => void
@@ -42,6 +43,7 @@ export function WebhookEndpointCard({
   index,
   isExpanded,
   subscriptions,
+  subscriptionsReady,
   isSubmitting,
   onToggle,
   onToggleEvent,
@@ -80,7 +82,7 @@ export function WebhookEndpointCard({
                     <Checkbox
                       checked={!!subscriptions[option.id]}
                       onCheckedChange={(checked: boolean) => onToggleEvent(option.id, !!checked)}
-                      disabled={isSubmitting}
+                      disabled={isSubmitting || !subscriptionsReady}
                     />
                     <span>{option.label}</span>
                   </label>

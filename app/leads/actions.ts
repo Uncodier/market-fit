@@ -1,5 +1,5 @@
 export type { LeadResponse, SingleLeadResponse, CreateLeadInput, UpdateLeadInput } from "./action-schemas"
-export { searchLeads, searchLeadsWithCount, getLeadById, getLeads, getLeadsByCampaignId } from "./read-actions"
+export { searchLeads, searchLeadsWithCount, getLeadById, getLeads, getLeadsWithCount, getLeadsByCampaignId } from "./read-actions"
 export { findOrCreateLead, createLead, updateLead, deleteLead, assignLeadToUser } from "./mutation-actions"
 export { getLeadConversations } from "./conversation-actions"
 export { exportLeads, importLeads } from "./transfer-actions"

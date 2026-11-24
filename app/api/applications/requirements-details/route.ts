@@ -1,14 +1,22 @@
 import { NextResponse } from "next/server"
 import { createClient as createMainClient, createServiceClient } from "@/lib/supabase/server"
 import { getApiKeyFromRequest, isValidApiKey } from "@/app/lib/api-keys-config"
+import { z } from "zod"
+import { decodeRequestBody, readLimitedRequestBody, RequestBodyTooLargeError } from "@/lib/http/read-limited-request-body"
+
+const requestSchema = z.object({
+  requirementIds: z.array(z.string().regex(/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i)),
+  includeLatestLog: z.boolean().default(true),
+})
+
+type RequirementStatus = {
+  requirement_id: string; preview_url: string | null; instance_id: string | null;
+  source_code: string | null; repo_url: string | null
+}
+type LatestLog = { message: string; created_at: string }
 
 export async function POST(request: Request) {
   try {
-    const { requirementIds } = await request.json()
-    if (!requirementIds || !Array.isArray(requirementIds) || requirementIds.length === 0) {
-      return NextResponse.json({ details: {} })
-    }
-
     // 1. Authenticate (Dual Auth: API Key or User Cookie)
     const apiKey = getApiKeyFromRequest(request.headers)
     const isServerRequest = isValidApiKey(apiKey)
@@ -16,27 +24,37 @@ export async function POST(request: Request) {
     let mainSupabase;
     if (!isServerRequest) {
       mainSupabase = await createMainClient()
-      const { data: { user } } = await mainSupabase.auth.getUser()
+      const { data: { user }, error } = await mainSupabase.auth.getUser()
 
-      if (!user) {
+      if (error || !user) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
       }
     } else {
       mainSupabase = await createServiceClient()
     }
     
-    // Fetch requirement_status
+    let payload: z.infer<typeof requestSchema>
+    try {
+      payload = requestSchema.parse(JSON.parse(decodeRequestBody(await readLimitedRequestBody(request, 128_000))))
+    } catch (error) {
+      return NextResponse.json({ error: "Invalid requirement details request" }, { status: error instanceof RequestBodyTooLargeError ? 413 : 400 })
+    }
+    const requirementIds = [...new Set(payload.requirementIds)]
+    if (!requirementIds.length) return NextResponse.json({ details: {} })
+
+    // The cookie path reads both statuses and logs under the user's RLS.
     const { data: reqStatuses, error: reqStatusError } = await mainSupabase
       .from("requirement_status")
       .select("requirement_id, preview_url, instance_id, source_code, repo_url, created_at")
       .in("requirement_id", requirementIds)
       .order("created_at", { ascending: false })
 
-    const latestStatusByReqId = new Map<string, any>()
+    const latestStatusByReqId = new Map<string, RequirementStatus>()
     const instanceIds = new Set<string>()
     if (!reqStatusError && reqStatuses) {
       for (const status of reqStatuses) {
-        if (!latestStatusByReqId.has(status.requirement_id)) {
+        const existing = latestStatusByReqId.get(status.requirement_id)
+        if (!existing) {
           // Keep a copy of the latest status
           latestStatusByReqId.set(status.requirement_id, { ...status })
           if (status.instance_id) {
@@ -44,7 +62,6 @@ export async function POST(request: Request) {
           }
         } else {
           // Merge missing fields from older statuses (so we keep the latest values if they exist, but fallback to older if missing)
-          const existing = latestStatusByReqId.get(status.requirement_id);
           if (!existing.preview_url && status.preview_url) existing.preview_url = status.preview_url;
           if (!existing.source_code && status.source_code) existing.source_code = status.source_code;
           if (!existing.repo_url && status.repo_url) existing.repo_url = status.repo_url;
@@ -56,8 +73,8 @@ export async function POST(request: Request) {
       }
     }
 
-    const latestLogByInstanceId = new Map<string, any>()
-    if (instanceIds.size > 0) {
+    const latestLogByInstanceId = new Map<string, LatestLog>()
+    if (payload.includeLatestLog && instanceIds.size > 0) {
       await Promise.all(Array.from(instanceIds).map(async (instanceId) => {
         const { data: logs } = await mainSupabase
           .from("instance_logs")
@@ -72,7 +89,7 @@ export async function POST(request: Request) {
       }))
     }
 
-    const details: Record<string, any> = {}
+    const details: Record<string, Omit<RequirementStatus, "requirement_id"> & { last_instance_log: LatestLog | null }> = {}
     for (const reqId of requirementIds) {
       const status = latestStatusByReqId.get(reqId)
       const latestLog = status?.instance_id ? latestLogByInstanceId.get(status.instance_id) : null

@@ -5,6 +5,7 @@ import { TopBarActions } from "@/app/components/navigation/TopBarActions";
 import type { TopBarActionsProps } from "@/app/components/navigation/topbar-action-types";
 import { safeReload } from "@/app/utils/safe-reload";
 import { createClient } from "@/lib/supabase/client";
+import { AuthContext, type AuthContextValue } from '@/app/components/auth/auth-context';
 
 type DialogProps = { trigger?: React.ReactNode; segments?: unknown[]; onSuccess?: () => void };
 const mockDialogProps = new Map<string, DialogProps>();
@@ -16,7 +17,7 @@ function mockDialog(name: string, props: DialogProps) {
   return <div data-testid={name}>{props.trigger}</div>;
 }
 
-jest.mock("@/app/context/SiteContext", () => ({ useSite: () => ({ currentSite: mockSite }) }));
+jest.mock("@/app/context/SiteContext", () => ({ useSite: () => ({ currentSite: mockSite, requestScope: { actorId: 'actor', siteId: mockSite?.id } }) }));
 jest.mock("@/app/context/LocalizationContext", () => ({ useLocalization: () => ({ t: (key: string) => key }) }));
 jest.mock("@/lib/supabase/client", () => ({ createClient: jest.fn() }));
 jest.mock("@/app/utils/safe-reload", () => ({ safeReload: jest.fn() }));
@@ -42,12 +43,13 @@ const baseProps: TopBarActionsProps = {
   isRequirementsPage: false, isLeadsPage: false, isAgentsPage: false,
   isAssetsPage: false, isContentPage: false, isControlCenterPage: false,
   isCampaignsPage: false, isSalesPage: false, isRobotsPage: false,
-  isSecurityPage: false, segments: [], requirements: [], campaigns: [],
+  isSecurityPage: false,
 };
 
 function toolbar(pathname = "/dashboard", props: Partial<TopBarActionsProps> = {}) {
   jest.mocked(usePathname).mockReturnValue(pathname);
-  return render(<TopBarActions {...baseProps} {...props} />);
+  return render(<TopBarActions {...baseProps} {...props} />, { wrapper: ({ children }) =>
+    <AuthContext.Provider value={{ user: { id: 'actor' }, isLoading: false } as AuthContextValue}>{children}</AuthContext.Provider> });
 }
 
 beforeEach(() => {
@@ -201,10 +203,10 @@ it.each([
   expect(screen.queryByTestId(dialog)).not.toBeInTheDocument();
 });
 
-it("preserves content segment fallback, refresh and reload behavior", () => {
-  const propSegments = [{ id: "segment-one", name: "Segment", description: "" }];
-  toolbar("/content", { isContentPage: true, propSegments });
-  expect(mockDialogProps.get("content")?.segments).toEqual(propSegments);
+it("preserves supplied content segments, refresh and reload behavior", () => {
+  const segments = [{ id: "segment-one", name: "Segment", description: "" }];
+  toolbar("/content", { isContentPage: true, segments });
+  expect(mockDialogProps.get("content")?.segments).toEqual(segments);
   mockDialogProps.get("content")?.onSuccess?.();
   expect(safeReload).toHaveBeenCalledWith(false, "New content created");
   const target = window as Window & { refreshContentList?: () => void };

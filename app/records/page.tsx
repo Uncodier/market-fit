@@ -115,7 +115,8 @@ export default function RecordsPage() {
     if (!currentSite?.id) return
     try {
       if (editingCategory) {
-        const result = await updateRecordCategory(editingCategory.id, data)
+        const result = await updateRecordCategory(editingCategory.id, data, editingCategory.updated_at)
+        if (result.conflict) refreshData()
         if (result.error) throw new Error(result.error)
         toast.success(t("records.toast.templateUpdated") || "Template updated")
       } else {

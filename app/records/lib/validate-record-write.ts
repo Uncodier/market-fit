@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { getRelationTargetConfig } from "./relation-target"
+import { recordScalarFieldValue } from "./field-values"
 import {
   isRecordObject, recordUuid, validateScalarValue, validateTemplateFields,
   type Validation, type ValidatedTemplateField,
@@ -44,8 +45,8 @@ export async function validateRecordWrite(
   supabase: SupabaseClient,
   input: RecordWriteValues,
   previous?: RecordWriteValues,
-): Promise<Validation> {
-  const fail = (error: string): Validation => ({ valid: false, error })
+): Promise<Extract<Validation, { valid: false }> | { valid: true; templateFields: ValidatedTemplateField[] }> {
+  const fail = (error: string) => ({ valid: false as const, error })
   if (!recordUuid.test(input.site_id) || !recordUuid.test(input.category_id)) return fail("Invalid site or category")
   // Nullable legacy columns represent empty objects; do not rewrite the input.
   const data = input.data === null ? {} : input.data
@@ -82,7 +83,7 @@ export async function validateRecordWrite(
     for (const field of template.fields) {
       const values = field.type === "relation" ? relations : data
       const value = Object.hasOwn(values, field.name) ? values[field.name] : undefined
-      const scalar = validateScalarValue(field, value, input.status !== "draft")
+      const scalar = validateScalarValue(field, field.type === "relation" ? value : recordScalarFieldValue(field.type, value), input.status !== "draft")
       if (!scalar.valid) return scalar
       if (field.type !== "relation" || value === undefined || value === null || value === "") continue
       // Preserve a historical reference without reassigning it or exposing its target.
@@ -96,7 +97,7 @@ export async function validateRecordWrite(
         return fail(`${field.label || field.name}: target not found or access denied`)
       }
     }
-    return { valid: true }
+    return { valid: true, templateFields: template.fields }
   } catch {
     return fail("Unable to validate record targets")
   }

@@ -1,0 +1,9 @@
+{
+  "workspacePreview.title": "Aperçu en lecture seule",
+  "workspacePreview.stalled": "Le chargement de l’aperçu a pris trop de temps. Attendez de pouvoir réessayer ou rechargez la page maintenant.",
+  "workspacePreview.reload": "Recharger la page",
+  "workspacePreview.syncFailed": "Aperçu en lecture seule · Impossible de charger les paramètres.",
+  "workspacePreview.failed": "Impossible de charger l’aperçu.",
+  "workspacePreview.denied": "Cet écran n’est pas accessible à votre compte dans cet espace de travail.",
+  "workspacePreview.empty": "Aucun élément à afficher."
+}

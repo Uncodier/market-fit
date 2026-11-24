@@ -1,11 +1,11 @@
 "use client"
 
-import { useState, useRef, useEffect, Suspense } from "react"
+import { useState, useRef, Suspense } from "react"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { AppsListSection } from "@/app/components/applications/AppsListSection"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { SearchInput } from "@/app/components/ui/search-input"
-import { ViewSelector, ViewType } from "@/app/components/view-selector"
+import { ViewSelector } from "@/app/components/view-selector"
 import { useMobileView } from "@/app/hooks/use-mobile-view"
 import { useSearchParams } from "next/navigation"
 import { SortDropdown } from "@/app/components/ui/sort-dropdown"
@@ -53,15 +53,11 @@ function DatabasePageContent() {
       </StickyHeader>
       
       <div className="p-8 space-y-4 bg-muted/30 flex-1">
-        {viewMode === 'kanban' ? (
-          <div className="overflow-x-auto pb-4 -mx-8">
-            <div className="min-w-fit px-8">
-              <AppsListSection searchQuery={searchQuery} viewMode={viewMode} robotInstanceId={robotInstanceId || undefined} sortBy={sortBy} />
-            </div>
+        <div className={viewMode === 'kanban' ? 'overflow-x-auto pb-4 -mx-8' : 'contents'}>
+          <div className={viewMode === 'kanban' ? 'min-w-fit px-8' : 'contents'}>
+            <AppsListSection searchQuery={searchQuery} viewMode={viewMode} robotInstanceId={robotInstanceId || undefined} sortBy={sortBy} />
           </div>
-        ) : (
-          <AppsListSection searchQuery={searchQuery} viewMode={viewMode} robotInstanceId={robotInstanceId || undefined} sortBy={sortBy} />
-        )}
+        </div>
       </div>
     </div>
   )

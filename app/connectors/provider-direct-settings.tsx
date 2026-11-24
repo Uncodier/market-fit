@@ -5,6 +5,7 @@ import { toast } from "sonner"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { Badge } from "@/app/components/ui/badge"
 import { Button } from "@/app/components/ui/button"
+import { Skeleton } from '@/app/components/ui/skeleton'
 import { ConnectorError } from "./connector-feedback"
 import { ConnectorRequestError, scopedConnectorPath } from "./connector-request"
 import { directPolicyStatus, isAskVerified, type DirectPolicyStatus } from "./provider-direct-contract"
@@ -41,6 +42,8 @@ export function useAskStatus(siteId: string, connector: Connector, canManage: bo
 }
 
 function askState(status: DirectPolicyStatus, connector: Connector, policy?: ConnectorAccess["policy"]) {
+  if (status.ask_compatible === false) return "incompatibleMethod"
+  if (status.ask_compatible === null) return "compatibilityUnknown"
   if (status.authorization_mode === "host_policy" && status.setup_pending) return "hostPending"
   if (status.authorization_mode === "host_policy" && status.assistant_allowed === false) return "hostOff"
   if (status.unsupported_reason) return "unsupported"
@@ -60,7 +63,7 @@ export function AskStatus({ resource, connector, policy, onRefresh, onRevoke, di
   const { t } = useLocalization()
   const { status, error, cleared, pending } = resource
   if (error) return <ConnectorError error={error} retry={onRefresh} />
-  if (!status) return <p role="status" className="text-sm">{t("connectors.directLoading")}</p>
+  if (!status) return <Skeleton role="status" aria-busy="true" aria-label={t('common.loading')} className="h-4 w-40 motion-reduce:animate-none" />
   const state = askState(status, connector, policy)
   const unified = status.authorization_mode === "host_policy"
   const generic = unified || status.authorization_mode === "member_policy"

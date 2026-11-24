@@ -6,18 +6,16 @@ import { MobileWorkspaceNavigation } from "./components/navigation/MobileWorkspa
 import { usePathname, useSearchParams } from "next/navigation"
 import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
-import { createClient } from "@/lib/supabase/client"
-import { type Segment } from "./requirements/types"
+import { WorkspaceStartupBoundary, WorkspaceStartupContent } from './workspace-preview/WorkspaceStartupBoundary'
 import { useLayout } from "./context/LayoutContext"
 import { NotificationsProvider } from "./notifications/context/NotificationsContext"
 import { usePageRefreshPrevention } from "./hooks/use-prevent-refresh"
 import { useWakeSessionRefresh } from "./hooks/use-wake-session-refresh"
 import { useNavigationFeedback } from "./hooks/use-navigation-feedback"
 import { useArtifactRouterPatch } from "./hooks/use-artifact-router-patch"
-import { useIsMobile } from "./hooks/use-mobile-view"
+import { useMobileViewport } from "./hooks/use-mobile-view"
 import { useLocalization } from "./context/LocalizationContext"
 import { ScreenAccessRedirect } from "./components/navigation/ScreenAccessRedirect"
-import { useOptimisticError } from "./hooks/use-optimistic-error"
 import { GuidedTour } from "./components/onboarding/GuidedTour"
 
 const pathToNavKey: Record<string, string> = {
@@ -155,25 +153,20 @@ function cleanLocalStorageOnStartup() {
 function LayoutClientInner({
   children,
   pathname,
-  segments,
   breadcrumbFromEvent,
   customTitle,
-  fetchError,
 }: {
   children: React.ReactNode
   pathname: string
-  segments: Segment[]
   breadcrumbFromEvent: React.ReactNode
   customTitle: string | null
-  fetchError: string | null
 }) {
   const searchParams = useSearchParams()
   const isArtifact = searchParams.get("artifact") === "true"
   
   const { t } = useLocalization()
-  const [visibleFetchError] = useOptimisticError(fetchError)
   const { isLayoutCollapsed, setIsLayoutCollapsed, robotsViewMode } = useLayout()
-  const isMobile = useIsMobile()
+  const isMobile = useMobileViewport()
   const [isCreateSaleOpen, setIsCreateSaleOpen] = useState(false)
 
   const handleCollapse = () => {
@@ -259,11 +252,6 @@ function LayoutClientInner({
       "flex min-h-[100dvh] w-full bg-background",
       isLayoutCollapsed ? "collapsed" : ""
     )}>
-        {visibleFetchError && (
-          <div className="fixed bottom-4 right-4 bg-destructive text-destructive-foreground p-4 rounded-md shadow-lg z-50">
-            {t('layout.topbar.error') || 'Error'}: {visibleFetchError === 'LAYOUT_ERROR_LOADING_SEGMENTS' ? (t('layout.topbar.errorLoadingSegments') || 'Error loading segments') : visibleFetchError}
-          </div>
-        )}
         {isLoginPage || pathname.startsWith("/navigation") ? (
           // Para la página de login o rutas sin layout, mostrar el contenido con el Tour si aplica
           <div className="min-h-[100dvh] w-full relative">
@@ -274,6 +262,7 @@ function LayoutClientInner({
           // Para el resto de páginas, mostrar el layout completo
           <div className="flex overflow-visible relative min-h-[100dvh] w-full">
             <Sidebar 
+              desktopVisible={isMobile === false}
               isCollapsed={isLayoutCollapsed} 
               onCollapse={handleCollapse}
               className="!hidden md:!flex flex-none fixed left-0 top-0 z-[210]"
@@ -281,7 +270,8 @@ function LayoutClientInner({
             {/* TOUR EXPLICITAMENTE RENDERIZADO */}
             <GuidedTour />
             <ScreenAccessRedirect />
-            <div 
+            <WorkspaceStartupBoundary pathname={pathname} search={searchParams.toString()}>
+            <div
               className="flex-1 flex flex-col min-w-0 transition-[padding] duration-300 ease-in-out"
               style={{ paddingLeft: isMobile ? 0 : isLayoutCollapsed ? 64 : 256 }}
             >
@@ -292,7 +282,6 @@ function LayoutClientInner({
                 helpTask={currentPage.helpTask || undefined}
                 isCollapsed={isLayoutCollapsed}
                 onCollapse={handleCollapse}
-                segments={segments}
                 className="fixed top-0 right-0 left-0"
                 style={{ paddingLeft: isMobile ? 0 : isLayoutCollapsed ? 64 : 256 }}
                 breadcrumb={customBreadcrumb}
@@ -313,12 +302,13 @@ function LayoutClientInner({
                   '--topbar-height': '64px'
                 } as React.CSSProperties}
               >
-                {children}
+                <WorkspaceStartupContent>{children}</WorkspaceStartupContent>
               </main>
             </div>
+            </WorkspaceStartupBoundary>
           </div>
         )}
-        {!isLoginPage && <MobileWorkspaceNavigation />}
+        {!isLoginPage && isMobile === true && <MobileWorkspaceNavigation />}
       </div>
   )
 }
@@ -330,14 +320,11 @@ export default function LayoutClient({
 }) {
   const pathname = usePathname()
   const [isMounted, setIsMounted] = useState(false)
-  const [segments, setSegments] = useState<Segment[]>([])
-  const [fetchError, setFetchError] = useState<string | null>(null)
-  const [retryCount, setRetryCount] = useState(0)
   const [breadcrumbFromEvent, setBreadcrumbFromEvent] = useState<React.ReactNode>(null)
   const [customTitle, setCustomTitle] = useState<string | null>(null)
 
   // Use the page refresh prevention hook
-  const { shouldPreventRefresh, isCreateEditRoute } = usePageRefreshPrevention()
+  usePageRefreshPrevention()
 
   // Inicialización crítica (ejecutar inmediatamente)
   useEffect(() => {
@@ -376,33 +363,6 @@ export default function LayoutClient({
     }
   }, [isMounted])
 
-  // Cargar segmentos solo cuando sea necesario
-  useEffect(() => {
-    if (!isMounted || !['/experiments', '/requirements'].includes(pathname)) {
-      setSegments([])
-      return
-    }
-
-    const fetchTimer = setTimeout(async () => {
-      try {
-        const supabase = createClient()
-        const { data: segmentsData, error } = await supabase
-          .from('segments')
-          .select('*')
-          .order('created_at', { ascending: false })
-
-        if (error) throw error
-        setSegments(segmentsData || [])
-      } catch (error) {
-        console.error('Error fetching segments:', error)
-        setFetchError('LAYOUT_ERROR_LOADING_SEGMENTS')
-        setRetryCount(prev => prev + 1)
-      }
-    }, 500)
-
-    return () => clearTimeout(fetchTimer)
-  }, [isMounted, pathname])
-
   // Mostrar la página con posible indicador de error
   // NOTE: ThemeProvider, SiteProvider, and LayoutProvider are NOT wrapped here.
   // They already exist in Providers.tsx (app/providers/Providers.tsx) which wraps
@@ -410,13 +370,11 @@ export default function LayoutClient({
   // instances -- RobotsProvider (in Providers.tsx) read from the OUTER SiteProvider
   // while page components read from the INNER one, causing state desync.
   return (
-    <NotificationsProvider>
+    <NotificationsProvider active={pathname === '/notifications'}>
       <LayoutClientInner
         pathname={pathname}
-        segments={segments}
         breadcrumbFromEvent={breadcrumbFromEvent}
         customTitle={customTitle}
-        fetchError={fetchError}
       >
         {children}
       </LayoutClientInner>

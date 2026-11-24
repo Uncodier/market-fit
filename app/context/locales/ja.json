@@ -1,4 +1,5 @@
 {
+  "notifications.settingsUnavailable": "ワークスペースの設定を読み込めませんでした。",
   "billing.salePaymentFee.label": "カード決済手数料：{{percent}}% · 決済処理費用込み",
   "billing.salePaymentFee.defaultLabel": "標準のカード決済手数料：{{percent}}% · 決済処理費用込み · 現在のプランは確認できません",
   "billing.salePaymentFee.planUnavailable": "現在のプランは確認できません",

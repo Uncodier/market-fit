@@ -1,10 +1,5 @@
 import { buildConversationListItems } from "@/app/services/conversations/conversation-list-items"
-import { getUserData } from "@/app/services/user-service"
 import type { ConversationListRow } from "@/app/services/conversations/conversation-list-query"
-
-jest.mock("@/app/services/user-service", () => ({
-  getUserData: jest.fn(),
-}))
 
 function resolvedQuery(data: unknown[], error: unknown = null) {
   const query: any = {
@@ -28,13 +23,9 @@ describe("buildConversationListItems", () => {
   })
 
   it("uses the bounded latest message and preserves moderation flags", async () => {
-    jest.mocked(getUserData).mockResolvedValue({
-      name: "Alex Owner",
-      avatar_url: null,
-    })
-
     const supabase = {
       from: jest.fn((table: string) => {
+        if (table === 'profiles') return resolvedQuery([{ id: 'user-1', name: 'Alex Owner' }])
         if (table === "agents") {
           return resolvedQuery([{ id: "agent-1", name: "Sales Agent" }])
         }
@@ -106,8 +97,6 @@ describe("buildConversationListItems", () => {
         return resolvedQuery([])
       }),
     }
-    const consoleError = jest.spyOn(console, "error").mockImplementation(() => undefined)
-
     await expect(
       buildConversationListItems(supabase, [
         {
@@ -123,9 +112,35 @@ describe("buildConversationListItems", () => {
           latest_message: [],
         },
       ])
-    ).rejects.toBe(moderationError)
+    ).rejects.toMatchObject({ status: 503 })
+  })
 
-    consoleError.mockRestore()
+  it('batches distinct assignees once per page without caching hidden names across actors', async () => {
+    const rows = [1, 2, 3].map(i => ({ id: `c${i}`, lead_id: `l${i}` } as ConversationListRow))
+    const leads = [1, 2, 3].map(i => ({ id: `l${i}`, assignee_id: i === 1 ? 'a' : 'b' }))
+    const profiles = resolvedQuery([{ id: 'b', name: 'Visible name' }])
+    const from = jest.fn((table: string) => table === 'profiles' ? profiles : resolvedQuery(table === 'leads' ? leads : []))
+    const first = await buildConversationListItems({ from }, rows)
+    expect(from.mock.calls.filter(([table]) => table === 'profiles')).toHaveLength(1)
+    expect(profiles.select).toHaveBeenCalledWith('id, name')
+    expect(profiles.in).toHaveBeenCalledWith('id', ['a', 'b'])
+    expect(first.map(row => row.agentName)).toEqual(['Team Member', 'Visible name', 'Visible name'])
+    const second = await buildConversationListItems({ from: (table: string) => resolvedQuery(table === 'leads' ? leads : []) }, rows)
+    expect(second.every(row => row.agentName === 'Team Member')).toBe(true)
+    await expect(buildConversationListItems({ from: (table: string) => table === 'profiles'
+      ? resolvedQuery([], { code: '42501' }) : resolvedQuery(table === 'leads' ? leads : []) }, rows)).rejects.toMatchObject({ status: 403 })
+  })
+
+  it('uses the joined lead under RLS and does not re-query a hidden relation', async () => {
+    const from = jest.fn(() => resolvedQuery([]))
+    const base = { id: 'one', lead_id: 'lead', title: 'Conversation' } as ConversationListRow
+    const result = await buildConversationListItems({ from }, [
+      { ...base, leads: { name: 'Visible', company: { name: 'Shop' }, status: 'qualified', assignee_id: null } },
+      { ...base, id: 'two', lead_id: 'other', leads: null },
+    ])
+    expect(from).not.toHaveBeenCalledWith('leads')
+    expect(from).not.toHaveBeenCalledWith('profiles')
+    expect(result.map(item => item.leadName)).toEqual(['Visible (Shop)', undefined])
   })
 
   it("uses DM metadata without creating a fake lead and preserves linked/manual names", async () => {

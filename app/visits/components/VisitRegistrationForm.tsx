@@ -76,38 +76,56 @@ export function VisitRegistrationForm({
   const [attestPrefillDone, setAttestPrefillDone] = useState(false)
   const [registeredRange, setRegisteredRange] = useState<{ start: string; end: string } | null>(null)
 
+  const emailTrimmed = visitorEmail.trim()
+  const phoneTrimmed = visitorPhone.trim()
+  const emailValid = Boolean(emailTrimmed) && isValidVisitEmail(emailTrimmed)
+  const phoneValid = Boolean(phoneTrimmed) && isValidVisitPhone(phoneTrimmed)
+  const emailInvalid = Boolean(emailTrimmed) && !emailValid
+  const phoneInvalid = Boolean(phoneTrimmed) && !phoneValid
+  const nameOk = Boolean(visitorName.trim())
+  const identityOk = isAttest || (nameOk && !emailInvalid && !phoneInvalid && (emailValid || phoneValid))
+
   const { data: settingsData, isLoading: settingsLoading } = useSWR(
     siteId ? ["visits-settings", siteId] : null,
     () => getVisitsSettings(siteId)
   )
   const settings = settingsData?.data
   const defaultDuration = settings?.default_duration_minutes || 60
+  const channelEnabled =
+    mode === "buyer" ? settings?.enabled_online !== false : settings?.enabled_physical !== false
 
   const { data: reservationData, isLoading: reservationLoading } = useSWR(
     isAttest && siteId && reservationId ? ["reservation-for-visit", siteId, reservationId] : null,
     () => getReservationForVisit(siteId, reservationId!)
   )
 
+  // On mobile the resource card can be used as soon as identity unlocks it,
+  // without clicking Continue. Keep the selection available when going back.
+  const hasSelectedResource = Boolean(catalogItemId || locationId || assigneeUserId)
+  const readResources = !isAttest && (mode === "buyer" ||
+    (settings != null && channelEnabled && (identityOk || hasSelectedResource)))
   const { data: catalogData, isLoading: catalogLoading } = useSWR(
-    !isAttest && siteId ? ["catalog-reservable", siteId] : null,
+    readResources && siteId ? ["catalog-reservable", siteId] : null,
     () => listCatalogItems({ siteId, isReservation: true, pageSize: 100 })
   )
   const { data: locationsData, isLoading: locationsLoading } = useSWR(
-    !isAttest && siteId ? ["locations", siteId] : null,
+    readResources && siteId ? ["locations", siteId] : null,
     () => listLocations(siteId)
   )
   const { data: employeesData, isLoading: employeesLoading } = useSWR(
-    !isAttest && siteId ? ["visit-employees", siteId] : null,
+    readResources && siteId ? ["visit-employees", siteId] : null,
     () => listVisitEmployees(siteId)
   )
   const { data: schedulesData } = useSWR(
-    !isAttest && siteId ? ["visit-schedules", siteId] : null,
+    readResources && siteId ? ["visit-schedules", siteId] : null,
     () => listReservationSchedules(siteId)
   )
 
+  const resourcesLoading = catalogLoading || locationsLoading || employeesLoading
+  const kioskPickerLoading = mode === "kiosk" && resourcesLoading
   const isBootstrapping = isAttest
     ? settingsLoading || reservationLoading || !settingsData || !reservationData
-    : settingsLoading || catalogLoading || locationsLoading || employeesLoading || !settingsData
+    : settingsLoading || !settingsData || (mode === "buyer" && resourcesLoading)
 
   const services = catalogData?.data || []
   const locations = locationsData?.data || []
@@ -152,10 +170,10 @@ export function VisitRegistrationForm({
     if (durationMinutes == null) setDurationMinutes(defaultDuration)
   }, [defaultDuration, durationMinutes])
   useEffect(() => {
-    if (availableResourceTypes.length && !availableResourceTypes.includes(resourceType)) {
+    if (!kioskPickerLoading && availableResourceTypes.length && !availableResourceTypes.includes(resourceType)) {
       setResourceType(availableResourceTypes[0])
     }
-  }, [availableResourceTypes, resourceType])
+  }, [availableResourceTypes, kioskPickerLoading, resourceType])
 
   useEffect(() => {
     if (!isAttest || !reservation || attestPrefillDone) return
@@ -212,14 +230,6 @@ export function VisitRegistrationForm({
       ? durationMinutes || defaultDuration
       : serviceDuration || defaultDuration
 
-  const emailTrimmed = visitorEmail.trim()
-  const phoneTrimmed = visitorPhone.trim()
-  const emailValid = Boolean(emailTrimmed) && isValidVisitEmail(emailTrimmed)
-  const phoneValid = Boolean(phoneTrimmed) && isValidVisitPhone(phoneTrimmed)
-  const emailInvalid = Boolean(emailTrimmed) && !emailValid
-  const phoneInvalid = Boolean(phoneTrimmed) && !phoneValid
-  const nameOk = Boolean(visitorName.trim())
-  const identityOk = isAttest || (nameOk && !emailInvalid && !phoneInvalid && (emailValid || phoneValid))
   const nameError = identityTouched && !nameOk ? t("visits.identity.nameRequired") : null
   const emailError = emailInvalid ? t("visits.identity.emailInvalid") : null
   const phoneError = phoneInvalid ? t("visits.identity.phoneInvalid") : null
@@ -346,9 +356,6 @@ export function VisitRegistrationForm({
     else setActiveStep(next)
   }
 
-  const channelEnabled =
-    mode === "buyer" ? settings?.enabled_online !== false : settings?.enabled_physical !== false
-
   if (isBootstrapping) return <VisitFormSkeleton />
 
   if (isAttest && reservationData?.error) {
@@ -411,6 +418,7 @@ export function VisitRegistrationForm({
               phoneError={phoneError}
               contactHintError={contactHintError}
               resourceType={resourceType}
+              resourceOptionsState={!readResources ? "idle" : resourcesLoading ? "loading" : "ready"}
               availableResourceTypes={availableResourceTypes}
               services={services.map((item: any) => ({
                 id: item.id,

@@ -1,4 +1,5 @@
 {
+  "notifications.settingsUnavailable": "Impossible de charger les paramètres de l’espace de travail.",
   "billing.salePaymentFee.label": "Frais de paiement par carte : {{percent}}% · traitement inclus",
   "billing.salePaymentFee.defaultLabel": "Frais de paiement par carte par défaut : {{percent}}% · traitement inclus · forfait actuel indisponible",
   "billing.salePaymentFee.planUnavailable": "Forfait actuel indisponible",

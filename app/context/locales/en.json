@@ -5742,6 +5742,7 @@
   "notes": "Notes",
   "notesOptional": "Notes Optional",
   "notifications.deleteAll": "Delete all",
+  "notifications.settingsUnavailable": "Workspace settings could not be loaded.",
   "notifications.empty.none": "None",
   "notifications.empty.search": "No notifications found matching your search",
   "notifications.empty.title": "No notifications",

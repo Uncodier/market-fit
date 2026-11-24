@@ -1,3 +1,4 @@
+import { notifyScreenScopeChanged } from '@/lib/permissions/screen-scope-invalidation'
 import { createClient } from '@/lib/supabase/client'
 import { siteMemberRoleToInvitationRole } from '@/lib/auth/screen-access'
 import { assignableSiteMembers } from '@/lib/auth/assignable-site-members'
@@ -118,6 +119,7 @@ export const siteMembersService = {
     }
 
     const data = result.member as SiteMember
+    notifyScreenScopeChanged(siteId)
 
     try {
       const invitationResult = await sendMagicLinkInvitation({
@@ -181,6 +183,7 @@ export const siteMembersService = {
     if (!member || Array.isArray(member) || member.id !== memberId || member.site_id !== siteId) {
       throw new Error('Invalid member enabled response')
     }
+    notifyScreenScopeChanged(siteId)
     return member
   },
 
@@ -208,6 +211,7 @@ export const siteMembersService = {
       throw new Error(errorMessage)
     }
 
+    if (updates.role || updates.blocked_screens || updates.restrict_to_assigned_only !== undefined) notifyScreenScopeChanged(siteId)
     return result.member
   },
 
@@ -230,6 +234,7 @@ export const siteMembersService = {
       throw new Error(result.error || 'Failed to update blocked screens')
     }
 
+    notifyScreenScopeChanged(siteId)
     return result.member
   },
   
@@ -247,6 +252,7 @@ export const siteMembersService = {
       }
       throw new Error(errorMessage)
     }
+    notifyScreenScopeChanged(siteId)
   },
   
   // Invite a member by email (legacy method - now addMember handles invitations automatically)

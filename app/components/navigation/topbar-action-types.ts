@@ -1,3 +1,5 @@
+import type { CampaignOption, SegmentOption } from './use-topbar-options'
+
 export interface TopBarActionsProps {
   isDashboardPage: boolean;
   isSegmentsPage: boolean;
@@ -38,10 +40,8 @@ export interface TopBarActionsProps {
     id: string;
     is_active: boolean;
   } | null;
-  segments: Array<{ id: string; name: string; description: string }>;
-  propSegments?: Array<{ id: string; name: string; description: string }>;
-  requirements: Array<{ id: string; title: string; description: string }>;
-  campaigns: Array<{ id: string; title: string; description: string }>;
+  segments?: SegmentOption[];
+  campaigns?: CampaignOption[];
   isDealsPage?: boolean;
   isQuotationsPage?: boolean;
   isSettingsPage?: boolean;

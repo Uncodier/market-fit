@@ -1,6 +1,7 @@
 import React from "react"
 import { act, fireEvent, render, screen, within } from "@testing-library/react"
 import IntegrationsPage from "@/app/integrations/page"
+import { listWebhookEndpoints, listWebhookSubscriptions } from "@/lib/webhooks"
 
 jest.mock("@/app/context/LocalizationContext", () => ({ useLocalization: () => ({ t: (key: string) => key }) }))
 const mockSiteState = { currentSite: { id: "site" }, isLoading: false }
@@ -23,7 +24,7 @@ jest.mock("@/lib/supabase/client", () => ({ createClient: jest.fn() }))
 jest.mock("@/lib/webhooks", () => ({ listWebhookEndpoints: jest.fn().mockResolvedValue([]), listWebhookSubscriptions: jest.fn(), deleteWebhookEndpoint: jest.fn(), upsertSubscription: jest.fn() }))
 jest.mock("sonner", () => ({ toast: { success: jest.fn(), error: jest.fn() } }))
 
-beforeEach(() => { mockSiteState.isLoading = false })
+beforeEach(() => { mockSiteState.isLoading = false; mockSiteState.currentSite.id = 'site'; jest.clearAllMocks() })
 
 it("uses the Models card skeleton while the site loads and preserves the selected tab", async () => {
   mockSiteState.isLoading = true
@@ -37,6 +38,26 @@ it("uses the Models card skeleton while the site loads and preserves the selecte
   view.rerender(<IntegrationsPage />)
   expect(screen.getByRole("heading", { name: "OpenRouter settings for site" })).toBeInTheDocument()
   expect(screen.queryByRole("status", { name: "Loading OpenRouter connection" })).not.toBeInTheDocument()
+  expect(listWebhookEndpoints).not.toHaveBeenCalled()
+  expect(listWebhookSubscriptions).not.toHaveBeenCalled()
+})
+
+it('never loads subscriptions from a hidden or retired endpoint request', async () => {
+  let resolve!: (value: Awaited<ReturnType<typeof listWebhookEndpoints>>) => void
+  jest.mocked(listWebhookEndpoints).mockReturnValueOnce(new Promise(done => { resolve = done }))
+  const view = render(<IntegrationsPage />)
+  const signal = jest.mocked(listWebhookEndpoints).mock.calls[0][1]
+  fireEvent.mouseDown(screen.getByRole('tab', { name: 'Models' }), { button: 0 })
+  expect(signal.aborted).toBe(true)
+  mockSiteState.currentSite.id = 'another-site'
+  view.rerender(<IntegrationsPage />)
+  await act(async () => resolve([{ id: 'old', name: 'Old endpoint', target_url: '' }]))
+  expect(listWebhookEndpoints).toHaveBeenCalledTimes(1)
+  expect(listWebhookSubscriptions).not.toHaveBeenCalled()
+  expect(screen.queryByText('Old endpoint')).toBeNull()
+  fireEvent.mouseDown(screen.getByRole('tab', { name: 'operations.integrations.webhooks' }), { button: 0 })
+  await act(async () => {})
+  expect(listWebhookEndpoints).toHaveBeenLastCalledWith('another-site', expect.any(AbortSignal))
 })
 
 it("shows OpenRouter only in Models with its own quick navigation", async () => {

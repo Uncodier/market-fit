@@ -5,6 +5,7 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useSite } from "../context/SiteContext"
+import { useDirectoryLogos } from "../context/use-project-list-logos"
 import { isDemoSiteId } from "@/lib/demo-utils"
 import { Card, CardContent } from "../components/ui/card"
 import { Button } from "../components/ui/button"
@@ -78,6 +79,7 @@ export default function ProjectsPage() {
     !!demoSiteIdFromCookie || manualDemoEnabled || (currentSite?.id?.startsWith("demo-") ?? false)
 
   const visibleSites = isDemoMode && !isManageMode ? sites : sites.filter(site => !isDemoSiteId(site.id))
+  const logos = useDirectoryLogos(visibleSites, !isDemoMode && (isManageMode || !currentSite))
 
   // If a current site is selected, go to AI Agents (robots)
   useEffect(() => {
@@ -144,14 +146,15 @@ export default function ProjectsPage() {
             </CardContent>
           </Card>
         )}
-        {visibleSites.map(site => (
-          <Card key={site.id} className={`border border-border transition-colors ${isLoading ? "" : "hover:border-foreground/20 cursor-pointer"}`} onClick={isLoading ? undefined : () => handleSelectSite(site.id)}>
+        {visibleSites.map(site => {
+          const logo = site.logo_url === undefined ? logos?.[site.id] : site.logo_url
+          return <Card key={site.id} className={`border border-border transition-colors ${isLoading ? "" : "hover:border-foreground/20 cursor-pointer"}`} onClick={isLoading ? undefined : () => handleSelectSite(site.id)}>
             <CardContent className="p-4">
               <div className="flex items-center gap-4">
                 <div className="h-10 w-10 rounded-md bg-muted overflow-hidden flex items-center justify-center">
-                  {site.logo_url ? (
+                  {logo ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={site.logo_url} alt={site.name} className="h-full w-full object-cover" />
+                    <img src={logo} alt={site.name} className="h-full w-full object-cover" />
                   ) : (
                     <span className="text-sm font-medium">{site.name?.charAt(0)?.toUpperCase() || "P"}</span>
                   )}
@@ -179,7 +182,7 @@ export default function ProjectsPage() {
               </div>
             </CardContent>
           </Card>
-        ))}
+        })}
 
         <Card className="border border-border hover:border-foreground/20 transition-colors cursor-pointer" onClick={() => router.push("/create-site") }>
           <CardContent className="p-4">

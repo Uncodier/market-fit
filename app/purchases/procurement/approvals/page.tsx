@@ -18,6 +18,7 @@ import { Button } from '@/app/components/ui/button'
 import { Pagination } from '@/app/components/ui/pagination'
 import { Skeleton } from '@/app/components/ui/skeleton'
 import { EventApprovalReview } from './event-approval-review'
+import { useProcurementScopeKey } from '../components/use-procurement-scope-key'
 import { approvalStages, inboxResponseSchema, type InboxRow } from './inbox-schema'
 import { useProcurementI18n } from '../i18n/use-procurement-i18n'
 import { DeprecatedBadge } from './deprecated-badge'
@@ -25,9 +26,10 @@ import { DeprecatedBadge } from './deprecated-badge'
 export default function Page() {
   const { t } = useProcurementI18n()
   const { currentSite } = useSite()
+  const scope = useProcurementScopeKey(currentSite?.id)
   if (!currentSite) return <ProcurementListLoading columns={6} />
   if (!isRealSiteId(currentSite.id) && !isDemoSiteId(currentSite.id)) return <p className="p-6">{t('procurement.partners.approvals.realWorkspace')}</p>
-  return <ApprovalInbox key={currentSite.id} siteId={currentSite.id} />
+  return <ApprovalInbox key={scope} siteId={currentSite.id} />
 }
 
 function ApprovalInbox({ siteId }: { siteId: string }) {

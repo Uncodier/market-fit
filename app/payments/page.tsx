@@ -1,51 +1,38 @@
 "use client"
 
-import React, { useEffect, useRef, useState, Suspense } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useSite } from "@/app/context/SiteContext"
-import { useLocalization } from "@/app/context/LocalizationContext"
+import { useFinanceWorkspace } from "@/app/finance/use-finance-workspace"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { EmptyCard } from "@/app/components/ui/empty-card"
 import { Card, CardHeader, CardTitle, CardContent } from "@/app/components/ui/card"
-import {
-  SectionCard,
-  SectionCardHeader,
-  SectionCardTitle,
-  SectionCardDescription,
-  SectionCardContent,
-  SectionCardFooter,
-} from "@/app/components/ui/section-card"
 import { Button } from "@/app/components/ui/button"
 import { toast } from "sonner"
-import { Clock, Building as Building2, RotateCcw as History, ArrowUpRight } from "@/app/components/ui/icons"
+import { Building as Building2, RotateCcw as History, ArrowUpRight } from "@/app/components/ui/icons"
 import { buildPaymentBalanceHistory } from "./payment-balance-history"
 import { paymentOperationDescription } from "./payment-operation-description"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogForm, DialogBody } from "@/app/components/ui/dialog"
 import { Label } from "@/app/components/ui/label"
 import { Input } from "@/app/components/ui/input"
-import useSWR from "swr"
-import { createClient } from "@/lib/supabase/client"
 import { BaseKpiWidget } from "@/app/components/dashboard/base-kpi-widget"
 import { WalletChart } from "./components/WalletChart"
 import { SalesWithdrawalsChart } from "./components/SalesWithdrawalsChart"
-import { CreditUsageHistory } from "@/app/components/billing/credit-usage-history"
-import type { PayoutRow, PaymentOperationRow, CreditTransactionRow } from "./payment-dashboard-types"
+import { usePaymentDashboardData } from "./use-payment-dashboard-data"
 
 export default function PaymentsPage() {
-  return (
-    <Suspense fallback={<div className="p-8 text-muted-foreground animate-pulse">Loading balances...</div>}>
-      <PaymentsContent />
-    </Suspense>
-  )
+  const workspace = useFinanceWorkspace()
+  if (workspace.loading) return <div role="status" className="p-8 text-muted-foreground">Loading balances…</div>
+  if (!workspace.ready || !workspace.siteId || !workspace.actorId) return <p role="status">Select a workspace to view balances.</p>
+  return <PaymentsContent key={workspace.key} siteId={workspace.siteId} actorId={workspace.actorId} />
 }
 
-function PaymentsContent() {
+function PaymentsContent({ siteId, actorId }: { siteId: string; actorId: string }) {
   const router = useRouter()
-  const { currentSite, refreshSites } = useSite()
-  const { t } = useLocalization()
+  const { currentSite, refreshSites, refreshSiteBilling } = useSite()
   const [activeTab, setActiveTab] = useState("overview")
-  const supabase = createClient()
+  const reads = usePaymentDashboardData(siteId, actorId)
 
   // Payout dialog state
   const [isPayoutOpen, setIsPayoutOpen] = useState(false)
@@ -61,14 +48,18 @@ function PaymentsContent() {
     accountNumber: currentSite?.settings?.shop?.bank_account_number || ""
   }
 
+  const billing = currentSite?.billing_read_status === 'unavailable' ? undefined : currentSite?.billing
+  const balance = billing?.account_balance
+  const withdrawableBalance = typeof balance === 'number' && Number.isFinite(balance) ? balance : undefined
+
   // Listen for topbar payout requests
   useEffect(() => {
     const handleOpenPayout = () => {
-      setIsPayoutOpen(true)
+      if (withdrawableBalance !== undefined && withdrawableBalance > 0) setIsPayoutOpen(true)
     }
     window.addEventListener("payouts:request-open", handleOpenPayout)
     return () => window.removeEventListener("payouts:request-open", handleOpenPayout)
-  }, [])
+  }, [withdrawableBalance])
 
   useEffect(() => {
     const event = new CustomEvent("breadcrumb:update", {
@@ -77,68 +68,18 @@ function PaymentsContent() {
     window.dispatchEvent(event)
   }, [])
 
-  // Fetch payout requests
-  const fetchPayouts = async (): Promise<PayoutRow[]> => {
-    if (!currentSite?.id) return []
-    const { data } = await supabase
-      .from('payout_requests')
-      .select('*')
-      .eq('site_id', currentSite.id)
-      .order('created_at', { ascending: false })
-    return data || []
-  }
-
-  const { data: payouts, mutate: mutatePayouts } = useSWR(
-    currentSite?.id ? ['payouts', currentSite.id] : null,
-    fetchPayouts
-  )
-
-  // Fetch operations (credits_purchases AND sales AND subscriptions AND commissions) to show in the table
-  const fetchOperations = async (): Promise<PaymentOperationRow[]> => {
-    if (!currentSite?.id) return []
-    const { data } = await supabase
-      .from('payments')
-      .select('*')
-      .eq('site_id', currentSite.id)
-      .in('transaction_type', ['sale', 'commission', 'credits_purchase', 'subscription'])
-      .order('created_at', { ascending: false })
-    return data || []
-  }
-
-  const { data: operations } = useSWR(
-    currentSite?.id ? ['operations', currentSite.id] : null,
-    fetchOperations
-  )
-
-  // Fetch all credit transactions to build the accurate history chart (includes sales, purchases, usages, payouts)
-  const fetchCreditTransactions = async (): Promise<CreditTransactionRow[]> => {
-    if (!currentSite?.id) return []
-    const { data } = await supabase
-      .from('credit_transactions')
-      .select('amount, created_at')
-      .eq('site_id', currentSite.id)
-      .order('created_at', { ascending: true })
-    return data || []
-  }
-
-  const { data: allTransactions } = useSWR(
-    currentSite?.id ? ['credit_transactions', currentSite.id] : null,
-    fetchCreditTransactions
-  )
-
-  const usableCredits = (currentSite?.billing?.credits_available || 0) + (currentSite?.billing?.account_balance || 0)
-  const withdrawableBalance = currentSite?.billing?.account_balance || 0
-  const pendingAmount = payouts?.filter((p) => p.status === 'pending').reduce((sum, p) => sum + Number(p.requested_credits), 0) || 0
-  const totalTransferredAmount = payouts?.filter((p) => p.status === 'completed').reduce((sum, p) => sum + Number(p.requested_credits), 0) || 0
-  
-  // Only count visible operations for the payments dashboard table
-  const visibleOperations = operations?.filter(op => ['sale', 'commission'].includes(op.transaction_type)) || []
-  const totalOperationsCount = visibleOperations.length
-  const totalWithdrawalsCount = payouts?.length || 0
-
-  const chartData = buildPaymentBalanceHistory({
-    usableCredits, withdrawableBalance, allTransactions, visibleOperations, payouts,
-  })
+  const payouts = reads.payouts.data?.rows
+  const visibleOperations = reads.operations.data?.rows
+  const allTransactions = reads.transactions.data?.rows
+  const credits = billing?.credits_available
+  const usableCredits = typeof credits === 'number' && Number.isFinite(credits) && withdrawableBalance !== undefined
+    ? credits + withdrawableBalance : undefined
+  const totalTransferredAmount = payouts?.filter(p => p.status === 'completed').reduce((sum, p) => sum + Number(p.requested_credits), 0)
+  const chartData = usableCredits !== undefined && withdrawableBalance !== undefined && allTransactions && visibleOperations && payouts
+    ? buildPaymentBalanceHistory({ usableCredits, withdrawableBalance, allTransactions, visibleOperations, payouts }) : null
+  const required = activeTab === 'operations' ? [reads.operations] : activeTab === 'withdrawals' ? [reads.payouts] : Object.values(reads)
+  const failed = required.filter(read => read.data?.failed || read.error)
+  const loading = required.some(read => !read.data && !read.error)
 
   const handleRequestPayout = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -147,7 +88,7 @@ function PaymentsContent() {
       return
     }
     
-    if (Number(payoutAmount) > withdrawableBalance) {
+    if (withdrawableBalance === undefined || Number(payoutAmount) > withdrawableBalance) {
       toast.error("Insufficient withdrawable balance")
       return
     }
@@ -164,7 +105,7 @@ function PaymentsContent() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          siteId: currentSite?.id,
+          siteId,
           requestedCredits: Number(payoutAmount),
           idempotencyKey: payoutIdempotencyKeyRef.current
         })
@@ -179,10 +120,10 @@ function PaymentsContent() {
       payoutIdempotencyKeyRef.current = null
       setIsPayoutOpen(false)
       setPayoutAmount("")
-      mutatePayouts()
+      void reads.payouts.mutate()
       refreshSites() // Refetch site to update available credits
-    } catch (err: any) {
-      toast.error(err.message)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to request payout")
     } finally {
       setIsSubmitting(false)
     }
@@ -204,43 +145,46 @@ function PaymentsContent() {
 
       <div className="flex-1 overflow-auto bg-muted/20">
         <div className="p-4 lg:p-8 pt-6">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          {failed.length > 0 ? <div role="alert" className="space-y-2">
+            <p>Payment history could not be loaded.</p>
+            <Button variant="outline" onClick={() => failed.forEach(read => { void read.mutate() })}>Retry payment history</Button>
+          </div> : loading ? <p role="status">Loading payment history…</p> : <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsContent value="overview" className="space-y-8 animate-in fade-in-50 duration-500 mt-0">
               
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-4">
                 <BaseKpiWidget
                   title="Total Usable Credits"
-                  value={usableCredits.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  value={usableCredits?.toLocaleString(undefined, { maximumFractionDigits: 0 }) ?? 'Unavailable'}
                   changeText="System credits available"
                   isLoading={false}
                 />
                 <BaseKpiWidget
                   title="Withdrawable Balance"
-                  value={`$${withdrawableBalance.toFixed(2)}`}
+                  value={withdrawableBalance === undefined ? 'Unavailable' : `$${withdrawableBalance.toFixed(2)}`}
                   changeText="From sales ready to withdraw"
                   isLoading={false}
                 />
                 <BaseKpiWidget
                   title="Total Operations"
-                  value={`${totalOperationsCount}`}
+                  value={visibleOperations?.length}
                   changeText="Total operations count"
                   isLoading={false}
                 />
                 <BaseKpiWidget
                   title="Total Withdrawals"
-                  value={`$${totalTransferredAmount.toFixed(2)}`}
+                  value={totalTransferredAmount === undefined ? 'Unavailable' : `$${totalTransferredAmount.toFixed(2)}`}
                   changeText="Total withdrawn amount"
                   isLoading={false}
                 />
               </div>
 
-              {/* Balance Chart */}
-              <WalletChart data={chartData} />
-
-              {/* Sales vs Withdrawals Area Chart */}
-              <div className="mt-8">
-                <SalesWithdrawalsChart data={chartData} />
-              </div>
+              {chartData ? <>
+                <WalletChart data={chartData} />
+                <div className="mt-8"><SalesWithdrawalsChart data={chartData} /></div>
+              </> : <div role="status" className="space-y-2">
+                <p>Balance history requires the current billing balance.</p>
+                <Button variant="outline" onClick={() => { void refreshSiteBilling(siteId).catch(() => toast.error('Billing balance unavailable')) }}>Retry billing balance</Button>
+              </div>}
             </TabsContent>
 
             <TabsContent value="operations" className="animate-in fade-in-50 duration-500 mt-0">
@@ -357,11 +301,11 @@ function PaymentsContent() {
                 </CardContent>
               </Card>
             </TabsContent>
-          </Tabs>
+          </Tabs>}
         </div>
       </div>
 
-      <Dialog open={isPayoutOpen} onOpenChange={setIsPayoutOpen}>
+      <Dialog open={isPayoutOpen && withdrawableBalance !== undefined} onOpenChange={setIsPayoutOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Request Payout</DialogTitle>
@@ -390,10 +334,10 @@ function PaymentsContent() {
                   />
                 </div>
                 <div className="flex justify-between items-center text-xs text-muted-foreground mt-1">
-                  <span>Available to withdraw: ${withdrawableBalance.toFixed(2)}</span>
+                  <span>Available to withdraw: ${withdrawableBalance?.toFixed(2)}</span>
                   <button 
                     type="button" 
-                    onClick={() => setPayoutAmount(withdrawableBalance.toString())}
+                    onClick={() => setPayoutAmount(withdrawableBalance?.toString() ?? '')}
                     className="text-primary hover:underline"
                   >
                     Withdraw maximum
@@ -428,7 +372,7 @@ function PaymentsContent() {
               <Button type="button" variant="ghost" onClick={() => setIsPayoutOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting || !shopBankDetails.accountNumber}>
+              <Button type="submit" disabled={isSubmitting || withdrawableBalance === undefined || !shopBankDetails.accountNumber}>
                 {isSubmitting ? "Processing..." : "Confirm Request"}
               </Button>
             </DialogFooter>

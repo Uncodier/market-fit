@@ -6,7 +6,7 @@ import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { RepositoriesSection } from "@/app/components/applications/RepositoriesSection"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { SearchInput } from "@/app/components/ui/search-input"
-import { ViewSelector, ViewType } from "@/app/components/view-selector"
+import { ViewSelector } from "@/app/components/view-selector"
 import { useMobileView } from "@/app/hooks/use-mobile-view"
 import { SortDropdown } from "@/app/components/ui/sort-dropdown"
 
@@ -53,15 +53,11 @@ function RepositoriesPageContent() {
         </div>
       </StickyHeader>
       <div className="p-8 space-y-4 bg-muted/30 flex-1">
-        {viewMode === 'kanban' ? (
-          <div className="overflow-x-auto pb-4 -mx-8">
-            <div className="min-w-fit px-8">
-              <RepositoriesSection searchQuery={searchQuery} viewMode={viewMode} />
-            </div>
+        <div className={viewMode === 'kanban' ? 'overflow-x-auto pb-4 -mx-8' : 'contents'}>
+          <div className={viewMode === 'kanban' ? 'min-w-fit px-8' : 'contents'}>
+            <RepositoriesSection searchQuery={searchQuery} viewMode={viewMode} />
           </div>
-        ) : (
-          <RepositoriesSection searchQuery={searchQuery} viewMode={viewMode} />
-        )}
+        </div>
       </div>
     </div>
   )

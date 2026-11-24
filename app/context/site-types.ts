@@ -9,6 +9,7 @@ import type {
   MarketingBudget,
 } from "@/lib/types/database.types"
 import type { BillingData } from "../services/billing-types"
+import type { OnboardingProgress } from "../lib/onboarding-completion"
 
 export interface Site {
   id: string
@@ -63,6 +64,14 @@ export interface Site {
   }
   // New settings data
   settings?: SiteSettings
+  /** Only set after a completed full settings read for the active selection. */
+  settings_read_status?: 'loaded' | 'missing'
+  /** Display only; never save a stale task map through a general settings edit. */
+  onboardingProgress?: OnboardingProgress
+}
+
+export function hasSettledSiteSettings(site: Site | null | undefined): boolean {
+  return site?.settings_read_status === 'loaded' || site?.settings_read_status === 'missing'
 }
 
 export type UpdateSiteOptions = {
@@ -415,9 +424,13 @@ export interface Service {
   target_sale_price?: number
 }
 
+/** A same-tab read target only. This never authorizes a request or a mutation. */
+export type WorkspaceRequestScope = { actorId: string; siteId: string }
+
 export interface SiteContextType {
   sites: Site[]
   currentSite: Site | null
+  requestScope?: WorkspaceRequestScope | null
   isLoading: boolean
   error: Error | null
   setCurrentSite: (site: Site) => void

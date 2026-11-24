@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Button } from "./ui/button"
 import {
   Dialog,
@@ -32,8 +32,9 @@ import { Combobox } from "./ui/combobox"
 import { RelationSelect, RelationSelectValue } from "@/app/components/ui/relation-select"
 import { resolveRelationId } from "@/app/commerce/resolve-relation"
 import { TASK_TYPES } from "@/app/leads/types"
-import { createClient } from "@/lib/supabase/client"
-import { siteMembersService } from "@/app/services/site-members-service"
+import { useTaskDialogOptions } from './use-task-dialog-options'
+import { DialogOptionsFeedback } from './dialog-options-feedback'
+import { useTopbarDialogScope } from './navigation/topbar-dialog-scope'
 
 const TASK_STAGES = [
   'awareness',
@@ -49,79 +50,22 @@ interface CreateTaskDialogProps {
   onTaskCreated?: () => void
 }
 
-export function CreateTaskDialog({ trigger, onTaskCreated }: CreateTaskDialogProps) {
+export function CreateTaskDialog(props: CreateTaskDialogProps) {
+  const scope = useTopbarDialogScope('controlCenter')
+  return <TaskSession key={scope.key} {...props} siteId={scope.siteId} />
+}
+
+function TaskSession({ trigger, onTaskCreated, siteId }: CreateTaskDialogProps & { siteId: string | null }) {
   const { currentSite } = useSite()
   const { t } = useLocalization()
   const [open, setOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [date, setDate] = useState<Date>(new Date())
-  const [users, setUsers] = useState<Array<{ id: string; name: string }>>([])
-  const [leads, setLeads] = useState<Array<{ id: string; name: string }>>([])
   const [leadValue, setLeadValue] = useState<RelationSelectValue>(null)
-    const [taskCalendarValue, setTaskCalendarValue] = useState<RelationSelectValue>(null)
-    const [schedules, setSchedules] = useState<any[]>([])
-    const [schedulesLoading, setSchedulesLoading] = useState(false)
-    const [taskTime, setTaskTime] = useState(new Date().toTimeString().slice(0, 5))
-
-    useEffect(() => {
-      async function fetchCalendars() {
-        if (!currentSite) return
-        setSchedulesLoading(true)
-        try {
-          const supabase = createClient()
-          
-        // 1. Site calendars
-        const cals: any[] = []
-        const siteCals = currentSite?.settings?.calendars || []
-        siteCals.forEach((cal: any) => {
-          cals.push({
-            id: cal.id,
-            name: cal.name,
-            duration_minutes: cal.duration || 30,
-            type: 'site',
-            label: `${cal.name} (Team)`,
-            location: cal.location || null
-          })
-        })
-        
-        // 2. Profile event types
-        if (users.length > 0) {
-          const memberIds = users.map(u => u.id)
-          const { data: profilesData } = await supabase
-            .from("profiles")
-            .select("id, name, settings")
-            .in("id", memberIds)
-            
-          if (profilesData) {
-            profilesData.forEach((profile: { id: string; name?: string | null; settings?: { calendar?: { event_types?: { id: string; title: string; duration?: number; location?: string | null }[] } } }) => {
-              const eventTypes = profile.settings?.calendar?.event_types || []
-              eventTypes.forEach((et: any) => {
-                cals.push({
-                  id: et.id,
-                  name: et.title,
-                  duration_minutes: et.duration || 30,
-                  type: 'profile',
-                  label: `${et.title} (${profile.name || 'User'})`,
-                  owner_id: profile.id,
-                  location: et.location || null
-                })
-              })
-            })
-          }
-        }
-          
-          setSchedules(cals)
-        } catch (error) {
-          console.error("Error fetching calendars:", error)
-        } finally {
-          setSchedulesLoading(false)
-        }
-      }
-      
-      if (open) {
-        fetchCalendars()
-      }
-    }, [currentSite, open, users])
+  const [taskCalendarValue, setTaskCalendarValue] = useState<RelationSelectValue>(null)
+  const [taskTime, setTaskTime] = useState(new Date().toTimeString().slice(0, 5))
+  const options = useTaskDialogOptions(open ? siteId : null, currentSite?.settings?.calendars)
+  const { users, leads, schedules } = options
 
   const [formData, setFormData] = useState<CreateTaskFormValues>({
     title: "",
@@ -134,40 +78,14 @@ export function CreateTaskDialog({ trigger, onTaskCreated }: CreateTaskDialogPro
     amount: 0
   })
 
-  useEffect(() => {
-    async function fetchUsers() {
-      if (!currentSite) return
-      try {
-        const uniqueUsers = await siteMembersService.getAssigneeOptions(currentSite.id)
-        setUsers(uniqueUsers)
-      } catch (error) {
-        console.error("Error fetching site members:", error)
-      }
-    }
-
-    async function fetchLeads() {
-      const supabase = createClient()
-      const { data, error } = await supabase
-        .from('leads')
-        .select('id, name')
-        .eq('site_id', currentSite?.id)
-
-      if (error) {
-        console.error('Error fetching leads:', error)
-        return
-      }
-
-      setLeads(data || [])
-    }
-
-    if (currentSite) {
-      fetchUsers()
-      fetchLeads()
-    }
-  }, [currentSite])
+  const canSubmit = options.ready && !isSubmitting && !!formData.title.trim() && !!formData.description.trim() &&
+    (!formData.assignee || users.some(u => u.id === formData.assignee)) &&
+    (leadValue?.mode !== 'existing' || leads.some(lead => lead.id === leadValue.id)) &&
+    (taskCalendarValue?.mode !== 'existing' || schedules.some(cal => cal.id === taskCalendarValue.id))
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!canSubmit) return
     if (!currentSite) {
       toast.error("Please select a site first")
       return
@@ -182,9 +100,8 @@ export function CreateTaskDialog({ trigger, onTaskCreated }: CreateTaskDialogPro
         resolvedLeadId = id;
       }
 
-      const cleanedData: any = {
+      const cleanedData: CreateTaskFormValues = {
         ...formData,
-        description: formData.description || null,
         scheduled_date: new Date(`${date.toISOString().split("T")[0]}T${taskTime}:00`),
         site_id: currentSite.id,
         lead_id: resolvedLeadId || undefined,
@@ -199,7 +116,6 @@ export function CreateTaskDialog({ trigger, onTaskCreated }: CreateTaskDialogPro
       if (taskCalendarSchedule) {
         const startDateObj = new Date(`${date.toISOString().split("T")[0]}T${taskTime}:00`)
         const endDateObj = new Date(startDateObj.getTime() + (taskCalendarSchedule.duration_minutes * 60000))
-        cleanedData.description = formData.description || null
         cleanedData.metadata = {
           _calendar_context: {
             origin: "tasks_modal",
@@ -210,8 +126,6 @@ export function CreateTaskDialog({ trigger, onTaskCreated }: CreateTaskDialogPro
             location: taskCalendarSchedule.location || null
           }
         }
-      } else {
-        cleanedData.description = formData.description || null
       }
 
       const result = await createTask(cleanedData)
@@ -255,7 +169,7 @@ export function CreateTaskDialog({ trigger, onTaskCreated }: CreateTaskDialogPro
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={next => { if (!isSubmitting) setOpen(next && !!siteId) }}>
       <DialogTrigger asChild>
         {trigger || (
           <Button>
@@ -300,9 +214,11 @@ export function CreateTaskDialog({ trigger, onTaskCreated }: CreateTaskDialogPro
               />
             </div>
             <div className="grid gap-2">
+              <DialogOptionsFeedback status={options} />
               <Label>Calendar (Optional)</Label>
               <RelationSelect
-                options={schedules.map((schedule: any) => ({
+                disabled={!options.ready}
+                options={schedules.map(schedule => ({
                   id: schedule.id,
                   label: schedule.label || schedule.name || "Unnamed Calendar",
                 }))}
@@ -310,7 +226,7 @@ export function CreateTaskDialog({ trigger, onTaskCreated }: CreateTaskDialogPro
                 onValueChange={setTaskCalendarValue}
                 allowCreate={false}
                 placeholder="Link to a specific calendar/schedule..."
-                emptyMessage={schedulesLoading ? "Loading calendars..." : "No calendars found"}
+                emptyMessage="No calendars found"
                 className="h-11"
               />
             </div>
@@ -433,6 +349,7 @@ export function CreateTaskDialog({ trigger, onTaskCreated }: CreateTaskDialogPro
               <div className="grid gap-2">
                 <Label>Lead</Label>
                 <RelationSelect
+                  disabled={!options.ready}
                   options={leads.map(lead => ({ id: lead.id, label: lead.name }))}
                   value={leadValue}
                   onValueChange={setLeadValue}
@@ -443,6 +360,7 @@ export function CreateTaskDialog({ trigger, onTaskCreated }: CreateTaskDialogPro
               <div className="grid gap-2">
                 <Label>Assigned To</Label>
                 <Combobox
+                  disabled={!options.ready}
                   options={users.map(user => ({ value: user.id, label: user.name }))}
                   value={formData.assignee || ""}
                   onValueChange={(value) => setFormData({ ...formData, assignee: value })}
@@ -465,7 +383,7 @@ export function CreateTaskDialog({ trigger, onTaskCreated }: CreateTaskDialogPro
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting || !currentSite}
+              disabled={!canSubmit || !currentSite}
             >
               {isSubmitting ? "Creating..." : "Create task"}
             </Button>

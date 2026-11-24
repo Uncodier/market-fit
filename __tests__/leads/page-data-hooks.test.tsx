@@ -4,7 +4,7 @@ import { useLeadsData, type LeadsData } from "@/app/leads/hooks/use-leads-data"
 import { useLeadJourneyStages } from "@/app/leads/hooks/use-lead-journey-stages"
 import { useLeadsKanban } from "@/app/leads/hooks/use-leads-kanban"
 import type { Lead } from "@/app/leads/types"
-import { getLeads, searchLeadsWithCount } from "@/app/leads/actions"
+import { getLeadsWithCount, searchLeadsWithCount } from "@/app/leads/actions"
 import { getSegments } from "@/app/segments/actions"
 import { getCampaigns } from "@/app/campaigns/actions/campaigns/read"
 import { useUserData } from "@/app/hooks/use-user-data"
@@ -19,7 +19,7 @@ jest.mock("swr", () => ({
     return { data: key?.[0] === "leads" ? mockLeadsData : [], isLoading: false, mutate: jest.fn() }
   }),
 }))
-jest.mock("@/app/leads/actions", () => ({ getLeads: jest.fn(), searchLeadsWithCount: jest.fn() }))
+jest.mock("@/app/leads/actions", () => ({ getLeadsWithCount: jest.fn(), searchLeadsWithCount: jest.fn() }))
 jest.mock("@/app/segments/actions", () => ({ getSegments: jest.fn() }))
 jest.mock("@/app/campaigns/actions/campaigns/read", () => ({ getCampaigns: jest.fn() }))
 jest.mock("@/app/hooks/use-user-data", () => ({ useUserData: jest.fn(() => ({ userData: {} })) }))
@@ -68,15 +68,14 @@ afterEach(() => {
 describe("extracted lead data", () => {
   it("preserves SWR keys, debounce, normalization, search limit and count semantics", async () => {
     jest.useFakeTimers()
-    jest.mocked(getLeads).mockResolvedValue({ leads: [{ ...first, site_id: site.id, user_id: "user" }] })
+    jest.mocked(getLeadsWithCount).mockResolvedValue({ leads: [{ ...first, site_id: site.id, user_id: "user" }], totalCount: 151 })
     jest.mocked(searchLeadsWithCount).mockResolvedValue({ leads: [{ ...first, site_id: site.id, user_id: "user" }], totalCount: 87 })
     const { result } = renderHook(() => useLeadsData(site))
     expect(primary().key).toEqual(["leads", site.id, ""])
-    expect(primary().options).toEqual({ revalidateOnFocus: false })
+    expect(primary().options).toEqual({ revalidateOnFocus: false, shouldRetryOnError: false, keepPreviousData: false })
     expect(await primary().fetcher(primary().key!)).toEqual({ leads: [{ ...first, site_id: site.id, user_id: "user", origin: "Makinari", personal_email: null }], totalCount: 151, isSearch: false })
-    expect(getLeads).toHaveBeenCalledWith(site.id)
-    expect(mockSelect).toHaveBeenCalledWith("*", { count: "exact", head: true })
-    expect(mockEq).toHaveBeenCalledWith("site_id", site.id)
+    expect(getLeadsWithCount).toHaveBeenCalledWith(site.id)
+    expect(mockFrom).not.toHaveBeenCalled()
     act(() => result.current.setSearchQuery("query"))
     act(() => jest.advanceTimersByTime(349))
     expect(primary().key).toEqual(["leads", site.id, ""])
@@ -108,15 +107,13 @@ describe("extracted lead data", () => {
   it("scopes the artifact list, count and search to the URL segment", async () => {
     jest.useFakeTimers()
     const lead = { ...first, segment_id: segmentId, site_id: site.id, user_id: "user" }
-    jest.mocked(getLeads).mockResolvedValue({ leads: [lead] })
+    jest.mocked(getLeadsWithCount).mockResolvedValue({ leads: [lead], totalCount: 1 })
     jest.mocked(searchLeadsWithCount).mockResolvedValue({ leads: [lead], totalCount: 1 })
-    mockQueryResponse.count = 1
     const { result, rerender } = renderHook(({ segment }) => useLeadsData(site, segment), { initialProps: { segment: segmentId } })
     expect(primary().key).toEqual(["leads", site.id, "", segmentId])
     expect(await primary().fetcher(primary().key!)).toMatchObject({ leads: [expect.objectContaining({ segment_id: segmentId })], totalCount: 1 })
-    expect(getLeads).toHaveBeenCalledWith(site.id, segmentId)
-    expect(mockEq).toHaveBeenCalledWith("site_id", site.id)
-    expect(mockEq).toHaveBeenCalledWith("segment_id", segmentId)
+    expect(getLeadsWithCount).toHaveBeenCalledWith(site.id, segmentId)
+    expect(mockFrom).not.toHaveBeenCalled()
 
     act(() => result.current.setSearchQuery("query"))
     act(() => jest.advanceTimersByTime(350))
@@ -126,7 +123,18 @@ describe("extracted lead data", () => {
     rerender({ segment: "" })
     expect(await primary().fetcher(primary().key!)).toEqual({ leads: [], totalCount: 0, isSearch: true })
     expect(searchLeadsWithCount).toHaveBeenCalledTimes(1)
-    expect(getLeads).toHaveBeenCalledTimes(1)
+    expect(getLeadsWithCount).toHaveBeenCalledTimes(1)
+  })
+
+  it("keeps rows when the total is unavailable without issuing a second request", async () => {
+    jest.mocked(getLeadsWithCount).mockResolvedValue({
+      leads: [{ ...first, site_id: site.id, user_id: "user" }], totalCount: null,
+    })
+    renderHook(() => useLeadsData(site))
+    expect(await primary().fetcher(primary().key!)).toMatchObject({
+      leads: [expect.objectContaining({ id: first.id })], totalCount: null, isSearch: false,
+    })
+    expect(mockFrom).not.toHaveBeenCalled()
   })
 })
 

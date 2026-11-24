@@ -26,6 +26,7 @@ const NavigationPage = dynamic(() => import("@/app/navigation/page"), {
 })
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
+  desktopVisible?: boolean
   isCollapsed: boolean
   onCollapse: () => void
   isMobileOpen?: boolean
@@ -36,6 +37,7 @@ const profileMainItem = { key: "account", href: "/profile", icon: User }
 
 export function Sidebar({
   className,
+  desktopVisible = true,
   isCollapsed,
   onCollapse,
   isMobileOpen = false,
@@ -218,7 +220,7 @@ export function Sidebar({
                     isCollapsed={renderCollapsed}
                     onWorkspaceNavigation={() => setIsAppsLauncherOpen(false)}
                   />
-                  <DynamicShortcuts isCollapsed={renderCollapsed} />
+                  {(desktopVisible || isMobileOpen) && <DynamicShortcuts isCollapsed={renderCollapsed} />}
                 </Suspense>
               </div>
             </div>
@@ -241,9 +243,11 @@ export function Sidebar({
               renderCollapsed && "items-center"
             )}
           >
-            <OnboardingProgressWidget isCollapsed={renderCollapsed} />
-            <CreditsWidget isCollapsed={renderCollapsed} />
-            <StartupTrialWidget isCollapsed={renderCollapsed} />
+            {desktopVisible && !hideSidebarWidgets && <>
+              <OnboardingProgressWidget isCollapsed={renderCollapsed} />
+              <CreditsWidget isCollapsed={renderCollapsed} />
+              <StartupTrialWidget isCollapsed={renderCollapsed} />
+            </>}
           </div>
         </div>
 
@@ -300,7 +304,7 @@ export function Sidebar({
                 isActive={pathname.startsWith("/notifications")}
                 isCollapsed={renderCollapsed}
               >
-                <NotificationBadge isActive={pathname.startsWith("/notifications")} />
+                {(desktopVisible || isMobileOpen) && <NotificationBadge isActive={pathname.startsWith("/notifications")} />}
               </MenuItem>
             </div>
           </div>

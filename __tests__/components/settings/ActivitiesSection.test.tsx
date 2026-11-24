@@ -4,6 +4,7 @@ import { FormProvider, useForm } from "react-hook-form"
 import { ActivitiesSection } from "@/app/components/settings/ActivitiesSection"
 import { mergeActivitySettings, normalizeActivitySettings } from "@/app/components/settings/activity-settings"
 import { fetchOutreachSegments } from "@/app/components/settings/outreach-segments"
+import { fetchIcpMiningLists } from "@/app/components/settings/icp-mining-lists"
 import type { SiteFormValues } from "@/app/components/settings/form-schema"
 
 const emailId = "11111111-1111-4111-8111-111111111111"
@@ -32,6 +33,7 @@ const showSetup = (key = "leads_follow_up") => {
 describe("ActivitiesSection outreach controls", () => {
   afterEach(async () => { await act(async () => {}) })
   beforeEach(() => {
+    jest.clearAllMocks()
     mockCurrentSite = { id: "site-a", settings: { channels: { connections: [
       { id: emailId, type: "email", status: "connected", name: "Sales email", zavu_sender_id: "sender-1" },
       { id: secondEmailId, type: "email", status: "connected", name: "Support email", zavu_sender_id: "sender-2" },
@@ -45,6 +47,40 @@ describe("ActivitiesSection outreach controls", () => {
       { id: "audio-id", type: "audio", status: "connected", name: "Hidden audio", zavu_sender_id: "sender-audio" },
     ] } } }
     jest.mocked(fetchOutreachSegments).mockResolvedValue([{ id: "segment-a", name: "Enterprise" }, { id: "segment-b", name: "Local" }])
+  })
+
+  it("reads options only for the expanded setup; closing retires its mining request", async () => {
+    jest.mocked(fetchIcpMiningLists).mockReturnValueOnce(new Promise(() => {}))
+    render(<TestForm onSave={jest.fn()} />)
+    expect(fetchIcpMiningLists).not.toHaveBeenCalled()
+    expect(fetchOutreachSegments).not.toHaveBeenCalled()
+    showSetup("icp_lead_generation")
+    expect(fetchIcpMiningLists).toHaveBeenCalledTimes(1)
+    expect(fetchOutreachSegments).not.toHaveBeenCalled()
+    const [site, signal] = jest.mocked(fetchIcpMiningLists).mock.calls[0]
+    expect(site).toBe("site-a")
+    fireEvent.click(card("icp_lead_generation").getByRole("button", { name: /Hide setup/ }))
+    expect(signal?.aborted).toBe(true)
+    showSetup("invoices_due")
+    expect(fetchOutreachSegments).not.toHaveBeenCalled()
+    showSetup("leads_follow_up")
+    expect(await card().findByRole("checkbox", { name: "Enterprise" })).toBeInTheDocument()
+    expect(fetchOutreachSegments).toHaveBeenCalledTimes(1)
+  })
+
+  it("still validates the saved segment IDs of an active collapsed rule before other cards can save", async () => {
+    const onSave = jest.fn()
+    render(<TestForm onSave={onSave} initial={{ leads_follow_up: {
+      status: "active", all_segments: true, segment_ids: ["no-longer-visible"], channel_accounts: { email: [emailId] },
+    } }} />)
+    await act(async () => {})
+    expect(fetchOutreachSegments).toHaveBeenCalledTimes(1)
+    expect(fetchIcpMiningLists).not.toHaveBeenCalled()
+    const snooze = card("conversation_automation_snooze")
+    fireEvent.click(snooze.getByRole("radio", { name: /Inactive/ }))
+    fireEvent.click(snooze.getByRole("button", { name: "Save" }))
+    expect(await card().findByRole("alert")).toHaveTextContent("Remove unavailable segments")
+    expect(onSave).not.toHaveBeenCalled()
   })
   it("opens Automation Snooze setup with default hours and explicitly saves changed hours", async () => {
     const onSave = jest.fn().mockResolvedValue(true)

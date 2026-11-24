@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { supportPublication } from "./support-publication"
+import { connectionSetupSchema, hostedSetupKey } from "./connection-setup"
 
 const strings = z.array(z.string())
 const accessMode = z.enum(["workspace", "explicit"]).optional()
@@ -9,6 +10,7 @@ export const toolkitSchema = z.object({
   slug: z.string(), name: z.string(), description: z.string(), logo: z.string().nullable(),
   domains: strings, skills: strings, tools_count: z.number().nonnegative(),
   auth_schemes: strings, connection_count: z.number().nonnegative(),
+  toolkit_type: z.enum(["api", "mcp"]).nullish(),
 })
 export const connectorSchema = z.object({
   id: z.string(), toolkit_slug: z.string(), display_name: z.string(),
@@ -33,8 +35,9 @@ export const catalogSchema = z.object({
 })
 export const detailSchema = z.object({
   toolkit: toolkitSchema, connections: z.array(connectorSchema),
-  auth_configs: z.array(z.object({ id: z.string(), name: z.string(), auth_scheme: z.string() })),
+  auth_configs: z.array(z.object({ id: z.string(), name: z.string(), auth_scheme: z.string(), setup_key: hostedSetupKey.optional() })),
   can_create_managed_oauth: z.boolean().optional(),
+  connection_setup: connectionSetupSchema.optional(),
   can_manage: z.boolean(),
   credential_source: z.enum(["byok", "platform"]).optional(),
 })
@@ -54,7 +57,7 @@ export const accessSchema = z.object({
   member_options: z.array(optionSchema), agent_options: z.array(optionSchema), can_manage: z.boolean(),
   reviewed_tools: z.array(z.object({ slug: z.string(), description: z.string() })).optional(),
 })
-export const authAttemptSchema = z.object({ attempt_id: z.string(), redirect_url: z.string().url() })
+export const authAttemptSchema = z.object({ attempt_id: z.string().uuid(), redirect_url: z.string().max(4096).url() })
 export type Toolkit = z.infer<typeof toolkitSchema>
 export type Connector = z.infer<typeof connectorSchema>
 

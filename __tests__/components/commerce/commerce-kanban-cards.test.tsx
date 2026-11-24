@@ -202,11 +202,11 @@ describe("commerce kanban cards", () => {
   it("omits mapped anonymous customers and exposes sale actions", () => {
     const onPrintSale = jest.fn()
     const onRegisterPayment = jest.fn()
+    const listedSale = { ...sale, segmentId: 'wholesale', segmentName: 'Wholesale customers' }
 
     render(
       <SalesKanban
-        sales={[sale]}
-        segments={[]}
+        sales={[listedSale]}
         onUpdateSaleStatus={jest.fn()}
         onSaleClick={jest.fn()}
         onPrintSale={onPrintSale}
@@ -215,6 +215,7 @@ describe("commerce kanban cards", () => {
     )
 
     expect(screen.queryByText("Anonymous Customer")).not.toBeInTheDocument()
+    expect(screen.getByText('Wholesale customers')).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Sale actions" })).toBeInTheDocument()
     expect(screen.getByRole("menuitem", { name: "Open" })).toBeInTheDocument()
     expect(screen.getByRole("menuitem", { name: "Register payment" })).toBeInTheDocument()
@@ -222,7 +223,7 @@ describe("commerce kanban cards", () => {
 
     fireEvent.click(screen.getByRole("menuitem", { name: "Register payment" }))
     fireEvent.click(screen.getByRole("menuitem", { name: "Print" }))
-    expect(onRegisterPayment).toHaveBeenCalledWith(sale)
-    expect(onPrintSale).toHaveBeenCalledWith(sale)
+    expect(onRegisterPayment).toHaveBeenCalledWith(listedSale)
+    expect(onPrintSale).toHaveBeenCalledWith(listedSale)
   })
 })

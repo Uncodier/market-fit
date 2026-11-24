@@ -1,12 +1,11 @@
 import type { ConversationListItem } from "@/app/types/chat"
-import { getUserData } from "@/app/services/user-service"
+import type { createClient } from '@/lib/supabase/client'
+import { readConversationQuery, conversationReadError } from "./conversation-read-error"
 import type { ConversationListRow } from "./conversation-list-query"
 import { conversationDisplayTitle, resolveParticipantIdentity } from "@/lib/chat/participant-identity"
 import { getCommentPostReference, getConversationPostContext, parseSocialCommentContext } from "@/lib/chat/social-comment-context"
 
-interface ConversationDataClient {
-  from: (table: string) => any
-}
+type ConversationDataClient = Pick<ReturnType<typeof createClient>, 'from'>
 
 interface MessageModerationFlags {
   accepted: boolean
@@ -35,24 +34,20 @@ function normalizeConversationStatus(
 
 async function loadMessageModerationFlags(
   supabase: ConversationDataClient,
-  conversationIds: string[]
+  conversationIds: string[], signal?: AbortSignal,
 ): Promise<Map<string, MessageModerationFlags>> {
   const flags = new Map<string, MessageModerationFlags>()
   if (conversationIds.length === 0) return flags
 
-  const { data, error } = await supabase
+  const data = await readConversationQuery<Array<{ conversation_id: string; custom_data?: { status?: string } }>>(supabase
     .from("messages")
     .select("conversation_id, custom_data")
     .in("conversation_id", conversationIds)
-    .or("custom_data->>status.eq.pending,custom_data->>status.eq.accepted")
+    .or("custom_data->>status.eq.pending,custom_data->>status.eq.accepted"), signal)
+  if (!Array.isArray(data)) throw conversationReadError(null)
 
-  if (error) {
-    console.error("Error fetching conversation moderation flags:", error)
-    throw error
-  }
-
-  for (const message of data || []) {
-    const conversationId = message.conversation_id as string
+  for (const message of data) {
+    const conversationId = message.conversation_id
     const status = message.custom_data?.status
     const current = flags.get(conversationId) || {
       accepted: false,
@@ -69,21 +64,17 @@ async function loadMessageModerationFlags(
 
 async function loadAgentNames(
   supabase: ConversationDataClient,
-  agentIds: string[]
+  agentIds: string[], signal?: AbortSignal,
 ): Promise<Record<string, string>> {
   if (agentIds.length === 0) return {}
 
-  const { data, error } = await supabase
+  const data = await readConversationQuery<Array<{ id: string; name: string }>>(supabase
     .from("agents")
     .select("id, name")
-    .in("id", agentIds)
+    .in("id", agentIds), signal)
+  if (!Array.isArray(data)) throw conversationReadError(null)
 
-  if (error) {
-    console.error("Error fetching conversation agents:", error)
-    throw error
-  }
-
-  return (data || []).reduce((names: Record<string, string>, agent: any) => {
+  return data.reduce((names: Record<string, string>, agent) => {
     names[agent.id] = agent.name
     return names
   }, {})
@@ -91,7 +82,7 @@ async function loadAgentNames(
 
 async function loadLeadData(
   supabase: ConversationDataClient,
-  leadIds: string[]
+  conversations: ConversationListRow[], signal?: AbortSignal,
 ): Promise<{
   names: Record<string, string>
   statuses: Record<string, string>
@@ -104,36 +95,38 @@ async function loadLeadData(
     assigneeIds: {} as Record<string, string>,
     assigneeNames: {} as Record<string, string>,
   }
-  if (leadIds.length === 0) return result
-
-  const { data: leads, error } = await supabase
-    .from("leads")
-    .select("id, name, company, assignee_id, status")
-    .in("id", leadIds)
-
-  if (error) {
-    console.error("Error fetching conversation leads:", error)
-    throw error
+  type LeadRow = NonNullable<ConversationListRow['leads']> & { id: string }
+  const leads: LeadRow[] = []
+  const missing = new Set<string>()
+  for (const row of conversations) {
+    if (!row.lead_id) continue
+    // The page query already embeds the RLS-filtered lead. A null embed is
+    // authoritative; only raw realtime rows lack the relation entirely.
+    if (row.leads === undefined) missing.add(row.lead_id)
+    else if (row.leads) leads.push({ ...row.leads, id: row.lead_id })
+  }
+  if (missing.size) {
+    const fetched = await readConversationQuery<LeadRow[]>(supabase.from('leads')
+      .select('id, name, company, assignee_id, status').in('id', [...missing]), signal)
+    if (!Array.isArray(fetched)) throw conversationReadError(null)
+    leads.push(...fetched)
   }
 
-  const assigneeIds = uniqueIds(
-    (leads || []).map((lead: any) => lead.assignee_id || null)
-  )
-  const assignees = await Promise.all(
-    assigneeIds.map(async (id) => {
-      const user = await getUserData(id)
-      return {
-        id,
-        name: user?.name || `User ${id.substring(0, 8)}`,
-      }
-    })
-  )
-
-  for (const assignee of assignees) {
-    result.assigneeNames[assignee.id] = assignee.name
+  const assigneeIds = uniqueIds(leads.map(lead => lead.assignee_id || null))
+  if (assigneeIds.length) {
+    // Only names visible to this request's RLS client; never look up another
+    // person's identity via Auth or an account-independent profile cache.
+    const profiles = await readConversationQuery<Array<{ id: string; name: string | null }>>(
+      supabase.from('profiles').select('id, name').in('id', assigneeIds), signal,
+    )
+    if (!Array.isArray(profiles)) throw conversationReadError(null)
+    for (const id of assigneeIds) result.assigneeNames[id] = 'Team Member'
+    for (const profile of profiles) {
+      if (profile.name?.trim()) result.assigneeNames[profile.id] = profile.name.trim()
+    }
   }
 
-  for (const lead of leads || []) {
+  for (const lead of leads) {
     const companyName =
       lead.company && typeof lead.company === "object" && lead.company.name
         ? lead.company.name
@@ -152,18 +145,17 @@ async function loadLeadData(
 
 export async function buildConversationListItems(
   supabase: ConversationDataClient,
-  conversations: ConversationListRow[]
+  conversations: ConversationListRow[], signal?: AbortSignal,
 ): Promise<ConversationListItem[]> {
   if (conversations.length === 0) return []
 
   const conversationIds = uniqueIds(conversations.map((conversation) => conversation.id))
   const agentIds = uniqueIds(conversations.map((conversation) => conversation.agent_id))
-  const leadIds = uniqueIds(conversations.map((conversation) => conversation.lead_id))
 
   const [agentNames, leadData, moderationFlags] = await Promise.all([
-    loadAgentNames(supabase, agentIds),
-    loadLeadData(supabase, leadIds),
-    loadMessageModerationFlags(supabase, conversationIds),
+    loadAgentNames(supabase, agentIds, signal),
+    loadLeadData(supabase, conversations, signal),
+    loadMessageModerationFlags(supabase, conversationIds, signal),
   ])
 
   return conversations.map((conversation) => {

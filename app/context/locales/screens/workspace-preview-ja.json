@@ -1,0 +1,9 @@
+{
+  "workspacePreview.title": "読み取り専用のプレビュー",
+  "workspacePreview.stalled": "プレビューの読み込みがタイムアウトしました。再試行できるまで待つか、今すぐページを再読み込みしてください。",
+  "workspacePreview.reload": "ページを再読み込み",
+  "workspacePreview.syncFailed": "読み取り専用のプレビュー · 設定を読み込めませんでした。",
+  "workspacePreview.failed": "プレビューを読み込めませんでした。",
+  "workspacePreview.denied": "このアカウントでは、このワークスペースの画面を利用できません。",
+  "workspacePreview.empty": "プレビューに表示する項目はありません。"
+}

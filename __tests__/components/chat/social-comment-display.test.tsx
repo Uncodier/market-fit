@@ -20,7 +20,7 @@ jest.mock("@/app/components/email/EmailViewer", () => ({ EmailViewer: () => null
 jest.mock("@/app/context/SiteContext", () => ({ useSite: () => ({ currentSite: { id: "site-1" } }) }))
 jest.mock("@/app/context/LayoutContext", () => ({ useLayout: () => ({ isLayoutCollapsed: false }) }))
 jest.mock("@/app/context/ThemeContext", () => ({ useTheme: () => ({ isDarkMode: false }) }))
-jest.mock("@/app/components/auth/auth-provider", () => ({ useAuthContext: () => ({ user: null }) }))
+jest.mock("@/app/components/auth/auth-provider", () => ({ useAuthContext: () => ({ user: { id: 'reviewer' } }) }))
 jest.mock("@/app/components/chat/EditMessageModal", () => ({ EditMessageModal: () => null }))
 jest.mock("@/app/components/chat/EmptyConversation", () => ({ EmptyConversation: () => <p>No messages</p> }))
 jest.mock("@/app/components/chat/use-chat-message-actions", () => ({ useChatMessageActions: () => ({}) }))

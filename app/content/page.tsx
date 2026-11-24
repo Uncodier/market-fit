@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import useSWR from "swr"
 import { Button } from "@/app/components/ui/button"
 import { SearchInput } from "@/app/components/ui/search-input"
@@ -34,14 +34,15 @@ import { ContentFiltersDialog } from "./components/ContentFiltersDialog"
 import { ContentTypeViews } from "./components/ContentTypeViews"
 import { ContentPublishDialog } from "./components/ContentPublishDialog"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/app/components/ui/sheet"
-import type { SiteSettings } from "@/app/context/site-types"
 import type { TrendsSegments } from "@/app/components/trends/trends-presentation"
 import { TrendsSection, TrendsColumn } from "@/app/components/trends"
 import { cn } from "@/lib/utils"
 
+const PUBLISH_PLATFORMS = new Set(['facebook', 'linkedin', 'tiktok', 'twitter', 'x', 'instagram', 'youtube', 'threads', 'pinterest', 'bluesky'])
+
 export default function ContentPage() {
   const { t } = useLocalization()
-  const { currentSite, getSettings, isLoading: isSiteLoading } = useSite()
+  const { currentSite, isLoading: isSiteLoading } = useSite()
   const { isLayoutCollapsed } = useLayout()
   const isMobile = useIsMobile()
   const router = useRouter()
@@ -102,7 +103,9 @@ export default function ContentPage() {
   const assetsByContentId = contentData?.assetsByContentId || {};
   const isLoading = isSiteLoading || !currentSite?.id || isContentLoading;
 
-  const [socialMedia, setSocialMedia] = useState<NonNullable<SiteSettings["social_media"]>>([])
+  const socialMedia = React.useMemo(() => (currentSite?.settings?.social_media ?? []).filter(
+    account => account.isActive && PUBLISH_PLATFORMS.has(account.platform?.toLowerCase()),
+  ), [currentSite?.settings?.social_media])
   const [error] = useState<string | null>(null)
   const [viewType, setViewType] = useState<ViewType>('kanban')
   const [selectedContent] = useState<ContentItem | null>(null)
@@ -127,26 +130,6 @@ export default function ContentPage() {
   // Initialize command+k hook
   useCommandK()
   
-  const getSettingsRef = useRef(getSettings)
-  useEffect(() => {
-    getSettingsRef.current = getSettings
-  }, [getSettings])
-  useEffect(() => {
-    if (!currentSite?.id) return
-    const loadSettings = async () => {
-      try {
-        const settings = await getSettingsRef.current(currentSite.id)
-        if (settings?.social_media) {
-          const allowedPlatforms = ['facebook', 'linkedin', 'tiktok', 'twitter', 'x', 'instagram', 'youtube', 'threads', 'pinterest', 'bluesky']
-          setSocialMedia(settings.social_media.filter(s => s.isActive && allowedPlatforms.includes(s.platform?.toLowerCase())))
-        }
-      } catch (e) {
-        console.error('Failed to load social media settings', e)
-      }
-    }
-    void loadSettings()
-  }, [currentSite?.id])
-
   const refreshContentList = mutateContent;
 
   const filteredContent = React.useMemo(

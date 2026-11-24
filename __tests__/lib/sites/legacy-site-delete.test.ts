@@ -3,7 +3,6 @@ import { deleteSiteRecord } from "@/app/context/site-crud"
 import { createClient } from "@/lib/supabase/client"
 
 jest.mock("@/lib/supabase/client", () => ({ createClient: jest.fn() }))
-jest.mock("@/lib/sites/logo-cache", () => ({ saveLogoToCache: jest.fn() }))
 jest.mock("@/app/agents/voice-sync", () => ({ requestVoiceAgentResync: jest.fn() }))
 
 it("rejects legacy service deletion instead of issuing a destructive RPC", async () => {

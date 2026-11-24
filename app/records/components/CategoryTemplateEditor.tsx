@@ -238,6 +238,7 @@ export function CategoryTemplateEditor({ isOpen, onClose, category, categories =
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                              aria-label={`Remove field ${recordFieldLabel(field) || "Unnamed Field"}`}
                               onClick={() => removeField(field.id)}
                             >
                               <Trash2 className="h-4 w-4" />

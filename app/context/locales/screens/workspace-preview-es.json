@@ -1,0 +1,9 @@
+{
+  "workspacePreview.title": "Vista previa de solo lectura",
+  "workspacePreview.stalled": "La vista previa tardó demasiado. Espera a que puedas reintentar o vuelve a cargar la página ahora.",
+  "workspacePreview.reload": "Volver a cargar la página",
+  "workspacePreview.syncFailed": "Vista previa de solo lectura · No se pudo cargar la configuración.",
+  "workspacePreview.failed": "No se pudo cargar la vista previa.",
+  "workspacePreview.denied": "Esta pantalla no está disponible para tu cuenta en este espacio de trabajo.",
+  "workspacePreview.empty": "No hay elementos para mostrar en la vista previa."
+}

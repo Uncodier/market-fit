@@ -32,6 +32,7 @@ export function useSavedFinderLists(siteId: string | undefined, enabled: boolean
     if (!enabled || !siteId) return
     let active = true
     let authEvents = 0
+    let initialSessionResolved = false
     let deferredLoad: ReturnType<typeof setTimeout> | undefined
     const client = createClient()
     identity.current = { siteId, userId: null }
@@ -81,6 +82,9 @@ export function useSavedFinderLists(siteId: string | undefined, enabled: boolean
       if (!active) return
       authEvents++
       const userId = session?.user.id ?? null
+      // getSession can resolve before the SDK's INITIAL_SESSION callback. It
+      // already started this exact RLS read. A real sign-in/update still retires it.
+      if (event === 'INITIAL_SESSION' && initialSessionResolved && identity.current?.userId === userId) return
       if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED' ||
           identity.current?.userId !== userId) {
         invalidate(event === 'SIGNED_OUT' ? null : userId)
@@ -93,6 +97,7 @@ export function useSavedFinderLists(siteId: string | undefined, enabled: boolean
       if (!active || authEvents !== initialAuthEvents) return
       if (error) throw error
       const userId = data.session?.user.id ?? null
+      initialSessionResolved = true
       invalidate(userId)
       if (userId) void load()
     }).catch((error: unknown) => {

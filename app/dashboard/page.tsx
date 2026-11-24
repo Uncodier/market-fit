@@ -1,12 +1,11 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef, Suspense } from "react"
-import useSWR from "swr"
 import { useRouter, useSearchParams } from "next/navigation"
 import { endOfDay, startOfDay, subDays } from "date-fns"
 import { useLocalization } from "@/app/context/LocalizationContext"
-import { useSite } from "@/app/context/SiteContext"
-import { getSegments } from "@/app/segments/actions"
+import { useFinanceWorkspace } from "@/app/finance/use-finance-workspace"
+import { useReportFilter } from "./use-report-filter"
 import { usePageRefreshPrevention } from "@/app/hooks/use-prevent-refresh"
 import { Tabs, TabsContent } from "@/app/components/ui/tabs"
 import { Button } from "@/app/components/ui/button"
@@ -21,7 +20,8 @@ import DashboardLoading from "./loading"
 
 function DashboardPageContent() {
   const { t } = useLocalization()
-  const { currentSite, isLoading: siteLoading } = useSite()
+  const workspace = useFinanceWorkspace()
+  const { currentSite } = workspace
   const searchParams = useSearchParams()
   const router = useRouter()
   const { shouldPreventRefresh } = usePageRefreshPrevention()
@@ -32,20 +32,12 @@ function DashboardPageContent() {
   const selectedSection = definition.sections.find((item) => item.id === section)!
   const previousReport = useRef(report)
   const siteId = currentSite?.id
-  const [segment, setSegment] = useState({ siteId, value: "all" })
-  const selectedSegment = segment.siteId === siteId ? segment.value : "all"
+  const supportsSegments = report !== "social" && report !== "traffic"
+  const segments = useReportFilter('segments', workspace, 'all', supportsSegments)
+  const selectedSegment = supportsSegments ? segments.value : "all"
   const [dateRange, setDateRange] = useState(() => defaultReportRange())
-  const dateLimits = useReportDateLimits(siteId, report, section)
+  const dateLimits = useReportDateLimits(workspace.ready ? siteId : undefined, report, section)
   const rangeError = reportRangeError(dateRange.startDate, dateRange.endDate, dateLimits.maxRangeDays)
-  const { data: segments = [], isLoading: isLoadingSegments } = useSWR(
-    siteId && siteId !== "default" && report !== "social" && report !== "traffic" ? ["segments", siteId] : null,
-    async ([, id]) => {
-      const result = await getSegments(id)
-      if (result.error) throw new Error(result.error)
-      return result.segments || []
-    },
-    { keepPreviousData: false }
-  )
 
   useEffect(() => {
     if (reportParam === "onboarding") router.replace("/onboarding")
@@ -78,25 +70,29 @@ function DashboardPageContent() {
         report={report}
         t={t}
         selectedSegment={selectedSegment}
-        onSegmentChange={(value) => setSegment({ siteId, value })}
-        isLoadingSegments={isLoadingSegments}
-        segments={segments}
+        key={workspace.key}
+        onSegmentChange={segments.onChange}
+        onRequestSegments={segments.request}
+        retrySegments={segments.retry}
+        segmentsDisabled={segments.disabled}
+        isLoadingSegments={segments.loading}
+        segments={segments.options}
         dateRange={dateRange}
         onDateRangeChange={handleDateRangeChange}
         maxRangeDays={dateLimits.maxRangeDays}
-        dateOptionsLoading={siteLoading || dateLimits.isLoading || !dateLimits.maxRangeDays}
+        dateOptionsLoading={!workspace.ready || dateLimits.isLoading || !dateLimits.maxRangeDays}
       />
       <TabsContent value={section} className="m-0 bg-muted/20 flex-1 min-w-0">
         <div data-report-viewport className="mx-auto w-full max-w-[1600px] space-y-5 px-4 py-5 md:px-8 md:py-6">
         <p className="text-sm leading-relaxed text-muted-foreground max-w-3xl">{selectedSection.description}</p>
-        {siteLoading ? <ReportLoading report={report} section={section} /> : siteId && siteId !== "default" ? dateLimits.isLoading || dateLimits.isValidating ? (
+        {workspace.loading ? <ReportLoading report={report} section={section} /> : siteId && siteId !== "default" ? dateLimits.isLoading || dateLimits.isValidating ? (
           <ReportLoading report={report} section={section} />
         ) : dateLimits.error ? (
           <div role="alert" className="rounded-lg border bg-background p-5 space-y-3">
             <p className="text-sm">{dateLimits.error.message}</p>
             <Button variant="outline" onClick={() => { void dateLimits.mutate() }}>Retry date options</Button>
           </div>
-        ) : dateLimits.signedOut ? <p role="status" className="text-sm text-muted-foreground">Sign in to view reports.</p>
+        ) : dateLimits.signedOut || !workspace.ready ? <p role="status" className="text-sm text-muted-foreground">Sign in to view reports.</p>
         : !dateLimits.maxRangeDays ? <ReportLoading report={report} section={section} /> : rangeError ? (
           <div role="alert" className="rounded-lg border bg-background p-5 space-y-3">
             <p className="text-sm">{rangeError}</p>
@@ -105,12 +101,11 @@ function DashboardPageContent() {
             </Button>
           </div>
         ) : (
-            <ReportContent key={`${siteId}:${selectedSegment}:${dateRange.startDate.getTime()}:${dateRange.endDate.getTime()}`}
+            <ReportContent key={`${workspace.key}:${selectedSegment}:${dateRange.startDate.getTime()}:${dateRange.endDate.getTime()}`}
               report={report} section={section} siteId={siteId} t={t}
               siteName={currentSite.name}
-              segmentName={report === "social" || report === "traffic" || selectedSegment === "all"
-                ? "All segments" : segments.find(item => item.id === selectedSegment)?.name ?? selectedSegment}
-              segmentId={report === "social" || report === "traffic" ? "all" : selectedSegment} {...dateRange} />
+              segmentName={selectedSegment === "all" ? "All segments" : segments.options.find(item => item.id === selectedSegment)?.name ?? selectedSegment}
+              segmentId={selectedSegment} {...dateRange} />
         ) : <p className="rounded-lg border bg-background p-6 text-sm text-muted-foreground">Select a site to view reports.</p>}
         </div>
       </TabsContent>

@@ -133,11 +133,11 @@ async function fetchUsers(siteId: string): Promise<Array<{ id: string; name: str
   return siteMembersService.getAssigneeOptions(siteId)
 }
 
-export function useControlCenterData(siteId?: string, _ownerId?: string) {
+export function useControlCenterData(siteId?: string, filterModalOpen = false) {
   const tasksKey = siteId ? ['control-center-tasks', siteId] : null
   const categoriesKey = siteId ? ['control-center-categories', siteId] : null
-  const leadsKey = siteId ? ['control-center-leads', siteId] : null
-  const usersKey = siteId ? ['control-center-users', siteId] : null
+  const leadsKey = filterModalOpen && siteId ? ['control-center-leads', siteId] : null
+  const usersKey = filterModalOpen && siteId ? ['control-center-users', siteId] : null
 
   const {
     data: tasksBundle,
@@ -150,9 +150,9 @@ export function useControlCenterData(siteId?: string, _ownerId?: string) {
     ([, id]) => fetchCategories(id)
   )
 
-  const { data: leadsData } = useSWR(leadsKey, ([, id]) => fetchLeads(id))
+  const { data: leadsData } = useSWR(leadsKey, ([, id]) => fetchLeads(id), { keepPreviousData: false })
 
-  const { data: usersData } = useSWR(usersKey, ([, id]) => fetchUsers(id))
+  const { data: usersData } = useSWR(usersKey, ([, id]) => fetchUsers(id), { keepPreviousData: false })
 
   const categories = categoriesData || []
   const leads = leadsData || []

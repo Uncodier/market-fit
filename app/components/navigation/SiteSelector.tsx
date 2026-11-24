@@ -6,19 +6,18 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
-  DropdownMenuLabel,
-  DropdownMenuGroup,
 } from "../ui/dropdown-menu"
 import { MenuAvatar, MenuAvatarFallback, MenuAvatarImage } from "../ui/menu-avatar"
 import { cn } from "@/lib/utils"
 import { Check, Users, PlusCircle } from "@/app/components/ui/icons"
 import { useSite } from "@/app/context/SiteContext"
-import { useAuth } from "@/app/hooks/use-auth"
+import { useAuthContext } from "@/app/components/auth/auth-context"
 import { useRouter } from "next/navigation"
-import { navigateOrAssign } from "@/lib/navigation/stale-router"
-import { useEffect, useState } from "react"
-import { Site } from "@/app/context/SiteContext"
+import { assignLocation, navigateOrAssign } from "@/lib/navigation/stale-router"
+import { useState } from "react"
+import { SiteSelectorPlaceholder } from "./SiteSelectorPlaceholder"
 import { useSiteListRecovery } from "./use-site-list-recovery"
+import { useProjectListLogos } from "@/app/context/use-project-list-logos"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Button } from "../ui/button"
 import { useLocalization } from "@/app/context/LocalizationContext"
@@ -33,123 +32,74 @@ interface SiteSelectorProps {
   isCollapsed?: boolean
 }
 
+function getInitials(name: string) {
+  if (!name) return "…"
+  const [first, second] = name.trim().split(/\s+/)
+  return (second ? first.charAt(0) + second.charAt(0) : first.slice(0, 2)).toUpperCase()
+}
+
 export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
-  const { sites, currentSite, setCurrentSite, isLoading, refreshSites, error } = useSite()
-  const { user } = useAuth()
+  const { sites, currentSite, setCurrentSite, requestScope, isLoading, refreshSites, error } = useSite()
+  const { user, isLoading: authLoading } = useAuthContext()
+  const authActorId = authLoading || user?.is_anonymous ? null : user?.id ?? null
   const router = useRouter()
   const { t } = useLocalization()
-  const [isMounted, setIsMounted] = useState(false)
   const [filter, setFilter] = useState<'all' | 'owned' | 'shared' | 'demo'>('all')
-  const missingList = !!currentSite && sites.length === 0
+  const [openScope, setOpenScope] = useState<string | null>(null)
+  const isDemoMode = currentSite?.id.startsWith('demo-') === true
+  // Either provider may observe an account change first. While they disagree,
+  // display neither actor's label, actions, nor retry for the retiring load.
+  const actorId = requestScope && requestScope.actorId !== authActorId ? null : authActorId
+  const sameScope = !!actorId && !!currentSite && (isDemoMode || requestScope?.siteId === currentSite.id)
+  const missingList = sameScope && sites.length === 0
   const recovery = useSiteListRecovery(
-    missingList && !isLoading && user?.id ? JSON.stringify([user.id, currentSite.id]) : null,
+    missingList && !isLoading && actorId ? JSON.stringify([actorId, currentSite.id]) : null,
     () => refreshSites({ recoverMissingList: true }),
   )
-  
-  // Get current user ID from auth session
-  const currentUserId = user?.id
-  
-  // Separate sites into owned and shared using the current user ID from auth
-  const ownedSites = sites.filter(site => site.user_id === currentUserId && !site.id.startsWith('demo-'))
-  const sharedSites = sites.filter(site => site.user_id !== currentUserId && !site.id.startsWith('demo-'))
-  const demoSites = sites.filter(site => site.id.startsWith('demo-'))
-  
-  const isDemoMode = currentSite?.id.startsWith('demo-') || false
-  
-  // Filtered sites based on selection
-  const filteredSites = filter === 'all' 
-    ? (isDemoMode ? sites : sites.filter(site => !site.id.startsWith('demo-'))) 
-    : filter === 'owned' 
-      ? ownedSites 
-      : filter === 'shared'
-        ? sharedSites
-        : demoSites
-  
-  useEffect(() => {
-    setIsMounted(true)
-  }, [])
+  const menuScope = sameScope && !isLoading ? JSON.stringify([actorId, currentSite.id]) : null
+  const open = menuScope !== null && openScope === menuScope
+  const filteredSites = !open ? [] : sites.filter(site => {
+    if (site.id.startsWith('demo-')) return isDemoMode && (filter === 'all' || filter === 'demo')
+    return filter === 'all' || (filter === 'owned' && site.user_id === actorId) || (filter === 'shared' && site.user_id !== actorId)
+  })
+  const logos = useProjectListLogos(filteredSites, open && !isDemoMode ? actorId : null)
 
-  // SiteProvider restores valid saved selections. A missing/revoked selection
-  // requires an explicit choice in /projects, never the first available tenant.
-
-  const getInitials = (name: string) => {
-    if (!name) return "..."
-    const words = name.split(" ")
-    if (words.length === 1) return words[0].slice(0, 2).toUpperCase()
-    return (words[0][0] + words[1][0]).toUpperCase()
+  // An optimistic or failed restore is not a selectable workspace. Keep this
+  // branch separate from every menu action, including the collapsed tooltip.
+  if (!sameScope || isLoading || !currentSite || currentSite.id === "default") {
+    const expectedSiteId = currentSite?.id ?? requestScope?.siteId
+    return (
+      <SiteSelectorPlaceholder
+        key={JSON.stringify([actorId, expectedSiteId])}
+        actorId={actorId}
+        currentSiteId={expectedSiteId}
+        collapsed={isCollapsed}
+        loading={authLoading || isLoading}
+        failed={Boolean(error)}
+        retry={() => refreshSites({ recoverMissingList: true })}
+      />
+    )
   }
 
-  // Skeleton loader para el estado inicial
-  const SkeletonContent = () => (
-    <div className="flex items-center gap-3">
-      <div className="flex items-center justify-center w-8 h-8 bg-gray-100 rounded-full font-inter animate-pulse" />
+  const triggerContent = (
+    <div className={cn("flex items-center gap-3", isCollapsed ? "justify-center" : "w-full")}>
+      <MenuAvatar className="h-8 w-8">
+        {currentSite.logo_url ? (
+          <MenuAvatarImage src={currentSite.logo_url} alt={currentSite.name} />
+        ) : (
+          <MenuAvatarFallback>{getInitials(currentSite.name)}</MenuAvatarFallback>
+        )}
+      </MenuAvatar>
       {!isCollapsed && (
         <div className="flex flex-col min-w-0 flex-1">
-          <div className="h-4 w-24 bg-gray-100 rounded animate-pulse" />
-          <div className="h-3 w-16 bg-gray-100 rounded mt-1 animate-pulse" />
+          <span className="font-medium truncate">{currentSite.name}</span>
+          <span className="text-xs text-muted-foreground truncate">
+            {currentSite.url || (t('layout.sidebar.noUrl') || "No URL")}
+          </span>
         </div>
       )}
     </div>
   )
-
-  // Contenido principal cuando está montado
-  const MainContent = () => {
-    // Si no hay sitio actual o está en estado de carga, mostrar skeleton
-    if (!currentSite || currentSite.id === "default" || isLoading) {
-      return <SkeletonContent />
-    }
-
-    return (
-      <div className={cn(
-        "flex items-center gap-3",
-        isCollapsed ? "justify-center" : "w-full"
-      )}>
-        <MenuAvatar className="h-8 w-8">
-          {currentSite.logo_url ? (
-            <MenuAvatarImage src={currentSite.logo_url} alt={currentSite.name} />
-          ) : (
-            <MenuAvatarFallback>
-              {getInitials(currentSite.name)}
-            </MenuAvatarFallback>
-          )}
-        </MenuAvatar>
-        
-        {!isCollapsed && (
-          <div className="flex flex-col min-w-0 flex-1">
-            <span className="font-medium truncate">{currentSite.name}</span>
-            <span className="text-xs text-muted-foreground truncate">
-              {currentSite.url || (t('layout.sidebar.noUrl') || "No URL")}
-            </span>
-          </div>
-        )}
-      </div>
-    )
-  }
-
-  // Empty list inside the workspace wrapper is a load/session error.
-  // Bounce to /projects is handled by SiteContext; do not offer create-site here.
-  if (!isMounted || (sites.length === 0 && !currentSite)) {
-    return (
-      <div className={cn(
-        "relative flex justify-center",
-        !isCollapsed && "w-full"
-      )}>
-        <div className={cn(
-          "relative",
-          !isCollapsed && "w-[232px]"
-        )}>
-          <div
-            className={cn(
-              "flex items-center rounded-md px-3 py-2 text-sm",
-              isCollapsed ? "justify-center h-[45px]" : "w-full"
-            )}
-          >
-            <SkeletonContent />
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div className={cn(
@@ -160,7 +110,7 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
         "relative",
         !isCollapsed && "w-[232px]"
       )}>
-        <DropdownMenu onOpenChange={open => { if (open && missingList) recovery.retry() }}>
+        <DropdownMenu key={menuScope} open={open} onOpenChange={next => { setOpenScope(next ? menuScope : null); if (next && missingList) recovery.retry() }}>
           {isCollapsed ? (
             <TooltipProvider delayDuration={100}>
               <Tooltip>
@@ -168,14 +118,13 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
                   <DropdownMenuTrigger asChild>
                     <button
                       type="button"
-                      aria-label={currentSite?.name}
+                      aria-label={currentSite.name}
                       className={cn(
                         "flex items-center rounded-md px-3 py-2 text-sm transition-colors relative group cursor-pointer",
-                        "justify-center h-[45px]",
-                        isLoading && "opacity-50 cursor-wait"
+                        "justify-center h-[45px]"
                       )}
                     >
-                      {!isMounted ? <SkeletonContent /> : <MainContent />}
+                      {triggerContent}
                     </button>
                   </DropdownMenuTrigger>
                 </TooltipTrigger>
@@ -186,7 +135,7 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
                   className="z-[9999] max-w-[min(280px,calc(100vw-4rem))]"
                 >
                   <p className="font-medium truncate">
-                    {currentSite?.name ||
+                    {currentSite.name ||
                       t("layout.category.project") ||
                       "Project"}
                   </p>
@@ -200,18 +149,16 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                aria-label={currentSite?.name}
+                aria-label={currentSite.name}
                 className={cn(
                   "flex items-center rounded-md px-3 py-2 text-sm transition-colors relative group cursor-pointer",
-                  "border dark:border-white/5 border-black/5 hover:dark:border-white/5 border-black/5/80 hover:bg-accent w-full",
-                  isLoading && "opacity-50 cursor-wait"
+                  "border dark:border-white/5 border-black/5 hover:dark:border-white/5 border-black/5/80 hover:bg-accent w-full"
                 )}
               >
-                {!isMounted ? <SkeletonContent /> : <MainContent />}
+                {triggerContent}
               </button>
             </DropdownMenuTrigger>
           )}
-          {isMounted && !isLoading && (sites.length > 0 || currentSite) && (
             <DropdownMenuContent 
               align={isCollapsed ? "start" : "center"}
               sideOffset={5}
@@ -273,7 +220,8 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
                 <div className="space-y-1">
                   {filteredSites.map((site) => {
                     const isSelected = site.id === currentSite?.id
-                    const isShared = site.user_id !== currentUserId
+                    const isShared = site.user_id !== actorId
+                    const logo = site.logo_url === undefined ? logos?.[site.id] : site.logo_url
                     
                     return (
                       <DropdownMenuItem
@@ -290,7 +238,7 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
                             localStorage.setItem('market_fit_manual_demo', 'true');
                             sessionStorage.setItem('preventAutoRefresh', 'true');
                             // Force reload to apply changes everywhere (Supabase client will re-initialize)
-                            window.location.href = "/robots";
+                            assignLocation("/robots");
                           } else {
                             // Remove demo cookie if switching to a real project
                             document.cookie = `market_fit_demo_site_id=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
@@ -299,7 +247,7 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
                             if (currentSite?.id.startsWith('demo-')) {
                               // We must reload the page if we are leaving demo mode, to re-initialize the real Supabase client
                               localStorage.setItem('currentSiteId', site.id);
-                              window.location.href = "/robots";
+                              assignLocation("/robots");
                             } else {
                               setCurrentSite(site)
                               navigateOrAssign(router, "/robots")
@@ -308,8 +256,8 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
                         }}
                       >
                         <MenuAvatar className="h-6 w-6 flex-shrink-0">
-                          {site.logo_url ? (
-                            <MenuAvatarImage src={site.logo_url} alt={site.name} />
+                          {logo ? (
+                            <MenuAvatarImage src={logo} alt={site.name} />
                           ) : (
                             <MenuAvatarFallback className="text-xs">
                               {getInitials(site.name)}
@@ -368,7 +316,7 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
                       localStorage.removeItem('currentSiteId');
                       localStorage.removeItem('market_fit_manual_demo');
                       const baseUrl = window.location.hostname.startsWith('www.') ? window.location.origin.replace('www.', 'app.') : '';
-                      window.location.href = `${baseUrl}/projects`;
+                      assignLocation(`${baseUrl}/projects`);
                     }}
                   >
                     Exit Demo Mode
@@ -385,7 +333,6 @@ export function SiteSelector({ isCollapsed = false }: SiteSelectorProps) {
                 </Button>
               </div>
             </DropdownMenuContent>
-          )}
         </DropdownMenu>
       </div>
     </div>

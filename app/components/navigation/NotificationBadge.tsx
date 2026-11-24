@@ -2,12 +2,13 @@
 
 import { Badge } from "@/app/components/ui/badge"
 import { useNotifications } from "@/app/notifications/context/NotificationsContext"
+import { useNotificationBadge } from '@/app/notifications/use-notification-badge'
 
 export function NotificationBadge({ isActive = false }: { isActive?: boolean }) {
   const { notifications } = useNotifications()
   
-  // Count unread notifications using the correct field name
-  const unreadCount = notifications.filter(notification => !notification.is_read).length
+  const backgroundCount = useNotificationBadge(isActive)
+  const unreadCount = isActive ? notifications.filter(notification => !notification.is_read).length : backgroundCount
   
   // Don't show badge if there are no unread notifications
   if (unreadCount === 0) {

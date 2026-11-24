@@ -10,6 +10,8 @@ const correction = migration("20261117223000_record_diagram_trash_guard_ambiguit
 const diagrams = migration("20260916020500_record_diagrams.sql")
 const retrieval = migration("20260916020600_record_diagram_retrieval.sql")
 const relation = migration("20261111032000_records_relation_admission.sql")
+const valueAware = migration("20261124010000_records_field_value_compatibility.sql")
+const schemaFence = migration("20261124011000_records_schema_write_fence.sql")
 const site = id(10), otherSite = id(11), root = id(20), otherRoot = id(23)
 const actor = (who = 1, role = "authenticated") => `SET ROLE ${role}; SET request.jwt.claim.sub = '${id(who)}'`
 const trash = (target = root) => `SELECT trash_record_category('${target}')`
@@ -87,6 +89,27 @@ it("keeps the forward correction local to locking (no policy, trigger or table s
     if (who !== undefined) await session.execute(actor(who, role))
     return session
   }
+
+  it("rejects a record save during a real template write and again after it commits", async () => {
+    query(`ALTER TABLE record_categories ADD COLUMN updated_at timestamptz DEFAULT now();
+      ALTER TABLE records ADD COLUMN updated_at timestamptz DEFAULT now();
+      CREATE FUNCTION record_row_access(uuid,uuid,jsonb) RETURNS boolean LANGUAGE sql AS $$ SELECT true $$;
+      ${valueAware}
+      ${schemaFence}`)
+    const oldTemplate = '[{"id":"n","name":"Note","type":"text"}]'
+    query(`${actor()}; UPDATE public.record_categories SET template_fields='${oldTemplate}' WHERE id='${root}'`)
+    const version = query(`SELECT updated_at FROM public.records WHERE id='${id(30)}'`)
+    const saveAgainstOldTemplate = `SELECT title FROM public.save_record_at_template(
+      '${id(30)}','${version}','${site}','${root}','${oldTemplate}','{"data":{"Note":"stale"}}')`
+    const editor = await connect(1)
+    await editor.execute(`BEGIN; UPDATE public.record_categories SET template_fields='[]' WHERE id='${root}'`)
+    const racingWriter = await connect(2)
+    await expect(racingWriter.execute(saveAgainstOldTemplate)).rejects.toThrow("55P03")
+    await editor.execute("COMMIT")
+    const staleWriter = await connect(2)
+    await expect(staleWriter.execute(saveAgainstOldTemplate)).rejects.toThrow("40001")
+    expect(query(`SELECT data FROM public.records WHERE id='${id(30)}'`)).toBe("{}")
+  })
 
   it("makes independent diagrams, job admission and normal record multiwrites share the same site fence", async () => {
     query(upgrade)

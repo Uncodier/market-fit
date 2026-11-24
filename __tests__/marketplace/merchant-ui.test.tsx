@@ -13,7 +13,7 @@ jest.mock("@/app/components/ui/select", () => ({
 }))
 
 const props = { provider: "uber_eats" as const, siteId: randomUUID(), canManage: true,
-  platformApps: { production: true, sandbox: false }, locations: [{id:randomUUID(),name:"Main kitchen"}], integrations: [], onChanged:jest.fn() }
+  platformApps: { production: true, sandbox: false }, locations: [{id:randomUUID(),name:"Main kitchen"}], connections: [], integrations: [], onChanged:jest.fn() }
 beforeEach(() => { global.fetch = jest.fn(async () => ({ok:true,json:async()=>({connections:[]})})) as unknown as typeof fetch })
 
 it("defaults to Makinari with no credential entry and leaves developer credentials opt-in", async () => {
@@ -45,17 +45,18 @@ it("shows pending store status rather than implying provider acknowledgement mea
     has_credentials:{client_id:true,client_secret:true,webhook_secret:false},webhook_url:"https://app.example.test/api/marketplace/webhooks/uber_eats"}]} />)
   expect(screen.getByText("authorized-store · pending")).toBeInTheDocument()
   expect(screen.getByRole("button",{name:"Refresh status"})).toBeInTheDocument()
-  await waitFor(()=>expect(global.fetch).toHaveBeenCalledTimes(1))
+  expect(global.fetch).not.toHaveBeenCalled()
 })
 
 it("keeps activation in the footer and submits the selected provider store and native location", async () => {
   const connectionId = randomUUID(), onChanged = jest.fn()
   const fetchMock = jest.fn()
-    .mockResolvedValueOnce({ ok: true, json: async () => ({ connections: [{ id: connectionId, provider: "uber_eats", environment: "production", country: "MX",
-      authorization_expired: false, stores: [{ id: "store-1", name: "Authorized kitchen" }] }] }) })
     .mockResolvedValueOnce({ ok: true, json: async () => ({ status: "pending" }) })
   global.fetch = fetchMock
-  render(<MarketplaceMerchantConnect {...props} onChanged={onChanged} />)
+  render(<MarketplaceMerchantConnect {...props} onChanged={onChanged} connections={[{
+    id: connectionId, provider: "uber_eats", environment: "production", country: "MX",
+    authorization_expired: false, stores: [{ id: "store-1", name: "Authorized kitchen" }],
+  }]} />)
   const activate = await screen.findByRole("button", { name: "Activate selected store" })
   expect(activate.closest("div.border-t")).toHaveClass("justify-end")
   expect(activate).toHaveClass("ring-input")
@@ -66,6 +67,6 @@ it("keeps activation in the footer and submits the selected provider store and n
   expect(activate).not.toBeDisabled()
   fireEvent.click(activate)
   await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1))
-  expect(fetchMock.mock.calls[1][0]).toBe(`/api/marketplace/merchant-connections/${connectionId}/stores`)
-  expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ siteId: props.siteId, external_store_id: "store-1", origin_location_id: props.locations[0].id })
+  expect(fetchMock.mock.calls[0][0]).toBe(`/api/marketplace/merchant-connections/${connectionId}/stores`)
+  expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ siteId: props.siteId, external_store_id: "store-1", origin_location_id: props.locations[0].id })
 })

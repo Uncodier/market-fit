@@ -18,14 +18,13 @@ const mockClient = {
       return { data: { subscription: { unsubscribe: jest.fn() } } }
     },
   },
-  from: () => ({ select: () => ({ eq: () => ({ single: mockSettings }) }) }),
+  from: () => ({ select: () => ({ eq: () => ({ abortSignal: () => ({ maybeSingle: mockSettings }), single: mockSettings }) }) }),
   channel: () => ({ on: () => ({ subscribe: () => ({}) }) }),
   removeChannel: jest.fn(),
 }
 jest.mock("@/lib/supabase/client", () => ({ createClient: () => mockClient }))
 jest.mock("@/lib/sites/fetch-accessible-sites", () => ({ fetchAccessibleSitesClient: jest.fn() }))
 jest.mock("@/app/context/site-resource-sync", () => ({ useSiteResourceSync: jest.fn() }))
-jest.mock("@/lib/sites/logo-background-sync", () => ({ syncSiteLogosInBackground: jest.fn() }))
 jest.mock("@/lib/demo-utils", () => ({
   isDemoModeActive: () => false, getDemoSiteId: () => null,
   isRealSiteId: () => true,

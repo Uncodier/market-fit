@@ -85,3 +85,26 @@ it('keeps list reads available when realtime setup fails', () => {
   expect(warning).toHaveBeenCalledWith('Conversation realtime is unavailable')
   warning.mockRestore()
 })
+
+it('revalidates a filtered resource once for a burst, without publishing unverified rows or leaving a stale timer', async () => {
+  jest.useFakeTimers()
+  try {
+    const refreshConversations = jest.fn(async () => undefined)
+    const updateConversations = jest.fn()
+    const view = renderHook(() => useConversationRealtime({
+      siteId: 'site-1', filtered: true, refreshConversations, updateConversations,
+    }))
+    callbacks.INSERT({ new: row })
+    callbacks.UPDATE({ new: row })
+    await act(async () => { await jest.advanceTimersByTimeAsync(250) })
+    expect(refreshConversations).toHaveBeenCalledTimes(1)
+    expect(from).not.toHaveBeenCalled()
+    expect(updateConversations).not.toHaveBeenCalled()
+    callbacks.INSERT({ new: row })
+    view.unmount()
+    await act(async () => { await jest.advanceTimersByTimeAsync(1000) })
+    expect(refreshConversations).toHaveBeenCalledTimes(1)
+  } finally {
+    jest.useRealTimers()
+  }
+})

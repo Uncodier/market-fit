@@ -21,3 +21,8 @@ export function serializeRecordFieldDate(date: Date | undefined): string | null 
 export function recordFieldLabel(field: { name: string; label?: string }): string {
   return field.label?.trim() || field.name
 }
+
+/** An empty table left by a schema change carries no scalar value. */
+export function recordScalarFieldValue<T>(type: string, value: T): T | null {
+  return type !== "table" && Array.isArray(value) && value.length === 0 ? null : value
+}

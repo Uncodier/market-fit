@@ -5,7 +5,8 @@ import { type WorkspaceOrder } from '@/app/purchases/orders/order-document-data'
 
 jest.mock('@/app/buyer/actions', () => ({ getBuyerOrder: jest.fn() }))
 jest.mock('@/app/context/LocalizationContext', () => ({ useLocalization: () => ({ t: () => '' }) }))
-jest.mock('@/app/context/SiteContext', () => ({ useSite: () => ({ currentSite: { id: 'buyer-site', name: 'Buyer Company' } }) }))
+let mockSite: { id: string; name: string } | null
+jest.mock('@/app/context/SiteContext', () => ({ useSite: () => ({ currentSite: mockSite }) }))
 jest.mock('@/app/context/LayoutContext', () => ({ useLayout: () => ({ isLayoutCollapsed: false }) }))
 
 const order: WorkspaceOrder = {
@@ -28,6 +29,7 @@ const order: WorkspaceOrder = {
 
 beforeEach(() => {
   jest.clearAllMocks()
+  mockSite = { id: 'buyer-site', name: 'Buyer Company' }
   jest.mocked(getBuyerOrder).mockResolvedValue({ data: order })
 })
 
@@ -118,6 +120,22 @@ it('does not let a late response overwrite a new route', async () => {
   await act(async () => resolveOld({ data: { ...order, id: 'old', order_number: 'STALE' } }))
   expect(screen.queryByText('STALE')).not.toBeInTheDocument()
   expect(screen.getByRole('heading', { name: 'PO-42' })).toBeInTheDocument()
+})
+
+it('retires a same-order detail read when switching workspaces, with no read from an absent workspace', async () => {
+  let finish!: (result: { data: WorkspaceOrder }) => void
+  jest.mocked(getBuyerOrder).mockImplementationOnce(() => new Promise(resolve => { finish = resolve }))
+    .mockResolvedValueOnce({ error: 'Not authorized for this order' })
+  const view = render(<WorkspaceOrderDetailView orderId="same-order" />)
+  mockSite = null
+  view.rerender(<WorkspaceOrderDetailView orderId="same-order" />)
+  expect(getBuyerOrder).toHaveBeenCalledTimes(1)
+  mockSite = { id: 'next-buyer', name: 'Next buyer' }
+  view.rerender(<WorkspaceOrderDetailView orderId="same-order" />)
+  expect(await screen.findByRole('alert')).toHaveTextContent('Not authorized for this order')
+  await act(async () => finish({ data: order }))
+  expect(screen.queryByText('PO-42')).not.toBeInTheDocument()
+  expect(getBuyerOrder).toHaveBeenCalledTimes(2)
 })
 
 it('uses legacy JSON lines without mislabeling a different owner as the current workspace', async () => {

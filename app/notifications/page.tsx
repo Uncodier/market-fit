@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Link from 'next/link'
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { Button } from "@/app/components/ui/button"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
@@ -19,12 +20,15 @@ import { NotificationSkeleton } from "./components/NotificationSkeleton"
 export default function NotificationsPage() {
   const { t } = useLocalization()
   const {
-    notifications, loading, searchQuery, updateFilters, updateSearchQuery,
+    notifications, status, retryVerification, refreshNotifications, searchQuery, updateFilters, updateSearchQuery,
     markAsRead, markAllNotificationsAsRead, deleteOneNotification, deleteAllUserNotifications,
   } = useNotifications()
   const [activeTab, setActiveTab] = useState<"all" | "unread">("all")
   const [pending, setPending] = useState<"read" | "delete" | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const ready = status === 'ready'
+  const loading = status === 'checking' || status === 'inactive' || status === 'loading'
+  const retry = status === 'failed' ? refreshNotifications : retryVerification
   const unreadCount = notifications.filter(notification => !notification.is_read).length
   const query = searchQuery.trim().toLowerCase()
   const filteredNotifications = notifications
@@ -38,7 +42,7 @@ export default function NotificationsPage() {
   }
 
   const runBulkAction = async (action: "read" | "delete") => {
-    if (pending) return
+    if (!ready || pending) return
     setPending(action)
     try {
       await (action === "read" ? markAllNotificationsAsRead() : deleteAllUserNotifications())
@@ -47,6 +51,10 @@ export default function NotificationsPage() {
       setConfirmDelete(false)
     }
   }
+
+  if (loading) return <div role="status" aria-busy="true" aria-label={t('common.loading')} className="space-y-3 p-4 md:p-8 motion-reduce:[&_.animate-pulse]:animate-none">
+    {Array.from({ length: 4 }, (_, index) => <NotificationSkeleton key={index} />)}
+  </div>
 
   return (
     <div className="flex min-w-0 flex-1 flex-col bg-muted/30 min-h-[calc(100vh-var(--topbar-height,64px))]">
@@ -58,18 +66,18 @@ export default function NotificationsPage() {
                 <TabsTrigger value="all">{t('notifications.tabs.all')}</TabsTrigger>
                 <TabsTrigger value="unread" className="gap-2">
                   {t('notifications.tabs.unread')}
-                  {!loading && <span className="rounded-full bg-background px-1.5 text-xs tabular-nums">{unreadCount}</span>}
+                  {ready && <span className="rounded-full bg-background px-1.5 text-xs tabular-nums">{unreadCount}</span>}
                 </TabsTrigger>
               </TabsList>
             </Tabs>
             <SearchInput type="search" placeholder={t('notifications.searchPlaceholder')} aria-label="Search notifications" containerClassName="w-48 lg:w-64" className="w-full" value={searchQuery} onSearch={updateSearchQuery} />
           </div>
           <div className="ml-auto flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2 md:flex-nowrap">
-            <Button variant="secondary" size="sm" className="h-9 min-w-0 gap-2" onClick={() => void runBulkAction("read")} disabled={loading || !!pending || unreadCount === 0}>
+            <Button variant="secondary" size="sm" className="h-9 min-w-0 gap-2" onClick={() => void runBulkAction("read")} disabled={!ready || !!pending || unreadCount === 0}>
               {pending === "read" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden={true} /> : <Check className="h-4 w-4" aria-hidden={true} />}
               <span>{t('notifications.markAllRead')}</span>
             </Button>
-            <Button variant="ghost" size="icon" aria-label={t('notifications.deleteAll')} title={t('notifications.deleteAll')} className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive" onClick={() => setConfirmDelete(true)} disabled={loading || !!pending || notifications.length === 0}>
+            <Button variant="ghost" size="icon" aria-label={t('notifications.deleteAll')} title={t('notifications.deleteAll')} className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive" onClick={() => setConfirmDelete(true)} disabled={!ready || !!pending || notifications.length === 0}>
               <Trash2 className="h-4 w-4" aria-hidden={true} />
             </Button>
           </div>
@@ -86,16 +94,17 @@ export default function NotificationsPage() {
             </div>
           </div>
           <p role="status" className="text-sm text-muted-foreground">
-            {loading ? "Loading notifications…" : query
-              ? `${filteredNotifications.length} results`
-              : `${unreadCount} unread · ${notifications.length} total`}
+            {ready ? (query ? `${filteredNotifications.length} results` : `${unreadCount} unread · ${notifications.length} total`)
+              : null}
           </p>
         </div>
-        {loading ? (
-          <div className="space-y-3" aria-label="Loading notifications" aria-busy="true">
-            {Array.from({ length: 4 }).map((_, index) => <NotificationSkeleton key={index} />)}
-          </div>
-        ) : filteredNotifications.length > 0 ? (
+        {!ready ? <div role="alert" className="space-y-3 rounded-lg border p-4">
+          <p>{status === 'missing' ? t('noSiteSelected') : status === 'denied' ? t('workspacePreview.denied')
+            : status === 'settings-unavailable' ? t('notifications.settingsUnavailable')
+            : status === 'unavailable' ? t('chat.workspace.unavailable') : 'Notifications could not be loaded.'}</p>
+          {retry && <Button variant="outline" onClick={() => void retry()}>{t('common.retry')}</Button>}
+          {status === 'missing' && <Link href="/projects" prefetch={false} className="underline">{t('chat.workspace.choose')}</Link>}
+        </div> : filteredNotifications.length > 0 ? (
           <div className="space-y-3">
             {filteredNotifications.map(notification => (
               <NotificationCard key={notification.id} notification={notification} onMarkAsRead={markAsRead} onDelete={deleteOneNotification} disabled={!!pending} />

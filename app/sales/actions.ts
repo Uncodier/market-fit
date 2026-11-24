@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { Sale, SaleData } from "@/app/types";
+import type { SalesListRecord, SalesListRow } from "./sales-list-row";
 import { normalizeDueDate } from "@/lib/finance/due-date";
 import { requireAccountingAccess } from '@/app/accounting/access';
 import { deleteAccountingSource } from '@/app/accounting/source-lifecycle';
@@ -20,11 +21,14 @@ export async function getSales(siteId: string) {
   try {
     const supabase = await createClient();
 
-    // Fetch sales from the database
-    const { data: salesData, error } = await supabase
+    const query = supabase
       .from("sales")
-      .select("*, leads(name)")
+      .select("*, leads(name), segments!sales_segment_id_fkey(name, site_id)")
       .eq("site_id", siteId)
+    // Filter only the optional embed, not parent sales. The local demo adapter
+    // applies nested filters to parents, so enforce the same scope in the DTO too.
+    if (!supabase._isDemo) query.eq("segments.site_id", siteId);
+    const { data: salesData, error } = await query
       .order("sale_date", { ascending: false })
       .order("created_at", { ascending: false });
 
@@ -34,7 +38,7 @@ export async function getSales(siteId: string) {
     }
 
     // Transform the data to match the Sale interface
-    const sales: Sale[] = salesData.map((sale: any) => ({
+    const sales: SalesListRow[] = salesData.map((sale: SalesListRecord): SalesListRow => ({
       id: sale.id,
       title: sale.title,
       description: sale.description || undefined,
@@ -50,6 +54,9 @@ export async function getSales(siteId: string) {
       leadName: sale.leads?.name || "Anonymous Customer",
       campaignId: sale.campaign_id,
       segmentId: sale.segment_id,
+      // The FK is nullable and not tenant-composite. Keep the sale when its
+      // segment is hidden by RLS; never publish another site's label.
+      segmentName: sale.segments?.site_id === siteId ? sale.segments.name : null,
       saleDate: sale.sale_date,
       dueDate: sale.due_date ?? null,
       paymentMethod: sale.payment_method || "Unknown",

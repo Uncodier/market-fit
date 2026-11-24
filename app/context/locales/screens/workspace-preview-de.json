@@ -1,0 +1,9 @@
+{
+  "workspacePreview.title": "Schreibgeschützte Vorschau",
+  "workspacePreview.stalled": "Das Laden der Vorschau dauert zu lange. Warte, bis du es erneut versuchen kannst, oder lade die Seite jetzt neu.",
+  "workspacePreview.reload": "Seite neu laden",
+  "workspacePreview.syncFailed": "Schreibgeschützte Vorschau · Einstellungen konnten nicht geladen werden.",
+  "workspacePreview.failed": "Die Vorschau konnte nicht geladen werden.",
+  "workspacePreview.denied": "Dieser Bereich ist für dein Konto in diesem Arbeitsbereich nicht verfügbar.",
+  "workspacePreview.empty": "Keine Einträge für die Vorschau."
+}

@@ -29,6 +29,25 @@ async function load(data: unknown) {
 beforeEach(() => { http.mockReset(); jest.mocked(toast.success).mockClear() })
 
 const memberStatus = { ...status, enabled: true, authorization_mode: "member_policy", explicitly_disabled: false }
+test.each([false, null])("blocks unsupported or unverified Ask opt-in (%s) without blocking policy reads", async compatible => {
+  show({ ...accessDto, policy: { ...accessDto.policy, allowed_hosts: [] } })
+  await load({ ...status, enabled: false, attested: false, authorization_mode: "host_policy", assistant_allowed: false, ask_compatible: compatible })
+  expect(await screen.findByRole("checkbox", { name: "Allow Robots Ask on this account" })).toBeDisabled()
+  expect(screen.getByText(compatible === null ? "Ask compatibility could not be verified" : "Connected method not supported by Ask")).toBeVisible()
+  expect(patchCalls()).toHaveLength(0)
+})
+
+test("an incompatible saved host can still be turned off", async () => {
+  const changed = show({ ...accessDto, policy: { ...accessDto.policy, allowed_hosts: ["assistant"] } })
+  await load({ ...status, enabled: false, attested: false, authorization_mode: "host_policy", assistant_allowed: true, ask_compatible: false })
+  const toggle = await screen.findByRole("checkbox", { name: "Allow Robots Ask on this account" })
+  expect(toggle).toBeEnabled()
+  fireEvent.click(toggle)
+  http.mockResolvedValueOnce(jsonResponse({ connector_id: account.id, revision: 5 }))
+  fireEvent.click(save())
+  await waitFor(() => expect(changed).toHaveBeenCalledTimes(1))
+  expect(JSON.parse(String(patchCalls()[0][1]?.body)).allowed_hosts).toEqual([])
+})
 const hostControl = () => screen.findByRole("checkbox", { name: "Allow the interactive assistant on this account" })
 
 test.each([false, true])("uses one Ask setting even without execution authorization (currently on: %s)", async current => {

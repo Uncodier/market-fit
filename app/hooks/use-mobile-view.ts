@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react"
-import { ViewType } from "@/app/components/view-selector"
+import type { ViewType } from "@/app/components/view-selector"
 
 const MOBILE_BREAKPOINT = 768
 
-export function useIsMobile(): boolean {
-  const [isMobile, setIsMobile] = useState<boolean>(false)
+/** Unknown until hydration: CSS alone does not stop a hidden component's reads. */
+export function useMobileViewport(): boolean | null {
+  const [isMobile, setIsMobile] = useState<boolean | null>(null)
 
   useEffect(() => {
     const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`)
@@ -15,6 +16,10 @@ export function useIsMobile(): boolean {
   }, [])
 
   return isMobile
+}
+
+export function useIsMobile(): boolean {
+  return useMobileViewport() ?? false
 }
 
 /**

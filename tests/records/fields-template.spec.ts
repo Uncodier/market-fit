@@ -60,7 +60,29 @@ test('UI-created template keeps immutable storage key when its populated field l
   await expect(page.getByRole('spinbutton', { name: 'Renamed quantity', exact: true })).toHaveValue('0');
 });
 
-test('UI refuses populated schema retyping without changing persisted schema or values', async ({ page, records }) => {
+test('UI retypes and removes unused fields even when the category contains records', async ({ page, records }) => {
+  const category = await records.category([
+    { id: 'n', name: 'quantity', label: 'Quantity', type: 'number' },
+    { id: 'a', name: 'unused', label: 'Unused field', type: 'text' },
+    { id: 'b', name: 'obsolete', label: 'Obsolete field', type: 'text' },
+  ]);
+  const record = await createRecordUI(page, records, category);
+  await page.getByRole('spinbutton', { name: 'Quantity', exact: true }).fill('0');
+  await saveRecord(page, records, record.id, { data: { quantity: 0 } });
+  const dialog = await editCategory(page, category);
+  await dialog.getByText('Unused field', { exact: true }).click();
+  await dialog.getByRole('combobox', { name: 'Field type for unused', exact: true }).click();
+  await page.getByRole('option', { name: 'Description (Rich Text)', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Remove field Obsolete field', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Save Template', exact: true }).click();
+  await expect(dialog).toBeHidden();
+  expect((await records.read('record_categories', category.id)).template_fields).toEqual([
+    category.template_fields[0], { ...category.template_fields[1], type: 'description' },
+  ]);
+  expect((await records.read('records', record.id)).data).toEqual({ quantity: 0 });
+});
+
+test('UI refuses incompatible retyping without changing persisted schema or values', async ({ page, records }) => {
   const category = await records.category([{ id: 'n', name: 'quantity', label: 'Quantity', type: 'number' }]);
   const record = await createRecordUI(page, records, category);
   await page.getByRole('spinbutton', { name: 'Quantity', exact: true }).fill('0');
@@ -70,7 +92,7 @@ test('UI refuses populated schema retyping without changing persisted schema or 
   await dialog.getByRole('combobox', { name: 'Field type for quantity', exact: true }).click();
   await page.getByRole('option', { name: 'Text (Single line)', exact: true }).click();
   await dialog.getByRole('button', { name: 'Save Template', exact: true }).click();
-  await expect(page.getByText('Populated fields cannot be removed, retyped, or retargeted without a data migration', { exact: true })).toBeVisible();
+  await expect(page.getByText('Cannot change "Quantity": existing records would lose values or no longer meet the field rules.', { exact: true })).toBeVisible();
   await expect(dialog).toBeVisible();
   expect((await records.read('record_categories', category.id)).template_fields).toEqual(category.template_fields);
   expect((await records.read('records', record.id)).data).toEqual({ quantity: 0 });

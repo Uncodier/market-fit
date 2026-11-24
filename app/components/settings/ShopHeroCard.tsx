@@ -11,8 +11,9 @@ import { Switch } from "../ui/switch"
 import { Store, Image as ImageIcon, X, Calendar } from "../ui/icons"
 
 import type { useShopSection } from "./use-shop-section"
+import { ShopHeroDestinationSelect } from "./shop-hero-destination-select"
 
-export function ShopHeroCard({ form, savingCard, isUploadingImage, categories, items, handleSave, getHeroRootProps, getHeroInputProps, isHeroDragActive }: ReturnType<typeof useShopSection>) {
+export function ShopHeroCard({ form, siteId, savingCard, isUploadingImage, handleSave, getHeroRootProps, getHeroInputProps, isHeroDragActive }: ReturnType<typeof useShopSection>) {
  return (      <SectionCard id="shop-hero">
         <SectionCardHeader>
           <SectionCardTitle className="flex items-center gap-2">
@@ -99,52 +100,8 @@ export function ShopHeroCard({ form, savingCard, isUploadingImage, categories, i
                     )
                   }
                   
-                  if (type === "category") {
-                    return (
-                      <FormItem>
-                        <FormLabel>Select Category</FormLabel>
-                        <FormControl>
-                          <select
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                            {...field}
-                            value={field.value || ""}
-                          >
-                            <option value="" disabled>Select a category...</option>
-                            {categories.map(cat => (
-                              <option key={cat.id} value={cat.name}>{cat.name}</option>
-                            ))}
-                          </select>
-                        </FormControl>
-                        <FormDescription>Select the category to filter by.</FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )
-                  }
-                  
-                  if (type === "item") {
-                    // Filter items to exclude variants and items not in marketplace
-                    const filteredItems = items.filter(item => !item.parent_id && item.is_marketplace_listed);
-
-                    return (
-                      <FormItem>
-                        <FormLabel>Select Item</FormLabel>
-                        <FormControl>
-                          <select
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                            {...field}
-                            value={field.value || ""}
-                          >
-                            <option value="" disabled>Select an item...</option>
-                            {filteredItems.map(item => (
-                              <option key={item.id} value={item.id}>{item.name}</option>
-                            ))}
-                          </select>
-                        </FormControl>
-                        <FormDescription>Select the item to open.</FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )
-                  }
+                  if (type === "category" || type === "item") return <ShopHeroDestinationSelect key={`${siteId}:${type}`}
+                    siteId={siteId} type={type} field={field} />
 
                   return <></>;
                 }}

@@ -1,10 +1,11 @@
 import React from "react"
-import { fireEvent, render, screen, within, waitFor } from "@testing-library/react"
+import { fireEvent, render, screen, within } from "@testing-library/react"
 import useSWR from "swr"
 import ContentPage from "@/app/content/page"
 import { useSite } from "@/app/context/SiteContext"
 import { ContentTypeViews } from "@/app/content/components/ContentTypeViews"
 import type { ContentItem } from "@/app/content/actions"
+import { ContentPublishDialog } from '@/app/content/components/ContentPublishDialog'
 
 jest.mock("swr", () => ({ __esModule: true, default: jest.fn() }))
 jest.mock("@/app/context/SiteContext", () => ({ useSite: jest.fn() }))
@@ -22,7 +23,7 @@ jest.mock("@/app/components/trends", () => ({ TrendsSection: () => null, TrendsC
 jest.mock("@/app/content/components", () => ({ CreateContentDialog: () => null }))
 jest.mock("@/app/content/components/ContentDetail", () => ({ ContentDetail: () => null }))
 jest.mock("@/app/content/components/ContentFiltersDialog", () => ({ ContentFiltersDialog: () => null }))
-jest.mock("@/app/content/components/ContentPublishDialog", () => ({ ContentPublishDialog: () => null }))
+jest.mock("@/app/content/components/ContentPublishDialog", () => ({ ContentPublishDialog: jest.fn(() => null) }))
 jest.mock("@/app/components/view-selector", () => ({
   ViewSelector: ({ onViewChange }: { onViewChange: (value: string) => void }) => (
     <button onClick={() => onViewChange("table")}>Table view</button>
@@ -157,6 +158,8 @@ describe.each(["kanban", "table"] as const)("Content page %s loading", view => {
     fireEvent.click(screen.getByRole("tab", { name: "content.tabs.all" }))
     expectSettled()
     expect(screen.getByText("Loaded article")).toBeInTheDocument()
+    // The selected workspace already hydrates publishing settings.
+    expect(getSettings).not.toHaveBeenCalled()
   })
 
   it("shows confirmed empty content after the request settles instead of an endless skeleton", () => {
@@ -212,19 +215,16 @@ describe.each(["kanban", "table"] as const)("Content page %s loading", view => {
     expect(screen.getAllByText("No content")).toHaveLength(view === "kanban" ? 5 : 1)
   })
 
-  it("loads settings only on site changes, not settings-reader identity changes", async () => {
+  it("uses already hydrated publishing choices for this site only, without reading settings again", () => {
     setSite("site-one")
+    const account = { platform: 'linkedin', url: 'https://example.test/profile', isActive: true }
+    site.mockReturnValue({ ...site(), currentSite: { ...site().currentSite!, settings: { social_media: [account, { ...account, isActive: false }] } } })
     const { rerender } = mount()
-    await waitFor(() => expect(getSettings).toHaveBeenCalledWith("site-one"))
-    const replacement = jest.fn().mockResolvedValue(null)
-    site.mockReturnValue({ ...site(), getSettings: replacement })
-    rerender(<ContentPage />)
-    expect(replacement).not.toHaveBeenCalled()
-
+    expect(jest.mocked(ContentPublishDialog).mock.calls.at(-1)?.[0].socialMedia).toEqual([account])
     setSite("site-two")
-    site.mockReturnValue({ ...site(), getSettings: replacement })
     rerender(<ContentPage />)
-    await waitFor(() => expect(replacement).toHaveBeenCalledWith("site-two"))
+    expect(jest.mocked(ContentPublishDialog).mock.calls.at(-1)?.[0].socialMedia).toEqual([])
+    expect(getSettings).not.toHaveBeenCalled()
   })
 
   it("does not turn a settled request error into perpetual loading", () => {

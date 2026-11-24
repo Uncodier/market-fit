@@ -3,7 +3,6 @@
 import React, { memo } from "react"
 import { cn } from "@/lib/utils"
 import * as Icons from "@/app/components/ui/icons"
-import { WhatsAppIcon } from "@/app/components/ui/social-icons"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
@@ -91,6 +90,7 @@ export const ChannelFilter = memo(function ChannelFilter({
                   <TooltipTrigger asChild>
                     <TabsTrigger
                       value={filter}
+                      aria-label={config.label}
                       className={cn(
                         "h-7 w-7 px-0 flex items-center justify-center rounded-full font-inter transition-all duration-200 border-0 focus:outline-none focus:ring-0",
                         "data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:ring-1 data-[state=active]:ring-border",

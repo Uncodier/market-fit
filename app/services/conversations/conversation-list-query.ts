@@ -23,6 +23,8 @@ export interface ConversationListRow {
     role: string
   }>
   leads?: {
+    name?: string | null
+    company?: string | { name?: string } | null
     assignee_id: string | null
     status: string | null
   } | null
@@ -89,6 +91,8 @@ export function buildConversationListSelect({
     )
     ${initiationRelations},
     leads${useInnerLead ? "!inner" : ""} (
+      name,
+      company,
       assignee_id,
       status
     )

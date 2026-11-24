@@ -5,6 +5,7 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useSite } from "@/app/context/SiteContext"
+import { useDirectoryLogos } from "@/app/context/use-project-list-logos"
 import { isDemoSiteId } from "@/lib/demo-utils"
 import { Card, CardContent } from "@/app/components/ui/card"
 import { Button } from "@/app/components/ui/button"
@@ -32,7 +33,8 @@ function SelectSiteContent() {
     }
   }, [licenseKey, isLoading, router])
 
-  const realSites = (sites || []).filter((site) => !isDemoSiteId(site.id))
+  const realSites = useMemo(() => sites.filter(site => !isDemoSiteId(site.id)), [sites])
+  const logos = useDirectoryLogos(realSites, !!licenseKey && !isLoading && !error)
 
   const handleApplyLicense = useCallback(async (siteId: string) => {
     if (!licenseKey) return
@@ -123,14 +125,15 @@ function SelectSiteContent() {
         {realSites.length > 0 ? (
           <div className="space-y-3">
             <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-2">{t("account.license.projects")}</h3>
-            {realSites.map(site => (
-              <Card key={site.id} className="border border-border hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer" onClick={() => !isApplying && handleApplyLicense(site.id)}>
+            {realSites.map(site => {
+              const logo = site.logo_url === undefined ? logos?.[site.id] : site.logo_url
+              return <Card key={site.id} className="border border-border hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer" onClick={() => !isApplying && handleApplyLicense(site.id)}>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-4">
                     <div className="h-10 w-10 rounded-md bg-muted overflow-hidden flex items-center justify-center">
-                      {site.logo_url ? (
+                      {logo ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={site.logo_url} alt={site.name} className="h-full w-full object-cover" />
+                        <img src={logo} alt={site.name} className="h-full w-full object-cover" />
                       ) : (
                         <span className="text-sm font-medium">{site.name?.charAt(0)?.toUpperCase() || "P"}</span>
                       )}
@@ -145,7 +148,7 @@ function SelectSiteContent() {
                   </div>
                 </CardContent>
               </Card>
-            ))}
+            })}
           </div>
         ) : null}
 
@@ -169,7 +172,7 @@ function SelectSiteContent() {
         </div>
       </div>
     )
-  }, [isLoading, realSites, error, isApplying, handleApplyLicense, handleCreateNew, t])
+  }, [isLoading, realSites, logos, error, isApplying, handleApplyLicense, handleCreateNew, t])
 
   if (!licenseKey && !isLoading) return null
 

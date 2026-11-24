@@ -33,17 +33,22 @@ import procurementSharedFr from './procurement-shared-fr.json';
 import procurementSharedDe from './procurement-shared-de.json';
 import procurementSharedJa from './procurement-shared-ja.json';
 import type { SupportedLocale } from '../../locale-preferences';
+import previewEn from './workspace-preview-en.json';
+import previewEs from './workspace-preview-es.json';
+import previewFr from './workspace-preview-fr.json';
+import previewDe from './workspace-preview-de.json';
+import previewJa from './workspace-preview-ja.json';
 
 export const screenMessages: Record<SupportedLocale, Record<string, string>> = {
   en: {
     ...missingEn, ...systemEn, ...accountEn, ...authFlowsEn, ...commercePagesEn,
-    ...contentEn, ...detailsEn, ...operationsEn, ...publicEn, ...procurementSharedEn, ...dealsEn,
+    ...contentEn, ...detailsEn, ...operationsEn, ...publicEn, ...procurementSharedEn, ...dealsEn, ...previewEn,
   },
   es: {
     ...missingEs, ...systemEs, ...accountEs, ...authFlowsEs, ...commercePagesEs,
-    ...contentEs, ...detailsEs, ...operationsEs, ...publicEs, ...procurementSharedEs, ...dealsEs,
+    ...contentEs, ...detailsEs, ...operationsEs, ...publicEs, ...procurementSharedEs, ...dealsEs, ...previewEs,
   },
-  fr: { ...missingFr, ...operationsFr, ...bookingFr, ...procurementSharedFr },
-  de: { ...missingDe, ...operationsDe, ...bookingDe, ...procurementSharedDe },
-  ja: { ...missingJa, ...operationsJa, ...bookingJa, ...procurementSharedJa },
+  fr: { ...missingFr, ...operationsFr, ...bookingFr, ...procurementSharedFr, ...previewFr },
+  de: { ...missingDe, ...operationsDe, ...bookingDe, ...procurementSharedDe, ...previewDe },
+  ja: { ...missingJa, ...operationsJa, ...bookingJa, ...procurementSharedJa, ...previewJa },
 };

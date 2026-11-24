@@ -7,17 +7,21 @@ import { useAuth } from '@/app/hooks/use-auth'
 
 jest.mock('@/app/context/SiteContext', () => ({ useSite: jest.fn() }))
 jest.mock('@/app/hooks/use-auth', () => ({ useAuth: jest.fn() }))
+jest.mock('@/app/context/ScreenAccessContext', () => ({ useOptionalScreenAccess: () => {
+  const selected = jest.requireMock('@/app/context/SiteContext').useSite()
+  return { screenScopeStatus: 'ready', verifiedWorkspaceLists: selected.requestScope }
+} }))
 jest.mock('@/app/notifications/actions', () => ({
   getNotifications: jest.fn(), updateNotification: jest.fn(), markAllAsRead: jest.fn(),
   deleteNotification: jest.fn(), deleteAllNotifications: jest.fn(),
 }))
 
 function State() {
-  const { notifications, loading } = useNotifications()
-  return <span data-testid="state">{loading ? 'loading' : notifications.map(n => n.title).join(',')}</span>
+  const { notifications, status } = useNotifications()
+  return <span data-testid="state">{status === 'ready' ? notifications.map(n => n.title).join(',') : status}</span>
 }
-const tree = () => <NotificationsProvider><State /></NotificationsProvider>
-const site = (id: string) => jest.mocked(useSite).mockReturnValue({ currentSite: { id } } as ReturnType<typeof useSite>)
+const tree = () => <NotificationsProvider active><State /></NotificationsProvider>
+const site = (id: string) => jest.mocked(useSite).mockReturnValue({ currentSite: { id }, requestScope: { actorId: 'user', siteId: id } } as ReturnType<typeof useSite>)
 
 describe('notification provider lifecycle isolation', () => {
   beforeEach(() => {

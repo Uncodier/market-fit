@@ -2,11 +2,12 @@
 import { DueDateSummary } from "@/app/components/finance/DueDateSummary"
 
 import React from "react"
-import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd"
-import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
+import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd"
+import { Card } from "@/app/components/ui/card"
 import { Badge } from "@/app/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { Sale } from "@/app/types"
+import type { SalesListRow } from "../sales-list-row"
 import { formatCurrency } from "@/app/components/dashboard/campaign-revenue-donut"
 import { format } from "date-fns"
 import { Button } from "@/app/components/ui/button"
@@ -17,15 +18,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/app/components/ui/dropdown-menu"
-
-// Status colors for sales
-const STATUS_STYLES = {
-  draft: "bg-gray-50 text-gray-700 hover:bg-gray-50 border-gray-200",
-  pending: "bg-yellow-50 text-yellow-700 hover:bg-yellow-50 border-yellow-200",
-  completed: "bg-green-50 text-green-700 hover:bg-green-50 border-green-200",
-  cancelled: "bg-red-50 text-red-700 hover:bg-red-50 border-red-200",
-  refunded: "bg-purple-50 text-purple-700 hover:bg-purple-50 border-purple-200"
-}
 
 // Source colors for sales
 const SOURCE_STYLES: Partial<Record<Sale["source"], string>> = {
@@ -43,9 +35,8 @@ const SALE_STATUSES = [
 ]
 
 interface KanbanViewProps {
-  sales: Sale[]
+  sales: SalesListRow[]
   onUpdateSaleStatus: (saleId: string, newStatus: string) => Promise<void>
-  segments: Array<{ id: string; name: string }>
   onSaleClick: (sale: Sale) => void
   onPrintSale: (sale: Sale) => void
   onRegisterPayment: (sale: Sale) => void
@@ -54,30 +45,21 @@ interface KanbanViewProps {
 export function KanbanView({ 
   sales, 
   onUpdateSaleStatus, 
-  segments,
   onSaleClick,
   onPrintSale,
   onRegisterPayment
 }: KanbanViewProps) {
   // Group sales by status
   const salesByStatus = React.useMemo(() => {
-    const grouped: Record<string, Sale[]> = {}
+    const grouped: Record<string, SalesListRow[]> = {}
     SALE_STATUSES.forEach(status => {
       grouped[status.id] = sales.filter(sale => sale.status === status.id)
     })
     return grouped
   }, [sales])
 
-  // Function to get segment name from its ID
-  const getSegmentName = (segmentId: string | null) => {
-    if (!segmentId) return "No Segment"
-    if (!segments || !Array.isArray(segments)) return "Unknown Segment"
-    const segment = segments.find(s => s.id === segmentId)
-    return segment?.name || "Unknown Segment"
-  }
-
   // Handle drag end
-  const handleDragEnd = async (result: any) => {
+  const handleDragEnd = async (result: DropResult) => {
     const { destination, source, draggableId } = result
 
     // If there's no destination or the item was dropped in its original position
@@ -99,7 +81,7 @@ export function KanbanView({
   const formatDate = (dateString: string) => {
     try {
       return format(new Date(dateString), 'MMM d, yyyy')
-    } catch (error) {
+    } catch {
       return dateString
     }
   }
@@ -203,9 +185,9 @@ export function KanbanView({
                                       <Badge 
                                         variant="secondary" 
                                         className="text-[10px]"
-                                        title={getSegmentName(sale.segmentId)}
+                                        title={sale.segmentName || "Unknown Segment"}
                                       >
-                                        {getSegmentName(sale.segmentId)}
+                                        {sale.segmentName || "Unknown Segment"}
                                       </Badge>
                                     )}
                                   </div>

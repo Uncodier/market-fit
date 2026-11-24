@@ -5,11 +5,13 @@ import { createClient } from "@/lib/supabase/client"
 import { useOptionalSite } from "@/app/context/SiteContext"
 import {
   commandAllowed,
+  capabilitiesFromRole,
   parseCapabilities,
   setPermissionStore,
 } from "@/lib/permissions/capabilities"
 import type { PermissionCommand, SiteCapabilities } from "@/lib/permissions/types"
 import { useLocationPermissionRevision } from '@/app/hooks/use-location-permission-revision'
+import { useWorkspaceAccessSnapshot } from './WorkspaceAccessSnapshot'
 
 type PermissionContextValue = {
   siteId: string | null
@@ -37,28 +39,27 @@ export function PermissionProvider({ children }: { children: ReactNode }) {
   const site = useOptionalSite()
   const siteId = site?.currentSite?.id ?? null
   useLocationPermissionRevision(siteId)
-  const [loaded, setLoaded] = useState<{ siteId: string; capabilities: SiteCapabilities | null } | null>(null)
-  const capabilities = loaded?.siteId === siteId ? loaded.capabilities : null
+  const snapshot = useWorkspaceAccessSnapshot()
+  const legacy = !snapshot || siteId?.startsWith('demo-') || (snapshot.siteId === siteId && snapshot.read?.status === 'legacy')
+  const source = useMemo(() => ({ siteId, legacy: !!legacy, read: snapshot?.read }), [siteId, legacy, snapshot?.read])
+  const [loaded, setLoaded] = useState<{ source: object; capabilities: SiteCapabilities | null } | null>(null)
+  const confirmed = snapshot?.siteId === siteId && snapshot?.read?.status === 'ready' ? snapshot.read : null
+  const capabilities = useMemo(() => source.legacy ? (loaded?.source === source ? loaded.capabilities : null)
+    : capabilitiesFromRole(confirmed?.role ?? null), [confirmed, source, loaded])
 
   useEffect(() => {
     let cancelled = false
-    setPermissionStore({ siteId, capabilities: null, loaded: false })
-
-    if (!siteId) {
-      setPermissionStore({ siteId: null, capabilities: null, loaded: true })
-      return
-    }
-
-    fetchCapabilities(siteId).then((next) => {
+    if (!source.siteId || !source.legacy) return
+    fetchCapabilities(source.siteId).then((next) => {
       if (cancelled) return
-      setLoaded({ siteId, capabilities: next })
-      setPermissionStore({ siteId, capabilities: next, loaded: true })
+      setLoaded({ source, capabilities: next })
     })
-
-    return () => {
-      cancelled = true
-    }
-  }, [siteId])
+    return () => { cancelled = true }
+  }, [source])
+  useEffect(() => {
+    setPermissionStore({ siteId, capabilities, loaded: !siteId || !!capabilities })
+    return () => setPermissionStore({ siteId: null, capabilities: null, loaded: false })
+  }, [siteId, capabilities])
 
   const value = useMemo<PermissionContextValue>(() => {
     const can = (command: PermissionCommand) => {

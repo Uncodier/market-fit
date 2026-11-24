@@ -50,7 +50,11 @@ function latestActiveConnector(connections: readonly Connector[]) {
 }
 
 export default function ConnectorDetailPage({ slug }: { slug: string }) {
-  return <ConnectorSiteScope loading={<ConnectorDetailSkeleton fullPage />}>{(siteId, scope) => <DetailContent key={`${scope}:${slug}`} siteId={siteId} slug={slug} />}</ConnectorSiteScope>
+  const workspace = useSearchParams().get("workspace")
+  const { t } = useLocalization()
+  return <ConnectorSiteScope loading={<ConnectorDetailSkeleton fullPage />}>{(siteId, scope) =>
+    workspace && workspace !== siteId ? <p role="status" className="p-6 text-sm">{t("connectors.reviewOriginalWorkspace")}</p>
+      : <DetailContent key={`${scope}:${slug}`} siteId={siteId} slug={slug} />}</ConnectorSiteScope>
 }
 
 export function DetailContent({ siteId, slug }: { siteId: string; slug: string }) {
@@ -132,7 +136,7 @@ export function DetailContent({ siteId, slug }: { siteId: string; slug: string }
         </SectionCard>
         <SectionCard id="connection"><SectionCardHeader title={t("connectors.connection")} description={t("connectors.accountHelp")} />
           <SectionCardContent>
-            {!data.connections.length && <p className="text-sm text-muted-foreground">{t("connectors.noVisibleAccounts")}</p>}
+            {!data.connections.length && <p className="text-sm text-muted-foreground">{t(data.connection_setup?.kind === "no_auth" ? "connectors.noAccountRequired" : "connectors.noVisibleAccounts")}</p>}
             {data.connections.length > 0 && !selected && !requestedAccount && <p className="text-sm text-muted-foreground">{t("connectors.noActiveAccounts")}</p>}
             {requestedAccount && !selected && <ConnectorError error={new ConnectorRequestError("not_found", 404)} />}
             {selected && <div className="space-y-3">

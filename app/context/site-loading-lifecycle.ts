@@ -1,9 +1,9 @@
 "use client"
 
-import { useLayoutEffect, useRef, type Dispatch, type SetStateAction } from "react"
+import { useLayoutEffect, useRef, useState, type Dispatch, type SetStateAction } from "react"
 import { loadAccessibleSites, type LoadSitesDeps } from "./site-load-sites"
 import { applyCurrentSite } from "./site-set-current"
-import type { Site } from "./site-types"
+import type { Site, WorkspaceRequestScope } from "./site-types"
 import { cacheSiteSelection, clearSiteSelectionCache, discardForeignSiteSelection, readSiteSelection } from "./site-selection-cache"
 import { isDemoModeActive } from "@/lib/demo-utils"
 import { refreshSiteBillingRecord } from "./site-refresh-billing"
@@ -18,18 +18,24 @@ export const SITE_HYDRATION_TIMEOUT_MS = 10_000
 /** One generation owns all publications, including deferred React state updaters. */
 export function useSiteLoadingLifecycle(deps: LifecycleDeps) {
   const latest = useRef(deps)
+  // Keep the request target independent of settings. Only an independently
+  // authorized reader may use it after a transient settings failure.
+  const [requestScope, setRequestScope] = useState<WorkspaceRequestScope | null>(null)
   const generation = useRef(0)
   const active = useRef(true)
   const hydrating = useRef(false)
   const selection = useRef<Promise<void> | null>(null)
   const initialLoad = useRef<Promise<void> | null>(null)
   const controller = useRef<AbortController | null>(null)
+  const selectionReads = useRef<AbortController | null>(null)
   const revalidationTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   function retire() {
     if (revalidationTimer.current) clearTimeout(revalidationTimer.current)
     revalidationTimer.current = null
     generation.current += 1
+    selectionReads.current?.abort()
+    selectionReads.current = null
     controller.current?.abort()
     controller.current = null
     hydrating.current = false
@@ -56,24 +62,31 @@ export function useSiteLoadingLifecycle(deps: LifecycleDeps) {
   }, [])
 
   function invalidate() {
+    setRequestScope(null)
     clearSiteSelectionCache()
     retire()
     latest.current = { ...latest.current, currentSite: null, isInitialized: false }
   }
 
   function retireDeniedScope() {
+    setRequestScope(null)
     retire()
     latest.current = { ...latest.current, currentSite: null }
   }
 
+  function retireRemovedSelection() {
+    // The successful list MUST still publish its other accessible sites. Only
+    // its removed selection (including pending detail and React setters) retires.
+    selectionReads.current?.abort()
+    selectionReads.current = null
+    hydrating.current = false
+    setRequestScope(null)
+    latest.current = { ...latest.current, currentSite: null }
+    latest.current.setIsInitialized(true)
+  }
+
   async function bounded(request: number, signal: AbortSignal, operation: () => Promise<void>, initial: boolean | (() => boolean)) {
     let timer: ReturnType<typeof setTimeout> | undefined
-    let onAbort = () => {}
-    const cancelled = new Promise<void>(resolve => {
-      onAbort = resolve
-      if (signal.aborted) resolve()
-      else signal.addEventListener("abort", onAbort, { once: true })
-    })
     const deadline = new Promise<void>(resolve => {
       timer = setTimeout(() => {
         if (active.current && generation.current === request) {
@@ -86,8 +99,8 @@ export function useSiteLoadingLifecycle(deps: LifecycleDeps) {
         resolve()
       }, SITE_HYDRATION_TIMEOUT_MS)
     })
-    try { await Promise.race([operation(), deadline, cancelled]) }
-    finally { clearTimeout(timer); signal.removeEventListener("abort", onAbort) }
+    try { await Promise.race([waitForHydration(operation(), signal), deadline]) }
+    finally { clearTimeout(timer) }
   }
 
   function guardSetter<T>(setter: Dispatch<SetStateAction<T>>, isCurrent: () => boolean) {
@@ -109,22 +122,39 @@ export function useSiteLoadingLifecycle(deps: LifecycleDeps) {
     return true
   }
 
-  async function select(site: Site, isCurrent: () => boolean, requireSettings = false) {
+  async function select(site: Site, isCurrent: () => boolean) {
     if (!isCurrent()) return
     const state = latest.current
-    if (!hydrating.current && state.currentSite?.id === site.id) return
+    if (!hydrating.current && state.currentSite?.id === site.id) return true
+    selectionReads.current?.abort()
+    const reads = new AbortController()
+    selectionReads.current = reads
+    const ownsSelection = () => isCurrent() && !reads.signal.aborted
+    const actorId = state.authUserIdRef.current
+    setRequestScope(actorId && !site.id.startsWith('demo-') ? { actorId, siteId: site.id } : null)
     hydrating.current = true
     latest.current = { ...latest.current, currentSite: site }
     state.setIsLoading(true)
     try {
-      await applyCurrentSite({
+      await waitForHydration(applyCurrentSite({
         site, currentSite: null, supabase: state.supabaseRef.current,
-        requireSettings,
-        setSites: guardSetter(state.setSites, isCurrent),
-        setCurrentSite: guardSetter(state.setCurrentSite, isCurrent),
-      })
+        requireSettings: !site.id.startsWith('demo-'), signal: reads.signal,
+        setSites: guardSetter(state.setSites, ownsSelection),
+        setCurrentSite: guardSetter(state.setCurrentSite, ownsSelection),
+      }), reads.signal)
+      return ownsSelection()
+    } catch (error) {
+      // A rejected old-actor/site query can settle after cancellation too.
+      if (ownsSelection()) {
+        // Keep the read-only request target, not an operational site. Updating
+        // the ref here also prevents a same-site retry from being short-circuited.
+        latest.current = { ...latest.current, currentSite: null }
+        state.setCurrentSite(null)
+        state.setError(error instanceof Error ? error : new Error('Selected site settings could not be loaded.'))
+      }
+      return false
     } finally {
-      if (isCurrent()) {
+      if (ownsSelection()) {
         hydrating.current = false
         state.setIsLoading(false)
       }
@@ -136,13 +166,25 @@ export function useSiteLoadingLifecycle(deps: LifecycleDeps) {
     const { request, signal } = begin()
     const isCurrent = () => active.current && generation.current === request
     cacheSiteSelection(latest.current.authUserIdRef.current, site)
+    latest.current.setError(null)
     const pending = bounded(request, signal, async () => {
-      await select(site, isCurrent)
-      refreshBilling(site, isCurrent)
+      if (await select(site, isCurrent)) refreshBilling(site, isCurrent)
     }, true)
     selection.current = pending
     try { await pending }
     finally { if (selection.current === pending) selection.current = null }
+  }
+
+  function waitForHydration(work: Promise<void>, reads: AbortSignal) {
+    // Some transports settle after cancellation (or not at all). A removed
+    // selection must release the parent list and its deadline immediately.
+    let onAbort = () => {}
+    const cancelled = new Promise<void>(resolve => {
+      onAbort = resolve
+      if (reads.aborted) resolve()
+      else reads.addEventListener('abort', onAbort, { once: true })
+    })
+    return Promise.race([work, cancelled]).finally(() => reads.removeEventListener('abort', onAbort))
   }
 
   async function loadSites(fresh = false) {
@@ -155,8 +197,7 @@ export function useSiteLoadingLifecycle(deps: LifecycleDeps) {
     const isCurrent = () => active.current && generation.current === request
     let cacheHydrated = false
     const selectLoadedSite = async (site: Site) => {
-      await select(site, isCurrent)
-      if (isCurrent()) cacheHydrated = true
+      if (await select(site, isCurrent)) cacheHydrated = true
     }
     const pending = bounded(request, signal, async () => {
       let userId = state.authUserIdRef.current
@@ -173,6 +214,7 @@ export function useSiteLoadingLifecycle(deps: LifecycleDeps) {
       }
       discardForeignSiteSelection(userId)
       const cached = !state.currentSite && !isDemoModeActive() ? readSiteSelection(userId) : null
+      if (!cached && !state.currentSite) setRequestScope(null)
       if (cached) {
         // Publish identity without waiting for the full list. Settings remain independently
         // gated, so currency and checkout configuration never come from invented defaults.
@@ -180,14 +222,10 @@ export function useSiteLoadingLifecycle(deps: LifecycleDeps) {
         state.setCurrentSite(cached)
         hydrating.current = true
       }
-      const hydration = cached ? select(cached, isCurrent, true).then(() => {
-        if (!isCurrent()) return
+      const hydration = cached ? select(cached, isCurrent).then(completed => {
+        if (!isCurrent() || !completed) return
         cacheHydrated = true
         state.setIsInitialized(true)
-      }).catch(error => {
-        if (!isCurrent()) return
-        state.setCurrentSite(null)
-        state.setError(error instanceof Error ? error : new Error(String(error)))
       }) : Promise.resolve()
       const listing = loadAccessibleSites({
         ...state, supabase: state.supabaseRef.current, sessionUserId: userId,
@@ -195,6 +233,7 @@ export function useSiteLoadingLifecycle(deps: LifecycleDeps) {
         isInitialized: Boolean(cached) || (state.isInitialized && !hydrating.current),
         isCurrent, signal, fresh, selectSite: selectLoadedSite, reload: loadSites,
         onAccessDenied: retireDeniedScope,
+        onSelectionRemoved: retireRemovedSelection,
       }).then(async result => {
         const billingStarted = refreshBilling(result?.site, isCurrent)
         if (result?.authoritative === false && isCurrent()) {
@@ -218,6 +257,7 @@ export function useSiteLoadingLifecycle(deps: LifecycleDeps) {
             isInitialized: true, isCurrent, signal, fresh: true,
             selectSite: selectLoadedSite, reload: loadSites,
             onAccessDenied: retireDeniedScope,
+            onSelectionRemoved: retireRemovedSelection,
           })
           if (!billingStarted) refreshBilling(fresh?.site, isCurrent)
         }
@@ -229,5 +269,5 @@ export function useSiteLoadingLifecycle(deps: LifecycleDeps) {
     finally { if (initialLoad.current === pending) initialLoad.current = null }
   }
 
-  return { loadSites, selectSite, invalidate }
+  return { loadSites, selectSite, invalidate, requestScope }
 }

@@ -23,6 +23,7 @@ export function ConnectorPolicyEditor({ siteId, access, connector, canManage, pe
   const savedAssistant = access.policy.allowed_hosts.includes("assistant")
   const ask = useAskStatus(siteId, connector, canManage)
   const { status } = ask
+  const restrictedAsk = status?.ask_compatible === false || status?.ask_compatible === null
   const [askDraft, setAskDraft] = useState<AskAccessIntent>()
   const verified = !!status && isAskVerified(status)
   const unified = status?.authorization_mode === "host_policy"
@@ -46,7 +47,7 @@ export function ConnectorPolicyEditor({ siteId, access, connector, canManage, pe
   const activatable = connector.provider_status.toUpperCase() === "ACTIVE" && !!connector.verified_at && !connector.revocation_pending
   const catalogReady = assistant && enabled && activatable && !connector.revocation_dispatched
   const askReady = verified && !!access.policy.tool_access_mode && enabled && activatable && !connector.revocation_dispatched && (mode === "all" || tools.length > 0)
-  const invalidDraft = optingOut ? otherChanges : (enabled && !activatable) || (catalogChanged && !catalogReady) || (intent?.enabled && (!askReady || !assistant))
+  const invalidDraft = optingOut ? otherChanges : (restrictedAsk && !savedAssistant && assistant) || (enabled && !activatable) || (catalogChanged && !catalogReady) || (intent?.enabled && (!askReady || !assistant))
   function savePolicy() {
     if (!canManage || pending || ask.pending || blocked || !dirty || invalidDraft) return
     if (optingOut) return save({ catalog_reads: false })
@@ -78,7 +79,7 @@ export function ConnectorPolicyEditor({ siteId, access, connector, canManage, pe
           <AskStatus connector={connector} policy={access.policy} resource={ask} disabled={pending}
             onRefresh={() => { setAskDraft(undefined); setHostDraft(savedAssistant); ask.refresh(); if (ask.mismatch) onChanged() }}
             onRevoke={() => { setAskDraft(undefined); void ask.revoke() }} />
-          {hostPolicy && <label className="flex items-center gap-2 text-sm"><Checkbox checked={assistant} disabled={blocked || pending || ask.pending}
+          {hostPolicy && <label className="flex items-center gap-2 text-sm"><Checkbox checked={assistant} disabled={blocked || pending || ask.pending || (restrictedAsk && !assistant)}
             onCheckedChange={value => setHostDraft(value === true)} />{t(unified ? "connectors.askHostPolicy" : "connectors.assistantHost")}</label>}
           {!unified && status && !status.enabled && !status.setup_pending && (status.explicitly_disabled || !verified) && <Button type="button" variant="outline" size="sm"
             disabled={blocked || pending || ask.pending || (!intent && (!assistant || !askReady))}

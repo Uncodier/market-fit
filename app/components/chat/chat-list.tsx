@@ -1,7 +1,6 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
 import { Button } from "@/app/components/ui/button"
 import { MessageSquare, Check, X } from "@/app/components/ui/icons"
 import { cn } from "@/lib/utils"
@@ -9,8 +8,7 @@ import { SearchInput } from "@/app/components/ui/search-input"
 import { useTheme } from "@/app/context/ThemeContext"
 import { useAuthContext } from "@/app/components/auth/auth-provider"
 import { ConversationListItem } from "@/app/types/chat"
-import { Skeleton } from "@/app/components/ui/skeleton"
-import { createClient } from "@/lib/supabase/client"
+import { ConversationListSkeleton } from "./conversation-list-skeleton"
 import { RenameConversationModal } from "./RenameConversationModal"
 import { DeleteConfirmationModal } from "./DeleteConfirmationModal"
 import { EmptyCard } from "@/app/components/ui/empty-card"
@@ -22,32 +20,9 @@ import { useConversationRealtime } from "@/app/hooks/useConversationRealtime"
 import { useConversationListActions } from "@/app/hooks/useConversationListActions"
 import { useAutoSelectTopConversation } from "@/app/hooks/useAutoSelectTopConversation"
 import { useLocalization } from "@/app/context/LocalizationContext"
-
-// Componente para renderizar esqueletos de carga
-function ConversationSkeleton() {
-  return (
-    <div className="w-full text-left py-3 px-4 rounded-none border-b dark:border-white/5 border-black/5" style={{ boxSizing: 'border-box' }}>
-      <div className="flex items-center justify-between mb-1 gap-2">
-        <div className="flex items-center gap-2 min-w-0 flex-1">
-          <Skeleton className="h-4 w-[60%]" />
-          <Skeleton className="h-4 w-16 rounded-full" />
-        </div>
-      </div>
-      <div className="mt-1">
-        <Skeleton className="h-3 w-[85%]" />
-      </div>
-      <div className="flex justify-between items-center mt-2">
-        <div className="flex items-center gap-1">
-          <Skeleton className="h-3 w-3 rounded-full" />
-          <Skeleton className="h-3 w-20" />
-          <Skeleton className="h-3 w-1" />
-          <Skeleton className="h-3 w-24" />
-        </div>
-        <Skeleton className="h-3 w-10" />
-      </div>
-    </div>
-  )
-}
+import { isDemoSiteId } from "@/lib/demo-utils"
+import type { ConversationFilter } from "@/app/services/getConversations.client"
+import { useConversationListEvents } from "@/app/hooks/useConversationListEvents"
 
 interface ChatListProps {
   siteId: string
@@ -58,6 +33,8 @@ interface ChatListProps {
   onDeleteConversation?: (conversationId: string) => Promise<void>
   isCollapsed?: boolean
   hasSelectedConversation?: boolean
+  /** Only the independently authorized page-one read is available until workspace setup finishes. */
+  previewOnly?: boolean
 }
 
 export function ChatList({
@@ -67,65 +44,24 @@ export function ChatList({
   className,
   onLoadConversations,
   onDeleteConversation,
+  previewOnly = false,
 }: ChatListProps) {
-  const router = useRouter()
   const { t } = useLocalization()
   const [searchQuery, setSearchQuery] = useState("")
   const { byConversation } = usePrivateReviews()
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("")
-  const [combinedFilter, setCombinedFilter] = useState<'all' | 'outbound' | 'inbound' | 'replied' | 'tasks' | 'assigned' | 'qualified'>('all')
+  const searchPending = searchQuery.trim() !== debouncedSearchQuery
+  const [combinedFilter, setCombinedFilter] = useState<ConversationFilter>('all')
   const { isDarkMode } = useTheme()
-  const { user } = useAuthContext()
-  const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null)
-  
-  // Load user avatar
-  useEffect(() => {
-    const fetchUserAvatar = async () => {
-      if (!user) return
-      
-      try {
-        const supabase = createClient()
-        
-        // First try to get the user's profile from the database using email
-        const { data: profile, error } = await supabase
-          .from('profiles')
-          .select('avatar_url')
-          .eq('email', user.email)
-          .single()
-          
-        if (!error && profile && profile.avatar_url) {
-          setUserAvatarUrl(profile.avatar_url)
-          return
-        }
-        
-        // If no avatar in profile, try with user_metadata
-        if (user.user_metadata?.avatar_url) {
-          setUserAvatarUrl(user.user_metadata.avatar_url)
-          return
-        }
-        
-        // Try with identities if available
-        if (user.identities?.[0]?.identity_data?.avatar_url) {
-          setUserAvatarUrl(user.identities[0].identity_data.avatar_url)
-          return
-        }
-        
-        // If no avatar anywhere, use null (will show initials)
-        setUserAvatarUrl(null)
-      } catch (error) {
-        console.error("Error fetching user avatar:", error)
-        setUserAvatarUrl(null)
-      }
-    }
-    
-    fetchUserAvatar()
-  }, [user])
+  const auth = useAuthContext()
+  const user = auth.isLoading ? null : auth.user
+  const userAvatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture || user?.identities?.[0]?.identity_data?.avatar_url
 
   // Debounce search query to avoid excessive API calls
   useEffect(() => {
     const timer = setTimeout(() => {
-      setDebouncedSearchQuery(searchQuery)
-    }, 300) // 300ms delay
+      setDebouncedSearchQuery(searchQuery.trim())
+    }, 300)
 
     return () => clearTimeout(timer)
   }, [searchQuery])
@@ -137,29 +73,34 @@ export function ChatList({
     hasMore,
     hasEmptyResult,
     isInitialLoad,
+    isValidating, readError, pageError, terminalError,
     updateConversations,
     refreshConversations,
     loadMore,
   } = useConversationsList({
-    siteId,
+    // Hide the preceding search immediately, without issuing a keystroke request.
+    siteId: searchPending ? '' : siteId,
     userId: user?.id,
     combinedFilter,
     debouncedSearchQuery,
+    previewOnly,
   })
+  const readOnly = previewOnly || !siteId || (!user?.id && !isDemoSiteId(siteId)) || !!readError || isInitialLoad
 
   // An approval can arrive before the conversation INSERT reaches realtime.
   // Revalidate the real list, never manufacture a row from private inbox data.
   const seenRequests = React.useRef(new Set<string>())
   useEffect(() => {
-    if (isInitialLoad || combinedFilter !== 'all' || debouncedSearchQuery) return
+    if (readOnly || combinedFilter !== 'all' || debouncedSearchQuery) return
     const listed = new Set(conversations.map(row => row.id))
     const needsRefresh = [...byConversation].some(([id, requests]) =>
       !listed.has(id) && requests.some(request => !seenRequests.current.has(request.id)))
     seenRequests.current = new Set([...byConversation.values()].flatMap(requests => requests.map(request => request.id)))
     if (needsRefresh) void refreshConversations()
-  }, [byConversation, conversations, refreshConversations, isInitialLoad, combinedFilter, debouncedSearchQuery])
+  }, [byConversation, conversations, refreshConversations, readOnly, combinedFilter, debouncedSearchQuery])
 
   useAutoSelectTopConversation({
+    enabled: !readOnly,
     conversations,
     isLoading,
     isInitialLoad,
@@ -175,104 +116,17 @@ export function ChatList({
     handleAcceptAllPending, handleRejectAllPending,
   } = useConversationListActions({ siteId, selectedConversationId, onDeleteConversation, updateConversations, refreshConversations })
 
-  const handleLoadMore = async () => {
-    await loadMore()
-  }
+  useConversationRealtime({ siteId: readOnly ? '' : siteId, selectedConversationId, updateConversations, refreshConversations,
+    filtered: combinedFilter !== 'all' || !!debouncedSearchQuery, onLoadConversations: readOnly ? undefined : onLoadConversations })
+  useConversationListEvents(!readOnly, selectedConversationId, updateConversations)
 
-  useConversationRealtime({ siteId, selectedConversationId, updateConversations, refreshConversations, onLoadConversations })
-
-  // Listen for custom conversation deleted event
-  useEffect(() => {
-    const handleConversationDeleted = (event: CustomEvent) => {
-      const { conversationId: deletedId } = event.detail
-      console.log('🔍 Custom conversation:deleted event received:', deletedId)
-      
-      // Remove the conversation from the list immediately
-      updateConversations(prevConversations => 
-        prevConversations.filter(conv => conv.id !== deletedId)
-      )
-      
-      // If the deleted conversation was selected, redirect to chat list
-      if (selectedConversationId === deletedId) {
-        router.push('/chat')
-      }
-    }
-
-    window.addEventListener('conversation:deleted', handleConversationDeleted as EventListener)
-    
-    return () => {
-      window.removeEventListener('conversation:deleted', handleConversationDeleted as EventListener)
-    }
-  }, [selectedConversationId, router, updateConversations])
-
-  // Listen for message accepted event to update conversation icon
-  useEffect(() => {
-    const handleMessageAccepted = (event: CustomEvent) => {
-      const { conversationId: acceptedConvId } = event.detail
-      console.log('🔍 Custom conversation:message-accepted event received:', acceptedConvId)
-      
-      // Update the conversation to mark it has an accepted message
-      updateConversations(prevConversations => 
-        prevConversations.map(conv => 
-          conv.id === acceptedConvId 
-            ? { ...conv, hasAcceptedMessage: true }
-            : conv
-        )
-      )
-    }
-
-    window.addEventListener('conversation:message-accepted', handleMessageAccepted as EventListener)
-    
-    return () => {
-      window.removeEventListener('conversation:message-accepted', handleMessageAccepted as EventListener)
-    }
-  }, [updateConversations])
-
-  // Listen for lead status update event to refresh conversation list
-  useEffect(() => {
-    const handleLeadStatusUpdate = (event: CustomEvent) => {
-      const { leadId, newStatus, conversationId: updatedConvId } = event.detail
-      console.log('🔍 Custom lead:status-updated event received:', { leadId, newStatus, conversationId: updatedConvId })
-      
-      // Update the conversation's leadStatus in the list
-      updateConversations(prevConversations => 
-        prevConversations.map(conv => 
-          conv.id === updatedConvId && conv.leadName
-            ? { ...conv, leadStatus: newStatus }
-            : conv
-        )
-      )
-    }
-
-    window.addEventListener('lead:status-updated', handleLeadStatusUpdate as EventListener)
-    
-    return () => {
-      window.removeEventListener('lead:status-updated', handleLeadStatusUpdate as EventListener)
-    }
-  }, [updateConversations])
-
-
-  // No need for client-side filtering since search is done at database level
-  const filteredConversations = conversations
-
-  // Separar conversaciones pendientes del resto
-  const pendingConversations = filteredConversations.filter(conv => conv.status === 'pending')
-  const otherConversations = filteredConversations.filter(conv => conv.status !== 'pending')
-
-  // Determinar si mostrar el estado vacío después de la búsqueda
-  const showEmptyState = !isLoading && (
-    (isInitialLoad === false && hasEmptyResult) || 
-    (!isInitialLoad && filteredConversations.length === 0)
-  );
+  const pendingConversations = conversations.filter(conv => conv.status === 'pending')
+  const otherConversations = conversations.filter(conv => conv.status !== 'pending')
 
   const handleSelectConversation = (conversation: ConversationListItem) => {
-    // No hacer nada si ya está seleccionada la conversación
-    if (selectedConversationId === conversation.id) {
-      return;
+    if (!readOnly && selectedConversationId !== conversation.id) {
+      onSelectConversation(conversation.id, conversation.agentName, conversation.agentId, conversation.title)
     }
-    
-    // Solo notificar al componente padre, sin recargar la lista
-    onSelectConversation(conversation.id, conversation.agentName, conversation.agentId, conversation.title);
   }
   
 
@@ -288,7 +142,6 @@ export function ChatList({
           <SearchInput
             placeholder={t('chat.list.search')}
             value={searchQuery}
-            onSearch={setSearchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className={cn(
               "w-full h-10 text-sm rounded-lg",
@@ -312,19 +165,26 @@ export function ChatList({
               userName={user?.user_metadata?.name || user?.email}
             />
             
-            {isLoading ? (
-              <div className="pb-[200px]">
-                {Array(5).fill(0).map((_, index) => (
-                  <ConversationSkeleton key={index} />
-                ))}
+            {readError && (
+              <div role="alert" className="grid gap-2 px-4 py-4 text-sm text-muted-foreground">
+                <p>{terminalError
+                  ? t('chat.list.unavailable')
+                  : conversations.length ? t('chat.list.stale') : t('chat.list.loadFailed')}</p>
+                {!terminalError && <Button size="sm" variant="outline" disabled={isValidating} onClick={refreshConversations}>
+                  {isValidating ? t('chat.list.retrying') : t('common.retry')}
+                </Button>}
               </div>
-            ) : showEmptyState ? (
+            )}
+            {isLoading ? (
+              <ConversationListSkeleton label={t('chat.list.loading')} />
+            ) : hasEmptyResult ? (
               <div className="flex-1 flex flex-col items-center justify-center w-full h-full p-6 md:p-8">
                 <div className="w-full max-w-[280px] mx-auto flex items-center justify-center">
                   <EmptyCard
                     icon={<MessageSquare className="h-10 w-10 text-muted-foreground" />}
                     title="No conversations"
-                    description="Start a new conversation with an agent to see it here."
+                    description={debouncedSearchQuery || combinedFilter !== 'all'
+                      ? t('chat.list.tryFilter') : 'Start a new conversation with an agent to see it here.'}
                     variant="fancy"
                     showShadow={false}
                     contentClassName="py-8"
@@ -344,7 +204,7 @@ export function ChatList({
                     Pending ({pendingConversations.length})
                   </div>
                   {/* Bulk Actions Toolbar */}
-                  <div className="flex items-center gap-2 px-4 py-2 border-b dark:border-white/5 border-black/5 bg-muted/30 h-12 max-h-12 min-h-12 flex-shrink-0 overflow-hidden">
+                  {!readOnly && <div className="flex items-center gap-2 px-4 py-2 border-b dark:border-white/5 border-black/5 bg-muted/30 h-12 max-h-12 min-h-12 flex-shrink-0 overflow-hidden">
                     <Button
                       variant="outline"
                       size="sm"
@@ -373,10 +233,11 @@ export function ChatList({
                       )}
                       Reject All
                     </Button>
-                  </div>
+                  </div>}
                   {pendingConversations.map(conversation => (
                     <ConversationItem
-                      reviewCount={byConversation.get(conversation.id)?.length}
+                      readOnly={readOnly}
+                      reviewCount={readOnly ? undefined : byConversation.get(conversation.id)?.length}
                       key={conversation.id}
                       conversation={conversation}
                       isSelected={selectedConversationId === conversation.id}
@@ -402,7 +263,8 @@ export function ChatList({
                   )}
                   {otherConversations.map(conversation => (
                     <ConversationItem
-                      reviewCount={byConversation.get(conversation.id)?.length}
+                      readOnly={readOnly}
+                      reviewCount={readOnly ? undefined : byConversation.get(conversation.id)?.length}
                       key={conversation.id}
                       conversation={conversation}
                       isSelected={selectedConversationId === conversation.id}
@@ -415,12 +277,12 @@ export function ChatList({
                 </div>
               )}
               
-              {/* Load More Button - similar to commands-table.tsx */}
               {hasMore && (
-                <div className="flex justify-center py-4 px-4">
+                <div className="grid justify-items-center gap-2 py-4 px-4">
+                  {pageError && <p role="alert" className="text-sm text-muted-foreground">{t('chat.list.pageFailed')}</p>}
                   <Button
                     variant="outline"
-                    onClick={handleLoadMore}
+                    onClick={loadMore}
                     disabled={isLoadingMore}
                     className="w-full max-w-[280px]"
                   >
@@ -429,7 +291,7 @@ export function ChatList({
                         <div className="h-4 w-4 animate-pulse bg-muted rounded" />
                         <span>Loading</span>
                       </div>
-                    ) : "Load More"}
+                    ) : pageError ? t('chat.list.retryPage') : 'Load More'}
                   </Button>
                 </div>
               )}
@@ -439,8 +301,7 @@ export function ChatList({
         </div>
       </div>
       
-      {/* Modal para renombrar conversación */}
-      {currentConversation && (
+      {!readOnly && currentConversation && conversations.some(row => row.id === currentConversation.id) && (
         <RenameConversationModal
           open={renameModalOpen}
           onOpenChange={setRenameModalOpen}
@@ -451,8 +312,7 @@ export function ChatList({
         />
       )}
       
-      {/* Modal de confirmación para eliminar conversación */}
-      {conversationToDelete && (
+      {!readOnly && conversationToDelete && conversations.some(row => row.id === conversationToDelete.id) && (
         <DeleteConfirmationModal
           open={deleteModalOpen}
           onOpenChange={setDeleteModalOpen}

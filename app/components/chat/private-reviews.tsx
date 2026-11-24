@@ -23,20 +23,21 @@ export function indexReviews(items: ReviewRequest[]) {
 const PrivateReviews = createContext({ byConversation: indexReviews([]), siteId: "", authorized: false, refreshing: false, reload: () => {} })
 export const usePrivateReviews = () => useContext(PrivateReviews)
 
-export function PrivateReviewScope({ siteId, actorId, children }: { siteId?: string; actorId?: string; children: ReactNode }) {
+export function PrivateReviewScope({ siteId, actorId, children, enabled = true }: { siteId?: string; actorId?: string; children: ReactNode; enabled?: boolean }) {
   if (!siteId || !actorId) return <>{children}</>
-  return <AuthorizedList key={`${siteId}:${actorId}`} siteId={siteId}>{children}</AuthorizedList>
+  return <AuthorizedList key={`${siteId}:${actorId}`} siteId={siteId} enabled={enabled}>{children}</AuthorizedList>
 }
 
-function AuthorizedList({ siteId, children }: { siteId: string; children: ReactNode }) {
-  const { data, previousData, error, reload } = useConnectorResource(scopedConnectorPath("approvals", siteId), approvalInboxSchema)
-  const items = (data ?? previousData)?.items
+function AuthorizedList({ siteId, enabled, children }: { siteId: string; enabled: boolean; children: ReactNode }) {
+  const { data, previousData, error, reload } = useConnectorResource(enabled ? scopedConnectorPath("approvals", siteId) : null, approvalInboxSchema)
+  const items = enabled ? (data ?? previousData)?.items : undefined
   const byConversation = useMemo(() => indexReviews(items ?? []), [items])
   useEffect(() => {
-    const refresh = () => { if (document.visibilityState === "visible") reload() }
+    if (!enabled) return
+    const refresh = () => { if (document.visibilityState === 'visible' && navigator.onLine) reload() }
     window.addEventListener("focus", refresh)
     const timer = error ? undefined : window.setInterval(refresh, 60_000)
     return () => { window.clearInterval(timer); window.removeEventListener("focus", refresh) }
-  }, [error, reload])
-  return <PrivateReviews.Provider value={{ siteId, byConversation, authorized: !!items, refreshing: !data && !error, reload }}>{children}</PrivateReviews.Provider>
+  }, [enabled, error, reload])
+  return <PrivateReviews.Provider value={{ siteId, byConversation, authorized: !!items, refreshing: enabled && !data && !error, reload }}>{children}</PrivateReviews.Provider>
 }

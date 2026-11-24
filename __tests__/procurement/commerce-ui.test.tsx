@@ -11,15 +11,19 @@ beforeEach(() => {
   render(<TopBarPrimaryActionsSlot />)
   Object.defineProperty(global.crypto, 'randomUUID', { configurable: true, value: () => '00000000-0000-4000-8000-000000000099' })
 })
-it('loads actual quote/options API data and states empty scope without fabricated suppliers', async () => {
+it('reads quotes alone on cold mount and loads recording choices only on open', async () => {
   jest.mocked(fetch).mockResolvedValue({ ok: true, json: async () => ({ data: [] }) } as Response)
   render(<ProcurementQuotesPanel siteId="buyer-a" />)
   await screen.findByText('No procurement quotations recorded.')
   expect(fetch).toHaveBeenCalledWith('/api/procurement/commerce/quotes?site_id=buyer-a', expect.any(Object))
+  expect(fetch).toHaveBeenCalledTimes(1)
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: 'Record external quotation' }))
   expect(screen.getByRole('dialog')).toBeInTheDocument()
-  expect(screen.getByText('No eligible open tender is available.')).toBeInTheDocument()
+  expect(screen.queryByText('No eligible open tender is available.')).not.toBeInTheDocument()
+  expect(await screen.findByText('No eligible open tender is available.')).toBeInTheDocument()
+  expect(fetch).toHaveBeenCalledWith('/api/procurement/commerce/options?site_id=buyer-a', expect.objectContaining({ cache: 'no-store', signal: expect.any(AbortSignal) }))
+  expect(fetch).toHaveBeenCalledTimes(2)
 })
 it('shows access failure rather than a misleading empty successful order list', async () => {
   jest.mocked(fetch).mockResolvedValue({ ok: false, json: async () => ({ error: 'Forbidden' }) } as Response)
