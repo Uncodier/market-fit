@@ -3,6 +3,8 @@
   "layout.nav.connectors.title": "Connectors",
   "layout.nav.connectors.help": "Browse external toolkits, connect accounts and review workspace access and tool permissions.",
   "connectors.title": "Connectors",
+  "connectors.managedOAuthBadge": "OAuth",
+  "connectors.managedOAuthBadgeHelp": "Managed OAuth sign-in is available. No need to register your own OAuth app.",
   "connectors.summary": "Summary",
   "connectors.tools": "Tools",
   "connectors.toolsHelp": "This is the provider’s catalogue, not a list of tools you can run. Action types come from the provider. In private Robots Ask, you can use only eligible tools on a verified account with Ask access and the required permissions.",

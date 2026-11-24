@@ -11,6 +11,7 @@ export const toolkitSchema = z.object({
   domains: strings, skills: strings, tools_count: z.number().nonnegative(),
   auth_schemes: strings, connection_count: z.number().nonnegative(),
   toolkit_type: z.enum(["api", "mcp"]).nullish(),
+  managed_oauth: z.boolean().optional(),
 })
 export const connectorSchema = z.object({
   id: z.string(), toolkit_slug: z.string(), display_name: z.string(),

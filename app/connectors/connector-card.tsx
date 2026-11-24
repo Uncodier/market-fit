@@ -10,12 +10,16 @@ import type { Toolkit } from "./types"
 export function ConnectorCard({ toolkit, domains }: { toolkit: Toolkit; domains: Record<string, string> }) {
   const { t } = useLocalization()
   return <Link href={`/connectors/${encodeURIComponent(toolkit.slug)}`} aria-label={toolkit.name}
+    aria-description={toolkit.managed_oauth ? t("connectors.managedOAuthBadgeHelp") : undefined}
     className="group block h-full rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
     <Card className="h-full transition-colors group-hover:border-primary/50">
     <CardHeader>
       <div className="mb-3 flex items-center justify-between gap-2">
         <ConnectorLogo src={toolkit.logo} name={toolkit.name} />
-        {toolkit.connection_count > 0 && <Badge variant="secondary">{t("connectors.accountCount", { count: toolkit.connection_count })}</Badge>}
+        <div className="flex flex-wrap justify-end gap-1">
+          {toolkit.managed_oauth && <Badge variant="indigo" title={t("connectors.managedOAuthBadgeHelp")}>{t("connectors.managedOAuthBadge")}</Badge>}
+          {toolkit.connection_count > 0 && <Badge variant="secondary">{t("connectors.accountCount", { count: toolkit.connection_count })}</Badge>}
+        </div>
       </div>
       <CardTitle className="text-lg group-hover:underline">{toolkit.name}</CardTitle>
       <CardDescription className="line-clamp-3">{toolkit.description}</CardDescription>

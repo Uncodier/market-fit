@@ -6,6 +6,19 @@ import { toolkit } from "./fixtures"
 
 jest.unmock("next/image")
 
+test("only labels managed OAuth sign-in, independently of connected accounts", () => {
+  const card = (managed_oauth?: boolean) => <LocalizationProvider preferredLocale="en"><ConnectorCard toolkit={{ ...toolkit,
+    slug: "metaads", name: "Meta Ads", managed_oauth, auth_schemes: ["OAUTH2", "API_KEY"] }} domains={{}} /></LocalizationProvider>
+  const view = render(card(true))
+  expect(screen.getByText("OAuth")).toBeVisible()
+  expect(screen.getByRole("link", { name: "Meta Ads" })).toHaveAccessibleDescription(/Managed OAuth sign-in/)
+  expect(screen.getByText("1 visible accounts")).toBeVisible()
+  for (const flag of [false, undefined]) {
+    view.rerender(card(flag))
+    expect(screen.queryByText("OAuth")).not.toBeInTheDocument()
+  }
+})
+
 function Counts() {
   const { t } = useLocalization()
   return <>
