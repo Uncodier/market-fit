@@ -6,7 +6,7 @@ import { conversationChannel, isInternalAgentConversation } from '@/lib/chat/con
 import { resolveParticipantIdentity } from '@/lib/chat/participant-identity'
 
 export function useLeadData(conversationId: string, siteId?: string) {
-  const { data, error, isLoading: isSwrLoadingLead, mutate } = useSWR(
+  const { data, error, isLoading: isSwrLoadingLead, isValidating, mutate } = useSWR(
     conversationId && !conversationId.startsWith("new-") && siteId ? ['lead-data', conversationId, siteId] : null,
     async ([, convId, sId]) => {
       const supabase = createClient()
@@ -18,7 +18,6 @@ export function useLeadData(conversationId: string, siteId?: string) {
           visitor_id,
           channel,
           custom_data,
-          visitors:visitor_id (custom_data),
           leads (
             id,
             name,
@@ -51,7 +50,7 @@ export function useLeadData(conversationId: string, siteId?: string) {
         conversationCustomData: conversationWithLead.custom_data,
         isAgentOnly: isInternalAgentConversation(conversationWithLead),
         participantIdentity: resolveParticipantIdentity(conversationWithLead, conversationWithLead.leads),
-        visitorPhone: conversationWithLead.visitors?.custom_data?.whatsapp_phone,
+        visitorId: conversationWithLead.visitor_id,
       }
       
       // Check if this is an agent-only conversation
@@ -117,7 +116,28 @@ export function useLeadData(conversationId: string, siteId?: string) {
         isInvalidated: false,
         ...routing,
       }
-    }
+    },
+    { keepPreviousData: false },
+  )
+
+  const isConversationReady = Boolean(data && !error)
+  // Optional recipient metadata must not make the conversation itself unavailable.
+  const { data: visitorPhone, isLoading: isLoadingVisitorPhone } = useSWR(
+    isConversationReady && data?.visitorId && !data.isAgentOnly && data.channel !== 'internal_review' && siteId
+      ? ['chat-visitor-phone', conversationId, siteId, data.visitorId] as const
+      : null,
+    async ([, convId, sId, visitorId]) => {
+      const { data: conversation, error: visitorError } = await createClient()
+        .from('conversations')
+        .select('visitor:visitors!fk_visitor(custom_data)')
+        .eq('id', convId)
+        .eq('site_id', sId)
+        .eq('visitor_id', visitorId)
+        .maybeSingle()
+      if (visitorError) throw visitorError
+      return conversation?.visitor?.custom_data?.whatsapp_phone ?? null
+    },
+    { keepPreviousData: false, shouldRetryOnError: false },
   )
   
   const refreshLeadData = useCallback((committedChannel?: string) => typeof committedChannel === 'string'
@@ -133,8 +153,11 @@ export function useLeadData(conversationId: string, siteId?: string) {
     isAgentOnlyConversation: data?.isAgentOnly === true,
     conversationChannel: data?.channel,
     conversationCustomData: data?.conversationCustomData,
-    visitorPhone: data?.visitorPhone,
-    isConversationReady: Boolean(data && !error),
+    visitorPhone: isConversationReady ? visitorPhone : undefined,
+    isLoadingVisitorPhone,
+    isConversationReady,
+    conversationLoadFailed: Boolean(error),
+    isValidatingConversation: isValidating,
     isLead: data?.leadData !== null && data?.leadData !== undefined,
     isLeadInvalidated: data?.isInvalidated || false,
     refreshLeadData

@@ -10,6 +10,7 @@ import { getTemplateDeliveryStatus } from '@/lib/chat/template-delivery'
 import { isDeliveryRetryBlocked } from '@/lib/chat/response-format'
 import type { ChatMessage } from '@/app/types/chat'
 import { AutomationPausedBadge } from '@/app/components/chat/AutomationPausedBadge'
+import { ConversationReplyNotice } from '@/app/chat/ConversationReplyNotice'
 
 jest.mock('@/app/context/LayoutContext', () => ({ useLayout: () => ({ isLayoutCollapsed: false }) }))
 jest.mock('@/app/hooks/useChannelSelector', () => ({ useChannelSelector: jest.fn() }))
@@ -68,6 +69,21 @@ it.each(locales)('translates channel accessible names in %s while preserving cha
     onChannelChange={change} />))
   fireEvent.mouseDown(screen.getByRole('tab', { name: chatMessages[locale]['chat.channel.voice'] }), { button: 0 })
   expect(change).toHaveBeenCalledWith('voice')
+})
+
+it.each(locales)('shows a localized reply-loading failure and supports retry in %s', locale => {
+  const onRetry = jest.fn()
+  const messages = chatMessages[locale]
+  const { rerender } = render(provider(locale, <ConversationReplyNotice failed={false} retrying onRetry={onRetry} />))
+  expect(screen.getByRole('status')).toHaveTextContent(messages['chat.input.loadingSettings'])
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  expect(screen.queryByRole('button')).not.toBeInTheDocument()
+  rerender(provider(locale, <ConversationReplyNotice failed retrying={false} onRetry={onRetry} />))
+  expect(screen.getByRole('alert')).toHaveTextContent(messages['chat.input.conversationLoadError'])
+  fireEvent.click(screen.getByRole('button', { name: messages['chat.status.retry'] }))
+  expect(onRetry).toHaveBeenCalledTimes(1)
+  rerender(provider(locale, <ConversationReplyNotice failed retrying onRetry={onRetry} />))
+  expect(screen.getByRole('button', { name: messages['chat.list.retrying'] })).toBeDisabled()
 })
 
 it.each(locales)('translates safe delivery hints and channel retry in %s', locale => {

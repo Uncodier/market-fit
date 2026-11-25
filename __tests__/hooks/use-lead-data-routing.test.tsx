@@ -83,7 +83,72 @@ it.each([
   const { result } = renderHook(() => useLeadData('missing', 'site-1'), { wrapper })
   await waitFor(() => expect(result.current.isLoadingLead).toBe(false))
   expect(result.current.isConversationReady).toBe(false)
+  expect(result.current.conversationLoadFailed).toBe(true)
   expect(result.current.isAgentOnlyConversation).toBe(false)
+})
+
+it('does not report a slow pending conversation as a failure before the request returns an error', async () => {
+  jest.useFakeTimers()
+  try {
+    let finish!: (value: unknown) => void
+    maybeSingle.mockReturnValueOnce(new Promise(done => { finish = done }))
+    const { result } = renderHook(() => useLeadData('slow', 'site-1'), { wrapper })
+
+    await act(async () => { await jest.advanceTimersByTimeAsync(60_000) })
+    expect(maybeSingle).toHaveBeenCalledTimes(1)
+    expect(result.current.isLoadingLead).toBe(true)
+    expect(result.current.conversationLoadFailed).toBe(false)
+
+    await act(async () => { finish({ data: null, error: { message: 'Lookup failed' } }) })
+    expect(result.current.isLoadingLead).toBe(false)
+    expect(result.current.conversationLoadFailed).toBe(true)
+  } finally {
+    jest.useRealTimers()
+  }
+})
+
+it('keeps WhatsApp replies available when the optional visitor relationship fails', async () => {
+  maybeSingle.mockResolvedValueOnce({ data: { channel: 'whatsapp', visitor_id: 'visitor-1' }, error: null })
+  let resolveVisitor!: (value: unknown) => void
+  maybeSingle.mockReturnValueOnce(new Promise(done => { resolveVisitor = done }))
+  const { result } = renderHook(() => useLeadData('wa', 'site-1'), { wrapper })
+  await waitFor(() => expect(maybeSingle).toHaveBeenCalledTimes(2))
+  expect(select.mock.calls[0][0]).not.toContain('visitors')
+  expect(select.mock.calls[1][0]).toBe('visitor:visitors!fk_visitor(custom_data)')
+  expect(eq.mock.calls.slice(-3)).toEqual([['id', 'wa'], ['site_id', 'site-1'], ['visitor_id', 'visitor-1']])
+  expect(result.current.isConversationReady).toBe(true)
+  expect(result.current.isLoadingVisitorPhone).toBe(true)
+  await act(async () => resolveVisitor({ data: null, error: { code: 'PGRST200' } }))
+  expect(result.current.isConversationReady).toBe(true)
+  expect(result.current.isLoadingVisitorPhone).toBe(false)
+  expect(result.current.conversationLoadFailed).toBe(false)
+  expect(result.current.conversationChannel).toBe('whatsapp')
+  expect(result.current.visitorPhone).toBeUndefined()
+})
+
+it('keeps visitor phone metadata scoped when switching conversations', async () => {
+  maybeSingle.mockResolvedValueOnce({ data: { channel: 'whatsapp', visitor_id: 'visitor-1' }, error: null })
+    .mockResolvedValueOnce({ data: { visitor: { custom_data: { whatsapp_phone: '+12025550123' } } }, error: null })
+    .mockResolvedValueOnce({ data: { channel: 'whatsapp', visitor_id: null }, error: null })
+  const { result, rerender } = renderHook(({ id, site }) => useLeadData(id, site), {
+    wrapper, initialProps: { id: 'wa', site: 'site-1' },
+  })
+  await waitFor(() => expect(result.current.visitorPhone).toBe('+12025550123'))
+  rerender({ id: 'another', site: 'site-2' })
+  expect(result.current.visitorPhone).toBeUndefined()
+  await waitFor(() => expect(result.current.isConversationReady).toBe(true))
+  expect(result.current.visitorPhone).toBeUndefined()
+})
+
+it('recovers reply access after retrying a failed conversation lookup', async () => {
+  maybeSingle.mockResolvedValueOnce({ data: null, error: { message: 'Lookup failed' } })
+    .mockResolvedValueOnce({ data: { channel: 'whatsapp' }, error: null })
+  const { result } = renderHook(() => useLeadData('wa', 'site-1'), { wrapper })
+  await waitFor(() => expect(result.current.conversationLoadFailed).toBe(true))
+  expect(result.current.isConversationReady).toBe(false)
+  await act(async () => { await result.current.refreshLeadData() })
+  expect(result.current.conversationLoadFailed).toBe(false)
+  expect(result.current.isConversationReady).toBe(true)
 })
 
 it('exposes DM identity without fabricating a linked lead, then honors the real linked lead', async () => {

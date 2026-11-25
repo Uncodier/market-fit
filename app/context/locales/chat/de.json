@@ -58,6 +58,7 @@
   "chat.input.placeholder": "Nachricht...",
   "chat.input.callPlaceholder": "Begrüßung für den Anruf...",
   "chat.input.loadingSettings": "Versandeinstellungen der Unterhaltung werden geladen…",
+  "chat.input.conversationLoadError": "Die Einstellungen der Unterhaltung konnten nicht geladen werden. Versuche es erneut, um antworten zu können.",
   "chat.input.channelUnavailable": "Dieser Kanal ist inaktiv oder nicht verfügbar. Aktivieren Sie ihn in den Einstellungen oder wählen Sie einen anderen Kanal.",
   "chat.input.publicReplyHint": "Öffentliche Antwort auf den ausgewählten Kommentar. Dies ist keine Direktnachricht.",
   "chat.input.selectCommentHint": "Wählen Sie den Kommentar aus, auf den Sie antworten möchten.",

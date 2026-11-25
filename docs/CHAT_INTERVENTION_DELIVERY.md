@@ -42,6 +42,12 @@ In a direct chat, configured channels with an unusable recipient stay visible bu
 
 These are UI checks, not delivery guarantees. The provider API still verifies the authoritative saved recipient and connection before dispatch. A historical recipient error does not block retry once the current contact is valid; a provider-owned delivery receipt still does.
 
+The composer waits for the site-scoped conversation lookup, not the optional
+visitor phone lookup. If the conversation lookup fails, the reply area offers a
+retry without enabling sends. If visitor metadata is unavailable, the composer
+still opens and the existing recipient checks apply. Internal reviews remain
+read-only.
+
 ### Audio delivery evidence
 
 Provider acceptance (`sent`) is displayed as **Sent to provider; delivery

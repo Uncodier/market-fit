@@ -10,6 +10,8 @@ import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
 import { EmptyState } from "../ui/empty-state"
 import { useLocalization } from "@/app/context/LocalizationContext"
+import { useOptionalPermissions } from "@/app/context/PermissionContext"
+import { InvoicePayButton } from "./invoice-pay-button"
 
 export interface PaymentTransaction {
   id: string
@@ -31,11 +33,15 @@ export function PaymentHistory({ className }: PaymentHistoryProps) {
   const { t, locale } = useLocalization()
   const dateLocale = (locale ?? 'en') === 'en' ? 'en-US' : (locale ?? 'en')
   const { currentSite } = useSite()
+  const permissions = useOptionalPermissions()
   const [isDownloading, setIsDownloading] = useState(false)
   const [paymentHistory, setPaymentHistory] = useState<PaymentTransaction[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isGeneratingTestData, setIsGeneratingTestData] = useState(false)
   const [lastLoadedSiteId, setLastLoadedSiteId] = useState<string | null>(null)
+  const canPay = currentSite && lastLoadedSiteId === currentSite.id &&
+    permissions?.siteId === currentSite.id &&
+    ['owner', 'admin'].includes(permissions.capabilities?.role ?? '')
   
   // Load payment history for the selected site.
   const loadPaymentHistory = async () => {
@@ -286,7 +292,7 @@ export function PaymentHistory({ className }: PaymentHistoryProps) {
               <p className="text-sm text-muted-foreground">
                 {t('billing.payment.history.desc') || 'View your payment history and download invoices for your records.'}
               </p>
-              <div className="mt-6 overflow-hidden rounded-lg border">
+              <div className="mt-6 overflow-x-auto rounded-lg border">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-muted/50">
@@ -314,15 +320,21 @@ export function PaymentHistory({ className }: PaymentHistoryProps) {
                            {typeof transaction.credits === 'number' && transaction.credits > 0 && ` (${transaction.credits} ${(t('billing.credits.credits') || 'credits').toLowerCase()})`}
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            disabled={isDownloading}
-                            onClick={() => handleDownloadInvoice(transaction)}
-                          >
-                            <Download className="h-4 w-4" />
-                            <span className="sr-only">{t('billing.payment.table.download') || 'Download Invoice'}</span>
-                          </Button>
+                          <div className="flex items-start justify-end gap-2">
+                            {canPay && ['failed', 'pending'].includes(transaction.status) &&
+                              /^in_[A-Za-z0-9]+$/.test(transaction.details?.stripe_invoice_id ?? '') && (
+                                <InvoicePayButton key={currentSite.id} siteId={currentSite.id} paymentId={transaction.id} />
+                              )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={isDownloading}
+                              onClick={() => handleDownloadInvoice(transaction)}
+                            >
+                              <Download className="h-4 w-4" />
+                              <span className="sr-only">{t('billing.payment.table.download') || 'Download Invoice'}</span>
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ))}

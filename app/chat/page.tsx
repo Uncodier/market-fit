@@ -22,6 +22,7 @@ import { LocalizedChatBreadcrumb } from "./localized-chat-breadcrumb"
 import { ChatHeader } from "@/app/components/chat/ChatHeader"
 import { ChatMessages } from "@/app/components/chat/ChatMessages"
 import { ChatInput } from "@/app/components/chat/ChatInput"
+import { ConversationReplyNotice } from "./ConversationReplyNotice"
 import { InvalidatedLeadModal } from "@/app/components/chat/InvalidatedLeadModal"
 import { useLeadData } from "@/app/hooks/useLeadData"
 import { useCommentReplySelection } from '@/app/hooks/useCommentReplySelection'
@@ -74,7 +75,7 @@ function ChatPageContent() {
   // Optimized message state management - debounced re-renders
   const chatCacheKey = conversationId && !conversationId.startsWith("new-") ? `chat-${conversationId}` : 'chat-new'
   const { setMessage, messageRef, clearMessage, handleMessageChange, textareaRef } = useOptimizedMessageState("", chatCacheKey)
-  const { currentSite } = useSite()
+  const { currentSite, isLoading: isLoadingSite, error: siteError, refreshSites } = useSite()
   
   const [isChatListCollapsed, setIsChatListCollapsed] = useAutoCollapseSidebar()
   
@@ -91,11 +92,14 @@ function ChatPageContent() {
     leadData,
     participantIdentity,
     visitorPhone,
+    isLoadingVisitorPhone,
     conversationCustomData,
     conversationChannel,
     isLoadingLead,
     isAgentOnlyConversation,
     isConversationReady,
+    conversationLoadFailed,
+    isValidatingConversation,
     isLead,
     isLeadInvalidated,
     refreshLeadData
@@ -120,10 +124,15 @@ function ChatPageContent() {
     clearMessagesForTransition
   } = useChatMessages(conversationId, agentId, agentName, isAgentOnlyConversation)
   const commentReply = useCommentReplySelection(conversationId, currentSite?.id, conversationCustomData, chatMessages)
-  const channelBlockReasons = useMemo(() => isAgentOnlyConversation || commentReply.isCommentConversation ? undefined
-    : chatChannelBlockReasons(currentSite, { lead: leadData, visitorPhone, conversationData: conversationCustomData,
-      conversationChannel, messages: chatMessages }), [isAgentOnlyConversation, commentReply.isCommentConversation, currentSite,
-      leadData, visitorPhone, conversationCustomData, conversationChannel, chatMessages])
+  const channelBlockReasons = useMemo(() => {
+    if (isAgentOnlyConversation || commentReply.isCommentConversation) return undefined
+    const reasons = chatChannelBlockReasons(currentSite, { lead: leadData, visitorPhone,
+      conversationData: conversationCustomData, conversationChannel, messages: chatMessages })
+    if (!isLoadingVisitorPhone) return reasons
+    return { ...reasons, whatsapp: reasons.whatsapp || 'chat.input.loadingSettings',
+      sms: reasons.sms || 'chat.input.loadingSettings' }
+  }, [isAgentOnlyConversation, commentReply.isCommentConversation, currentSite, leadData,
+    visitorPhone, isLoadingVisitorPhone, conversationCustomData, conversationChannel, chatMessages])
   
   const {
     isLoading,
@@ -307,7 +316,7 @@ function ChatPageContent() {
       
       {/* Main chat content */}
       <div className={cn(
-        "flex flex-col md:h-full bg-background transition-all duration-300 ease-in-out min-w-0 min-h-0 fixed left-0 md:left-[var(--chat-panel-offset)] right-0 top-[var(--topbar-height,64px)] bottom-0",
+        "flex flex-col bg-background transition-all duration-300 ease-in-out min-w-0 min-h-0 fixed left-0 md:left-[var(--chat-panel-offset)] right-0 top-[var(--topbar-height,64px)] bottom-0",
         !hasSelectedConversation ? "hidden md:flex" : "flex"
       )}
       style={{ '--chat-panel-offset': `${(isLayoutCollapsed ? 64 : 256) + (isChatListCollapsed ? 0 : 319)}px` } as React.CSSProperties}
@@ -364,7 +373,7 @@ function ChatPageContent() {
         </div>
         
         {/* Message input area */}
-        {hasSelectedConversation && allowMessageActions && (
+        {hasSelectedConversation && !internalReview && (allowMessageActions ? (
           <div className="transition-all duration-300 ease-in-out">
             <ChatInput 
               setMessage={setMessage}
@@ -383,7 +392,11 @@ function ChatPageContent() {
               commentReplySelection={commentReply.isCommentConversation ? commentReply : undefined}
             />
           </div>
-        )}
+        ) : <ConversationReplyNotice
+          failed={conversationLoadFailed || (!currentSite && Boolean(siteError))}
+          retrying={isValidatingConversation || (!currentSite && isLoadingSite)}
+          onRetry={() => currentSite ? void refreshLeadData() : void refreshSites({ recoverMissingList: true })}
+        />)}
       </div>
     </div>
     </>

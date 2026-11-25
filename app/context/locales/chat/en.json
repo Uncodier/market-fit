@@ -58,6 +58,7 @@
   "chat.input.placeholder": "Message...",
   "chat.input.callPlaceholder": "Opening greeting for the call...",
   "chat.input.loadingSettings": "Loading conversation delivery settings…",
+  "chat.input.conversationLoadError": "Couldn't load the conversation settings. Retry to enable replies.",
   "chat.input.channelUnavailable": "This channel is inactive or unavailable. Activate it in Settings or select another channel.",
   "chat.input.publicReplyHint": "Public reply to the selected comment. This is not a direct message.",
   "chat.input.selectCommentHint": "Select the comment you want to reply to.",

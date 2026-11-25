@@ -58,6 +58,7 @@
   "chat.input.placeholder": "Mensaje...",
   "chat.input.callPlaceholder": "Saludo inicial de la llamada...",
   "chat.input.loadingSettings": "Cargando ajustes de envío de la conversación…",
+  "chat.input.conversationLoadError": "No se pudieron cargar los ajustes de la conversación. Reintenta para poder responder.",
   "chat.input.channelUnavailable": "Este canal está inactivo o no disponible. Actívalo en Configuración o selecciona otro canal.",
   "chat.input.publicReplyHint": "Respuesta pública al comentario seleccionado. No es un mensaje directo.",
   "chat.input.selectCommentHint": "Selecciona el comentario al que quieres responder.",

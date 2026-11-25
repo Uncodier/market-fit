@@ -58,6 +58,7 @@
   "chat.input.placeholder": "Message...",
   "chat.input.callPlaceholder": "Message d’accueil de l’appel...",
   "chat.input.loadingSettings": "Chargement des paramètres d’envoi de la conversation…",
+  "chat.input.conversationLoadError": "Impossible de charger les paramètres de la conversation. Réessayez pour pouvoir répondre.",
   "chat.input.channelUnavailable": "Ce canal est inactif ou indisponible. Activez-le dans les paramètres ou sélectionnez un autre canal.",
   "chat.input.publicReplyHint": "Réponse publique au commentaire sélectionné. Ce n’est pas un message privé.",
   "chat.input.selectCommentHint": "Sélectionnez le commentaire auquel vous souhaitez répondre.",
