@@ -98,6 +98,10 @@ The API server owns robot/workflow orchestration and selected external
 integrations. `SERVICE_API_KEY` authenticates server-to-server calls. Do not
 expose provider credentials through the public API URL.
 
+`WORKFLOW_CONNECTOR_READS_ENABLED` belongs only on the orchestration API and
+scheduled worker. Only the exact value `true` enables delegated catalog reads from published tasks. It does not grant permission, provision an account, or change Ask or
+Support. See the [migration order and release gates](WORKFLOW_CONNECTOR_CRON.md).
+
 Shared procurement and Inventory Minimums icons also require `SERVICE_API_KEY`
 and Redis admission on cache misses. `/api/images/modules/{itemKey}` generates
 only fixed server-owned prompts against Makinari's `SUPPORT_SITE_ID`; selected

@@ -2,7 +2,8 @@
 
 import { useMemo } from "react"
 import { usePathname, useSearchParams } from "next/navigation"
-import { Home, LayoutGrid, Star } from "@/app/components/ui/icons"
+import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar"
+import { Home, Star, User } from "@/app/components/ui/icons"
 import { NAV_ITEM_ICON } from "@/app/config/module-visuals"
 import { getNavItemTitle } from "@/app/config/navigation-areas"
 import { useLocalization } from "@/app/context/LocalizationContext"
@@ -18,6 +19,7 @@ import {
   resolveMobileWorkspaceTab,
 } from "./mobile-workspace-tabs"
 import { useMobileWorkspaceTabs } from "./use-mobile-workspace-tabs"
+import { useCompactMobileDock } from "./use-compact-mobile-dock"
 import styles from "./mobile-workspace-navigation.module.css"
 import { isInstanceListView } from "@/app/robots/mobile-instance-navigation"
 
@@ -37,14 +39,17 @@ export function MobileWorkspaceNavigation() {
 
   const visibleTabs = completeMobileWorkspaceTabs(tabs, (key) => !access || access.canAccessNavKey(key))
   const isRobots = pathname === "/robots" || pathname.startsWith("/robots/")
+  const route = `${pathname}?${search}`
+  const visible = !hasId(route) || (isRobots && isInstanceListView(searchParams))
+  const compact = useCompactMobileDock(route, visible)
   const isAgent = isRobots && !["imprenta", "workflow"].includes(searchParams.get("mode") ?? "")
   const agentParams = new URLSearchParams(isRobots ? searchParams.toString() : "")
   agentParams.delete("mode")
   const agentQuery = agentParams.toString()
   const agentHref = agentQuery ? `/robots?${agentQuery}` : "/robots"
-  const appsActive = pathname === "/navigation"
   const agentTitle = t("layout.sidebar.agents")
-  const appsTitle = t("layout.sidebar.apps")
+  const profileTitle = t("layout.sidebar.profile")
+  const avatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture
 
   function activateAgent() {
     setRobotsViewMode("agent")
@@ -69,22 +74,23 @@ export function MobileWorkspaceNavigation() {
           }
         }}
       >
-        <Icon size={23} strokeWidth={1.7} aria-hidden={true} />
+        <Icon className={styles.icon} size={23} strokeWidth={1.7} aria-hidden={true} />
         <span className={styles.label} aria-hidden="true">{title}</span>
       </NavigationLink>
     )
   }
 
   // Keep tracking open modules while detail screens use the full mobile viewport.
-  if (hasId(`${pathname}?${search}`) && !(isRobots && isInstanceListView(searchParams))) return null
+  if (!visible) return null
 
   return (
     <nav
       data-mobile-workspace-navigation
+      data-compact={compact || undefined}
       aria-label="Workspace navigation"
-      className={cn(styles.glass, "fixed z-[210] px-2 md:hidden")}
+      className={cn(styles.dock, "fixed z-[210] px-2 md:hidden")}
     >
-      <div className="grid h-16 grid-cols-5 items-center gap-1">
+      <div className="grid grid-cols-5 items-center gap-1 py-1">
         {renderDynamicTab(0)}
         {renderDynamicTab(1)}
         <NavigationLink
@@ -95,19 +101,22 @@ export function MobileWorkspaceNavigation() {
           onNavigate={activateAgent}
           className={styles.tab}
         >
-          <Home size={25} strokeWidth={1.7} aria-hidden={true} />
+          <Home className={styles.icon} size={25} strokeWidth={1.7} aria-hidden={true} />
           <span className={styles.label} aria-hidden="true">{agentTitle}</span>
         </NavigationLink>
         {renderDynamicTab(2)}
         <NavigationLink
-          href="/navigation"
-          aria-label={appsTitle}
-          title={appsTitle}
-          aria-current={appsActive ? "page" : undefined}
+          href="/profile"
+          aria-label={profileTitle}
+          title={profileTitle}
+          aria-current={pathname === "/profile" ? "page" : undefined}
           className={styles.tab}
         >
-          <LayoutGrid size={23} strokeWidth={1.7} aria-hidden={true} />
-          <span className={styles.label} aria-hidden="true">{appsTitle}</span>
+          <Avatar className={cn(styles.icon, "h-6 w-6")} aria-hidden="true">
+            <AvatarImage src={avatarUrl} alt="" />
+            <AvatarFallback><User size={16} strokeWidth={1.7} /></AvatarFallback>
+          </Avatar>
+          <span className={styles.label} aria-hidden="true">{profileTitle}</span>
         </NavigationLink>
       </div>
     </nav>

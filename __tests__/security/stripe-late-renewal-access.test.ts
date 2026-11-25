@@ -24,6 +24,7 @@ live('terminal Stripe late-renewal access in disposable PostgreSQL', () => {
     pg.db(readMigration('20261021001000_reconcile_paid_coverage_licenses.sql'))
     baseLicensing = licensingDefinitions()
     pg.db(accessMigration)
+    pg.db(readMigration('20261125213000_individual_late_payment_access_month.sql'))
   }, 60000)
   afterAll(() => pg.stop())
 
@@ -77,6 +78,20 @@ live('terminal Stripe late-renewal access in disposable PostgreSQL', () => {
   const paidThrough = ({ site_id, customer_id, subscription_id }: ReturnType<typeof seed>['evidence']) => pg.call(
     `SELECT stripe_late_renewal_paid_through('${site_id}','${customer_id}','${subscription_id}');`, undefined, 'service_role',
   )
+
+  it('extends only an approved workspace beyond invoice expiry and preserves the reversal fence', async () => {
+    const a = seed(5), b = seed()
+    for (const x of [a, b]) { x.settle(); expect(record(x.evidence)).toBe('granted') }
+    pg.db(`INSERT INTO public.late_payment_access_months(invoice_id) VALUES ('${a.evidence.invoice_id}');`)
+    const expected = pg.db(`SELECT ('${a.evidence.paid_at}'::timestamptz AT TIME ZONE 'UTC' + interval '1 month') AT TIME ZONE 'UTC';`)
+    expect(Date.parse(paidThrough(a.evidence))).toBe(Date.parse(expected))
+    expect(Date.parse(paidThrough(b.evidence))).toBe(Date.parse(b.evidence.period_end))
+    await pg.concurrent(`SELECT pg_sleep(${Math.max(0, (Date.parse(a.evidence.period_end) - Date.now()) / 1000) + 0.1});`)
+    expect(primarySelector(a.member)).toBe(a.site)
+    expect(revoke(a.evidence.charge_id)).toBe('revoked')
+    expect(primarySelector(a.member)).toBe('')
+    expect(paidThrough(a.evidence)).toBe('')
+  })
 
   it('restores the same member and only their site after an uncredited terminal settlement', () => {
     const { site, actor, member, evidence, settle } = seed()
@@ -282,5 +297,32 @@ live('terminal Stripe late-renewal access in disposable PostgreSQL', () => {
         'effective_site_plan(uuid)']) f;`)).toBe('f\nf\nf\nf\nf')
       expect(() => pg.call(recordSql(evidence), undefined, role)).toThrow(/permission denied/)
     }
+  })
+
+  describe('automatic paid-month rollout', () => {
+    it('preserves old grants and enrolls a newly verified payment once at its paid_at', () => {
+      const old = seed(), individual = seed(), fresh = seed()
+      for (const x of [old, individual, fresh]) x.settle()
+      for (const x of [old, individual]) expect(record(x.evidence)).toBe('granted')
+      pg.db(`INSERT INTO public.late_payment_access_months(invoice_id) VALUES ('${individual.evidence.invoice_id}')`)
+      const previous = paidThrough(individual.evidence)
+      pg.db(readMigration('20261125220000_automatic_late_payment_access_month.sql'))
+      expect(record(old.evidence)).toBe('duplicate')
+      expect(Date.parse(paidThrough(old.evidence))).toBe(Date.parse(old.evidence.period_end))
+      expect(paidThrough(individual.evidence)).toBe(previous)
+      expect(record({ ...fresh.evidence, amount_paid: 1 })).toBe('rejected')
+      expect(paidThrough(fresh.evidence)).toBe('')
+      expect(record(fresh.evidence)).toBe('granted')
+      const deadline = paidThrough(fresh.evidence)
+      const expected = pg.db(`SELECT (('${fresh.evidence.paid_at}'::timestamptz AT TIME ZONE 'UTC') + interval '1 month') AT TIME ZONE 'UTC'`)
+      expect(Date.parse(deadline)).toBe(Date.parse(expected))
+      expect(Date.parse(deadline)).toBeGreaterThan(Date.parse(fresh.evidence.period_end))
+      expect(record(fresh.evidence)).toBe('duplicate')
+      expect(paidThrough(fresh.evidence)).toBe(deadline)
+      expect(primarySelector(fresh.member)).toBe(fresh.site)
+      expect(revoke(fresh.evidence.charge_id)).toBe('revoked')
+      expect(paidThrough(fresh.evidence)).toBe('')
+      expect(primarySelector(fresh.member)).toBe('')
+    })
   })
 })

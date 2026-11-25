@@ -4,6 +4,10 @@ import { cn } from "@/lib/utils"
 import { useState, useEffect } from "react"
 import { usePathname } from "next/navigation"
 import dynamic from "next/dynamic"
+import Image from "next/image"
+import { Button } from "@/app/components/ui/button"
+import { Menu } from "@/app/components/ui/icons"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import { useWorkspaceStartup } from '@/app/workspace-preview/WorkspaceStartupBoundary'
 import { TopBarTitle } from "./TopBarTitle"
 import { PosTopBarActions } from "./PosTopBarActions"
@@ -22,6 +26,8 @@ interface TopBarProps extends React.HTMLAttributes<HTMLDivElement> {
   isCollapsed: boolean
   onCollapse: () => void
   hideSidebarToggle?: boolean
+  isMobileSidebarOpen?: boolean
+  onMobileSidebarOpen?: () => void
   segments?: Array<{
     id: string
     name: string
@@ -43,6 +49,8 @@ export function TopBar({
   isCollapsed,
   onCollapse,
   hideSidebarToggle,
+  isMobileSidebarOpen,
+  onMobileSidebarOpen,
   className,
   segments,
   breadcrumb,
@@ -54,6 +62,7 @@ export function TopBar({
   ...props 
 }: TopBarProps) {
   const pathname = usePathname()
+  const { t } = useLocalization()
   const startup = useWorkspaceStartup()
   
   // Determine if there are any visible actions on the right side
@@ -163,6 +172,23 @@ export function TopBar({
     >
       <div className="flex h-[64px] items-center justify-between px-4 lg:px-8 w-full max-w-full">
         <div className="flex items-center min-w-0 flex-1">
+          {!hideSidebarToggle && onMobileSidebarOpen && (
+            <div className="mr-3 flex shrink-0 items-center gap-1 md:hidden">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-11 w-11"
+                aria-label={t("common.openMenu")}
+                aria-expanded={isMobileSidebarOpen}
+                aria-controls="workspace-sidebar"
+                onClick={onMobileSidebarOpen}
+              >
+                <Menu className="topbar-menu-icon" aria-hidden="true" />
+              </Button>
+              <Image src="/images/isotipo.svg" alt="Makinari" width={24} height={28} className="h-7 w-auto shrink-0 brightness-0 dark:brightness-100" />
+            </div>
+          )}
           {!hideBreadcrumb && (
             <TopBarTitle 
               title={title}

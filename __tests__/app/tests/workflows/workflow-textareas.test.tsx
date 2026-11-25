@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import type { InstanceNode } from "@/app/types/instance-nodes"
 import { WorkflowStepBody } from "@/app/components/workflows/workflow-step-body"
 import { WorkflowTriggerBody } from "@/app/components/workflows/workflow-trigger-body"
@@ -30,6 +30,29 @@ function setScrollHeight(textarea: HTMLTextAreaElement, height: number) {
 }
 
 describe("workflow textareas", () => {
+  it("links a visible account from Task beside Secrets without enabling a sandbox or granting use", async () => {
+    const id = "00000000-0000-4000-8000-000000000101"
+    const original = global.fetch
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({ items: [{
+      id, display_name: "Sales inbox", toolkit_slug: "gmail", can_use: false,
+      provider_status: "ACTIVE", enabled: true, revocation_pending: false, verified_at: null, revision: 1,
+    }] }) })
+    try {
+      const onChange = jest.fn().mockResolvedValue(undefined)
+      const view = render(<WorkflowStepBody node={baseNode} onChange={onChange} />)
+      expect(screen.getByText("Secrets")).toBeVisible()
+      expect(global.fetch).not.toHaveBeenCalled()
+      fireEvent.click(screen.getByRole("button", { name: "Select connector" }))
+      fireEvent.change(await screen.findByLabelText("Task connector account"), { target: { value: id } })
+      expect(onChange).toHaveBeenCalledWith(baseNode.id, { task_connector_id: id })
+      await waitFor(() => expect(screen.queryByLabelText("Task connector account")).toBeNull())
+      view.rerender(<WorkflowStepBody node={{ ...baseNode, task_connector_id: id }} onChange={onChange} />)
+      expect(screen.getByText(/review scheduled authorization separately/i)).toBeVisible()
+      fireEvent.click(screen.getByRole("button", { name: "Environment" }))
+      expect(screen.queryByText("Connector")).toBeNull()
+      expect(screen.queryByText("Secrets")).toBeNull()
+    } finally { global.fetch = original }
+  })
   it("expands a step's saved instructions and live input without internal scrolling", () => {
     const onChange = jest.fn().mockResolvedValue(undefined)
     const { unmount } = render(<WorkflowStepBody node={baseNode} onChange={onChange} />)

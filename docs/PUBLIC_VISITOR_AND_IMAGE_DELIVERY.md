@@ -63,71 +63,19 @@ uses the same helper instead of hardcoded API hosts.
 
 ### Makinari navigation icons
 
-Module icons belong to Makinari, not the selected site. Nineteen approved images
-from the Makinari site's existing public cache were captured on 2026-09-30 and
-promoted to static application assets in `public/images/modules/makinari-2026-09-30`.
-They are the existing renders, not newly generated images. The 1024px originals
-are resized without cropping to 512px WebP (quality 90), retaining 2x resolution
-for the 256px icon component. All 19 files together are approximately 239 KiB.
+The launcher, sidebar and navigation controls use bundled Makinari artwork. The
+catalog contains optimized 256px WebP copies of the approved static renders and
+the existing public platform/shared module cache images. No workspace, session,
+image generation, or external image request is needed to display a module icon.
+The original shared-module API is not part of the navigation loading path.
+Missing artwork uses a local SVG fallback. Personal avatars are unchanged.
 
-The original shared overrides in `app/config/module-image-overrides.ts` are:
-Campaigns, Segments, Price Lists, Leads, Point of Sale, Conversations (`chat`),
-Order Lines, Tasks (`controlCenter`), Check In, Inventory, Assets, AI Goals
-(`requirements`), AI Activities (`activities`), Workflows, Performance, Cost
-Reports, Database, Code (`applicationsRepositories`), and Billing. These images
-load directly from static files for every site, without credentials, database
-lookups, generation requests, or site-credit charges.
-
-Connectors also uses a static override. Its AI-generated 3D render is stored
-as a 512px WebP at `public/images/modules/connectors.webp`.
-
-Procurement modules, Accounts Payable, Inventory Minimums and Modifier Groups use
-`/api/images/modules/{itemKey}`. Accounts Payable's distinct amber receipt is not
-part of the legacy platform cache set, so it needs this authorized cache-miss
-generation path rather than a direct unauthenticated public API request.
-The route accepts only the fixed keys in `app/config/shared-module-images.ts`, derives the prompt and 256px
-dimensions on the server, and uses Makinari's existing `SUPPORT_SITE_ID`, never
-the selected site's cookies or a caller-supplied tenant. Public cached bytes are
-read first. Cache misses require a real authenticated same-origin workspace
-session (not a demo identity); that session authorizes only this finite shared
-asset set. The server-only `SERVICE_API_KEY` then generates against Makinari's
-site, consuming Makinari credits. No browser token, Origin, Referer or caller API
-key is forwarded. Requests are coalesced in-process, with fail-closed Redis
-limits of 30 misses/user/minute and 20 generation admissions/hour; the backend's
-distributed lock remains authoritative. Failed or uncertain generations are not
-automatically retried. Cached responses are public; newly generated responses
-and failures are private and not stored by shared HTTP caches.
-
-Profile uses this shared delivery with the existing glossy 3D prompt style and a
-single-user silhouette. The Settings navigation tile and sidebar account entry
-share the same artwork; a personal avatar still takes precedence in the sidebar.
-The fixed prompt never includes the account name or email.
-
-The 2026-11-16 navigation prompt refresh is limited to Apps, Procurement
-Settings, Procurement Approvals, Procurement Rules, Procurement Tenders,
-Profile, and Notifications. Apps uses a strict frontal orthographic composition
-with no visible side faces; the other refreshed icons retain isometric views.
-Apps now depicts an App Store-style three-bar emblem rather than a square grid.
-The sidebar controls select distinct shared 3D images by live state: an open
-green storefront or closed red storefront with a lowered shutter, and a golden
-sun for light mode or violet crescent for dark mode. Each state has its own fixed
-prompt and URL; switching selects cached artwork rather than a fresh render.
-`app/config/module-image-realistic.ts` combines their existing recognizable
-object constraints with isometric PBR materials, textless surfaces, floating
-shadow-free compositions, and fixed contrasting pastel backgrounds. Other
-module prompts and approved static assets remain unchanged. The changed prompt
-selects a new backend cache entry through the existing authorized shared route;
-it does not prove that a new image has already been generated. A configured,
-reachable backend and authorized workspace request are still required on a miss.
-
-For all remaining modules, `getModuleImageUrl` preserves the shared icon-set URLs
-from commit `8ce0124f`: the unchanged prompt and 256-by-256 dimensions go directly to the configured API's
-`/api/public/image/prompt/...` endpoint, without `site_id` or credentials. Requests
-from `app.makinari.com` therefore use the API's existing platform image cache.
-Do not route these icons through `/api/images/prompt`: that proxy selects the
-current site and can charge site credits for a new copy of a platform asset.
-Switching sites must not change the icon URL. Catalog, promotion and record
-images retain the site-scoped authorization and delivery behavior below.
+`app/config/module-icon-files.ts` maps stable module keys to filenames under
+`public/images/modules/catalog/`. When replacing artwork, encode the new WebP,
+include the first 12 hex digits of its SHA-256 in the filename, and update the
+mapping. Never overwrite an immutable URL with different bytes. Only this
+fingerprinted catalog receives a one-year immutable public cache header. The
+launcher and sidebar share URLs regardless of site, language or deploy.
 
 ### Public delivery
 

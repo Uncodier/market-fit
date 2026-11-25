@@ -24,6 +24,7 @@ import { WorkflowStepValidationList } from "./workflow-step-validation";
 import { WorkflowSearchSelect } from "./workflow-search-select";
 import { WorkflowStepToolsList } from "./workflow-step-tools-list";
 import { AddSecretDialog } from "@/app/components/ui/add-secret-dialog";
+import { WorkflowTaskConnector } from "./workflow-task-connector";
 
 type StepTab = "task" | "output" | "validation" | "environment" | "tools";
 
@@ -233,6 +234,7 @@ export function WorkflowStepBody({
 
       <div className="rounded-2xl bg-muted/30 p-3 flex flex-col gap-2">
         {tab === "task" && (
+          <>
           <WorkflowStepTaskFields
             nodeId={node.id}
             step={step}
@@ -241,6 +243,15 @@ export function WorkflowStepBody({
               persist(mergeSettings(node, patch), promptText)
             }
           />
+          <div className="flex items-center justify-between border-t pt-2">
+            <span className="text-[11px] font-medium">Secrets</span>
+            <AddSecretDialog onSecretCreated={() => {}} />
+          </div>
+          {node.type === "wf-step" && <WorkflowTaskConnector key={`${node.site_id}:${node.id}`} siteId={node.site_id}
+            nodeId={node.id} instanceId={node.instance_id}
+            selectedId={node.task_connector_id}
+            onSave={(id) => onChange(node.id, { task_connector_id: id })} />}
+          </>
         )}
 
         {tab === "output" && (
@@ -352,18 +363,6 @@ export function WorkflowStepBody({
                 }
               />
             </label>
-            <div className="flex flex-col gap-2 mt-2 pt-2 border-t border-border/50">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-medium">
-                  Environment Secrets
-                </span>
-                <AddSecretDialog onSecretCreated={() => {}} />
-              </div>
-              <p className="text-[11px] text-muted-foreground leading-snug">
-                Add API keys and other secrets needed for this step to run. They
-                will be available securely in the environment.
-              </p>
-            </div>
           </>
         )}
 

@@ -138,6 +138,16 @@ existing cancellation/recovery behavior instead of claiming remote rollback.
 
 ## 5. Background workflows: explicit delegation
 
+The workflow step's **Task** tab groups Secrets and an optional connector draft
+selection outside Environment. The selection references an account visible to
+the editor; it is not a credential, approval request, or executable delegation.
+The local `20261125210000_workflow_task_connector_reference.sql` migration is
+required before saving selections. Selecting an account does not update the
+published trigger, enable background tools, or authorize Ask or Customer Support.
+
+**Implemented locally:** an eligible catalog read from an attested private connector account can be published as a scheduled private job, with its exact version, schema and arguments pinned. See [Task connector publication and rollout](WORKFLOW_CONNECTOR_CRON.md).
+The broader agent/workflow delegation model below is not a generic execution grant.
+
 A workflow without a live browser session is not an unrestricted agent. Bind it
 to a durable `connector_delegations` record created by an authorized manager, with
 an accountable execution principal and the exact connector/agent/workflow scope.

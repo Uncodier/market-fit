@@ -10,6 +10,8 @@ export interface InstanceNode {
   status: InstanceNodeStatus;
   result: Record<string, any>;
   settings: Record<string, any>;
+  /** Draft account selection only; never grants provider access. */
+  task_connector_id?: string | null;
   prompt: Record<string, any>;
   site_id: string;
   user_id: string;

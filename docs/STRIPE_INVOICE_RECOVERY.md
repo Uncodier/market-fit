@@ -264,6 +264,21 @@ and to the current site, billing record, customer, terminal subscription and
 cancellation time. It does not change billing, credits, add-ons or renewal
 state. The extra member seats expire at the original invoice period boundary,
 not one month after the late payment. Rebinding to a replacement subscription
+does not transfer an individually approved extension either. Migration
+`20261125213000_individual_late_payment_access_month.sql` allows a database
+operator to explicitly opt in a single verified invoice: the seat and checkout
+boundary use the later of the original service end and one UTC calendar month
+from payment. All other invoices keep their original end. This does not edit
+Stripe, change credit allowances, or override a charge reversal.
+
+After `20261125220000_automatic_late_payment_access_month.sql` is installed,
+new verified late-renewal grants enroll in this rule automatically, in the same
+transaction as the proof. Both `invoice.paid` and `invoice.payment_succeeded`
+use the same settlement path. The deadline is anchored to Stripe's verified
+`paid_at`, never webhook arrival or retry time. Existing grants (including
+individual extensions), ordinary active subscriptions and rejected payments
+are unchanged. This does not broaden the original late-renewal eligibility
+window or change the invoice's service period. Rebinding
 does not carry the old entitlement forward. `revoke_stripe_late_renewal_access`
 records a permanent charge reversal even if the grant has not arrived yet;
 replaying a paid delivery cannot restore it.

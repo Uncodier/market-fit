@@ -43,6 +43,17 @@ test('an already-settled invoice recovers access after an interrupted grant with
     cancellation_reason: 'payment_failed', amount_paid: 9900, currency: 'USD' })
 })
 
+test.each(['invoice.paid', 'invoice.payment_succeeded'] as const)('%s sends the verified paid_at and original invoice term to the same access writer', async type => {
+  rpc.mockResolvedValueOnce({ data: { outcome: 'duplicate', payment_id: 'p_test', credits_granted: 0 } })
+    .mockResolvedValueOnce({ data: 'granted' })
+  const event = { type, id: 'evt_retry', data: { object: { id: invoice.id } } } as Stripe.Event
+  await expect(handleBillingStripeEvent({ event, stripe, supabase })).resolves.toBe(true)
+  expect(rpc).toHaveBeenCalledWith('record_stripe_late_renewal_access', { p_evidence: expect.objectContaining({
+    invoice_id: invoice.id, paid_at: new Date(invoice.status_transitions.paid_at * 1000).toISOString(),
+    period_end: '2026-12-01T12:00:00Z',
+  }) })
+})
+
 test.each([
   ['charge.refunded', { id: 'ch_test', amount_refunded: 200 }],
   ['charge.dispute.created', { id: 'dp_test', charge: 'ch_test' }],

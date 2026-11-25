@@ -168,6 +168,11 @@ function LayoutClientInner({
   const { isLayoutCollapsed, setIsLayoutCollapsed, robotsViewMode } = useLayout()
   const isMobile = useMobileViewport()
   const [isCreateSaleOpen, setIsCreateSaleOpen] = useState(false)
+  const [mobileSidebarRoute, setMobileSidebarRoute] = useState<string | null>(null)
+  const route = `${pathname}?${searchParams.toString()}`
+  const isMobileSidebarOpen = isMobile === true && mobileSidebarRoute === route
+  // Discard stale state so returning to the same route or viewport never reopens the menu.
+  if (mobileSidebarRoute !== null && !isMobileSidebarOpen) setMobileSidebarRoute(null)
 
   const handleCollapse = () => {
     setIsLayoutCollapsed(!isLayoutCollapsed)
@@ -263,9 +268,12 @@ function LayoutClientInner({
           <div className="flex overflow-visible relative min-h-[100dvh] w-full">
             <Sidebar 
               desktopVisible={isMobile === false}
+              isMobile={isMobile === true}
               isCollapsed={isLayoutCollapsed} 
               onCollapse={handleCollapse}
-              className="!hidden md:!flex flex-none fixed left-0 top-0 z-[210]"
+              isMobileOpen={isMobileSidebarOpen}
+              onMobileClose={() => setMobileSidebarRoute(null)}
+              className="flex-none"
             />
             {/* TOUR EXPLICITAMENTE RENDERIZADO */}
             <GuidedTour />
@@ -282,6 +290,8 @@ function LayoutClientInner({
                 helpTask={currentPage.helpTask || undefined}
                 isCollapsed={isLayoutCollapsed}
                 onCollapse={handleCollapse}
+                isMobileSidebarOpen={isMobileSidebarOpen}
+                onMobileSidebarOpen={() => setMobileSidebarRoute(route)}
                 className="fixed top-0 right-0 left-0"
                 style={{ paddingLeft: isMobile ? 0 : isLayoutCollapsed ? 64 : 256 }}
                 breadcrumb={customBreadcrumb}

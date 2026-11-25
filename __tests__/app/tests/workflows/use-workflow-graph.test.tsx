@@ -101,6 +101,15 @@ describe("useWorkflowGraph sync", () => {
     })])
   })
 
+  it("does not synchronize triggers when saving a draft connector", async () => {
+    const { result } = renderHook(() => useWorkflowGraph("instance-1", "site-1"))
+    await act(async () => {
+      await result.current.updateNode("step-1", { task_connector_id: "00000000-0000-4000-8000-000000000101" })
+      jest.advanceTimersByTime(1000)
+    })
+    expect(apiClient.post).not.toHaveBeenCalled()
+  })
+
   it("shows an error when an edited trigger could not be synchronized", async () => {
     jest.spyOn(console, "error").mockImplementation(() => undefined)
     jest.spyOn(apiClient, "post").mockResolvedValue({ success: false, error: { message: "Not permitted" } })

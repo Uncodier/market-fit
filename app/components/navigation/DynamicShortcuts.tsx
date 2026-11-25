@@ -56,10 +56,10 @@ import {
   type ShortcutsUpdatedDetail,
 } from "./shortcut-storage"
 
-interface DynamicShortcutsProps { isCollapsed: boolean }
+interface DynamicShortcutsProps { isCollapsed: boolean; isMobile?: boolean }
 const ALL_ITEMS = ALL_SHORTCUT_ITEMS
 
-export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
+export function DynamicShortcuts({ isCollapsed, isMobile = false }: DynamicShortcutsProps) {
   const { t } = useLocalization()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -76,7 +76,7 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
   const screenAccess = useOptionalScreenAccess()
   const [shortcuts, setShortcuts] = useState<ShortcutRecord[]>([])
   const hasPinnedOverview = shortcuts.some((entry) => entry.pinned && entry.id === "reportOverview")
-  const slots = useShortcutSlotCount(containerRef, hasPinnedOverview ? 38 : 22, isCollapsed)
+  const slots = useShortcutSlotCount(containerRef, hasPinnedOverview ? 38 : 22, isCollapsed, isMobile)
   const [loadedScope, setLoadedScope] = useState<string | null>(null)
   const isLoaded = shortcutScope !== null && loadedScope === shortcutScope
   // Tracks observed/submitted content, not confirmed DB durability: storage logs
@@ -171,7 +171,7 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
           const index = canonicalShortcuts.findIndex(
             (shortcut) => shortcut.id === activeItem.key,
           )
-          if (index >= slots) {
+          if (shouldPromoteShortcut(canonicalShortcuts, index, slots, isMobile)) {
             const next = [...canonicalShortcuts];
             const item = next.splice(index, 1)[0];
             return [item, ...next];
@@ -228,7 +228,7 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
                 shortcut.href === pathname ||
                 shortcut.href === fullHref
             )
-            if (index >= slots) {
+            if (shouldPromoteShortcut(prev, index, slots, isMobile)) {
               const next = [...prev];
               const item = next.splice(index, 1)[0];
               return [item, ...next];
@@ -238,7 +238,7 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
         });
       }
     }
-  }, [pathname, navSearchParams, searchParams, isLoaded, slots, screenAccess])
+  }, [pathname, navSearchParams, searchParams, isLoaded, slots, screenAccess, isMobile])
 
   const handleRemove = (idToRemove: string) => {
     setShortcuts((prev) => prev.filter((shortcut) => shortcut.id !== idToRemove))
@@ -471,4 +471,12 @@ export function DynamicShortcuts({ isCollapsed }: DynamicShortcutsProps) {
       )}
     </div>
   )
+}
+
+function shouldPromoteShortcut(entries: ShortcutRecord[], index: number, slots: number, isMobile: boolean) {
+  if (!isMobile) return index >= slots
+  if (entries[index].pinned) return false
+  const pinnedCount = entries.filter((entry) => entry.pinned).length
+  const recentIndex = entries.slice(0, index).filter((entry) => !entry.pinned).length
+  return recentIndex >= Math.max(1, slots - pinnedCount)
 }

@@ -5,7 +5,7 @@ import type { WorkspaceArea } from "@/app/config/navigation-areas"
 import {
   FULL_SIZE_MODULE_IMAGE_KEYS,
   getModuleImageUrl,
-} from "@/app/config/module-image-visuals"
+} from "@/app/config/module-icon-catalog"
 import { cn } from "@/lib/utils"
 import { NAV_ITEM_ICON, AREA_ICON } from "@/app/config/module-visuals"
 
@@ -26,7 +26,8 @@ export function ModuleImage({
   imageClassName,
   loading = "lazy",
 }: ModuleImageProps) {
-  const [failed, setFailed] = useState(false)
+  const src = getModuleImageUrl(area, itemKey === "suppliers" ? "leads" : itemKey, title)
+  const [failedSrc, setFailedSrc] = useState<string | null>(null)
   const isFullSize = FULL_SIZE_MODULE_IMAGE_KEYS.has(itemKey)
   const FallbackIcon = NAV_ITEM_ICON[itemKey] ?? AREA_ICON[area]
 
@@ -38,9 +39,9 @@ export function ModuleImage({
         className,
       )}
     >
-      {!failed ? (
+      {src && src !== failedSrc ? (
         <img
-          src={getModuleImageUrl(area, itemKey === "suppliers" ? "leads" : itemKey, title)}
+          src={src}
           alt={`${title} app icon`}
           width={256}
           height={256}
@@ -53,7 +54,7 @@ export function ModuleImage({
             itemKey === "suppliers" && "hue-rotate-60",
             imageClassName,
           )}
-          onError={() => setFailed(true)}
+          onError={() => setFailedSrc(src)}
         />
       ) : <span role="img" aria-label={`${title} app icon`} className="flex h-full w-full items-center justify-center text-foreground/80">
         <FallbackIcon className="h-1/2 w-1/2" aria-hidden={true} />

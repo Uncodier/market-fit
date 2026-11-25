@@ -16,7 +16,7 @@ test("floats over the full-height content without reserving layout space", () =>
   expect(chat).toContain("top-[var(--topbar-height,64px)] bottom-0")
 })
 
-test("uses theme tokens for glass, selected tabs, focus and reduced transparency", () => {
+test("uses a solid dock and an accent background for the current tab", () => {
   const css = read("app/components/navigation/mobile-workspace-navigation.module.css")
   const rules = postcss.parse(css)
   const declarations: Record<string, string> = {}
@@ -25,20 +25,20 @@ test("uses theme tokens for glass, selected tabs, focus and reduced transparency
       declarations[`${rule.selector}:${declaration.prop}`] = declaration.value
     })
   })
-  expect(declarations['.tab[aria-current="page"]:color']).toBe("hsl(var(--accent-foreground))")
-  expect(declarations[".tab::before:background"]).toBe("hsl(var(--accent))")
+  expect(declarations['.tab[aria-current="page"]:color']).toContain("colors.primary-button")
+  expect(declarations['.tab[aria-current="page"]:background-color']).toContain("colors.primary-button")
+  expect(declarations[".tab:background-color"]).toBeUndefined()
   expect(declarations[".tab:color"]).toBe("hsl(var(--muted-foreground))")
   expect(declarations[".tab:focus-visible:outline"]).toContain("var(--ring)")
-  expect(declarations[".glass:background"]).toBe("hsl(var(--background))")
-  expect(css).toContain("hsl(var(--card) / 78%)")
+  expect(declarations[".dock:background"]).toBe("hsl(var(--card))")
+  expect(css).not.toMatch(/backdrop-filter|linear-gradient/)
+  expect(declarations['.tab[aria-current="page"]:filter']).toBeUndefined()
   expect(css).not.toMatch(/#[\da-f]{3,8}\b/i)
-  expect(declarations[".label:width"]).toBe("100%")
   expect(declarations[".label:white-space"]).toBe("nowrap")
   expect(declarations[".label:text-overflow"]).toBe("ellipsis")
   expect(declarations[".label:overflow"]).toBe("hidden")
   expect(declarations[".label:-webkit-line-clamp"]).toBeUndefined()
   expect(declarations[".tab:display"]).toBe("grid")
-  expect(declarations[".tab:grid-template-rows"]).toBe("25px 11px")
-  expect(declarations[":global(html.safari) .glass[data-mobile-workspace-navigation] a.tab:display"]).toBe("grid")
-  expect(declarations[":global(html.safari) .glass[data-mobile-workspace-navigation] a.tab > .label:text-align"]).toBe("center")
+  expect(declarations[":global(html.safari) .dock[data-mobile-workspace-navigation] a.tab:display"]).toBe("grid")
+  expect(declarations[":global(html.safari) .dock[data-mobile-workspace-navigation] a.tab > .label:text-align"]).toBe("center")
 })

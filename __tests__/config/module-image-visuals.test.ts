@@ -1,3 +1,4 @@
+import { catalogIconUrl } from "@/__tests__/fixtures/module-icon-url"
 import {
   FULL_SIZE_MODULE_IMAGE_KEYS,
   getModuleImagePrompt,
@@ -8,8 +9,6 @@ import {
   NAVIGATION_AREAS,
   type WorkspaceArea,
 } from "@/app/config/navigation-areas"
-import { MAKINARI_MODULE_IMAGE_OVERRIDES } from "@/app/config/module-image-overrides"
-import { isSharedModuleImageKey } from "@/app/config/shared-module-images"
 
 describe("module image visuals", () => {
   it("uses a short object hint for every app instead of the raw screen name", () => {
@@ -346,50 +345,17 @@ describe("module image visuals", () => {
     expect(prompt).not.toContain("full-size at 88 to 92 percent")
   })
 
-  describe("platform-owned icon URLs", () => {
-    const previousApiUrl = process.env.NEXT_PUBLIC_API_SERVER_URL
-
-    afterEach(() => {
-      if (previousApiUrl === undefined) {
-        delete process.env.NEXT_PUBLIC_API_SERVER_URL
-      } else {
-        process.env.NEXT_PUBLIC_API_SERVER_URL = previousApiUrl
+  it("uses local catalog artwork for every navigation item", () => {
+    for (const area of Object.keys(NAVIGATION_AREAS) as WorkspaceArea[]) {
+      for (const { key } of NAVIGATION_AREAS[area].items) {
+        expect(getModuleImageUrl(area, key, "Ignored Title")).toEqual(
+          catalogIconUrl(key === "aiWorkspace" ? "salesHome" : key),
+        )
       }
-    })
+    }
+  })
 
-    it("requests square 256px icons directly from the platform endpoint without a site", () => {
-      process.env.NEXT_PUBLIC_API_SERVER_URL = "https://images.example.com"
-
-      const url = new URL(getModuleImageUrl("marketing", "promotions", "Promotions"))
-
-      expect(url.origin).toBe("https://images.example.com")
-      expect(url.pathname).toContain("/api/public/image/prompt/")
-      expect(url.searchParams.get("width")).toBe("256")
-      expect(url.searchParams.get("height")).toBe("256")
-      expect([...url.searchParams.keys()]).toEqual(["width", "height"])
-      expect(url.searchParams.has("site_id")).toBe(false)
-    })
-
-    it("preserves the previous icon-set URL contract outside the selected overrides", () => {
-      process.env.NEXT_PUBLIC_API_SERVER_URL = "https://images.example.com"
-
-      for (const area of Object.keys(NAVIGATION_AREAS) as WorkspaceArea[]) {
-        for (const item of NAVIGATION_AREAS[area].items) {
-          if (MAKINARI_MODULE_IMAGE_OVERRIDES[item.key] || isSharedModuleImageKey(item.key)) continue
-          const prompt = getModuleImagePrompt(area, item.key, "Ignored Title")
-          expect(getModuleImageUrl(area, item.key, "Ignored Title")).toBe(
-            `https://images.example.com/api/public/image/prompt/${encodeURIComponent(prompt.trim())}?width=256&height=256`,
-          )
-        }
-      }
-    })
-
-    it("retains the previous local API fallback", () => {
-      delete process.env.NEXT_PUBLIC_API_SERVER_URL
-
-      expect(new URL(getModuleImageUrl("sales", "catalog", "Catalog")).origin).toBe(
-        "http://localhost:3001",
-      )
-    })
+  it("does not request an image for an unknown key", () => {
+    expect(getModuleImageUrl("sales", "unknown", "New Module")).toBe("")
   })
 })

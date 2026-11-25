@@ -193,6 +193,8 @@ export function useWorkflowGraph(instanceId?: string, siteId?: string) {
     if (error) throw error
     const updated = data as InstanceNode
     setNodes((prev) => prev.map((n) => (n.id === id ? updated : n)))
+    // A proposed account is not an executable change. Never publish it as one.
+    if (Object.keys(patch).length === 1 && 'task_connector_id' in patch) return updated
     
     if (isWorkflowNode(updated) && updated.instance_id) {
       // Keep the execution plan and trigger eligibility current after edits to

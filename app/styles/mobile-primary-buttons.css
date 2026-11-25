@@ -73,7 +73,9 @@
   /* Outrank legacy Safari button/utility selectors, regardless of import order. */
   html :is([data-topbar], [data-page-primary-actions]) .btn-primary.btn-primary.btn-primary > .safari-icon-fix,
   html :is([data-topbar], [data-page-primary-actions]) .btn-primary.btn-primary.btn-primary > .safari-icon-fix > svg,
-  html :is([data-topbar], [data-page-primary-actions]) .btn-primary.btn-primary.btn-primary > svg {
+  html :is([data-topbar], [data-page-primary-actions]) .btn-primary.btn-primary.btn-primary > svg,
+  html [data-topbar] button[aria-controls="workspace-sidebar"] > .topbar-menu-icon,
+  html [data-topbar] button[aria-controls="workspace-sidebar"] > .topbar-menu-icon > svg {
     width: 28px !important;
     height: 28px !important;
     min-width: 28px !important;
@@ -85,7 +87,8 @@
   }
 
   :is([data-topbar], [data-page-primary-actions]) .btn-primary > .safari-icon-fix > svg,
-  :is([data-topbar], [data-page-primary-actions]) .btn-primary > svg {
+  :is([data-topbar], [data-page-primary-actions]) .btn-primary > svg,
+  [data-topbar] .topbar-menu-icon > svg {
     stroke-width: 1.5;
   }
 

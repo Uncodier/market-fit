@@ -1,3 +1,4 @@
+import { catalogIconUrl } from "@/__tests__/fixtures/module-icon-url"
 import { NAVIGATION_AREAS, getNavItemTitle } from "@/app/config/navigation-areas"
 import { shouldUseLayout, shouldUseWorkspaceProviders } from "@/app/config/routes"
 import { NAV_ITEM_ICON } from "@/app/config/module-visuals"
@@ -21,7 +22,7 @@ test("connectors share navigation, workspace providers, blocked-screen registry 
 
 test("connectors use their own generated module artwork", () => {
   const prompt = getModuleImagePrompt("automation", "connectors", "Connectors")
-  expect(getModuleImageUrl("automation", "connectors", "Connectors")).toBe("/images/modules/connectors.webp")
+  expect(getModuleImageUrl("automation", "connectors", "Connectors")).toEqual(catalogIconUrl("connectors"))
   expect(prompt).toBe(getModuleImagePrompt("automation", "connectors", "Conectores"))
   expect(prompt).toContain("two chunky rounded connector halves joining")
   expect(prompt).toContain("strong legibility at small UI sizes")

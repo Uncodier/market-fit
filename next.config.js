@@ -37,9 +37,13 @@ const nextConfig = {
       { protocol: 'https', hostname: 'picsum.photos', port: '', pathname: '/seed/**', search: '' },
     ],
   },
-  // Headers configuration for CSP
+  // Cache fingerprinted module art independently of workspace and page responses.
   async headers() {
     return [
+      {
+        source: '/images/modules/catalog/:file*',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
+      },
       ...(process.env.NODE_ENV === 'development'
         ? [{
             source: '/_next/:path*',

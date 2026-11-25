@@ -2,9 +2,6 @@ import { act, render, screen } from "@testing-library/react"
 import { useRef } from "react"
 import { calculateShortcutSlots, useShortcutSlotCount } from "@/app/components/navigation/use-shortcut-slot-count"
 
-let mockMobile = false
-jest.mock("@/app/hooks/use-mobile-view", () => ({ useIsMobile: () => mockMobile }))
-
 it.each([[0, 0], [77, 0], [78, 1], [122, 2], [254, 5], [474, 10]])(
   "fits %s available pixels into %s complete rows", (height, expected) => {
     expect(calculateShortcutSlots(height, 38)).toBe(expected)
@@ -16,13 +13,17 @@ it("reserves the smaller separator when overview is absent", () => {
   expect(calculateShortcutSlots(106, 22)).toBe(2)
 })
 
-function Fixture({ isCollapsed = false }: { isCollapsed?: boolean }) {
+function Fixture({ isCollapsed = false, isMobile = false }: { isCollapsed?: boolean; isMobile?: boolean }) {
   const ref = useRef<HTMLDivElement>(null)
-  const slots = useShortcutSlotCount(ref, 38, isCollapsed)
-  return <div data-sidebar-shortcut-viewport>
-    <div data-sidebar-shortcut-content style={{ paddingBottom: 20 }}>
-      <div><div ref={ref}><output>{slots}</output></div></div>
+  const slots = useShortcutSlotCount(ref, 38, isCollapsed, isMobile)
+  return <div data-testid="drawer">
+    <header />
+    <div data-sidebar-shortcut-viewport>
+      <div data-sidebar-shortcut-content style={{ paddingBottom: 20 }}>
+        <div><div ref={ref}><output>{slots}</output></div></div>
+      </div>
     </div>
+    <footer />
   </div>
 }
 
@@ -35,7 +36,6 @@ it("remeasures when the viewport or reserved footer space changes", () => {
     unobserve() {}
     disconnect() {}
   } as typeof ResizeObserver
-  mockMobile = false
   try {
     const { container } = render(<Fixture />)
     const viewport = container.querySelector("[data-sidebar-shortcut-viewport]")!
@@ -55,11 +55,44 @@ it("remeasures when the viewport or reserved footer space changes", () => {
   } finally { global.ResizeObserver = originalObserver }
 })
 
-it("keeps the complete shortcut list available in the scrolling mobile menu", () => {
-  mockMobile = true
-  render(<Fixture />)
-  expect(screen.getByRole("status")).toHaveTextContent(String(Number.MAX_SAFE_INTEGER))
-  mockMobile = false
+it("fits mobile rows to the drawer, not the growing shortcut section, and remeasures on resize", () => {
+  let resized = () => {}
+  const originalObserver = global.ResizeObserver
+  const observe = jest.fn()
+  global.ResizeObserver = class {
+    constructor(callback: ResizeObserverCallback) { resized = () => callback([], this) }
+    observe = observe
+    disconnect() {}
+  } as unknown as typeof ResizeObserver
+  try {
+    const { container } = render(<Fixture isMobile />)
+    const drawer = screen.getByTestId("drawer")
+    const viewport = container.querySelector("[data-sidebar-shortcut-viewport]")!
+    const shortcuts = screen.getByRole("status").parentElement!
+    const footer = screen.getByRole("contentinfo")
+    let drawerHeight = 600
+    let footerHeight = 140
+    Object.defineProperty(drawer, "clientHeight", { get: () => drawerHeight })
+    Object.defineProperty(viewport, "clientHeight", { value: 1000 })
+    jest.spyOn(footer, "getBoundingClientRect").mockImplementation(() => ({ height: footerHeight }) as DOMRect)
+    jest.spyOn(screen.getByRole("banner"), "getBoundingClientRect").mockReturnValue({ height: 130 } as DOMRect)
+    jest.spyOn(viewport, "getBoundingClientRect").mockReturnValue({ top: 130 } as DOMRect)
+    jest.spyOn(shortcuts, "getBoundingClientRect").mockReturnValue({ top: 240 } as DOMRect)
+    expect(observe).toHaveBeenCalledWith(drawer)
+    expect(observe).toHaveBeenCalledWith(footer)
+    expect(observe).not.toHaveBeenCalledWith(viewport)
+    act(() => resized())
+    expect(screen.getByRole("status")).toHaveTextContent(/^3$/)
+    drawerHeight = 820
+    act(() => resized())
+    expect(screen.getByRole("status")).toHaveTextContent(/^8$/)
+    footerHeight = 184
+    act(() => resized())
+    expect(screen.getByRole("status")).toHaveTextContent(/^7$/)
+    drawerHeight = 0
+    act(() => resized())
+    expect(screen.getByRole("status")).toHaveTextContent(/^7$/)
+  } finally { global.ResizeObserver = originalObserver }
 })
 
 it("recalculates the expanded menu using 40px rows and its actual available height", () => {
@@ -72,7 +105,6 @@ it("recalculates the expanded menu using 40px rows and its actual available heig
     unobserve() {}
     disconnect() {}
   } as typeof ResizeObserver
-  mockMobile = false
   try {
     const { container, rerender } = render(<Fixture isCollapsed />)
     const viewport = container.querySelector("[data-sidebar-shortcut-viewport]")!

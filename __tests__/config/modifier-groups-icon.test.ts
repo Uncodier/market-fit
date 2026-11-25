@@ -1,3 +1,4 @@
+import { catalogIconUrl } from "@/__tests__/fixtures/module-icon-url"
 import { ModifierGroups } from "@/app/components/ui/icons"
 import { NAV_ITEM_ICON } from "@/app/config/module-visuals"
 import { getModuleImagePrompt, getModuleImageUrl } from "@/app/config/module-image-visuals"
@@ -28,6 +29,6 @@ describe("modifier groups navigation", () => {
     expect(prompt).toContain("grouped product extras")
     expect(prompt).toBe(getModuleImagePrompt("operations", "modifierGroups", "Translated groups"))
     expect(getModuleImageUrl("operations", "modifierGroups", "Modifier groups"))
-      .toBe("/api/images/modules/modifierGroups")
+      .toEqual(catalogIconUrl("modifierGroups"))
   })
 })

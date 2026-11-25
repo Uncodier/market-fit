@@ -10,7 +10,7 @@ import { useToolCatalog } from "./use-tool-catalog"
 import { ToolActionSelect } from "./tool-action-select"
 import type { ToolAction } from "./tool-action-types"
 
-type SearchProps = { siteId: string; slug: string; selected: string[]; onSelect: (id: string) => void }
+type SearchProps = { siteId: string; slug: string; selected: string[]; onSelect: (id: string) => void; fixedAction?: ToolAction }
 
 export function ToolCatalogSearch(props: SearchProps) {
   const { t } = useLocalization()
@@ -31,9 +31,9 @@ export function ToolCatalogSearch(props: SearchProps) {
           aria-label={t("connectors.searchTools")} placeholder={t("connectors.searchTools")} maxLength={200}
           value={input} onChange={event => setInput(event.target.value)} />
       </label>
-      <ToolActionSelect value={action} onChange={setAction} />
+      {!props.fixedAction && <ToolActionSelect value={action} onChange={setAction} />}
     </div>
-    {search === query ? <ToolResults key={`${action}:${search}`} {...props} search={search} action={action} /> : <LoadingTools />}
+    {search === query ? <ToolResults key={`${props.fixedAction || action}:${search}`} {...props} search={search} action={props.fixedAction || action} /> : <LoadingTools />}
   </>
 }
 

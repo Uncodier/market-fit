@@ -1,19 +1,26 @@
+import { catalogIconUrl } from "@/__tests__/fixtures/module-icon-url"
 import { fireEvent, render, screen } from "@testing-library/react"
 import { ModuleImage } from "@/app/components/navigation/ModuleImage"
 
 describe("ModuleImage", () => {
+  it("shows the accessible fallback without requesting an image for an unknown key", () => {
+    const { container } = render(<ModuleImage area="sales" itemKey="unknown" title="New Module" />)
+    expect(screen.getByRole("img", { name: "New Module app icon" }).querySelector("svg")).not.toBeNull()
+    expect(container.querySelector("img")).toBeNull()
+  })
+
   it("selects different image URLs when the theme state changes", () => {
     const { rerender } = render(<ModuleImage key="themeLight" area="settings" itemKey="themeLight" title="Theme" />)
-    expect(screen.getByRole("img", { name: "Theme app icon" })).toHaveAttribute("src", "/api/images/modules/themeLight")
+    expect(screen.getByRole("img", { name: "Theme app icon" })).toHaveAttribute("src", catalogIconUrl("themeLight"))
     fireEvent.error(screen.getByRole("img", { name: "Theme app icon" }))
     rerender(<ModuleImage key="themeDark" area="settings" itemKey="themeDark" title="Theme" />)
-    expect(screen.getByRole("img", { name: "Theme app icon" })).toHaveAttribute("src", "/api/images/modules/themeDark")
+    expect(screen.getByRole("img", { name: "Theme app icon" })).toHaveAttribute("src", catalogIconUrl("themeDark"))
   })
 
   it("renders the shared Profile artwork and keeps a user icon on delivery failure", () => {
     render(<ModuleImage area="settings" itemKey="profile" title="Profile" />)
     const image = screen.getByRole("img", { name: "Profile app icon" })
-    expect(image).toHaveAttribute("src", "/api/images/modules/profile")
+    expect(image).toHaveAttribute("src", catalogIconUrl("profile"))
     fireEvent.error(image)
     expect(screen.getByRole("img", { name: "Profile app icon" }).querySelector("svg")).not.toBeNull()
   })
@@ -23,7 +30,7 @@ describe("ModuleImage", () => {
       <ModuleImage area="buying" itemKey="suppliers" title="Suppliers" />,
     )
     const image = screen.getByRole("img", { name: "Suppliers app icon" })
-    expect(image).toHaveAttribute("src", "/images/modules/makinari-2026-09-30/leads.webp")
+    expect(image).toHaveAttribute("src", catalogIconUrl("leads"))
     expect(image).toHaveClass("object-cover", "dark:brightness-[0.82]", "hue-rotate-60")
     expect(image).not.toHaveClass("brightness-0", "p-2")
     expect(container.firstChild).toHaveClass("bg-muted/50")
@@ -39,19 +46,14 @@ describe("ModuleImage", () => {
     fireEvent.error(screen.getByRole("img", { name: "Suppliers app icon" }))
     expect(screen.getByRole("img", { name: "Suppliers app icon" }).querySelector("svg")).not.toBeNull()
   })
-  it.each([
-    ["assets", "/images/modules/makinari-2026-09-30/assets.webp"],
-    ["promotions", "/api/public/image/prompt/"],
-  ])("keeps the shared %s icon source when the active site changes", (itemKey, expectedPath) => {
+  it.each(["assets", "promotions"])("keeps the shared %s icon source when the active site changes", (itemKey) => {
     try {
       document.cookie = "mf_current_site_id=00000000-0000-4000-8000-000000000001; Path=/"
       const { rerender } = render(
         <ModuleImage area="marketing" itemKey={itemKey} title="Module" />,
       )
       const source = screen.getByRole("img", { name: "Module app icon" }).getAttribute("src")!
-      const url = new URL(source, window.location.origin)
-      expect(url.pathname).toContain(expectedPath)
-      expect(url.searchParams.has("site_id")).toBe(false)
+      expect(source).toEqual(catalogIconUrl(itemKey))
 
       document.cookie = "mf_current_site_id=00000000-0000-4000-8000-000000000002; Path=/"
       rerender(<ModuleImage area="marketing" itemKey={itemKey} title="Module" />)

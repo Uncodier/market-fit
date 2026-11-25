@@ -1,3 +1,4 @@
+import { catalogIconUrl } from "@/__tests__/fixtures/module-icon-url"
 import { NAVIGATION_AREAS, getNavItemTitle, getModuleArea, getNavigationMenuItems, isAreaActive } from "@/app/config/navigation-areas"
 import { MODULE_VARIANTS, NAV_ITEM_ICON, getModuleVisual } from "@/app/config/module-visuals"
 import { getModuleImagePrompt, getModuleImageUrl } from "@/app/config/module-image-visuals"
@@ -56,6 +57,6 @@ describe("accounts receivable workspace integration", () => {
     expect(getModuleImagePrompt("sales", "accountsReceivable", "Another title")).toBe(prompt)
     expect(getModuleImagePrompt("finance", "accountsReceivable", "Accounts Receivable")).toBe(prompt)
     const url = getModuleImageUrl("sales", "accountsReceivable", "Accounts Receivable")
-    expect(url).toContain(`/api/public/image/prompt/${encodeURIComponent(prompt)}?width=256&height=256`)
+    expect(url).toEqual(catalogIconUrl("accountsReceivable"))
   })
 })

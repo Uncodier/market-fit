@@ -1,6 +1,6 @@
 import type { WorkspaceArea } from "./navigation-areas"
-import { MAKINARI_MODULE_IMAGE_OVERRIDES } from "./module-image-overrides"
-import { isSharedModuleImageKey } from "./shared-module-images"
+import { FULL_SIZE_MODULE_IMAGE_KEYS } from "./module-icon-catalog"
+export { FULL_SIZE_MODULE_IMAGE_KEYS, getModuleImageUrl } from "./module-icon-catalog"
 import { getRealisticModuleImagePrompt } from "./module-image-realistic"
 
 /** Short object noun so the model is not literal with screen names like "leads". */
@@ -100,24 +100,6 @@ export const MODULE_IMAGE_HINTS: Record<string, string> = {
   billing: "credit card",
   security: "shield",
 }
-
-/** Objects with strong silhouettes that benefit from a near edge-to-edge cutout composition. */
-export const FULL_SIZE_MODULE_IMAGE_KEYS = new Set([
-  "pos",
-  "catalog",
-  "records",
-  "shipments",
-  "reservations",
-  "inventory",
-  "printers",
-  "channels",
-  "payments",
-  "reportTraffic",
-  "company",
-  "marketplace",
-  "calendar",
-  "settingsGeneral",
-])
 
 const CONTAINER_FREE_MODULE_IMAGE_KEYS = new Set([
   "settingsGeneral",
@@ -335,20 +317,4 @@ export function getModuleImagePrompt(
       "Set against a clean, seamless background chosen to provide maximum contrast with the object",
     "Dreamy, modern UI asset style, clean geometry, Octane render, 8k resolution",
   ].filter(Boolean).join(". ")
-}
-
-export function getModuleImageUrl(
-  area: WorkspaceArea,
-  itemKey: string,
-  title: string,
-): string {
-  const approvedIcon = MAKINARI_MODULE_IMAGE_OVERRIDES[itemKey]
-  if (approvedIcon) return approvedIcon
-  if (isSharedModuleImageKey(itemKey)) return `/api/images/modules/${itemKey}`
-
-  // Makinari owns these shared icons. Preserve their original platform cache URLs
-  // instead of sending them through the current-site image generation proxy.
-  const apiServerUrl = process.env.NEXT_PUBLIC_API_SERVER_URL || "http://localhost:3001"
-  const prompt = getModuleImagePrompt(area, itemKey, title).trim()
-  return `${apiServerUrl}/api/public/image/prompt/${encodeURIComponent(prompt)}?width=256&height=256`
 }

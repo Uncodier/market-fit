@@ -1,3 +1,4 @@
+import { catalogIconUrl } from "@/__tests__/fixtures/module-icon-url"
 import { fireEvent, render, screen, within } from "@testing-library/react"
 import { useSearchParams } from "next/navigation"
 import NavigationPage from "@/app/navigation/page"
@@ -28,7 +29,7 @@ test("places Profile first in Settings and navigates to the account", () => {
   const tiles = within(section).getAllByRole("button")
   expect(tiles[0]).toHaveTextContent("Profile")
   expect(within(tiles[0]).getByRole("img", { name: "Profile app icon" }))
-    .toHaveAttribute("src", "/api/images/modules/profile")
+    .toHaveAttribute("src", catalogIconUrl("profile"))
   fireEvent.click(tiles[0])
   expect(navigateOrAssign).toHaveBeenCalledWith(expect.anything(), "/profile")
 })

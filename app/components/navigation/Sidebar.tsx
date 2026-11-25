@@ -27,6 +27,7 @@ const NavigationPage = dynamic(() => import("@/app/navigation/page"), {
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
   desktopVisible?: boolean
+  isMobile?: boolean
   isCollapsed: boolean
   onCollapse: () => void
   isMobileOpen?: boolean
@@ -38,6 +39,7 @@ const profileMainItem = { key: "account", href: "/profile", icon: User }
 export function Sidebar({
   className,
   desktopVisible = true,
+  isMobile = false,
   isCollapsed,
   onCollapse,
   isMobileOpen = false,
@@ -123,6 +125,17 @@ export function Sidebar({
   const [isAppsLauncherOpen, setIsAppsLauncherOpen] = useState(false)
 
   useEffect(() => {
+    if (!isMobileOpen || !onMobileClose) return
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented || document.querySelector("[data-site-selector-dialog][data-state=open]")) return
+      if (isAppsLauncherOpen) setIsAppsLauncherOpen(false)
+      else onMobileClose()
+    }
+    document.addEventListener("keydown", handleEscape)
+    return () => document.removeEventListener("keydown", handleEscape)
+  }, [isMobileOpen, isAppsLauncherOpen, onMobileClose])
+
+  useEffect(() => {
     setIsAppsLauncherOpen(false)
   }, [pathname])
 
@@ -177,20 +190,22 @@ export function Sidebar({
       )}
       {isMobileOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-[190] md:hidden backdrop-blur-sm transition-opacity"
+          data-mobile-sidebar-backdrop
+          className="fixed inset-0 bg-black/50 z-[220] md:hidden backdrop-blur-sm transition-opacity"
+          aria-hidden="true"
           onClick={onMobileClose}
         />
       )}
       <div
+        id="workspace-sidebar"
         data-collapsed={renderCollapsed}
         className={cn(
           "flex flex-col h-[100dvh] overflow-y-auto overflow-x-hidden overscroll-y-contain md:overflow-hidden",
           isCollapsed ? "md:w-16" : "md:w-64",
-          "bg-background/80 text-foreground transition-[width,transform] duration-300 ease-in-out border-r dark:border-white/5 border-black/5 z-[200] backdrop-blur-[5px] font-inter",
+          "bg-background/80 text-foreground transition-[width] duration-300 ease-in-out border-r dark:border-white/5 border-black/5 backdrop-blur-[5px] font-inter",
           "sidebar-light-bg",
           "fixed left-0 top-0",
-          !isMobileOpen && "-translate-x-full md:translate-x-0",
-          isMobileOpen && "translate-x-0",
+          isMobileOpen ? "w-80 max-md:max-w-[calc(100%-2.75rem)] max-md:z-[230] md:z-[210]" : "!hidden md:!flex z-[210]",
           className
         )}
       >
@@ -199,10 +214,11 @@ export function Sidebar({
         <div
           className={cn(
             "min-h-[71px] flex flex-none items-center border-b dark:border-white/5 border-black/5",
+            isMobileOpen && "max-md:px-3 max-md:py-3",
             renderCollapsed && "px-[0.1875rem]"
           )}
         >
-          <SiteSelector isCollapsed={renderCollapsed} />
+          <SiteSelector isCollapsed={renderCollapsed} isMobile={isMobileOpen} />
         </div>
 
         {/* Mobile scrolls the entire sidebar so footer items remain reachable on short viewports. */}
@@ -220,7 +236,9 @@ export function Sidebar({
                     isCollapsed={renderCollapsed}
                     onWorkspaceNavigation={() => setIsAppsLauncherOpen(false)}
                   />
-                  {(desktopVisible || isMobileOpen) && <DynamicShortcuts isCollapsed={renderCollapsed} />}
+                  {(desktopVisible || isMobile || isMobileOpen) && (
+                    <DynamicShortcuts isCollapsed={renderCollapsed} isMobile={isMobile || isMobileOpen} />
+                  )}
                 </Suspense>
               </div>
             </div>

@@ -472,7 +472,9 @@ no automatic replay. Manager authority rows stay locked through mutations.
 
 ## Deliberate remaining gates
 
-- Background workflow delegations and voice connector execution are not enabled.
+- Generic background workflow delegations and voice connector execution are not enabled.
+  The [scheduled connector task](WORKFLOW_CONNECTOR_CRON.md) is a separate,
+  catalog-driven read backend with an independent publication and deployment gate.
   Bound Customer Support text turns use the restricted gateway described above.
   No missing user or agent identity falls back to a site owner.
 - Interactive use requires a stable verified agent binding in a supported host;

@@ -199,6 +199,8 @@
   "connectors.genericUnsupportedHelp": "Shared Makinari credentials do not grant generic provider access or unrestricted SQL. This status does not establish access to any separately authorized, site-scoped action.",
   "connectors.askState.off": "Off",
   "connectors.askHostPolicy": "Allow Robots Ask on this account",
+  "connectors.scheduledHost": "Allow use in scheduled tasks",
+  "connectors.scheduledHostHelp": "Each scheduled task still needs an explicit publication and current account permissions.",
   "connectors.askState.hostOff": "Ask is off",
   "connectors.askHelp.hostOff": "Allow Robots Ask in Tools & permissions and save the policy to turn it back on. This does not authorize execution by itself.",
   "connectors.askState.hostPending": "Waiting for execution authorization",

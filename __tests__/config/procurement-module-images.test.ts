@@ -1,3 +1,4 @@
+import { catalogIconUrl } from "@/__tests__/fixtures/module-icon-url"
 import {
   getModuleImagePrompt,
   getModuleImageUrl,
@@ -32,7 +33,7 @@ describe("procurement module images", () => {
       expect(getModuleImagePrompt(area, itemKey, "")).toBe(prompt)
 
       const url = getModuleImageUrl(area, itemKey, "Original title")
-      expect(url).toBe(`/api/images/modules/${itemKey}`)
+      expect(url).toEqual(catalogIconUrl(itemKey))
       expect(getModuleImageUrl(area, itemKey, "Translated title")).toBe(url)
     },
   )

@@ -1,8 +1,9 @@
 import { readFileSync } from "fs"
 import path from "path"
-import { render, screen } from "@testing-library/react"
-import { usePathname } from "next/navigation"
+import { fireEvent, render, screen } from "@testing-library/react"
+import { usePathname, useSearchParams } from "next/navigation"
 import { Sidebar } from "@/app/components/navigation/Sidebar"
+import LayoutClient from "@/app/layout-client"
 import { DynamicShortcuts } from '@/app/components/navigation/DynamicShortcuts'
 import { NotificationBadge } from '@/app/components/navigation/NotificationBadge'
 import { OnboardingProgressWidget } from '@/app/components/navigation/OnboardingProgressWidget'
@@ -16,6 +17,30 @@ jest.mock("next/dynamic", () => ({
 jest.mock("@/app/context/LocalizationContext", () => ({
   useLocalization: () => ({ t: (key: string) => key }),
 }))
+
+let mockMobile = true
+jest.mock("@/app/hooks/use-mobile-view", () => ({ useMobileViewport: () => mockMobile }))
+jest.mock("@/app/context/LayoutContext", () => ({
+  useLayout: () => ({ isLayoutCollapsed: true, setIsLayoutCollapsed: jest.fn() }),
+}))
+jest.mock("@/app/workspace-preview/WorkspaceStartupBoundary", () => ({
+  useWorkspaceStartup: () => null,
+  WorkspaceStartupBoundary: ({ children }: React.PropsWithChildren) => children,
+  WorkspaceStartupContent: ({ children }: React.PropsWithChildren) => children,
+}))
+jest.mock("@/app/notifications/context/NotificationsContext", () => ({
+  NotificationsProvider: ({ children }: React.PropsWithChildren) => children,
+}))
+jest.mock("@/app/components/onboarding/GuidedTour", () => ({ GuidedTour: () => null }))
+jest.mock("@/app/components/navigation/ScreenAccessRedirect", () => ({ ScreenAccessRedirect: () => null }))
+jest.mock("@/app/components/navigation/MobileWorkspaceNavigation", () => ({ MobileWorkspaceNavigation: () => null }))
+jest.mock("@/app/components/navigation/TopBarTitle", () => ({ TopBarTitle: () => null }))
+jest.mock("@/app/components/navigation/PosTopBarActions", () => ({ PosTopBarActions: () => null }))
+jest.mock("@/app/components/navigation/PosTopBarSync", () => ({ PosTopBarSync: () => null }))
+jest.mock("@/app/hooks/use-prevent-refresh", () => ({ usePageRefreshPrevention: jest.fn() }))
+jest.mock("@/app/hooks/use-wake-session-refresh", () => ({ useWakeSessionRefresh: jest.fn() }))
+jest.mock("@/app/hooks/use-navigation-feedback", () => ({ useNavigationFeedback: jest.fn() }))
+jest.mock("@/app/hooks/use-artifact-router-patch", () => ({ useArtifactRouterPatch: jest.fn() }))
 
 jest.mock("@/app/hooks/use-auth", () => ({
   useAuth: () => ({ user: null }),
@@ -32,7 +57,7 @@ jest.mock("@/app/components/navigation/NavigationLink", () => {
   }
 })
 
-jest.mock("@/app/components/navigation/SiteSelector", () => ({ SiteSelector: () => null }))
+jest.mock("@/app/components/navigation/SiteSelector", () => ({ SiteSelector: () => <div data-testid="site-selector" /> }))
 jest.mock("@/app/components/navigation/ConfigurationSection", () => ({ ConfigurationSection: () => null }))
 jest.mock("@/app/components/navigation/NotificationBadge", () => ({ NotificationBadge: jest.fn(() => null) }))
 jest.mock("@/app/components/navigation/RobotsNavItems", () => ({
@@ -62,17 +87,60 @@ function renderMobileSidebar(isCollapsed = false) {
 describe("mobile sidebar viewport", () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    mockMobile = true
     jest.mocked(usePathname).mockReturnValue("/robots")
+    jest.mocked(useSearchParams).mockReturnValue(new URLSearchParams() as ReturnType<typeof useSearchParams>)
   })
 
-  it('does not start invisible readers on mobile, including when site recovery and keyboard navigation remain mounted', () => {
-    const props = { isCollapsed: false, onCollapse: jest.fn(), desktopVisible: false }
+  it("opens the existing sidebar from the top-bar menu beside the Makinari mark", () => {
+    const ui = <LayoutClient><div>Workspace content</div></LayoutClient>
+    const view = render(ui)
+    const trigger = screen.getByRole("button", { name: "common.openMenu" })
+    expect(trigger.querySelector(".topbar-menu-icon > svg")).toBeInTheDocument()
+    const mark = screen.getByRole("img", { name: "Makinari" })
+    expect(mark).toHaveAttribute("src", "/images/isotipo.svg")
+    expect(mark).toHaveAttribute("width", "24")
+    expect(mark).toHaveAttribute("height", "28")
+    expect(mark).toHaveClass("h-7", "w-auto", "shrink-0")
+    expect(trigger.parentElement).toContainElement(mark)
+    const sidebar = document.getElementById(trigger.getAttribute("aria-controls")!)
+    expect(sidebar).toHaveClass("!hidden", "md:!flex")
+    expect(trigger).toHaveAttribute("aria-expanded", "false")
+
+    fireEvent.click(trigger)
+    expect(trigger).toHaveAttribute("aria-expanded", "true")
+    expect(sidebar).not.toHaveClass("!hidden")
+    expect(sidebar).toHaveClass("w-80", "max-md:max-w-[calc(100%-2.75rem)]", "max-md:z-[230]")
+    expect(screen.getByRole("link", { name: /Apps/ })).toHaveAttribute("href", "/navigation")
+
+    expect(screen.queryByRole("button", { name: "common.close" })).not.toBeInTheDocument()
+    fireEvent.click(view.container.querySelector("[data-mobile-sidebar-backdrop]")!)
+    expect(trigger).toHaveAttribute("aria-expanded", "false")
+    fireEvent.click(trigger)
+    fireEvent.keyDown(document, { key: "Escape" })
+    expect(trigger).toHaveAttribute("aria-expanded", "false")
+
+    fireEvent.click(trigger)
+    jest.mocked(useSearchParams).mockReturnValue(new URLSearchParams("mode=workflow") as ReturnType<typeof useSearchParams>)
+    view.rerender(<LayoutClient><div>Workspace content</div></LayoutClient>)
+    expect(trigger).toHaveAttribute("aria-expanded", "false")
+
+    fireEvent.click(trigger)
+    mockMobile = false
+    view.rerender(<LayoutClient><div>Workspace content</div></LayoutClient>)
+    expect(trigger).toHaveAttribute("aria-expanded", "false")
+    expect(sidebar).toHaveClass("md:!flex")
+  })
+
+  it("keeps mobile shortcut tracking mounted without starting hidden badge or widget readers", () => {
+    const props = { isCollapsed: false, onCollapse: jest.fn(), desktopVisible: false, isMobile: true }
     const view = render(<Sidebar {...props} />)
-    for (const reader of [DynamicShortcuts, NotificationBadge, OnboardingProgressWidget, StartupTrialWidget]) expect(reader).not.toHaveBeenCalled()
+    expect(jest.mocked(DynamicShortcuts).mock.calls[0]?.[0]).toMatchObject({ isMobile: true })
+    for (const reader of [NotificationBadge, OnboardingProgressWidget, StartupTrialWidget]) expect(reader).not.toHaveBeenCalled()
     view.rerender(<Sidebar {...props} isMobileOpen />)
     expect(DynamicShortcuts).toHaveBeenCalled(); expect(NotificationBadge).toHaveBeenCalled()
     expect(OnboardingProgressWidget).not.toHaveBeenCalled(); expect(StartupTrialWidget).not.toHaveBeenCalled()
-    view.rerender(<Sidebar {...props} desktopVisible />)
+    view.rerender(<Sidebar {...props} desktopVisible isMobile={false} />)
     expect(OnboardingProgressWidget).toHaveBeenCalled(); expect(StartupTrialWidget).toHaveBeenCalled()
   })
 
@@ -111,6 +179,6 @@ describe("mobile sidebar viewport", () => {
 
     expect(sidebar).toHaveAttribute("data-collapsed", "false")
     expect(footer).toHaveClass("pb-[env(safe-area-inset-bottom,0px)]", "md:pb-0")
-    expect(sidebar.children[1]).toHaveClass("flex-none")
+    expect(screen.getByTestId("site-selector").parentElement).toHaveClass("flex-none")
   })
 })

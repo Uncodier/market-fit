@@ -29,7 +29,7 @@ jest.mock("@/app/context/SiteContext", () => ({
   useSite: () => ({ currentSite: { id: mockSiteId }, isLoading: mockLoading }),
 }))
 jest.mock("@/app/hooks/use-auth", () => ({
-  useAuth: () => ({ user: { id: mockUserId }, isLoading: mockLoading }),
+  useAuth: () => ({ user: { id: mockUserId, user_metadata: mockUserMetadata }, isLoading: mockLoading }),
 }))
 jest.mock("@/app/context/ScreenAccessContext", () => ({
   useOptionalScreenAccess: () => ({ canAccessNavKey: (key: string) => !mockBlocked.includes(key) }),
@@ -46,10 +46,13 @@ function setRoute(path: string) {
   jest.mocked(useSearchParams).mockReturnValue(new URLSearchParams(query) as ReturnType<typeof useSearchParams>)
 }
 
+let mockUserMetadata: { avatar_url?: string; picture?: string }
+
 beforeEach(() => {
   mockSiteId = "site-a"
   mockLocale = "en"
   mockUserId = "user-a"
+  mockUserMetadata = {}
   mockLoading = false
   mockBlocked = []
   mockSetMode.mockClear()
@@ -58,20 +61,24 @@ beforeEach(() => {
   setRoute("/robots")
 })
 
-test("starts with labeled AI Workspace centered and Apps in the last fixed slot", () => {
+test("starts with labeled AI Workspace centered and the profile avatar in the last fixed slot", () => {
   render(<MobileWorkspaceNavigation />)
   const nav = screen.getByRole("navigation", { name: "Workspace navigation" })
   const slots = nav.firstElementChild!.children
   expect(slots).toHaveLength(5)
   expect(slots[2]).toBe(screen.getByRole("link", { name: "AI Workspace" }))
-  expect(slots[4]).toBe(screen.getByRole("link", { name: "Apps" }))
+  const profile = screen.getByRole("link", { name: "Profile" })
+  expect(slots[4]).toBe(profile)
+  expect(profile).toHaveAttribute("href", "/profile")
+  expect(profile.querySelector("svg")).toBeInTheDocument()
+  expect(screen.queryByRole("link", { name: "Apps" })).not.toBeInTheDocument()
   expect(slots[2]).toHaveAttribute("aria-current", "page")
   expect(nav).toHaveTextContent("AI Workspace")
   expect(screen.getAllByRole("link")).toHaveLength(5)
   expect(slots[0]).toHaveAttribute("href", "/chat")
   expect(slots[1]).toHaveAttribute("href", "/leads")
   expect(slots[3]).toHaveAttribute("href", "/control-center")
-  expect(nav).toHaveClass("glass", "md:hidden")
+  expect(nav).toHaveClass("dock", "md:hidden")
   for (const link of screen.getAllByRole("link")) {
     expect(link.textContent).toBe(link.getAttribute("aria-label"))
     expect(link).toHaveClass("tab")
@@ -79,10 +86,54 @@ test("starts with labeled AI Workspace centered and Apps in the last fixed slot"
   }
 })
 
+test.each(["avatar_url", "picture"] as const)("uses the account photo from %s when it loads", async (key) => {
+  const src = "https://example.com/avatar.png"
+  mockUserMetadata = { [key]: src }
+  const NativeImage = window.Image
+  const image = new NativeImage()
+  const imageFactory = jest.spyOn(window, "Image").mockImplementation(() => image)
+  try {
+    render(<MobileWorkspaceNavigation />)
+    expect(image.src).toBe(src)
+    await act(async () => { fireEvent.load(image) })
+    const profile = screen.getByRole("link", { name: "Profile" })
+    expect(profile.querySelector("img")).toHaveAttribute("src", src)
+    expect(profile.querySelector("svg")).not.toBeInTheDocument()
+  } finally {
+    imageFactory.mockRestore()
+  }
+})
+
+test("compacts on downward content scroll, ignores jitter and expands on reversal or navigation", () => {
+  const content = () => <><main><div data-testid="list" /></main><MobileWorkspaceNavigation /></>
+  const view = render(content())
+  const nav = screen.getByRole("navigation")
+  const list = screen.getByTestId("list")
+  Object.defineProperties(list, { scrollHeight: { value: 600 }, clientHeight: { value: 400 } })
+  const scroll = (top: number) => { list.scrollTop = top; fireEvent.scroll(list) }
+  scroll(5)
+  scroll(15)
+  expect(nav).not.toHaveAttribute("data-compact")
+  scroll(40)
+  expect(nav).toHaveAttribute("data-compact", "true")
+  expect(screen.getByRole("link", { name: "AI Workspace" })).toHaveAttribute("aria-current", "page")
+  scroll(210)
+  scroll(198)
+  expect(nav).toHaveAttribute("data-compact")
+  scroll(180)
+  expect(nav).not.toHaveAttribute("data-compact")
+  scroll(0)
+  scroll(40)
+  expect(nav).toHaveAttribute("data-compact")
+  setRoute("/navigation")
+  view.rerender(content())
+  expect(nav).not.toHaveAttribute("data-compact")
+})
+
 test.each(["en", "es", "fr", "de", "ja"] as const)("uses translated app labels in %s", (locale) => {
   mockLocale = locale
   const view = render(<MobileWorkspaceNavigation />)
-  for (const key of ["chat", "leads", "controlCenter", "agents", "apps"]) {
+  for (const key of ["chat", "leads", "controlCenter", "agents", "profile"]) {
     const title = localeMessages[locale][`layout.sidebar.${key}`]
     expect(screen.getByRole("link", { name: title })).toHaveTextContent(title)
   }
@@ -121,18 +172,21 @@ test("opens three dynamic tabs, keeps anchors fixed and updates URLs without dup
   expect(screen.queryByRole("link", { name: "Customers" })).not.toBeInTheDocument()
   const slots = screen.getByRole("navigation").firstElementChild!.children
   expect(slots[2]).toHaveAttribute("aria-label", "AI Workspace")
-  expect(slots[4]).toHaveAttribute("aria-label", "Apps")
+  expect(slots[4]).toHaveAttribute("aria-label", "Profile")
   expect(screen.getByRole("link", { name: "Sales" })).toHaveAttribute("aria-current", "page")
 })
 
-test("keeps open tabs while Apps is active and does not forward unrelated query parameters to AI", () => {
+test("keeps open tabs while Profile is active and does not forward unrelated query parameters to AI", () => {
   setRoute("/catalog?search=desk")
   const view = render(<MobileWorkspaceNavigation />)
   expect(screen.getByRole("link", { name: "AI Workspace" })).toHaveAttribute("href", "/robots")
+  setRoute("/profile")
+  view.rerender(<MobileWorkspaceNavigation />)
+  expect(screen.getByRole("link", { name: "Profile" })).toHaveAttribute("aria-current", "page")
+  expect(screen.getByRole("link", { name: "Catalog" })).toBeInTheDocument()
   setRoute("/navigation")
   view.rerender(<MobileWorkspaceNavigation />)
-  expect(screen.getByRole("link", { name: "Apps" })).toHaveAttribute("aria-current", "page")
-  expect(screen.getByRole("link", { name: "Catalog" })).toBeInTheDocument()
+  expect(screen.getByRole("link", { name: "Profile" })).not.toHaveAttribute("aria-current")
 })
 
 test("tracks robot modes separately and returns to agent mode", () => {

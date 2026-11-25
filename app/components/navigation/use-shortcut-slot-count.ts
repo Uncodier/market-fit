@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react"
-import { useIsMobile } from "@/app/hooks/use-mobile-view"
 import { SIDEBAR_ROW_GAP, SIDEBAR_ROW_PITCH } from "./sidebar-metrics"
 
 export function calculateShortcutSlots(availableHeight: number, separatorHeight: number) {
@@ -10,27 +9,35 @@ export function useShortcutSlotCount(
   containerRef: React.RefObject<HTMLElement | null>,
   separatorHeight = 38,
   isCollapsed = false,
+  isMobile = false,
 ) {
   const [slots, setSlots] = useState(0)
-  const isMobile = useIsMobile()
 
   useEffect(() => {
     const container = containerRef.current
     const viewport = container?.closest<HTMLElement>("[data-sidebar-shortcut-viewport]")
     const content = container?.closest<HTMLElement>("[data-sidebar-shortcut-content]")
-    if (!container || !viewport || !content || isMobile) return
+    if (!container || !viewport || !content) return
+
+    // Mobile scrolls the whole drawer. Its growing shortcut section isn't a
+    // height budget, so subtract the fixed sections from the drawer itself.
+    const mobileDrawer = isMobile ? viewport.parentElement : null
+    const fixedSections = Array.from(mobileDrawer?.children ?? []).filter(section => section !== viewport)
 
     const updateSlots = () => {
-      // The flex viewport excludes the logo, site picker, widgets and footer.
-      // Measure the actual shortcut origin, including the visible AI navigation rows.
+      const panelHeight = mobileDrawer?.clientHeight ?? viewport.clientHeight
+      // The closed mobile drawer is hidden; keep the last measured capacity.
+      if (mobileDrawer && panelHeight === 0) return
+      const reservedHeight = fixedSections.reduce((height, section) => height + section.getBoundingClientRect().height, 0)
       const origin = container.getBoundingClientRect().top - viewport.getBoundingClientRect().top + viewport.scrollTop
       const bottomPadding = parseFloat(getComputedStyle(content).paddingBottom) || 0
-      setSlots(calculateShortcutSlots(viewport.clientHeight - origin - bottomPadding, separatorHeight))
+      setSlots(calculateShortcutSlots(panelHeight - reservedHeight - origin - bottomPadding, separatorHeight))
     }
 
     const resizeObserver = new ResizeObserver(updateSlots)
-    resizeObserver.observe(viewport)
-    resizeObserver.observe(content)
+    resizeObserver.observe(mobileDrawer ?? viewport)
+    if (!mobileDrawer) resizeObserver.observe(content)
+    for (const section of fixedSections) resizeObserver.observe(section)
     for (const sibling of container.parentElement?.children ?? []) {
       if (sibling !== container) resizeObserver.observe(sibling)
     }
@@ -43,6 +50,5 @@ export function useShortcutSlotCount(
     }
   }, [containerRef, isMobile, separatorHeight, isCollapsed])
 
-  // Mobile scrolls the complete menu rather than hiding contextual shortcuts.
-  return isMobile ? Number.MAX_SAFE_INTEGER : slots
+  return slots
 }

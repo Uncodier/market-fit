@@ -7,7 +7,7 @@ import postcss from "postcss"
 import tailwindcss from "tailwindcss"
 import { chromium, webkit, type Browser } from "playwright"
 import { Button } from "@/app/components/ui/button"
-import { Plus } from "@/app/components/ui/icons"
+import { Menu, Plus } from "@/app/components/ui/icons"
 import { TopBarPrimaryActionsSlot } from "@/app/components/navigation/topbar-primary-actions"
 import tailwindConfig from "@/tailwind.config"
 
@@ -29,6 +29,11 @@ const fixture = renderToStaticMarkup(<main>
       <TopBarPrimaryActionsSlot />
     </div>
   </header>
+  <div data-topbar>
+    <Button variant="ghost" size="icon" className="h-11 w-11" aria-label="Open menu" aria-controls="workspace-sidebar">
+      <Menu className="topbar-menu-icon" />
+    </Button>
+  </div>
   <section aria-label="Page actions">
     <Button tint="whatsapp" className="w-full neu-auth-whatsapp-btn">
       <Plus className="mr-2 h-4 w-4" />
@@ -98,6 +103,11 @@ describe.each([
           expect(action.offset[1]).toBeCloseTo(0)
           expect(action.stroke).toBe("1.5px")
         }
+        const menuIcon = await page.getByRole("button", { name: "Open menu" }).locator("svg").evaluate(svg => {
+          const { width, height } = svg.getBoundingClientRect()
+          return { size: [width, height], stroke: getComputedStyle(svg).strokeWidth }
+        })
+        expect(menuIcon).toEqual({ size: actions[0].svg, stroke: actions[0].stroke })
         const spacing = await page.locator("header").evaluate(header => {
           const row = header.getBoundingClientRect()
           const button = header.querySelector(".btn-primary")!.getBoundingClientRect()

@@ -1,3 +1,4 @@
+import { catalogIconUrl } from "@/__tests__/fixtures/module-icon-url"
 import fs from "node:fs"
 import path from "node:path"
 import { getModuleImageUrl, getModuleImagePrompt } from "@/app/config/module-image-visuals"
@@ -6,7 +7,7 @@ import { getBusinessStateImageKey, getThemeStateImageKey } from "@/app/config/si
 
 describe("sidebar control images", () => {
   it.each(["businessOpen", "businessClosed", "themeLight", "themeDark"])("uses fixed shared artwork and a fallback for %s", (key) => {
-    expect(getModuleImageUrl("settings", key, "Translated label")).toBe(`/api/images/modules/${key}`)
+    expect(getModuleImageUrl("settings", key, "Translated label")).toEqual(catalogIconUrl(key))
     expect(getModuleImagePrompt("settings", key, "Open")).toBe(getModuleImagePrompt("settings", key, "Closed"))
     expect(NAV_ITEM_ICON[key]).toBeDefined()
   })

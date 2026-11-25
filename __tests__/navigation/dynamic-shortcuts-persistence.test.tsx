@@ -8,11 +8,12 @@ import type { ShortcutRecord } from "@/app/components/navigation/shortcut-types"
 let mockUserId = "user-a"
 let mockSiteId = "site-a"
 let mockLoading = false
+let mockSlots = 10
 jest.mock("@/app/hooks/use-auth", () => ({ useAuth: () => ({ user: { id: mockUserId }, isLoading: mockLoading }) }))
 jest.mock("@/app/context/SiteContext", () => ({ useSite: () => ({ currentSite: { id: mockSiteId }, isLoading: mockLoading }) }))
 jest.mock("@/app/context/LocalizationContext", () => ({ useLocalization: () => ({ t: (key: string) => key }) }))
 jest.mock("@/app/context/ScreenAccessContext", () => ({ useOptionalScreenAccess: () => null }))
-jest.mock("@/app/components/navigation/use-shortcut-slot-count", () => ({ useShortcutSlotCount: () => 10 }))
+jest.mock("@/app/components/navigation/use-shortcut-slot-count", () => ({ useShortcutSlotCount: () => mockSlots }))
 jest.mock("@/app/components/navigation/use-sidebar-nav-keys", () => ({ setVisibleSidebarShortcutKeys: jest.fn() }))
 jest.mock("@/app/components/navigation/shortcut-storage", () => ({
   loadShortcuts: jest.fn(), loadShortcutsFromLocalStorage: jest.fn(), saveShortcuts: jest.fn(), SHORTCUTS_UPDATED_EVENT: "shortcuts-updated",
@@ -30,7 +31,7 @@ function deferred<T>() {
   return { promise, resolve, reject }
 }
 const initial: ShortcutRecord[] = [{ id: "leads", pinned: false }]
-const view = () => <StrictMode><DynamicShortcuts isCollapsed={false} /></StrictMode>
+const view = (isMobile = false) => <StrictMode><DynamicShortcuts isCollapsed={false} isMobile={isMobile} /></StrictMode>
 function route(path: string, query = "") {
   jest.mocked(usePathname).mockReturnValue(path)
   jest.mocked(useSearchParams).mockReturnValue(new URLSearchParams(query) as ReturnType<typeof useSearchParams>)
@@ -40,6 +41,7 @@ async function flush() { await act(async () => { await Promise.resolve() }) }
 beforeEach(() => {
   jest.clearAllMocks()
   mockUserId = "user-a"; mockSiteId = "site-a"; mockLoading = false
+  mockSlots = 10
   route("/robots")
   jest.mocked(loadShortcuts).mockResolvedValue(initial)
   jest.mocked(loadShortcutsFromLocalStorage).mockReturnValue(initial)
@@ -56,6 +58,37 @@ it("does not save hydration, including prepared defaults, StrictMode and unmount
   expect(saveShortcuts).not.toHaveBeenCalled()
   unmount()
   expect(saveShortcuts).not.toHaveBeenCalled()
+})
+
+it("fills the measured mobile slots with open modules after leaving room for fixed shortcuts", async () => {
+  mockSlots = 6
+  const history = [
+    { id: "catalog", pinned: true }, { id: "leads", pinned: false },
+    { id: "chat", pinned: true }, { id: "sales", pinned: false },
+    { id: "campaigns", pinned: false }, { id: "deals", pinned: false },
+  ]
+  jest.mocked(loadShortcuts).mockResolvedValue(history)
+  const { rerender } = render(view(true))
+  await flush()
+  const shown = () => screen.getAllByRole("button", { name: /^pin / }).map(button => button.textContent)
+  expect(shown()).toEqual(["pin reportOverview", "pin catalog", "pin chat", "pin leads", "pin sales", "pin campaigns"])
+  expect(screen.queryByRole("button", { name: "pin inventory" })).not.toBeInTheDocument()
+  expect(saveShortcuts).not.toHaveBeenCalled()
+
+  route("/deals")
+  rerender(view(true))
+  await flush()
+  expect(shown()).toEqual(["pin reportOverview", "pin catalog", "pin chat", "pin deals", "pin leads", "pin sales"])
+  expect(saveShortcuts).toHaveBeenLastCalledWith("user-a", "site-a", expect.arrayContaining(history))
+
+  fireEvent.click(screen.getByRole("button", { name: "pin deals" }))
+  expect(shown()).toEqual(["pin reportOverview", "pin deals", "pin catalog", "pin chat", "pin leads", "pin sales"])
+  mockSlots = 8
+  rerender(view(true))
+  expect(shown()).toEqual(["pin reportOverview", "pin deals", "pin catalog", "pin chat", "pin leads", "pin sales", "pin campaigns"])
+  mockSlots = 2
+  rerender(view(true))
+  expect(shown()).toEqual(["pin reportOverview", "pin deals", "pin catalog", "pin chat"])
 })
 
 it("saves genuine route additions once and skips identical route/local updates while pending and settled", async () => {

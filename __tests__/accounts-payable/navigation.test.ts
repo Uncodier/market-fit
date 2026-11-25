@@ -1,3 +1,4 @@
+import { catalogIconUrl } from "@/__tests__/fixtures/module-icon-url"
 import { NAVIGATION_AREAS, getNavItemTitle, getModuleArea, getNavigationMenuItems, isAreaActive } from "@/app/config/navigation-areas"
 import { MODULE_VARIANTS, NAV_ITEM_ICON, getModuleVisual } from "@/app/config/module-visuals"
 import { getModuleImagePrompt, getModuleImageUrl } from "@/app/config/module-image-visuals"
@@ -72,7 +73,7 @@ describe("accounts payable workspace integration", () => {
     expect(prompt).not.toBe(receivablePrompt)
     const url = getModuleImageUrl("buying", "accountsPayable", "Accounts Payable")
     expect(url).not.toBe(getModuleImageUrl("sales", "accountsReceivable", "Accounts Receivable"))
-    expect(url).toBe("/api/images/modules/accountsPayable")
+    expect(url).toEqual(catalogIconUrl("accountsPayable"))
     expect(getModuleImageUrl("finance", "accountsPayable", "Another title")).toBe(url)
   })
 })

@@ -29,6 +29,17 @@ async function load(data: unknown) {
 beforeEach(() => { http.mockReset(); jest.mocked(toast.success).mockClear() })
 
 const memberStatus = { ...status, enabled: true, authorization_mode: "member_policy", explicitly_disabled: false }
+test.each([false, true])("changes scheduled task eligibility independently of Ask (direct initially %s)", async current => {
+  const changed = show({ ...accessDto, policy: { ...accessDto.policy, allowed_hosts: current ? ["assistant", "direct"] : ["assistant"] } })
+  await load({ ...status, enabled: true, authorization_mode: "host_policy", assistant_allowed: true })
+  fireEvent.click(await screen.findByRole("checkbox", { name: "Allow use in scheduled tasks" }))
+  http.mockResolvedValueOnce(jsonResponse({ connector_id: account.id, revision: 5 }))
+  fireEvent.click(save())
+  await waitFor(() => expect(changed).toHaveBeenCalledTimes(1))
+  const payload = JSON.parse(String(patchCalls()[0][1]?.body))
+  expect(payload.allowed_hosts).toEqual(current ? ["assistant"] : ["assistant", "direct"])
+  expect(payload).not.toHaveProperty('ask_access')
+})
 test.each([false, null])("blocks unsupported or unverified Ask opt-in (%s) without blocking policy reads", async compatible => {
   show({ ...accessDto, policy: { ...accessDto.policy, allowed_hosts: [] } })
   await load({ ...status, enabled: false, attested: false, authorization_mode: "host_policy", assistant_allowed: false, ask_compatible: compatible })

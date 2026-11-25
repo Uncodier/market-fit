@@ -6,7 +6,7 @@ Workspace members still need use permission. Agents have no default grant, even 
 
 ## Check or stop access for one account
 
-After `20261123165000_connector_ask_host_policy.sql`, **Allow Robots Ask on this account** is the only on/off setting in **Tools & permissions**. Check or uncheck it and choose **Save policy**. The migration carries existing explicit blocks into that setting. An account can be on but still not authorized for execution; enabling the setting never creates delegation, attestation, or downstream permissions. The local recovery stop action updates the same setting. The older controls below describe deployments before that cutover.
+After `20261123165000_connector_ask_host_policy.sql`, **Allow Robots Ask on this account** controls the Ask host in **Tools & permissions**. Check or uncheck it and choose **Save policy**. The separate **Allow use in scheduled tasks** control changes the `direct` host, not Ask. The Ask migration carries existing explicit blocks into the Ask setting. An account can be on but still not authorized for execution; enabling the setting never creates delegation, attestation, or downstream permissions. The local recovery stop action updates the Ask setting. The older controls below describe deployments before that cutover.
 
 Select the intended **Connected account** in **Connectors → Tools & permissions**. For a verified account, enable the connection, allow the interactive assistant, and choose **All compatible tools** or a nonempty list under **Only selected tools**. Save changes to the policy. There is no separate Ask enrollment checkbox. Leaving the assistant host off prevents calls even when tools are selected. Other members cannot inspect or change the manager status.
 

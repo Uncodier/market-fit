@@ -8,7 +8,7 @@ export class RequestBodyTooLargeError extends Error {
 }
 
 export async function readLimitedRequestBody(
-  request: Request,
+  request: Pick<Request, 'body' | 'headers'>,
   maxBytes: number
 ): Promise<Uint8Array> {
   const declaredLength = Number(request.headers.get("content-length"))

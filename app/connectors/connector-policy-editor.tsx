@@ -21,6 +21,8 @@ export function ConnectorPolicyEditor({ siteId, access, connector, canManage, pe
   const [mode, setMode] = useState(savedMode)
   const [tools, setTools] = useState(access.policy.allowed_tools)
   const savedAssistant = access.policy.allowed_hosts.includes("assistant")
+  const savedDirect = access.policy.allowed_hosts.includes("direct")
+  const [direct, setDirect] = useState(savedDirect)
   const ask = useAskStatus(siteId, connector, canManage)
   const { status } = ask
   const restrictedAsk = status?.ask_compatible === false || status?.ask_compatible === null
@@ -41,7 +43,7 @@ export function ConnectorPolicyEditor({ siteId, access, connector, canManage, pe
   const savedPublication = access.policy.support_publication
   const [clearPublication, setClearPublication] = useState(false)
   const publicationChanged = canManage && !!savedPublication && clearPublication
-  const otherChanges = !!intent || assistant !== savedAssistant || publicationChanged || mode !== savedMode || tools.length !== access.policy.allowed_tools.length || tools.some(id => !access.policy.allowed_tools.includes(id)) || approval !== access.policy.require_approval || enabled !== connector.enabled
+  const otherChanges = !!intent || assistant !== savedAssistant || direct !== savedDirect || publicationChanged || mode !== savedMode || tools.length !== access.policy.allowed_tools.length || tools.some(id => !access.policy.allowed_tools.includes(id)) || approval !== access.policy.require_approval || enabled !== connector.enabled
   const dirty = catalogChanged || otherChanges
   const optingOut = catalogChanged && !catalogReads
   const activatable = connector.provider_status.toUpperCase() === "ACTIVE" && !!connector.verified_at && !connector.revocation_pending
@@ -51,8 +53,9 @@ export function ConnectorPolicyEditor({ siteId, access, connector, canManage, pe
   function savePolicy() {
     if (!canManage || pending || ask.pending || blocked || !dirty || invalidDraft) return
     if (optingOut) return save({ catalog_reads: false })
-    const hosts = assistant === savedAssistant ? access.policy.allowed_hosts : assistant
+    const askHosts = assistant === savedAssistant ? access.policy.allowed_hosts : assistant
       ? [...access.policy.allowed_hosts, "assistant"] : access.policy.allowed_hosts.filter(host => host !== "assistant")
+    const hosts = direct === savedDirect ? askHosts : direct ? [...askHosts, "direct"] : askHosts.filter(host => host !== "direct")
     save({ tool_access_mode: mode, allowed_tools: tools, allowed_hosts: hosts, require_approval: approval, enabled,
       ...(intent ? { ask_access: intent } : {}),
       ...(catalogChanged ? { catalog_reads: true as const } : {}),
@@ -72,6 +75,9 @@ export function ConnectorPolicyEditor({ siteId, access, connector, canManage, pe
         {canManage && access.reviewed_tools && <p className="text-muted-foreground">{access.reviewed_tools.length === 0
           ? t("connectors.noExecutableTools") : t("connectors.compatibleCount", { count: String(access.reviewed_tools.length) })}</p>}
       </div> : <ConnectorToolPicker siteId={siteId} slug={connector.toolkit_slug} selected={tools} onChange={setTools} canManage={canManage} disabled={blocked || pending} />}
+      {canManage && <div className="space-y-1"><label className="flex items-center gap-2 text-sm">
+        <Checkbox checked={direct} disabled={blocked || pending} onCheckedChange={value => setDirect(value === true)} />{t("connectors.scheduledHost")}
+      </label><p className="text-xs text-muted-foreground">{t("connectors.scheduledHostHelp")}</p></div>}
       <div id="robots-ask" className="space-y-2">
         <h3 className="text-sm font-medium">{t("connectors.directTitle")}</h3>
         <p className="text-sm">{t("connectors.askAccount", { account: connector.display_name })}</p>

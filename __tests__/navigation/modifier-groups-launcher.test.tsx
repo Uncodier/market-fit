@@ -1,3 +1,4 @@
+import { catalogIconUrl } from "@/__tests__/fixtures/module-icon-url"
 import { fireEvent, render, screen } from "@testing-library/react"
 import NavigationPage from "@/app/navigation/page"
 import { navigateOrAssign } from "@/lib/navigation/stale-router"
@@ -19,7 +20,7 @@ test.each([false, true])("launcher displays modifier groups in Operations with i
   const operations = screen.getByRole("heading", { name: "Operations" }).parentElement!.parentElement!
   expect(operations).toContainElement(tile)
   expect(screen.getByRole("img", { name: "Modifier groups app icon" }))
-    .toHaveAttribute("src", "/api/images/modules/modifierGroups")
+    .toHaveAttribute("src", catalogIconUrl("modifierGroups"))
   fireEvent.click(tile)
   expect(navigateOrAssign).toHaveBeenCalledWith(expect.anything(), "/catalog/modifier-groups")
   expect(onClose).toHaveBeenCalledTimes(1)
