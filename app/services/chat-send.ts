@@ -8,10 +8,10 @@ import { isInterventionDeliveryUnconfirmed, shouldTreatInterventionAsFailed } fr
  * Sends a team member intervention message in a conversation
  */
 export async function sendTeamMemberIntervention(
-  conversationId: string,
+  conversationId: string | undefined,
   message: string,
-  userId: string,
-  agentId: string,
+  userId: string | undefined,
+  agentId: string | undefined,
   options?: InterventionRequestOptions
 ): Promise<InterventionAcceptedResponse> {
   // The server validates the session and conversation before forwarding to the API.
@@ -58,7 +58,9 @@ export async function sendTeamMemberIntervention(
     
     const responseData = await response.json().catch(() => null);
     if (responseData?.success !== true || !responseData?.data?.message?.message_id) {
-      throw new InterventionRequestError('Delivery could not be confirmed. Check the conversation before retrying.');
+      throw new InterventionRequestError('Delivery could not be confirmed. Check the conversation before retrying.', {
+        conversation_id: responseData?.conversation_id,
+      });
     }
     if (isInterventionDeliveryUnconfirmed(responseData)) {
       throw new InterventionRequestError('Call placement is unconfirmed. Check the conversation before retrying.', {
@@ -72,7 +74,7 @@ export async function sendTeamMemberIntervention(
         responseData?.data?.channel_send?.error || "Delivery was not started",
         {
           message_id: responseData?.data?.message?.message_id,
-          conversation_id: responseData?.data?.conversation_id,
+          conversation_id: responseData?.conversation_id || responseData?.data?.conversation_id,
         }
       );
     }

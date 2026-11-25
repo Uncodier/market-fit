@@ -26,6 +26,7 @@ import { Lead } from "@/app/leads/types"
 import { LeadActionKind } from "./use-lead-table-actions"
 import { LeadPaymentDialog } from "./LeadPaymentDialog"
 import { LeadAutomationSnoozeDialog } from "./LeadAutomationSnoozeDialog"
+import { useLeadMessageMenu } from "./use-lead-message-menu"
 
 export function LeadRowMenu({
   lead,
@@ -54,22 +55,26 @@ export function LeadRowMenu({
   const [paymentOpen, setPaymentOpen] = useState(false)
   const [snoozeOpen, setSnoozeOpen] = useState(false)
   const permissions = useOptionalPermissions()
+  const messageMenu = useLeadMessageMenu(lead, !bulk)
 
   return (
     <>
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
+          id={messageMenu.triggerId}
           variant="ghost"
           size="icon"
-          className="h-8 w-8 opacity-100 md:opacity-0 transition-opacity group-hover:opacity-100 data-[state=open]:opacity-100"
+          className="h-8 w-8 opacity-100 md:opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
+          title="Options"
           onClick={(event) => event.stopPropagation()}
         >
           <span className="sr-only">Open actions</span>
           <MoreHorizontal className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent align="end" onCloseAutoFocus={messageMenu.onMenuCloseAutoFocus}>
+        {messageMenu.item}
         <DropdownMenuItem onClick={(event) => { event.stopPropagation(); onResearch() }} disabled={loading === "research"}>
           {loading === "research" ? <Loader className="mr-2 h-4 w-4" /> : success === "research" ? <CheckCircle2 className="mr-2 h-4 w-4 text-emerald-600" /> : <Search className="mr-2 h-4 w-4" />}
           {bulk ? `Research all ${leadCount} leads` : "Lead Research"}
@@ -117,6 +122,7 @@ export function LeadRowMenu({
         )}
       </DropdownMenuContent>
     </DropdownMenu>
+    {messageMenu.dialog}
     {!bulk && <LeadPaymentDialog leadId={lead.id} leadName={lead.name} open={paymentOpen} onOpenChange={setPaymentOpen} />}
     {!bulk && <LeadAutomationSnoozeDialog leadId={lead.id} leadName={lead.name} open={snoozeOpen} onOpenChange={setSnoozeOpen} />}
     </>

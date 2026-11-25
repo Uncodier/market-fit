@@ -11,7 +11,7 @@ export async function GET(request: Request, context: Context) {
     const access = await supplierAccess(request, "select")
     if (access.error) return access.error
     const { data, error } = await access.supabase.from("suppliers")
-      .select("id,site_id,name,status,company_id,version,commercial_terms,private_notes,created_at,updated_at,supplier_contacts(name,email,phone,role,is_primary),supplier_category_links(category_id)")
+      .select("id,site_id,name,status,company_id,version,commercial_terms,private_notes,created_at,updated_at,supplier_contacts(id,name,email,phone,role,is_primary),supplier_category_links(category_id)")
       .eq("site_id", access.siteId).eq("id", id.data).maybeSingle()
     if (error) return procurementError("Unable to load supplier", 503)
     if (!data) return procurementError("Supplier not found", 404)

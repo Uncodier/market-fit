@@ -5,7 +5,7 @@ import { formatDistanceToNow } from "date-fns"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { EntityAvatar } from "@/app/components/documents/document-list"
-import { Mail, MessageSquare, Phone } from "@/app/components/ui/icons"
+import { MessageSquare, Phone } from "@/app/components/ui/icons"
 import { Lead } from "@/app/leads/types"
 import { LeadActionsMenu } from "./LeadActionsMenu"
 import { LeadAssigneePicker } from "./LeadAssigneePicker"
@@ -109,16 +109,6 @@ export function LeadIdentityHeader({
         </div>
 
         <div className="flex items-center gap-1 flex-shrink-0 flex-wrap">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8"
-            disabled={!lead.email}
-            onClick={() => window.open(`mailto:${lead.email}`, "_blank")}
-          >
-            <Mail className="h-3.5 w-3.5 mr-1.5" />
-            Email
-          </Button>
           {lead.phone && (
             <Button variant="ghost" size="sm" className="h-8" onClick={() => window.open(`tel:${lead.phone}`)}>
               <Phone className="h-3.5 w-3.5 mr-1.5" />

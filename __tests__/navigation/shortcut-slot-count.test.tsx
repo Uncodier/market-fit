@@ -62,8 +62,9 @@ it("fits mobile rows to the drawer, not the growing shortcut section, and remeas
   global.ResizeObserver = class {
     constructor(callback: ResizeObserverCallback) { resized = () => callback([], this) }
     observe = observe
+    unobserve() {}
     disconnect() {}
-  } as unknown as typeof ResizeObserver
+  }
   try {
     const { container } = render(<Fixture isMobile />)
     const drawer = screen.getByTestId("drawer")

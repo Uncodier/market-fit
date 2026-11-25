@@ -1,5 +1,24 @@
 # Chat intervention delivery
 
+## New messages from Leads
+
+**Options → New Message** is available on each lead row, Kanban card footer and lead
+detail. The recipient is preselected. The composer uses Chat's channel selector,
+recipient checks and intervention endpoint. It offers email, WhatsApp, SMS or
+Telegram only when the workspace and saved lead support starting that thread.
+Existing social DM and comment replies still start in their Chat threads.
+
+The intervention proxy rechecks the lead, workspace, channel and optional
+attachment with the caller's permissions before creating the conversation.
+Email uses the saved subject for messages on threads started by this composer.
+Email and Telegram can attach one compatible, already-public file from the
+workspace's Assets. There is no local file upload or arbitrary URL input.
+New WhatsApp threads may require an approved template and do not support media.
+
+Deploy the web app with the updated API email-subject adapter and media-capable
+workers. A successful request means accepted for sending, not delivered. An
+uncertain send keeps the draft and points to the saved conversation when known.
+
 ## Localized attachment widgets
 
 Chat attachment labels, media controls, composer hints, channel selectors and

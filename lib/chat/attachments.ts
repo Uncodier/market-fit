@@ -53,11 +53,13 @@ export function getChatAttachments(metadata: unknown): ChatAttachment[] {
   if (!metadata || typeof metadata !== 'object') return []
   const row = metadata as Record<string, unknown>
   const attachments = normalizeChatAttachments(row.attachments)
+  const intervention = row.dispatch_owner === 'chat_intervention' && typeof row.media_url === 'string'
+    ? normalizeChatAttachments([{ url: row.media_url, type: row.message_type, mime_type: row.mime_type }]) : []
   const legacy = row.source === 'outstand_dm' && Array.isArray(row.media_urls)
     ? normalizeChatAttachments(row.media_urls.slice(0, MAX_CANDIDATES).map(url => ({ url }))) : []
   // Already normalized: preserve inferred kinds while merging independently bounded sources.
   const seen = new Set<string>()
-  return [...attachments, ...legacy].filter(attachment => {
+  return [...attachments, ...intervention, ...legacy].filter(attachment => {
     if (seen.has(attachment.url)) return false
     seen.add(attachment.url)
     return true

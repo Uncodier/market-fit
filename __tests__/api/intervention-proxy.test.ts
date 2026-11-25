@@ -76,6 +76,111 @@ it('forwards one authenticated intervention using server-owned identities and re
   expect(rpc).toHaveBeenCalledWith('user_can', { p_site_id: siteId, p_command: 'insert' })
 })
 
+const newLeadDraft = { lead_id: leadId, channel: 'email', subject: 'Order update' }
+
+it.each([2, 3])('admits only the current version of a scoped supplier contact (%i)', async version => {
+  const site = query({ settings: { channels: { email: { enabled: true, status: 'connected' } } } })
+  const supplier = query({ id: leadId, name: 'Supplier', version: 2,
+    supplier_contacts: [{ id: messageId, name: 'Primary Contact', email: 'supplier@example.test', is_primary: true }] })
+  const agent = { ...query({}), or: jest.fn().mockReturnThis(), single: jest.fn().mockResolvedValue({ data: { id: agentId } }) }
+  agent.select.mockReturnValue(agent)
+  agent.eq.mockReturnValue(agent)
+  const insert = jest.fn().mockReturnValue({ select: () => ({ single: async () => ({ data: {
+    id: conversationId, site_id: siteId, agent_id: agentId, lead_id: null, channel: 'email',
+  } }) }) })
+  const reads: Record<string, unknown> = { sites: site, suppliers: supplier, agents: agent, conversations: { insert } }
+  from.mockImplementation(table => reads[table as string])
+  const result = await POST(request({ conversationId: undefined, new_supplier_message: { supplier_id: leadId, channel: 'email', subject: 'Purchase order', version } }))
+  expect(supplier.eq).toHaveBeenCalledWith('site_id', siteId)
+  if (version !== 2) {
+    expect(result.status).toBe(409)
+    expect(fetch).not.toHaveBeenCalled()
+    expect(insert).not.toHaveBeenCalled()
+  } else {
+    expect(result.status).toBe(200)
+    expect(insert).toHaveBeenCalledWith(expect.objectContaining({ lead_id: null, custom_data: expect.objectContaining({
+      supplier_target: { supplier_id: leadId, contact_id: messageId, version: 2, channel: 'email' },
+    }) }))
+    expect(JSON.parse(String(jest.mocked(fetch).mock.calls[0][1]?.body))).not.toHaveProperty('lead_id')
+  }
+})
+
+function mockNewLeadConversation(lead: unknown = { id: leadId, name: 'Test lead', email: 'lead@example.test' }, asset?: unknown) {
+  const site = query({ settings: { channels: { email: { enabled: true, status: 'connected' } } } })
+  const recipient = query(lead)
+  const agent = { ...query({}), or: jest.fn().mockReturnThis(), single: jest.fn().mockResolvedValue({ data: { id: agentId } }) }
+  agent.select.mockReturnValue(agent)
+  agent.eq.mockReturnValue(agent)
+  const conversation = { id: conversationId, site_id: siteId, agent_id: agentId, lead_id: leadId, channel: 'email' }
+  const insert = jest.fn().mockReturnValue({ select: () => ({ single: async () => ({ data: conversation }) }) })
+  const attachment = query(asset)
+  const tables: Record<string, unknown> = { sites: site, leads: recipient, agents: agent, assets: attachment, conversations: { insert } }
+  from.mockImplementation(table => tables[table as string])
+  return { recipient, insert, attachment }
+}
+
+it('starts a lead thread via the same intervention dispatcher using server-owned identities', async () => {
+  const { recipient, insert } = mockNewLeadConversation()
+  const response = await POST(request({ conversationId: undefined, new_lead_message: newLeadDraft,
+    lead_id: 'forged', agentId: 'forged', user_id: 'forged' }))
+  expect(response.status).toBe(200)
+  expect(recipient.eq).toHaveBeenCalledWith('site_id', siteId)
+  expect(insert).toHaveBeenCalledWith(expect.objectContaining({ title: 'Order update', channel: 'email',
+    lead_id: leadId, agent_id: agentId, user_id: userId, site_id: siteId }))
+  expect(JSON.parse(String(jest.mocked(fetch).mock.calls[0][1]?.body))).toMatchObject({
+    conversation_id: conversationId, conversation_title: 'Order update', lead_id: leadId, user_id: userId, agentId,
+  })
+})
+
+it.each([null, { id: leadId, email: 'invalid' }])('does not create or dispatch for an unavailable lead route', async lead => {
+  const { insert } = mockNewLeadConversation(lead)
+  expect((await POST(request({ conversationId: undefined, new_lead_message: newLeadDraft }))).status).toBe(lead ? 409 : 404)
+  expect(insert).not.toHaveBeenCalled()
+  expect(fetch).not.toHaveBeenCalled()
+})
+
+it('does not let a new lead draft override an existing conversation or the write permission check', async () => {
+  expect((await POST(request({ new_lead_message: newLeadDraft }))).status).toBe(400)
+  rpc.mockResolvedValueOnce({ data: false, error: null })
+  expect((await POST(request({ conversationId: undefined, new_lead_message: newLeadDraft }))).status).toBe(403)
+  expect(from).not.toHaveBeenCalled()
+  expect(fetch).not.toHaveBeenCalled()
+})
+
+it('returns the saved conversation link if an outbound send was not confirmed', async () => {
+  mockNewLeadConversation()
+  jest.mocked(fetch).mockResolvedValueOnce(Response.json({
+    success: true, data: { message: { message_id: messageId }, channel_send: { success: true, method: 'none' } },
+  }))
+  const response = await POST(request({ conversationId: undefined, new_lead_message: newLeadDraft }))
+  expect(response.status).toBe(502)
+  expect(await response.json()).toMatchObject({ success: false, conversation_id: conversationId })
+})
+
+it('resolves attachment media only from the same workspace and configured public storage', async () => {
+  const original = process.env.NEXT_PUBLIC_SUPABASE_URL
+  process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://storage.example.test'
+  try {
+    const media_url = 'https://storage.example.test/storage/v1/object/public/assets/assets/file.pdf'
+    const { attachment } = mockNewLeadConversation(undefined, { file_path: media_url, file_type: 'application/pdf' })
+    const draft = { ...newLeadDraft, asset_id: messageId }
+    expect((await POST(request({ conversationId: undefined, new_lead_message: draft, message: '' }))).status).toBe(200)
+    expect(attachment.eq).toHaveBeenCalledWith('site_id', siteId)
+    expect(attachment.eq).toHaveBeenCalledWith('is_public', true)
+    expect(JSON.parse(String(jest.mocked(fetch).mock.calls[0][1]?.body))).toMatchObject({
+      message: '', media_url, message_type: 'document', mime_type: 'application/pdf',
+    })
+    jest.mocked(fetch).mockClear()
+    const { insert } = mockNewLeadConversation(undefined, { file_path: 'https://untrusted.example.test/file.pdf', file_type: 'application/pdf' })
+    expect((await POST(request({ conversationId: undefined, new_lead_message: draft }))).status).toBe(409)
+    expect(insert).not.toHaveBeenCalled()
+    expect(fetch).not.toHaveBeenCalled()
+  } finally {
+    if (original === undefined) delete process.env.NEXT_PUBLIC_SUPABASE_URL
+    else process.env.NEXT_PUBLIC_SUPABASE_URL = original
+  }
+})
+
 it.each(['whatsapp', 'telegram', 'messenger'])('forwards audio for authoritative %s channel', async channel => {
   from.mockReturnValueOnce(query({ id: conversationId, site_id: siteId, channel }))
   expect((await POST(request({ response_format: 'audio', channel: 'email' }))).status).toBe(200)

@@ -38,6 +38,19 @@ phone number. Opening a channel does not record a contacted status or send a
 message automatically. Read-only members can use valid contact links without
 gaining mutation permissions.
 
+**Options → New Message** is available on supplier rows, in the footer of each
+board card, and in the supplier detail for members with write access. It reuses
+the Chats composer, with the saved primary contact preferred for each channel.
+The composer uses supplier contacts, not the linked company's fallback details
+or unsaved edits. Email supports a subject and one compatible public file from
+Assets. SMS and WhatsApp require connected senders and international numbers;
+new WhatsApp conversations are still subject to provider template restrictions.
+
+The intervention validates the supplier under the user's access and binds the
+conversation to its saved contact, channel and version. Stale bindings are
+rejected rather than silently retargeted. No CRM lead is created. Deploy the web
+app and the updated intervention API together.
+
 Focused regression checks:
 
 ```bash

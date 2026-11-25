@@ -1,4 +1,5 @@
 import type { ChatResponseFormat } from '@/lib/chat/response-format'
+import type { NewLeadMessage, NewSupplierMessage } from '@/lib/chat/new-lead-message'
 
 export type InterventionRequestOptions = {
   response_format?: ChatResponseFormat
@@ -8,6 +9,8 @@ export type InterventionRequestOptions = {
   site_id?: string
   message_id?: string
   reply_to_message_id?: string
+  new_lead_message?: NewLeadMessage
+  new_supplier_message?: NewSupplierMessage
 }
 
 export type InterventionChannelSend = {
@@ -24,6 +27,7 @@ export type InterventionChannelSend = {
 
 export type InterventionAcceptedResponse = {
   success?: boolean
+  conversation_id?: string
   data?: {
     conversation_id?: string
     message?: {
@@ -58,10 +62,10 @@ export function getInterventionWorkflowId(channelSend?: InterventionChannelSend)
 }
 
 export function buildInterventionRequestBody(
-  conversationId: string,
+  conversationId: string | undefined,
   message: string,
-  userId: string,
-  agentId: string,
+  userId: string | undefined,
+  agentId: string | undefined,
   options?: InterventionRequestOptions
 ) {
   return {
@@ -77,5 +81,7 @@ export function buildInterventionRequestBody(
     message_id: options?.message_id,
     reply_to_message_id: options?.reply_to_message_id,
     response_format: options?.response_format,
+    new_lead_message: options?.new_lead_message,
+    new_supplier_message: options?.new_supplier_message,
   }
 }

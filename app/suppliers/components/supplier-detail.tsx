@@ -22,6 +22,7 @@ import type { ZodIssue } from 'zod'
 import { useProcurementI18n } from '@/app/purchases/procurement/i18n/use-procurement-i18n'
 import { useSupplierCompany } from "./use-supplier-company"
 import { SupplierContactActions } from "./supplier-contact-actions"
+import { SupplierMessageOptions } from './supplier-message-options'
 import { preferredSupplierContact } from "./contact-links"
 import { SupplierStatusWidget } from "./supplier-status-widget"
 import { SupplierDetailSkeleton } from './supplier-detail-skeleton'
@@ -148,6 +149,7 @@ export function SupplierDetail({ siteId, id, onCancel }: { siteId: string; id: s
           </div></div>
           <div className="flex shrink-0 flex-wrap items-center gap-1">
             <SupplierContactActions email={contact.email} phone={contact.phone} />
+            {canEdit && !demo && !blocked && supplierRecord && <SupplierMessageOptions supplier={supplierRecord} allowed />}
             {canEdit && <Button type="button" variant="ghost" size="sm" className="h-8" disabled={saving || blocked} onClick={() => setConfirmation("archive")}>{t(draft.status === 'archived' ? 'procurement.partners.suppliers.restore' : 'procurement.partners.suppliers.archive')}</Button>}
             {blocked && <Button variant="outline" size="sm" disabled={saving || loading} onClick={() => dirty ? setConfirmation("reload") : setReload(value => value + 1)}>{t('procurement.partners.actions.reload')}</Button>}
           </div>

@@ -11,6 +11,7 @@ import { Pagination } from "@/app/components/ui/pagination"
 import { Plus } from "@/app/components/ui/icons"
 import { ViewSelector, type ViewType } from "@/app/components/view-selector"
 import { SupplierBoard } from "./supplier-board"
+import { SupplierMessageOptions } from './supplier-message-options'
 import { DocumentListHead, DocumentListRow, EntityCell, StatusDot, documentListShellClassName } from "@/app/components/documents/document-list"
 import { ProcurementListSkeleton } from '@/app/purchases/procurement/ui/list-loading'
 import { ProcurementWorkspace, ProcurementToolbar, ProcurementState } from "@/app/purchases/procurement/ui/workspace"
@@ -71,7 +72,7 @@ export function SupplierList({ siteId }: { siteId: string }) {
         emptyTitle={t('procurement.partners.suppliers.empty')} description={t('procurement.partners.suppliers.emptyHint')} onRetry={() => setReload(value => value + 1)} />
       {!loading && !error && result && <>
         {!!result.suppliers.length && <>
-        {view === "kanban" && <SupplierBoard suppliers={result.suppliers} status={status} />}
+        {view === "kanban" && <SupplierBoard suppliers={result.suppliers} status={status} canMessage={result.can_create && !demo} />}
         {view === "table" && <div className={documentListShellClassName()}><Table>
           <TableHeader><TableRow><DocumentListHead>{t('procurement.partners.suppliers.supplier')}</DocumentListHead><DocumentListHead>{t('procurement.common.status')}</DocumentListHead><DocumentListHead>{t('procurement.partners.contacts.primaryContact')}</DocumentListHead><DocumentListHead>{t('procurement.partners.suppliers.updated')}</DocumentListHead></TableRow></TableHeader>
           <TableBody>{result.suppliers.map(supplier => {
@@ -80,7 +81,10 @@ export function SupplierList({ siteId }: { siteId: string }) {
               <TableCell className="px-4 py-3"><Link aria-label={supplier.name} href={`/suppliers/${supplier.id}`}><EntityCell name={supplier.name} secondary={t(supplier.company_id ? 'procurement.partners.suppliers.company' : 'procurement.partners.suppliers.independent')} secondaryMono={false} /></Link></TableCell>
               <TableCell className="px-4 py-3"><StatusDot status={supplier.status === "approved" ? "active" : supplier.status === "under_review" ? "review" : supplier.status === "prospect" ? "new" : supplier.status} label={valueLabel(supplier.status)} /></TableCell>
               <TableCell className="px-4 py-3"><p className="text-sm">{contact?.name || "—"}</p><p className="text-xs text-muted-foreground">{contact?.email || contact?.phone}</p></TableCell>
-              <TableCell className="px-4 py-3 text-xs text-muted-foreground">{formatDate(supplier.updated_at, { dateStyle: 'medium' })}</TableCell>
+              <TableCell className="px-4 py-3 text-xs text-muted-foreground"><div className="flex items-center justify-between gap-2">
+                <span>{formatDate(supplier.updated_at, { dateStyle: 'medium' })}</span>
+                {result.can_create && !demo && <SupplierMessageOptions supplier={supplier} allowed />}
+              </div></TableCell>
             </DocumentListRow>
           })}</TableBody>
         </Table></div>}

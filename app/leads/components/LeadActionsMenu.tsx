@@ -2,7 +2,8 @@
 
 import { useState } from "react"
 import { useOptionalPermissions } from "@/app/context/PermissionContext"
-import type { Lead } from "@/app/leads/types"
+import type { LeadMessageRecipient } from "./NewLeadMessage"
+import { useLeadMessageMenu } from "./use-lead-message-menu"
 import { LeadPaymentDialog } from "./LeadPaymentDialog"
 import { LeadAutomationSnoozeDialog } from "./LeadAutomationSnoozeDialog"
 import { Button } from "@/app/components/ui/button"
@@ -37,7 +38,7 @@ export function LeadActionsMenu({
   onConversation,
   onDelete,
 }: {
-  lead: Pick<Lead, "id" | "name">
+  lead: LeadMessageRecipient
   loading: LeadDetailActionKind | null
   onResearch: () => void
   onFollowUp: () => void
@@ -49,16 +50,18 @@ export function LeadActionsMenu({
   const [paymentOpen, setPaymentOpen] = useState(false)
   const [snoozeOpen, setSnoozeOpen] = useState(false)
   const permissions = useOptionalPermissions()
+  const messageMenu = useLeadMessageMenu(lead)
   return (
     <>
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+        <Button id={messageMenu.triggerId} variant="ghost" size="sm" className="h-8 w-8 p-0" title="Options">
           <span className="sr-only">Open menu</span>
           <MoreHorizontal className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent align="end" onCloseAutoFocus={messageMenu.onMenuCloseAutoFocus}>
+        {messageMenu.item}
         <DropdownMenuItem onClick={onResearch} disabled={loading === "research"}>
           {loading === "research" ? <Loader className="mr-2 h-4 w-4" /> : <Search className="mr-2 h-4 w-4" />}
           Lead Research
@@ -102,6 +105,7 @@ export function LeadActionsMenu({
         )}
       </DropdownMenuContent>
     </DropdownMenu>
+    {messageMenu.dialog}
     <LeadPaymentDialog leadId={lead.id} leadName={lead.name} open={paymentOpen} onOpenChange={setPaymentOpen} />
     <LeadAutomationSnoozeDialog leadId={lead.id} leadName={lead.name} open={snoozeOpen} onOpenChange={setSnoozeOpen} />
     </>

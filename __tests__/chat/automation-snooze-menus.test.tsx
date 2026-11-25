@@ -1,6 +1,8 @@
 import '@testing-library/jest-dom'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { LeadActionsMenu } from '@/app/leads/components/LeadActionsMenu'
+
+jest.mock('@/app/context/SiteContext', () => ({ useSite: () => ({ currentSite: null }) }))
 import { LeadRowMenu } from '@/app/leads/components/lead-row-menu'
 import type { Lead } from '@/app/leads/types'
 

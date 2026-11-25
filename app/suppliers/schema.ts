@@ -27,8 +27,9 @@ export const supplierInputSchema = z.object({
 })
 export type SupplierInput = z.infer<typeof supplierInputSchema>
 export type SupplierContact = z.infer<typeof supplierContactSchema>
-export type Supplier = Omit<SupplierInput, "expected_version"> & {
+export type Supplier = Omit<SupplierInput, "expected_version" | "contacts"> & {
   id: string; site_id: string; version: number; created_at: string; updated_at: string
+  contacts: (SupplierContact & { id?: string })[]
 }
 export const emptySupplier: SupplierInput = {
   expected_version: 0, name: "", status: "prospect", company_id: null,

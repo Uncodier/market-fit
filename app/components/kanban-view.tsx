@@ -1,6 +1,6 @@
 "use client"
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { Badge } from "@/app/components/ui/badge"
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd"
 import { ClipboardList, Mail, Search, Loader, CheckCircle2 } from "@/app/components/ui/icons"
@@ -8,6 +8,7 @@ import { Button } from "./ui/button"
 import { cn } from "@/lib/utils"
 
 import { Lead } from "@/app/leads/types"
+import { LeadCardOptions } from "@/app/leads/components/LeadCardOptions"
 
 import { EmptyState } from "@/app/components/ui/empty-state"
 
@@ -27,17 +28,6 @@ const LEAD_STATUSES = [
   { id: 'lost', name: 'Lost' },
   { id: 'not_qualified', name: 'Not Qualified' }
 ]
-
-// Colores para los diferentes estados
-const STATUS_COLORS: Record<string, string> = {
-  new: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
-  contacted: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
-  qualified: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
-  cold: 'bg-slate-100 text-slate-800 dark:bg-slate-900/30 dark:text-slate-300',
-  converted: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
-  lost: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
-  not_qualified: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300'
-}
 
 // Colores para las etapas del journey
 const JOURNEY_STAGE_COLORS: Record<string, string> = {
@@ -132,13 +122,13 @@ const { userData, kanbanPagination, onLoadMore, totalCounts, user, loadingAction
                                   )}
                                   onClick={(e) => handleCardClick(e, lead)}
                                 >
-                                  <CardHeader className="px-3 h-[50px] flex flex-row items-center justify-between">
+                                  <CardHeader className="h-[50px] flex-row items-center justify-between gap-2 space-y-0 px-3">
                                     <div className="flex-1 min-w-0">
                                       <CardTitle className="text-sm font-medium truncate" title={lead.name}>
                                         {lead.name}
                                       </CardTitle>
                                     </div>
-                                    <div className="flex-shrink-0 m-0" style={{ marginBottom: '6px' }}>
+                                    <div className="shrink-0">
                                       {isLoadingJourneyStages ? (
                                         <Skeleton className="h-5 w-16 rounded-full" />
                                       ) : (
@@ -151,7 +141,7 @@ const { userData, kanbanPagination, onLoadMore, totalCounts, user, loadingAction
                                     </div>
                                   </CardHeader>
                                   <div className="border-t dark:border-white/5 border-black/5 mx-3"></div>
-                                  <CardContent className="p-3 pt-2 pb-0">
+                                  <CardContent className="px-3 py-2">
                                     <div className="text-xs text-gray-500 dark:text-gray-400 mb-2 truncate" title={lead.email}>
                                       {lead.email}
                                     </div>
@@ -165,19 +155,18 @@ const { userData, kanbanPagination, onLoadMore, totalCounts, user, loadingAction
                                           {getCompanyName(lead)}
                                         </div>
                                       )}
-                                    <div className="flex items-center justify-between mt-2 mb-3">
-                                      {lead.segment_id && (
+                                    {lead.segment_id && (
+                                      <div className="mt-2 flex items-center">
                                         <Badge variant="secondary" className="text-xs truncate max-w-[200px]" title={getSegmentName(lead.segment_id)}>
                                           {getSegmentName(lead.segment_id)}
                                         </Badge>
-                                      )}
-                                    </div>
-                                    {/* AI Actions Footer */}
-                                    <div className="flex items-center justify-between pt-2 pb-2 border-t dark:border-white/5 border-black/5">
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-xs text-gray-500 font-medium">AI Actions</span>
                                       </div>
-                                      <div className="flex gap-1">
+                                    )}
+                                  </CardContent>
+                                  <CardFooter data-slot="lead-card-footer" className="cursor-default justify-between gap-2 rounded-b-lg border-t bg-muted/30 px-3 py-1.5"
+                                    onClick={event => event.stopPropagation()}>
+                                      <span className="shrink-0 text-xs font-medium text-muted-foreground">AI Actions</span>
+                                      <div className="flex min-w-0 items-center gap-1">
                                         <TooltipProvider>
                                           <Tooltip>
                                             <TooltipTrigger asChild>
@@ -288,9 +277,9 @@ const { userData, kanbanPagination, onLoadMore, totalCounts, user, loadingAction
                                             </TooltipContent>
                                           </Tooltip>
                                         </TooltipProvider>
+                                        <LeadCardOptions lead={lead} />
                                       </div>
-                                    </div>
-                                  </CardContent>
+                                  </CardFooter>
                                 </Card>
                               )}
                             </Draggable>

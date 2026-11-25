@@ -7,6 +7,8 @@ import { conversationChannel, VOICE_LEAD_REQUIRED } from '@/lib/chat/conversatio
 import { getVoiceCallBlock } from '@/lib/chat/voice-call-eligibility'
 import { isSocialCommentMetadata } from '@/lib/chat/social-comment-context'
 import { validateCommentReplyTarget } from './comment-reply-preflight'
+import { newLeadMessageSchema, newSupplierMessageSchema } from '@/lib/chat/new-lead-message'
+import { createOutboundConversation } from './new-lead-conversation'
 import { isDeliveryRetryBlocked, isChatResponseFormat, requestedResponseFormat, supportsAudioResponse } from '@/lib/chat/response-format'
 
 export const maxDuration = 120
@@ -16,11 +18,17 @@ const inputSchema = z.object({
   conversationId: uuid.optional(),
   conversation_id: uuid.optional(),
   site_id: uuid,
-  message: z.string().trim().min(1).max(20_000),
+  message: z.string().trim().max(20_000),
   message_id: uuid.optional(),
   reply_to_message_id: uuid.optional(),
   response_format: z.enum(['text', 'audio']).optional(),
-}).refine(input => Boolean(input.conversationId || input.conversation_id))
+  new_lead_message: newLeadMessageSchema.optional(),
+  new_supplier_message: newSupplierMessageSchema.optional(),
+}).refine(input => !(input.new_lead_message && input.new_supplier_message))
+  .refine(input => input.new_lead_message || input.new_supplier_message
+  ? !input.conversationId && !input.conversation_id && !input.message_id && !input.reply_to_message_id && input.response_format !== 'audio'
+  : Boolean(input.conversationId || input.conversation_id))
+  .refine(input => Boolean(input.message || input.new_lead_message?.asset_id || input.new_supplier_message?.asset_id))
   .refine(input => !input.conversationId || !input.conversation_id || input.conversationId === input.conversation_id)
 
 // Only lifecycle evidence crosses the proxy, never provider payloads or database errors.
@@ -90,11 +98,33 @@ export async function POST(request: Request): Promise<Response> {
   if (!await userCanOnSite(access.supabase, input.site_id, input.message_id ? 'update' : 'insert')) {
     return failure('You do not have permission to send messages in this site.', 403)
   }
-  const conversationId = input.conversationId || input.conversation_id!
-  const { data: conversation, error: conversationError } = await access.supabase
-    .from('conversations').select('id, site_id, agent_id, lead_id, visitor_id, channel, custom_data')
-    .eq('id', conversationId).eq('site_id', input.site_id).maybeSingle()
-  if (conversationError) return failure('Unable to verify conversation access', 503)
+  const newDraft = input.new_lead_message ?? input.new_supplier_message
+  if (input.new_supplier_message && (!['owner', 'admin', 'collaborator'].includes(access.role) ||
+      /(?:^|;\s*)market_fit_demo_site_id=/.test(request.headers.get('cookie') ?? ''))) {
+    return failure('You do not have permission to message suppliers in this site.', 403, 'SUPPLIER_ACCESS_DENIED')
+  }
+  const { data: { session }, error: sessionError } = await access.supabase.auth.getSession()
+  const target = chatBackendUrl(request, PATH)
+  // Avoid creating a new conversation when dispatch is known to be unavailable.
+  if (newDraft && (sessionError || !session?.access_token || session.user?.id !== access.userId)) {
+    return failure('Please sign in again to send messages.', 401, 'INVALID_SESSION')
+  }
+  if (newDraft && !target) return failure('Intervention API is not configured', 503, 'BACKEND_UNAVAILABLE')
+
+  let conversation
+  let media
+  if (newDraft) {
+    const result = await createOutboundConversation(access, input.site_id, newDraft)
+    if (result.error) return failure(result.error, result.status, 'OUTBOUND_CONVERSATION_UNAVAILABLE')
+    conversation = result.conversation
+    media = result.media
+  } else {
+    const result = await access.supabase.from('conversations')
+      .select('id, site_id, agent_id, lead_id, visitor_id, channel, custom_data')
+      .eq('id', input.conversationId || input.conversation_id!).eq('site_id', input.site_id).maybeSingle()
+    if (result.error) return failure('Unable to verify conversation access', 503)
+    conversation = result.data
+  }
   if (!conversation) return failure('Conversation not found', 404)
   if (conversationChannel(conversation) === 'voice' && !conversation.lead_id) {
     return failure(VOICE_LEAD_REQUIRED, 409, 'VOICE_LEAD_REQUIRED')
@@ -159,12 +189,16 @@ export async function POST(request: Request): Promise<Response> {
     if (blocked) return failure(blocked.message, blocked.status, blocked.code)
   }
 
-  const { data: { session }, error: sessionError } = await access.supabase.auth.getSession()
   if (sessionError || !session?.access_token || session.user?.id !== access.userId) {
     return failure('Please sign in again to send messages.', 401)
   }
-  const target = chatBackendUrl(request, PATH)
   if (!target) return failure('Intervention API is not configured', 503)
+
+  const unconfirmed = () => newDraft
+    ? Response.json({ success: false, conversation_id: conversation.id,
+      error: { message: 'Delivery could not be confirmed. Check the conversation before retrying.' } },
+    { status: 502, headers: { 'Cache-Control': 'no-store, private' } })
+    : failure('Delivery could not be confirmed. Check the conversation before retrying.', 502)
 
   try {
     const upstream = await fetch(target, {
@@ -176,6 +210,8 @@ export async function POST(request: Request): Promise<Response> {
         agentId: conversation.agent_id || undefined,
         lead_id: conversation.lead_id || undefined, visitor_id: conversation.visitor_id || undefined,
         message, message_id: input.message_id,
+        conversation_title: newDraft?.subject,
+        ...media,
         reply_to_message_id: replyToMessageId,
         response_format: responseFormat,
       }),
@@ -184,16 +220,18 @@ export async function POST(request: Request): Promise<Response> {
     })
     if (!upstream.headers.get('content-type')?.includes('application/json')) {
       await upstream.body?.cancel()
-      return failure('Delivery could not be confirmed. Check the conversation before retrying.', 502)
+      return unconfirmed()
     }
     const raw = JSON.parse(decodeRequestBody(await readLimitedRequestBody(upstream as unknown as Request, 256_000)))
     const parsed = responseSchema.safeParse(raw)
-    if (!parsed.success) return failure('Delivery could not be confirmed. Check the conversation before retrying.', 502)
+    if (!parsed.success) return unconfirmed()
     const result = parsed.data
     const channel = result.data?.channel_send
     const status = upstream.ok ? upstream.status : [400, 401, 403, 404, 409, 429, 500, 503].includes(upstream.status) ? upstream.status : 502
+    if (newDraft && upstream.ok && result.success && (!channel || channel.method === 'none')) return unconfirmed()
     return Response.json({
       ...result,
+      ...(newDraft ? { conversation_id: conversation.id } : {}),
       ...(channel?.success === false ? { data: { ...result.data, channel_send: {
         ...channel,
         error: channel.callId || channel.workflowId || channel.workflow_id || channel.workflowRunId || channel.run_id
@@ -214,6 +252,6 @@ export async function POST(request: Request): Promise<Response> {
     }, { status, headers: { 'Cache-Control': 'no-store, private' } })
   } catch {
     // A timeout does not prove that the API did not save or place the call.
-    return failure('Delivery could not be confirmed. Check the conversation before retrying.', 502)
+    return unconfirmed()
   }
 }

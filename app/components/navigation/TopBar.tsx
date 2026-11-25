@@ -184,7 +184,7 @@ export function TopBar({
                 aria-controls="workspace-sidebar"
                 onClick={onMobileSidebarOpen}
               >
-                <Menu className="topbar-menu-icon" aria-hidden="true" />
+                <Menu className="topbar-menu-icon" aria-hidden={true} />
               </Button>
               <Image src="/images/isotipo.svg" alt="Makinari" width={24} height={28} className="h-7 w-auto shrink-0 brightness-0 dark:brightness-100" />
             </div>

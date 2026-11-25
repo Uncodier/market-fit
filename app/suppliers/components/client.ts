@@ -23,5 +23,5 @@ export async function supplierResponse<T>(response: Response): Promise<T> {
 export function supplierDraft(supplier: Supplier): SupplierInput {
   return supplierInputSchema.parse({ expected_version: supplier.version, name: supplier.name, status: supplier.status,
     company_id: supplier.company_id, commercial_terms: supplier.commercial_terms,
-    private_notes: supplier.private_notes, contacts: supplier.contacts, category_ids: supplier.category_ids })
+    private_notes: supplier.private_notes, contacts: supplier.contacts.map(({ name, email, phone, role, is_primary }) => ({ name, email, phone, role, is_primary })), category_ids: supplier.category_ids })
 }
