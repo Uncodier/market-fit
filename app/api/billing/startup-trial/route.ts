@@ -7,8 +7,10 @@ import { isSameOriginApiRequest } from "@/lib/http/api-proxy-security"
 import { decodeRequestBody, readLimitedRequestBody, RequestBodyTooLargeError } from "@/lib/http/read-limited-request-body"
 import { startupTrialSchema } from "@/lib/billing/startup-trial"
 import { withTimeout } from "@/app/services/request-timeout"
+import { readPaidThrough } from "./paid-through"
 
 const inputSchema = z.object({ site_id: z.string().uuid() }).strict()
+const querySchema = inputSchema.extend({ include_recovery: z.literal("1").optional() })
 const outcomeSchema = z.enum(["started", "already_started"])
 const headers = { "Cache-Control": "no-store, private" }
 
@@ -16,7 +18,7 @@ function failure(code: string, message: string, status: number) {
   return Response.json({ success: false, error: { code, message } }, { status, headers })
 }
 
-async function trialOperation(request: Request, siteId: string, activate: boolean): Promise<Response> {
+async function trialOperation(request: Request, siteId: string, activate: boolean, includeRecovery = false): Promise<Response> {
   try {
     const access = await requireSiteAccess(request, siteId, activate ? { requireManager: true } : {})
     if (access.error) return access.error
@@ -49,7 +51,8 @@ async function trialOperation(request: Request, siteId: string, activate: boolea
       }
       return Response.json({ ...result.data, outcome: outcome.data }, { headers })
     }
-    return Response.json(result.data, { headers })
+    const paidThrough = includeRecovery ? await readPaidThrough(siteId, access, service) : undefined
+    return Response.json({ ...result.data, ...(paidThrough ? { paid_through: paidThrough } : {}) }, { headers })
   } catch {
     return failure("TRIAL_UNAVAILABLE", "Trial status could not be confirmed. Retry loading Billing before trying again.", 503)
   }
@@ -58,11 +61,11 @@ async function trialOperation(request: Request, siteId: string, activate: boolea
 export async function GET(request: Request): Promise<Response> {
   if (!isSameOriginApiRequest(request)) return failure("FORBIDDEN_ORIGIN", "Origin not allowed", 403)
   const query = new URL(request.url).searchParams
-  const input = inputSchema.safeParse(Object.fromEntries(query))
-  if (!input.success || query.getAll("site_id").length !== 1) {
+  const input = querySchema.safeParse(Object.fromEntries(query))
+  if (!input.success || query.getAll("site_id").length !== 1 || query.getAll("include_recovery").length > 1) {
     return failure("INVALID_REQUEST", "A valid project ID is required", 400)
   }
-  return trialOperation(request, input.data.site_id, false)
+  return trialOperation(request, input.data.site_id, false, input.data.include_recovery === "1")
 }
 
 export async function POST(request: Request): Promise<Response> {

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { useSite } from "@/app/context/SiteContext"
 import { useOptionalPermissions } from "@/app/context/PermissionContext"
 import {
-  getStartupTrial, startStartupTrial, waitForStartupTrial,
+  getBillingTrial, getStartupTrial, startStartupTrial, waitForStartupTrial,
   STARTUP_TRIAL_REFRESH_TIMEOUT_MS, type StartupTrial,
 } from "@/app/services/startup-trial"
 import { Button } from "../ui/button"
@@ -13,10 +13,11 @@ import { Progress } from "../ui/progress"
 import { ArrowRight, Clock, Sparkles } from "../ui/icons"
 import { SectionCard, SectionCardHeader, SectionCardContent, SectionCardFooter } from "../ui/section-card"
 import { STARTUP_TRIAL_CREDITS } from "@/lib/billing/startup-trial"
+import { PaidThroughNotice } from "./paid-through-notice"
 
 // Remount immediately on site changes so another site's eligibility is never clickable.
-export function StartupTrialCard({ siteId }: { siteId: string }) {
-  return <SiteStartupTrialCard key={siteId} siteId={siteId} />
+export function StartupTrialCard({ siteId, recoveryScope }: { siteId: string; recoveryScope?: string }) {
+  return <SiteStartupTrialCard key={JSON.stringify([siteId, recoveryScope])} siteId={siteId} includeRecovery={!!recoveryScope} />
 }
 
 function countdown(milliseconds: number): string {
@@ -26,12 +27,13 @@ function countdown(milliseconds: number): string {
   return `${days}d ${hours}h ${minutes % 60}m`
 }
 
-function SiteStartupTrialCard({ siteId }: { siteId: string }) {
+function SiteStartupTrialCard({ siteId, includeRecovery }: { siteId: string; includeRecovery: boolean }) {
   const { refreshSiteBilling } = useSite()
   const permissions = useOptionalPermissions()
   const canActivate = permissions?.siteId === siteId && permissions.capabilities?.update === true &&
     (permissions.capabilities.is_owner || ["owner", "admin"].includes(permissions.capabilities.role ?? ""))
   const [trial, setTrial] = useState<StartupTrial | null>(null)
+  const [paidThrough, setPaidThrough] = useState<string>()
   const [operation, setOperation] = useState<"load" | "start" | "reconcile" | "refresh" | null>("load")
   const [error, setError] = useState<"load" | "start" | null>(null)
   const [refreshWarning, setRefreshWarning] = useState(false)
@@ -66,12 +68,14 @@ function SiteStartupTrialCard({ siteId }: { siteId: string }) {
     request.current = controller
     setOperation(reconcile ? "reconcile" : "load")
     setError(null)
+    setPaidThrough(undefined)
     if (!reconcile) setTrial(null)
     let refreshRequired = reconcile
     try {
-      const loaded = await getStartupTrial(siteId, controller)
+      const loaded = includeRecovery ? await getBillingTrial(siteId, controller) : await getStartupTrial(siteId, controller)
       if (request.current !== controller) return
       applyTrial(loaded)
+      if ("paid_through" in loaded && typeof loaded.paid_through === "string") setPaidThrough(loaded.paid_through)
       // An earlier activation may have committed despite a lost POST response.
       // Hydrate shared permissions/balances on every confirmed active status read.
       refreshRequired ||= loaded.state === "active" || loaded.state === "expired" || loaded.state === "converted"
@@ -92,7 +96,7 @@ function SiteStartupTrialCard({ siteId }: { siteId: string }) {
         }
       }
     }
-  }, [applyTrial, refreshBilling, siteId])
+  }, [applyTrial, includeRecovery, refreshBilling, siteId])
 
   useEffect(() => {
     void load()
@@ -165,14 +169,15 @@ function SiteStartupTrialCard({ siteId }: { siteId: string }) {
 
   // Do not advertise a trial before its eligibility is known or when it is denied.
   // Unconfirmed operations and hydration failures retain their recovery controls.
-  if ((!trial || trial.state === "unavailable") && !error && !refreshWarning) return null
+  const recoveryNotice = paidThrough ? <PaidThroughNotice key={paidThrough} paidThrough={paidThrough} /> : null
+  if ((!trial || trial.state === "unavailable") && !error && !refreshWarning) return recoveryNotice
 
   const isActive = trial?.state === "active" && !expirationDue
   const statusLabel = expirationDue ? "Confirming status" : {
-    eligible: "Ready to start", active: "Active", expired: "Ended", converted: "Paid plan", unavailable: "Unavailable",
+    eligible: "Ready to start", active: "Active", expired: "Ended", converted: paidThrough ? "Previously converted" : "Paid plan", unavailable: "Unavailable",
   }[trial?.state ?? "unavailable"]
 
-  return <SectionCard id="startup-trial" className="mb-6" aria-busy={operation !== null}>
+  return <>{recoveryNotice}<SectionCard id="startup-trial" className="mb-6" aria-busy={operation !== null}>
     <SectionCardHeader className="gap-4 p-5 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
@@ -251,5 +256,5 @@ function SiteStartupTrialCard({ siteId }: { siteId: string }) {
         {refreshWarning && <Button type="button" variant="outline" size="sm" disabled={operation !== null}
           onClick={() => void retryRefresh()}>Reload billing information</Button>}
       </SectionCardFooter>}
-  </SectionCard>
+  </SectionCard></>
 }

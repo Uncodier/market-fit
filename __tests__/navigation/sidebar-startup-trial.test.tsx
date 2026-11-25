@@ -77,9 +77,9 @@ it.each([false, true])("keeps the independent shortcut in the existing sidebar w
   expect(fetchMock).toHaveBeenCalledTimes(1)
 })
 
-it.each([false, true])("replaces the credits card with the owner billing link (collapsed=%s)", isCollapsed => {
+it.each([false, true])("shows the owner billing link only for a pending invoice (collapsed=%s)", async isCollapsed => {
   const ownerId = 'owner'
-  const site = { id: siteId, billing: { plan: 'foundry', credits_available: 0 } }
+  const site = { id: siteId, billing: { plan: 'foundry', credits_available: 0, stripe_customer_id: 'cus_synthetic' } }
   const context = { currentSite: site, requestScope: { siteId, actorId: ownerId } } as never
   jest.mocked(useOptionalSite).mockReturnValue(context)
   jest.mocked(useSite).mockReturnValue(context)
@@ -88,9 +88,23 @@ it.each([false, true])("replaces the credits card with the owner billing link (c
     capabilities: { ...existing.capabilities!, role: 'owner', is_owner: true },
   })
   mockAuth.mockReturnValue({ user: { id: ownerId } })
+  fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ hasPendingInvoice: false }) })
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ hasPendingInvoice: true }) })
+    .mockResolvedValueOnce({ ok: true, json: async () => ({ hasPendingInvoice: false }) })
   const view = render(<Sidebar isCollapsed={isCollapsed} onCollapse={jest.fn()} />)
+  expect(screen.queryByRole('link', { name: 'billing.form.manageSub' })).not.toBeInTheDocument()
+  await act(async () => { await jest.advanceTimersByTimeAsync(1_000) })
+  expect(fetchMock).toHaveBeenCalledWith(`/api/stripe/pending-invoice?siteId=${siteId}`, expect.anything())
+  expect(screen.queryByRole('link', { name: 'billing.form.manageSub' })).not.toBeInTheDocument()
+  await act(async () => {
+    await jest.advanceTimersByTimeAsync(75_000)
+    fireEvent(window, new Event('focus'))
+  })
   expect(screen.getByRole('link', { name: 'billing.form.manageSub' })).toHaveAttribute('href', '/billing')
   expect(screen.queryByRole('button', { name: 'layout.sidebar.manageCredits' })).not.toBeInTheDocument()
+  await act(async () => { await jest.advanceTimersByTimeAsync(75_000) })
+  expect(screen.queryByRole('link', { name: 'billing.form.manageSub' })).not.toBeInTheDocument()
+  expect(fetchMock).toHaveBeenCalledTimes(3)
   jest.mocked(useOptionalPermissions).mockReturnValue({ ...existing, capabilities: null })
   view.rerender(<Sidebar isCollapsed={isCollapsed} onCollapse={jest.fn()} />)
   expect(screen.queryByRole('button', { name: 'layout.sidebar.manageCredits' })).not.toBeInTheDocument()

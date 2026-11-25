@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useOptionalPermissions } from "@/app/context/PermissionContext"
 import { useOptionalSite } from "@/app/context/SiteContext"
@@ -9,10 +10,11 @@ import { cn } from "@/lib/utils"
 import { CreditsWidget } from "./CreditsWidget"
 import { NavigationLink } from "./NavigationLink"
 
+const RECHECK_INTERVAL_MS = 75_000
+
 export function SidebarBillingWidget({ actorId, isCollapsed }: { actorId?: string; isCollapsed: boolean }) {
   const site = useOptionalSite()
   const permissions = useOptionalPermissions()
-  const { t } = useLocalization()
   const current = site?.currentSite
   const scope = site?.requestScope
   if (!current || site.isLoading || current.id.startsWith("demo-")) return null
@@ -22,7 +24,77 @@ export function SidebarBillingWidget({ actorId, isCollapsed }: { actorId?: strin
   if (scope && capabilities?.select !== true) return null
   const isOwner = capabilities?.role === "owner" && capabilities.select === true
   if (!isOwner) return <CreditsWidget isCollapsed={isCollapsed} />
-  if (!actorId || !scope) return null
+  const billing = current.billing
+  if (!actorId || !scope || !billing?.stripe_customer_id || current.billing_read_status === "unavailable") return null
+
+  // Never carry a pending invoice result across tenants, actors, or a new settlement.
+  const key = JSON.stringify([actorId, current.id, billing.stripe_customer_id, billing.paid_subscription_invoice_id])
+  return <PendingInvoiceLink key={key} siteId={current.id} isCollapsed={isCollapsed} />
+}
+
+function PendingInvoiceLink({ siteId, isCollapsed }: { siteId: string; isCollapsed: boolean }) {
+  const { t } = useLocalization()
+  const [hasPendingInvoice, setHasPendingInvoice] = useState(false)
+
+  useEffect(() => {
+    let request: AbortController | undefined
+    let expiration: ReturnType<typeof setTimeout> | undefined
+    let nextCheck = 0
+
+    async function check() {
+      if (request || Date.now() < nextCheck) return
+      clearTimeout(expiration)
+      setHasPendingInvoice(false)
+      const controller = new AbortController()
+      request = controller
+      nextCheck = Date.now() + RECHECK_INTERVAL_MS
+      const timeout = setTimeout(() => {
+        controller.abort()
+        if (request === controller) {
+          request = undefined
+          setHasPendingInvoice(false)
+        }
+      }, 15_000)
+      try {
+        const response = await fetch(`/api/stripe/pending-invoice?siteId=${encodeURIComponent(siteId)}`, {
+          cache: "no-store", credentials: "same-origin", signal: controller.signal,
+        })
+        const pending = response.ok && (await response.json())?.hasPendingInvoice === true
+        if (controller.signal.aborted) return
+        setHasPendingInvoice(pending)
+        if (pending) {
+          expiration = setTimeout(() => {
+            if (document.visibilityState === "visible") void check()
+            else setHasPendingInvoice(false)
+          }, nextCheck - Date.now())
+        }
+      } catch {
+        if (request === controller) setHasPendingInvoice(false)
+      } finally {
+        clearTimeout(timeout)
+        if (request === controller) request = undefined
+      }
+    }
+
+    function onVisible() {
+      if (document.visibilityState === "visible") void check()
+    }
+
+    const deferred = setTimeout(onVisible, 1_000)
+    window.addEventListener("focus", onVisible)
+    document.addEventListener("visibilitychange", onVisible)
+    return () => {
+      clearTimeout(deferred)
+      clearTimeout(expiration)
+      const activeRequest = request
+      request = undefined
+      activeRequest?.abort()
+      window.removeEventListener("focus", onVisible)
+      document.removeEventListener("visibilitychange", onVisible)
+    }
+  }, [siteId])
+
+  if (!hasPendingInvoice) return null
 
   const label = t("billing.form.manageSub") || "Manage billing"
   return (

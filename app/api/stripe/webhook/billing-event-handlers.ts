@@ -12,12 +12,22 @@ import { settleStripeSubscriptionInvoice } from "./subscription-invoice-settleme
 
 type BillingWebhookClient = Pick<SupabaseClient, "from" | "rpc">
 
+async function revokeLateRenewalAccess(supabase: BillingWebhookClient, chargeId: string | null) {
+  if (!chargeId) throw new Error('Missing reversed charge identity')
+  const { data, error } = await supabase.rpc('revoke_stripe_late_renewal_access', { p_charge_id: chargeId })
+  if (error || data !== 'revoked') throw new Error('Could not record late renewal reversal')
+}
+
 async function handleRefundOrDispute(
   event: Stripe.Event,
   stripe: Stripe,
   supabase: BillingWebhookClient,
 ): Promise<void> {
   const object = event.data.object as Stripe.Charge
+  // A reversal can arrive before invoice settlement. Fence the charge before
+  // downstream accounting, even if no local access grant exists yet.
+  await revokeLateRenewalAccess(supabase, event.type === 'charge.dispute.created'
+    ? stripeObjectId((event.data.object as Stripe.Dispute).charge) : object.id)
   const paymentIntentId = await resolveStripeRefundPaymentIntent(
     object,
     async (chargeId) => stripe.charges.retrieve(chargeId),
@@ -74,6 +84,26 @@ export async function handleBillingStripeEvent(params: {
     return true
   }
   switch (event.type) {
+    case 'credit_note.created': {
+      // A post-payment credit can return the money as customer balance rather
+      // than a card refund. The invoice stays paid and the charge stays captured.
+      const note = event.data.object as Stripe.CreditNote
+      if (note.type !== 'post_payment' || note.status !== 'issued' || !(note.amount > 0)) return true
+      const invoiceId = stripeObjectId(note.invoice)
+      if (!invoiceId) throw new Error('Missing credited invoice identity')
+      const invoice = await stripe.invoices.retrieve(invoiceId, { expand: ['payments'] })
+      if (invoice.id !== invoiceId) throw new Error('Credited invoice mismatch')
+      if (invoice.billing_reason !== 'subscription_cycle') return true
+      // Only a single fully bound intent can ever support this access grant.
+      if (invoice.payments?.has_more !== false || invoice.payments.data.length !== 1) return true
+      const payment = invoice.payments.data[0]
+      const intentId = stripeObjectId(payment.payment.payment_intent)
+      if (payment.payment.type !== 'payment_intent' || !intentId || stripeObjectId(payment.invoice) !== invoiceId) return true
+      const intent = await stripe.paymentIntents.retrieve(intentId)
+      if (intent.id !== intentId || stripeObjectId(intent.customer) !== stripeObjectId(invoice.customer)) throw new Error('Credited payment mismatch')
+      if (intent.latest_charge) await revokeLateRenewalAccess(supabase, stripeObjectId(intent.latest_charge))
+      return true
+    }
     case "customer.subscription.created":
     case "customer.subscription.updated":
     case "customer.subscription.deleted": {
@@ -116,9 +146,12 @@ export async function handleBillingStripeEvent(params: {
     case 'refund.created':
     case 'refund.updated':
     case 'refund.failed':
-    case 'charge.refund.updated':
-      await handleStripeRefundStatusEvent(supabase, stripe, event.data.object as Stripe.Refund)
+    case 'charge.refund.updated': {
+      const refund = event.data.object as Stripe.Refund
+      if (refund.status === 'succeeded') await revokeLateRenewalAccess(supabase, stripeObjectId(refund.charge))
+      await handleStripeRefundStatusEvent(supabase, stripe, refund)
       return true
+    }
     case "payment_intent.payment_failed":
       await handleFailedPaymentIntent(event, supabase)
       return true

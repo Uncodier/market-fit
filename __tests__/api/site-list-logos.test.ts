@@ -17,7 +17,10 @@ function fixture(location: unknown = false, user: { id: string; is_anonymous?: b
       const resource = url.pathname.split('/').pop()
       if (resource === failure) return Response.json({ message: 'private db diagnostic' }, { status: 500 })
       const body = resource === 'current_user_has_location_restrictions' ? location : resource === 'site_members'
-        ? [{ site_id: member }] : resource === 'sites' ? [{ id: owned, logo_url: 'mine' }, { id: member, logo_url: 'shared' }] : null
+        // RLS admits this restored member, even though the stored flag is still true.
+        ? (url.searchParams.has('license_suspended') ? [] : [{ site_id: member }])
+        : resource === 'sites' ? [{ id: owned, logo_url: 'mine' },
+          ...(url.searchParams.get('or')?.includes(member) ? [{ id: member, logo_url: 'shared' }] : [])] : null
       return Response.json(body)
     } },
   })
@@ -36,8 +39,9 @@ it('performs one Auth check and reads only the requested unarchived, owned or en
   expect(auth).toHaveBeenCalledTimes(1)
   expect(urls.map(url => url.pathname.split('/').pop())).toEqual(['current_user_has_location_restrictions', 'site_members', 'sites'])
   expect(Object.fromEntries(urls[1].searchParams)).toMatchObject({
-    select: 'site_id', user_id: `eq.${actor}`, status: 'eq.active', license_suspended: 'eq.false', site_id: `in.(${owned},${member},${foreign})`,
+    select: 'site_id', user_id: `eq.${actor}`, status: 'eq.active', site_id: `in.(${owned},${member},${foreign})`,
   })
+  expect(urls[1].searchParams.has('license_suspended')).toBe(false)
   expect(Object.fromEntries(urls[2].searchParams)).toMatchObject({ select: 'id,logo_url', archived_at: 'is.null',
     id: `in.(${owned},${member},${foreign})`, or: `(user_id.eq.${actor},id.in.(${member}))`, logo_url: 'not.is.null',
   })

@@ -23,52 +23,61 @@ type Options = {
 function fakeAdmin(
   tables: Record<string, Row[]>, trackSelects: string[] = [], options: Options = {}
 ): SitesAdminClient {
+  function query(table: string, stage: Stage, filters: Array<(row: Row) => boolean> = []): Query {
+    const call: Call = { table, stage, from: 0, to: Infinity }
+    const execute = async (): Promise<Response> => {
+      options.calls?.push({ ...call })
+      const rows = (tables[table] || []).filter((row) => filters.every((filter) => filter(row)))
+        .sort((a, b) => String(a[call.order!]).localeCompare(String(b[call.order!])))
+      const response: Response = {
+        data: rows.slice(call.from, Math.min(call.to + 1, call.from + (options.cap ?? Infinity))),
+        error: null, count: rows.length,
+      }
+      return options.respond ? options.respond(call, response) : response
+    }
+    const builder: Query = {
+      eq(column, value) {
+        filters.push((row) => row[column] === value)
+        return builder
+      },
+      in(column, values) {
+        call.stage = "extra"
+        call.ids = values
+        filters.push((row) => values.includes(row[column] as string))
+        return builder
+      },
+      is(column, value) {
+        filters.push((row) => row[column] === value)
+        return builder
+      },
+      order(column, { ascending }) {
+        expect(ascending).toBe(true)
+        call.order = column
+        return builder
+      },
+      range(from, to) { call.from = from; call.to = to; return builder },
+      abortSignal(signal) { call.signal = signal; return builder },
+      then(resolve, reject) { return execute().then(resolve, reject) },
+    }
+    return builder
+  }
   return {
     from(table) {
-      if (table === "site_ownership") throw new Error("Redundant ownership query")
-      const filters: Array<(row: Row) => boolean> = []
-      const call: Call = { table, stage: table === "sites" ? "owned" : "memberships", from: 0, to: Infinity }
-      const execute = async (): Promise<Response> => {
-        options.calls?.push({ ...call })
-        const rows = (tables[table] || []).filter((row) => filters.every((filter) => filter(row)))
-          .sort((a, b) => String(a[call.order!]).localeCompare(String(b[call.order!])))
-        const response: Response = {
-          data: rows.slice(call.from, Math.min(call.to + 1, call.from + (options.cap ?? Infinity))),
-          error: null, count: rows.length,
-        }
-        return options.respond ? options.respond(call, response) : response
-      }
-      const builder: Query = {
-        eq(column, value) {
-          filters.push((row) => row[column] === value)
-          return builder
-        },
-        in(column, values) {
-          call.stage = "extra"
-          call.ids = values
-          filters.push((row) => values.includes(row[column] as string))
-          return builder
-        },
-        is(column, value) {
-          filters.push((row) => row[column] === value)
-          return builder
-        },
-        order(column, { ascending }) {
-          expect(ascending).toBe(true)
-          call.order = column
-          return builder
-        },
-        range(from, to) { call.from = from; call.to = to; return builder },
-        abortSignal(signal) { call.signal = signal; return builder },
-        then(resolve, reject) { return execute().then(resolve, reject) },
-      }
-      return {
-        select(cols, settings) {
-          expect(settings).toEqual({ count: "exact" })
-          if (table === "sites") trackSelects.push(cols)
-          return builder
-        },
-      }
+      if (table !== "sites") throw new Error(`Unexpected raw table read: ${table}`)
+      return { select(cols, settings) {
+        expect(settings).toEqual({ count: "exact" })
+        trackSelects.push(cols)
+        return query(table, "owned")
+      } }
+    },
+    rpc(name, args, settings) {
+      expect(name).toBe("list_effective_selector_memberships")
+      expect(args).toEqual({ p_user_id: "user-1" })
+      expect(settings).toEqual({ get: true, count: "exact" })
+      return { select(cols) {
+        expect(cols).toBe("site_id")
+        return query("effective_memberships", "memberships", [row => row.user_id === args.p_user_id])
+      } }
     },
   }
 }
@@ -79,9 +88,9 @@ function fixtures(size = 3) {
   }))
   return {
     sites: [{ id: "owned", user_id: "user-1", archived_at: null }, ...sites],
-    site_members: sites.map((site, index) => ({
+    effective_memberships: sites.map((site, index) => ({
       id: `membership-${String(index).padStart(5, "0")}`, site_id: site.id,
-      user_id: "user-1", status: "active", license_suspended: false,
+      user_id: "user-1",
     })),
   }
 }
@@ -101,13 +110,20 @@ describe("mergeAccessibleSites", () => {
 })
 
 describe("listAccessibleSitesForUser", () => {
-  it("excludes suspended shared access even when an ownership record remains", async () => {
+  it("uses effective access rather than stale suspension flags or ownership records", async () => {
     const result = await listAccessibleSitesForUser(fakeAdmin({
-      sites: [{ id: "shared", user_id: "other", archived_at: null }],
-      site_members: [{ site_id: "shared", user_id: "user-1", status: "active", license_suspended: true }],
-      site_ownership: [{ site_id: "shared", user_id: "user-1" }],
+      sites: [
+        { id: "restored", user_id: "other", archived_at: null },
+        { id: "expired", user_id: "other", archived_at: null },
+      ],
+      site_members: [
+        { site_id: "restored", user_id: "user-1", status: "active", license_suspended: true },
+        { site_id: "expired", user_id: "user-1", status: "active", license_suspended: false },
+      ],
+      effective_memberships: [{ id: "member-1", site_id: "restored", user_id: "user-1" }],
+      site_ownership: [{ site_id: "expired", user_id: "user-1" }],
     }), "user-1")
-    expect(result.sites).toEqual([])
+    expect(result).toEqual({ sites: [{ id: "restored", user_id: "other", archived_at: null }], error: null })
   })
 
   it("returns owned sites plus licensed active memberships", async () => {
@@ -118,10 +134,9 @@ describe("listAccessibleSitesForUser", () => {
         { id: "co-owned", name: "Co-owned", user_id: "other", archived_at: null },
         { id: "other", name: "Other", user_id: "other", archived_at: null },
       ],
-      site_members: [
-        { site_id: "member", user_id: "user-1", status: "active", license_suspended: false },
-        { site_id: "co-owned", user_id: "user-1", status: "active", license_suspended: false },
-        { site_id: "pending", user_id: "user-1", status: "pending" },
+      effective_memberships: [
+        { id: "member-1", site_id: "member", user_id: "user-1" },
+        { id: "member-2", site_id: "co-owned", user_id: "user-1" },
       ],
       site_ownership: [{ site_id: "co-owned", user_id: "user-1" }],
     })
@@ -135,8 +150,6 @@ describe("listAccessibleSitesForUser", () => {
     const trackSelects: string[] = []
     const admin = fakeAdmin({
       sites: [{ id: "owned", user_id: "user-1", archived_at: null }],
-      site_members: [],
-      site_ownership: []
     }, trackSelects)
     
     await listAccessibleSitesForUser(admin, "user-1")
@@ -158,9 +171,9 @@ describe("listAccessibleSitesForUser", () => {
         { id: "member", user_id: "other", archived_at },
         { id: "co-owned", user_id: "other", archived_at },
       ],
-      site_members: [
-        { site_id: "owned", user_id: "user-1", status: "active", license_suspended: false },
-        { site_id: "member", user_id: "user-1", status: "active", license_suspended: false },
+      effective_memberships: [
+        { id: "member-1", site_id: "owned", user_id: "user-1" },
+        { id: "member-2", site_id: "member", user_id: "user-1" },
       ],
       site_ownership: [{ site_id: "co-owned", user_id: "user-1" }],
     }
@@ -176,9 +189,11 @@ describe("listAccessibleSitesForUser", () => {
     const controller = new AbortController()
     controller.abort()
     const from = jest.fn()
-    expect(await listAccessibleSitesForUser({ from }, "user-1", controller.signal))
+    const rpc = jest.fn()
+    expect(await listAccessibleSitesForUser({ from, rpc }, "user-1", controller.signal))
       .toEqual({ sites: [], error: "Site list request aborted" })
     expect(from).not.toHaveBeenCalled()
+    expect(rpc).not.toHaveBeenCalled()
   })
 
   it("stops before scheduling another page after cancellation", async () => {
@@ -192,6 +207,32 @@ describe("listAccessibleSitesForUser", () => {
       .toEqual({ sites: [], error: "Site list request aborted" })
     expect(calls.filter(call => call.stage === "memberships").map(call => call.from)).toEqual([0, 1])
     expect(calls.some(call => call.stage === "extra")).toBe(false)
+  })
+
+  it("sends a bounded, exact-count membership RPC through the real Supabase client", async () => {
+    const urls: URL[] = []
+    const admin = createClient("https://example.test", "test-key", {
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: { fetch: async (input, init) => {
+        const url = new URL(String(input))
+        urls.push(url)
+        expect(init?.method).toBe("GET")
+        expect(new Headers(init?.headers).get("prefer")).toContain("count=exact")
+        if (url.pathname === "/rest/v1/rpc/list_effective_selector_memberships") {
+          expect(Object.fromEntries(url.searchParams)).toEqual({
+            p_user_id: "user-1", select: "site_id", order: "id.asc", offset: "0", limit: "500",
+          })
+          return globalThis.Response.json([{ site_id: "shared" }], { headers: { "content-range": "0-0/1" } })
+        }
+        expect(url.pathname).toBe("/rest/v1/sites")
+        const sharedRead = url.searchParams.get("id") === "in.(shared)"
+        return globalThis.Response.json(sharedRead ? [{ id: "shared" }] : [], {
+          headers: { "content-range": sharedRead ? "0-0/1" : "*/0" },
+        })
+      } },
+    })
+    expect(await listAccessibleSitesForUser(admin, "user-1")).toEqual({ sites: [{ id: "shared" }], error: null })
+    expect(urls).toHaveLength(3)
   })
 
   it("passes the signal through real Supabase builders to in-flight fetches", async () => {
@@ -341,35 +382,27 @@ describe("listAccessibleSitesForUser", () => {
   })
 
 
-  it("matches the previous ownership union for every access combination", async () => {
-    for (const owned of [false, true]) for (const membership of [false, true]) {
+  it("only includes unarchived sites that are owned or returned by the membership RPC", async () => {
+    for (const owned of [false, true]) for (const effective of [false, true]) {
       for (const ownership of [false, true]) for (const archived of [false, true]) {
-        for (const status of ["active", "pending"]) for (const suspended of [false, true, null]) {
-          const site = { id: "site", user_id: owned ? "user-1" : "other", archived_at: archived ? "date" : null }
-          const ownedIds = new Set(owned && !archived ? [site.id] : [])
-          const memberIds = new Set(membership && status === "active" && suspended === false ? [site.id] : [])
-          const ownershipIds = ownership ? [site.id] : []
-          const previousIds = new Set([...ownedIds, ...memberIds, ...ownershipIds.filter(
-            id => ownedIds.has(id) || memberIds.has(id)
-          )])
-          const admin = fakeAdmin({
-            sites: [site],
-            site_members: membership ? [{ site_id: site.id, user_id: "user-1", status, license_suspended: suspended }] : [],
-            site_ownership: ownershipIds.map(site_id => ({ site_id, user_id: "user-1" })),
-          })
-          expect(await listAccessibleSitesForUser(admin, "user-1")).toEqual({
-            sites: !archived && previousIds.has(site.id) ? [site] : [], error: null,
-          })
-        }
+        const site = { id: "site", user_id: owned ? "user-1" : "other", archived_at: archived ? "date" : null }
+        const admin = fakeAdmin({
+          sites: [site],
+          effective_memberships: effective ? [{ id: "member-1", site_id: site.id, user_id: "user-1" }] : [],
+          site_ownership: ownership ? [{ site_id: site.id, user_id: "user-1" }] : [],
+        })
+        expect(await listAccessibleSitesForUser(admin, "user-1")).toEqual({
+          sites: !archived && (owned || effective) ? [site] : [], error: null,
+        })
       }
     }
   })
 
   it("deduplicates memberships, ignores other users and skips redundant site reads", async () => {
     const tables = fixtures(1)
-    tables.site_members.push({ ...tables.site_members[0], id: "duplicate" }, {
-      ...tables.site_members[0], id: "owned-member", site_id: "owned",
-    }, { ...tables.site_members[0], id: "foreign", site_id: "foreign", user_id: "other" })
+    tables.effective_memberships.push({ ...tables.effective_memberships[0], id: "duplicate" }, {
+      ...tables.effective_memberships[0], id: "owned-member", site_id: "owned",
+    }, { ...tables.effective_memberships[0], id: "foreign", site_id: "foreign", user_id: "other" })
     const calls: Call[] = []
     const result = await listAccessibleSitesForUser(fakeAdmin(tables, [], { calls }), "user-1")
     expect(result).toEqual({ sites: tables.sites, error: null })
@@ -414,7 +447,7 @@ describe("listAccessibleSitesForUser", () => {
   })
 
   it("converts synchronous builder errors and non-Error rejections to list failures", async () => {
-    const admin: SitesAdminClient = { from() { throw new Error("Builder failed") } }
+    const admin: SitesAdminClient = { from() { throw new Error("Builder failed") }, rpc: jest.fn() }
     expect(await listAccessibleSitesForUser(admin, "user-1")).toEqual({ sites: [], error: "Builder failed" })
     expect(await listAccessibleSitesForUser(fakeAdmin({}, [], { respond() {
       return Promise.reject(null)

@@ -24,6 +24,23 @@ const post = (body: unknown = { site_id: siteId }, headers = {}) => new Request(
 const get = (query = `site_id=${siteId}`, headers = {}) => new Request(`https://app.example.test/api/billing/startup-trial?${query}`, {
   headers: { cookie: "session=synthetic", ...headers },
 })
+const recoveryQuery = `site_id=${siteId}&include_recovery=1`
+const futureBoundary = "2099-11-03T12:00:00+00:00"
+
+function recoveryRead(boundary: unknown, error: unknown = null) {
+  const billing = jest.fn().mockResolvedValue({ data: {
+    stripe_customer_id: "cus_owned", stripe_subscription_id: "sub_owned",
+  }, error: null })
+  const query = { eq: jest.fn().mockReturnThis(), abortSignal: jest.fn().mockReturnThis(), maybeSingle: billing }
+  const select = jest.fn().mockReturnValue(query)
+  const userFrom = jest.fn().mockReturnValue({ select })
+  jest.mocked(requireSiteAccess).mockResolvedValue({ userId: actorId, role: "owner", userEmail: null,
+    supabase: { from: userFrom } } as never)
+  rpc.mockImplementation((name: string) => name === "get_site_startup_trial"
+    ? Promise.resolve({ data: eligible, error: null })
+    : { abortSignal: () => Promise.resolve({ data: boundary, error }) })
+  return { userFrom, select, query, billing }
+}
 
 beforeEach(() => {
   jest.clearAllMocks()
@@ -43,6 +60,54 @@ it("GET never activates a trial and returns a private minimal status", async () 
   expect(rpc).toHaveBeenCalledWith("get_site_startup_trial", { p_site_id: siteId })
   expect(userCanOnSite).not.toHaveBeenCalled()
   expect(from).not.toHaveBeenCalled()
+})
+
+it("only uses the authorized site's stored Stripe binding and returns just the verified date", async () => {
+  const { userFrom, query } = recoveryRead(futureBoundary)
+  const result = await GET(get(recoveryQuery))
+  expect(result.status).toBe(200)
+  expect(result.headers.get("cache-control")).toBe("no-store, private")
+  expect(await result.json()).toEqual({ ...eligible, paid_through: futureBoundary })
+  expect(requireSiteAccess).toHaveBeenCalledWith(expect.any(Request), siteId, {})
+  expect(userFrom).toHaveBeenCalledWith("billing")
+  expect(query.eq.mock.calls).toEqual([["site_id", siteId], ["subscription_status", "canceled"], ["auto_renew", false]])
+  expect(rpc.mock.calls).toEqual([
+    ["get_site_startup_trial", { p_site_id: siteId }],
+    ["stripe_late_renewal_paid_through", { p_site_id: siteId, p_customer_id: "cus_owned", p_subscription_id: "sub_owned" }],
+  ])
+})
+
+it.each([null, "garbage", "2000-01-01T00:00:00Z"])("omits unverified or expired coverage: %p", async boundary => {
+  recoveryRead(boundary)
+  expect(await (await GET(get(recoveryQuery))).json()).toEqual(eligible)
+})
+
+it("leaves the trial response intact if the recovery RPC fails", async () => {
+  recoveryRead(futureBoundary, { code: "42883" })
+  expect(await (await GET(get(recoveryQuery))).json()).toEqual(eligible)
+})
+
+it("does not call the recovery RPC without a matching billing binding", async () => {
+  const { billing } = recoveryRead(futureBoundary)
+  billing.mockResolvedValue({ data: null, error: null })
+  expect(await (await GET(get(recoveryQuery))).json()).toEqual(eligible)
+  expect(rpc).toHaveBeenCalledTimes(1)
+})
+
+it("skips recovery for non-owners and ordinary GETs", async () => {
+  const { userFrom } = recoveryRead(futureBoundary)
+  const owner = await jest.mocked(requireSiteAccess)(get(), siteId)
+  expect(await (await GET(get())).json()).toEqual(eligible)
+  jest.mocked(requireSiteAccess).mockResolvedValue({ ...owner, role: "admin" } as never)
+  expect(await (await GET(get(recoveryQuery))).json()).toEqual(eligible)
+  expect(userFrom).not.toHaveBeenCalled()
+  expect(rpc.mock.calls.map(([name]) => name)).toEqual(["get_site_startup_trial", "get_site_startup_trial"])
+})
+
+it("rejects untrusted Stripe IDs and duplicate recovery flags before authorization", async () => {
+  expect((await GET(get(`${recoveryQuery}&customer_id=cus_other`))).status).toBe(400)
+  expect((await GET(get(`${recoveryQuery}&include_recovery=1`))).status).toBe(400)
+  expect(requireSiteAccess).not.toHaveBeenCalled()
 })
 
 it.each([true, false])('returns only the explicit server offer decision without exposing payment history (%s)', async offer => {
@@ -72,7 +137,7 @@ it("POST uses only server-verified actor identity and atomic activation", async 
 
 it.each([401, 403])("denies unauthorized callers (%s) before elevated access", async status => {
   jest.mocked(requireSiteAccess).mockResolvedValue({ error: Response.json({ error: "Denied" }, { status }) } as never)
-  expect((await GET(get())).status).toBe(status)
+  expect((await GET(get(recoveryQuery))).status).toBe(status)
   expect((await POST(post())).status).toBe(status)
   expect(createServiceClient).not.toHaveBeenCalled()
 })

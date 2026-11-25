@@ -37,7 +37,7 @@ import { useBillingTarget } from "./use-billing-target"
 
 export default function BillingPage() {
   const { t } = useLocalization()
-  const { currentSite, isLoading } = useSite()
+  const { currentSite, isLoading, requestScope } = useSite()
   const router = useRouter()
   const target = useBillingTarget()
   const searchParams = useSearchParams()
@@ -95,6 +95,12 @@ export default function BillingPage() {
     )
   }
 
+  const billing = currentSite.billing
+  const recoveryScope = requestScope && requestScope.siteId === currentSite.id &&
+    currentSite.billing_read_status !== "unavailable" && billing?.stripe_customer_id && billing.auto_renew === false
+    ? JSON.stringify([requestScope.actorId, billing.stripe_customer_id, billing.paid_subscription_invoice_id])
+    : undefined
+
   return (
     <div className="min-w-0 flex-1 [&_[id]]:scroll-mt-[calc(var(--topbar-height,64px)+87px)]">
       <StickyHeader className="[&>div]:px-0">
@@ -116,7 +122,7 @@ export default function BillingPage() {
             <SiteSetupTracking siteId={currentSite.id} />
             <Tabs value={activeTab} onValueChange={handleTabChange}>
               <TabsContent value="billing_info" className="mt-0 p-0">
-                <StartupTrialCard siteId={currentSite.id} />
+                <StartupTrialCard siteId={currentSite.id} recoveryScope={recoveryScope} />
                 {currentSite.billing_read_status !== 'unavailable' ? <BillingForm
                   initialData={{
                     plan: currentSite.billing?.plan || "commission",

@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { startupTrialSchema, type StartupTrial, type StartupTrialActivation } from "@/lib/billing/startup-trial"
+import { paidThroughSchema, startupTrialSchema, type StartupTrial, type StartupTrialActivation } from "@/lib/billing/startup-trial"
 
 export type { StartupTrial, StartupTrialActivation } from "@/lib/billing/startup-trial"
 
@@ -37,11 +37,11 @@ export async function waitForStartupTrial<T>(
   }
 }
 
-async function trialRequest(siteId: string, controller: AbortController, activate: boolean): Promise<unknown> {
+async function trialRequest(siteId: string, controller: AbortController, activate: boolean, includeRecovery = false): Promise<unknown> {
   z.string().uuid().parse(siteId)
   return waitForStartupTrial(async () => {
     const response = await fetch(activate ? "/api/billing/startup-trial"
-      : `/api/billing/startup-trial?site_id=${encodeURIComponent(siteId)}`, {
+      : `/api/billing/startup-trial?site_id=${encodeURIComponent(siteId)}${includeRecovery ? "&include_recovery=1" : ""}`, {
       method: activate ? "POST" : "GET",
       credentials: "same-origin",
       cache: "no-store",
@@ -59,6 +59,13 @@ async function trialRequest(siteId: string, controller: AbortController, activat
 
 export async function getStartupTrial(siteId: string, controller: AbortController): Promise<StartupTrial> {
   return readStartupTrial(await trialRequest(siteId, controller, false))
+}
+
+/** Billing-only projection; other trial consumers keep their original request. */
+export async function getBillingTrial(siteId: string, controller: AbortController) {
+  const body = await trialRequest(siteId, controller, false, true)
+  const recovery = z.object({ paid_through: paidThroughSchema }).safeParse(body)
+  return { ...readStartupTrial(body), paid_through: recovery.success ? recovery.data.paid_through : undefined }
 }
 
 /** Only call from an explicit activation click; an interrupted POST is never automatically replayed. */

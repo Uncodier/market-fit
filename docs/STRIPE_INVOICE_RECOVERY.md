@@ -248,6 +248,64 @@ without applying entitlement. A later verified paid duplicate can recover its
 **stored immutable** coverage once, provided both locked billing and fresh Stripe
 status are active. `duplicate` may therefore include `coverage_recovered: true`
 and positive `credits_granted`; the application must not add credits itself.
+
+### Late payment after a terminal payment failure
+
+`20261125200000_stripe_late_renewal_access.sql` adds an access-only exception
+for the latest monthly renewal paid after Stripe terminated the same bound
+subscription for `payment_failed`. This is not subscription reactivation. The
+server verifies the live cancellation, invoice service and successful full
+payment, including the charge and absence of a refund or dispute. A completed
+payment by itself is not entitlement evidence.
+
+After the existing financial settlement, the service-only
+`record_stripe_late_renewal_access` binds the proof to that immutable settlement
+and to the current site, billing record, customer, terminal subscription and
+cancellation time. It does not change billing, credits, add-ons or renewal
+state. The extra member seats expire at the original invoice period boundary,
+not one month after the late payment. Rebinding to a replacement subscription
+does not carry the old entitlement forward. `revoke_stripe_late_renewal_access`
+records a permanent charge reversal even if the grant has not arrived yet;
+replaying a paid delivery cannot restore it.
+
+The extra seats are checked at read time by the shared site role and bearer
+access checks, including the user-scoped selector, site RLS and service list.
+The extra seats are available only to currently active, identified members
+whose membership row was created by the time Stripe ended the subscription.
+This is a row-age check, not a historical snapshot of membership statuses.
+Seat order, manual disablement and archival still apply. If a member already
+has a seat through the ordinary plan or a higher trial, the overlay does not
+take it away. It does not change the effective product plan, invite admission,
+stored member suspension flags, settings team/channel mirrors, or resource
+quotas. A feature with its own plan or membership gate may still be unavailable.
+Selector caches can briefly retain presentation metadata, but do not grant
+access; use a fresh selector read to verify recovery. The billing UI can still
+show the subscription as canceled: access does not imply an active renewal,
+a new allowance, or a change to protected or purchased balances.
+
+Before any approved rollout, verify the existing member predicate and access
+readers against the migration preflight, and verify
+the coordinated annual/credit-bucket, paid add-on, and startup-trial licensing
+prerequisites. Apply the SQL before enabling producers or readers of the new
+RPCs. Review existing hosted Checkout sessions for affected subscriptions;
+old sessions are not protected by the new boundary check and may need approved
+expiry before historical replay. Enable and verify delivery of `credit_note.created`,
+`charge.refunded`, successful refund events and `charge.dispute.created` before
+replaying paid events.
+
+There is no backfill. For a separately authorized recovery, obtain the invoice
+ID from Stripe's current subscription and independently confirm the site's
+stored customer and subscription IDs. Call the canonical server helper
+`settleStripeSubscriptionInvoice` with that `invoiceId`,
+`requirePaid: true`, `expectedCustomerId`, and `expectedSubscriptionId`. Do not
+construct the evidence JSON by hand. Inspect `late_renewal_access` in the result:
+`granted` or `duplicate` confirms the access proof; a missing value, `rejected`,
+or `reversed` does not confirm access. Verify via a fresh selector read and RLS
+as the affected member; do not manually clear suspension or settlement markers.
+
+The disposable PostgreSQL test
+`__tests__/security/stripe-late-renewal-access.test.ts` covers selector/RLS,
+equivalent retries, reversal races, financial state preservation and expiry.
 An active `customer.subscription.updated` event retrieves the authoritative
 `latest_invoice` and replays it only if paid, so recovery does not depend on an
 invoice webhook being redelivered. A failed/unpaid latest invoice is not payment

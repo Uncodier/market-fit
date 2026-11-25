@@ -1,5 +1,6 @@
 import type Stripe from 'stripe'
 import { SubscriptionRequestError } from '@/lib/subscription-pricing.server'
+import { requireReplacementBoundary } from './replacement-boundary'
 
 const terminal = (status: string) => ['canceled', 'incomplete_expired'].includes(status)
 const objectId = (value: string | { id: string } | null) => typeof value === 'string' ? value : value?.id
@@ -8,12 +9,20 @@ const objectId = (value: string | { id: string } | null) => typeof value === 'st
 export async function prepareSubscriptionCheckout(params: {
   stripe: Stripe; customerId: string; siteId: string; metadata: Record<string, string>
   successUrl: string; cancelUrl: string
+  subscriptionId?: string | null; isOwner: boolean
+  readAttestedPaidThrough: () => Promise<unknown>
   beforeProviderWrite: () => void; afterProviderWrite: () => void
 }) {
   const { stripe, customerId, siteId } = params
   const conflict = () => new SubscriptionRequestError('Subscription checkout changed or completed; refresh billing before trying again', 409)
   const owned = (session: Stripe.Checkout.Session) => objectId(session.customer) === customerId &&
     session.metadata?.site_id === siteId && session.metadata?.type === 'subscription'
+  const checkBoundary = async (sessions: Stripe.Checkout.Session[]) => {
+    const subscriptions = await stripe.subscriptions.list({ customer: customerId, status: 'all', limit: 100 })
+    if (subscriptions.has_more || sessions.some(session => session.status === 'complete' &&
+        !subscriptions.data.some(sub => sub.id === objectId(session.subscription)))) throw conflict()
+    await requireReplacementBoundary({ ...params, subscriptions: subscriptions.data })
+  }
   const list = async () => {
     // Include completed sessions: a just-completed checkout may precede subscription-list visibility.
     const sessions = await stripe.checkout.sessions.list({ customer: customerId, limit: 100 })
@@ -24,13 +33,14 @@ export async function prepareSubscriptionCheckout(params: {
       const subscriptionId = objectId(session.subscription)
       if (!owned(session) || !subscriptionId) throw conflict()
       const sub = await stripe.subscriptions.retrieve(subscriptionId)
-      if (objectId(sub.customer) !== customerId || !terminal(sub.status)) throw conflict()
+      if (sub.id !== subscriptionId || objectId(sub.customer) !== customerId || !terminal(sub.status)) throw conflict()
     }
     return relevant
   }
   let sessions = await list()
   const open = sessions.filter(session => session.status === 'open')
   if (open.length > 1) throw conflict()
+  await checkBoundary(sessions)
   if (open.length) {
     // Refresh immediately before reuse/expiration, since Checkout can complete outside our lease.
     const current = await stripe.checkout.sessions.retrieve(open[0].id)
@@ -48,9 +58,8 @@ export async function prepareSubscriptionCheckout(params: {
     if (confirmed.status !== 'expired') throw conflict()
     sessions = await list()
     if (sessions.some(session => session.status === 'open')) throw conflict()
+    await checkBoundary(sessions)
   }
-  const subscriptions = await stripe.subscriptions.list({ customer: customerId, status: 'all', limit: 100 })
-  if (subscriptions.has_more || subscriptions.data.some(sub => !terminal(sub.status))) throw conflict()
   // Revisiting A after A -> B must not reuse Stripe's idempotent result for the now-expired A.
   const generation = sessions.filter(session => session.status === 'expired' && owned(session))
     .map(session => session.id).sort().join(',')

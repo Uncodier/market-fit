@@ -22,6 +22,11 @@ export type SitesAdminClient = {
   from(table: string): {
     select(columns: string, options: { count: "exact" }): unknown
   }
+  rpc(
+    name: "list_effective_selector_memberships",
+    args: { p_user_id: string },
+    options: { get: true; count: "exact" },
+  ): { select(columns: string): unknown }
 }
 
 const PAGE_SIZE = 500
@@ -96,8 +101,10 @@ export async function listAccessibleSitesForUser(
         "id", signal
       ),
       readPages<{ site_id: string }>(
-        () => select(admin, "site_members", "site_id")
-          .eq("user_id", userId).eq("status", "active").eq("license_suspended", false),
+        // The service RPC checks the authenticated actor's effective license.
+        // Stored suspension can lag on both expiry and restored coverage.
+        () => admin.rpc("list_effective_selector_memberships", { p_user_id: userId }, { get: true, count: "exact" })
+          .select("site_id") as SitesQuery,
         "id", signal
       ),
     ])

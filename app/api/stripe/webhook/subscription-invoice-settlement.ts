@@ -6,6 +6,7 @@ import {
   type SubscriptionBillingClient, type SubscriptionStripeClient,
 } from "./subscription-billing"
 import { verifiedInvoiceEntitlements } from "./subscription-invoice-entitlements"
+import { verifyLateRenewalPayment } from './late-renewal-payment'
 
 type CompatibleInvoice = Stripe.Invoice & {
   subscription?: string | Stripe.Subscription | null
@@ -45,6 +46,7 @@ export type StripeSubscriptionInvoiceResult = {
   payment_id: string
   credits_granted: number
   coverage_recovered?: boolean
+  late_renewal_access?: 'granted' | 'duplicate' | 'reversed' | 'rejected'
 }
 
 export type ObsoleteSubscriptionInvoiceResult = { outcome: "obsolete_subscription"; credits_granted: 0 }
@@ -91,6 +93,7 @@ export async function settleStripeSubscriptionInvoice(params: {
   stripe: SubscriptionStripeClient & {
     invoices: Pick<Stripe["invoices"], "retrieve">
     prices: Pick<Stripe["prices"], "retrieve">
+    paymentIntents: Pick<Stripe['paymentIntents'], 'retrieve'>
   }
   supabase: SubscriptionBillingClient
   eventId?: string | null
@@ -168,5 +171,24 @@ export async function settleStripeSubscriptionInvoice(params: {
     p_invoice: input,
   })
   if (error) throw new Error(`Failed to settle subscription invoice: ${error.message}`)
-  return settlementResult(data)
+  const result = settlementResult(data)
+  if (result.outcome === 'settled' || result.outcome === 'duplicate') {
+    const proof = await verifyLateRenewalPayment(params.stripe, invoice, current.subscription, input)
+    if (proof) {
+      const grant = await params.supabase.rpc('record_stripe_late_renewal_access', { p_evidence: {
+        site_id: siteId, customer_id: customerId, subscription_id: subscriptionId, invoice_id: invoice.id,
+        charge_id: proof.chargeId, payment_intent_id: proof.intentId, ended_at: proof.endedAt,
+        cancellation_reason: 'payment_failed', paid_at: paidAt, period_start: input.period_start,
+        period_end: input.period_end, plan, addons_count: addonsCount, billing_interval: input.billing_interval,
+        amount_paid: invoice.amount_paid, currency: invoice.currency.toUpperCase(),
+      } })
+      if (grant.error || !['granted', 'duplicate', 'reversed', 'rejected'].includes(grant.data)) {
+        throw new Error('Could not verify late renewal access settlement')
+      }
+      // Financial success never implies an access grant. Expose the actual
+      // outcome to an authorized invoice replay without changing credit totals.
+      return { ...result, late_renewal_access: grant.data }
+    }
+  }
+  return result
 }

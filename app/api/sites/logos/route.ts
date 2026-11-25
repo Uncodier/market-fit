@@ -30,11 +30,11 @@ export async function POST(request: Request) {
     if (location.error || typeof location.data !== 'boolean') return json({ success: false, error: 'Location check unavailable' }, 503)
     if (location.data) return json({ success: false, error: 'Unrestricted location access is required' }, 403)
 
-    // Recheck the selector's stored active/non-suspended membership, but only for
-    // this batch. Sites RLS also enforces effective licensing at statement time.
+    // Keep the actor's active membership check bounded to this batch. Both
+    // user-scoped reads enforce effective licensing through RLS, not stale flags.
     const ids = [...new Set(input.data.ids)]
     const members = await supabase.from('site_members').select('site_id').eq('user_id', user.id)
-      .eq('status', 'active').eq('license_suspended', false).in('site_id', ids).abortSignal(signal)
+      .eq('status', 'active').in('site_id', ids).abortSignal(signal)
     if (members.error || !Array.isArray(members.data)) return json({ success: false, error: 'Project list unavailable' }, 503)
     const memberIds = new Set(members.data.map(row => row.site_id).filter(id => ids.includes(id)))
     const filter = [`user_id.eq.${user.id}`, ...(memberIds.size ? [`id.in.(${[...memberIds].join(',')})`] : [])]

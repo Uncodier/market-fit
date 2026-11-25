@@ -6,6 +6,7 @@ import { resolveCheckoutUrls } from '@/app/api/stripe/checkout/checkout-url-secu
 import { SubscriptionRequestError, parseBillingInterval, parseAddonsCount, resolveSubscriptionCheckoutPrices } from '@/lib/subscription-pricing.server'
 import { existingSubscriptionFlow } from './subscription-update'
 import { prepareSubscriptionCheckout } from './checkout-session'
+import { SubscriptionPaidThroughError } from './replacement-boundary'
 import { createServiceApiClient } from '@/lib/supabase/server-client'
 import { getRequiredAddons } from '@/lib/billing-limits'
 import type { Site, SiteSettings } from '@/app/context/site-types'
@@ -49,7 +50,8 @@ export async function POST(request: NextRequest) {
       apiVersion: '2025-05-28.basil', timeout: 20_000, maxNetworkRetries: 0,
     })
     const pricing = await resolveSubscriptionCheckoutPrices(stripe, plan, interval, addonsCount)
-    // Elevated access is only for the site-wide checkout lease, after manager authorization.
+    // Elevated access is for the site-wide checkout lease and owner-gated
+    // paid-through evidence, using the authorized site's own billing binding.
     const service = createServiceApiClient()
     writeDeadline = Date.now() + 4 * 60 * 1000
     const { data: claimed, error: claimError } = await service.rpc('claim_site_subscription_checkout', { p_site_id: siteId })
@@ -119,6 +121,14 @@ export async function POST(request: NextRequest) {
       addons_count: String(addonsCount), type: 'subscription', price_id: pricing.base?.priceId ?? '',
       addon_price_id: addonsCount > 0 ? pricing.addon!.priceId : '' }
     const pending = await prepareSubscriptionCheckout({ stripe, customerId, siteId, metadata,
+      subscriptionId: billing?.stripe_subscription_id, isOwner: access.role === 'owner',
+      readAttestedPaidThrough: async () => {
+        const { data, error } = await service.rpc('stripe_late_renewal_paid_through', {
+          p_site_id: siteId, p_customer_id: customerId, p_subscription_id: billing!.stripe_subscription_id,
+        })
+        if (error) throw new Error('Verified paid-through boundary lookup failed')
+        return data
+      },
       successUrl: urls.successUrl, cancelUrl: urls.cancelUrl, beforeProviderWrite,
       afterProviderWrite: () => { safeRelease = true } })
     if (pending.existing) return NextResponse.json(pending.existing)
@@ -135,6 +145,10 @@ export async function POST(request: NextRequest) {
     }
     return NextResponse.json({ url: session.url, sessionId: session.id })
   } catch (error) {
+    if (error instanceof SubscriptionPaidThroughError) {
+      return NextResponse.json({ error: error.message, paidThrough: error.paidThrough },
+        { status: error.status, headers: { 'Cache-Control': 'private, no-store' } })
+    }
     if (error instanceof SubscriptionRequestError) {
       return NextResponse.json({ error: error.message }, { status: error.status })
     }

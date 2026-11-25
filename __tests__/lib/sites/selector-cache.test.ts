@@ -10,7 +10,7 @@ import { readSelectorSites } from '@/lib/sites/selector-cache'
 
 const row = { id: 'site', name: 'Example', user_id: 'owner', billing: { secret: true }, settings: { secret: true } }
 const createAdmin = jest.fn(async (signal: AbortSignal) => {
-  const result = await listAccessibleSitesForUser({ from: jest.fn() }, 'actor', signal)
+  const result = await listAccessibleSitesForUser({ from: jest.fn(), rpc: jest.fn() }, 'actor', signal)
   if (result.error) throw new Error('The complete project list is temporarily unavailable')
   return result.sites
 })

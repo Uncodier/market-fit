@@ -88,6 +88,7 @@ Changing them requires tests and an operational review of retry behavior.
 - `customer.subscription.created`
 - `customer.subscription.updated`
 - `customer.subscription.deleted`
+- `invoice.paid`
 - `invoice.payment_succeeded`
 - `invoice.payment_failed`
 - `charge.refunded`
@@ -95,6 +96,7 @@ Changing them requires tests and an operational review of retry behavior.
 - `refund.updated`
 - `refund.failed`
 - `charge.dispute.created`
+- `credit_note.created` (post-payment credit, including credit to customer balance)
 - `payment_intent.payment_failed`
 
 Keep the provider endpoint subscription synchronized with the handlers.

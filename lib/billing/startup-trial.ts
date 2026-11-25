@@ -2,6 +2,7 @@ import { z } from "zod"
 
 export const STARTUP_TRIAL_DAYS = 15
 export const STARTUP_TRIAL_CREDITS = 50
+export const paidThroughSchema = z.string().datetime({ offset: true })
 
 export const startupTrialSchema = z.object({
   success: z.literal(true),

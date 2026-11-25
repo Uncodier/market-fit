@@ -62,6 +62,36 @@ it("never starts on mount and explains no-card, one-time, nonrenewing credits wi
   expect(refreshSiteBilling).not.toHaveBeenCalled()
 })
 
+it("shows verified access and future checkout on the same GET, without restarting anything", async () => {
+  jest.useFakeTimers({ now: Date.parse(now) })
+  const paidThrough = "2026-10-19T12:01:00Z"
+  fetchMock.mockResolvedValueOnce(response({ ...eligible, state: "unavailable", paid_through: paidThrough }))
+  render(<StartupTrialCard siteId={siteId} recoveryScope="owner-scope" />)
+  await flush()
+  expect(screen.getByRole("heading", { name: "Renewal canceled" })).toBeVisible()
+  expect(screen.getByText(/Verified paid workspace access through/)).toHaveTextContent("Automatic renewal is off")
+  expect(screen.getByText(/After that time/)).toHaveTextContent("Nothing is scheduled automatically")
+  expect(screen.getByRole("link", { name: "Subscription Plan" })).toHaveAttribute("href", "#subscription-plan")
+  expect(screen.queryByRole("button")).not.toBeInTheDocument()
+  expect(fetchMock).toHaveBeenCalledTimes(1)
+  expect(fetchMock).toHaveBeenCalledWith(`/api/billing/startup-trial?site_id=${siteId}&include_recovery=1`, expect.objectContaining({ method: "GET" }))
+  await act(async () => { await jest.advanceTimersByTimeAsync(60_000) })
+  expect(screen.getByText(/Your verified paid workspace access ended at/)).toBeVisible()
+  expect(fetchMock).toHaveBeenCalledTimes(1)
+})
+
+it("drops a pending recovery response on actor change and ignores unverified dates", async () => {
+  const pending = deferred<Response>()
+  fetchMock.mockReturnValueOnce(pending.promise)
+    .mockResolvedValueOnce(response({ ...eligible, state: "unavailable", paid_through: "not-a-date" }))
+  const view = render(<StartupTrialCard siteId={siteId} recoveryScope="old-owner" />)
+  view.rerender(<StartupTrialCard siteId={siteId} recoveryScope="new-actor" />)
+  pending.resolve(response({ ...eligible, state: "unavailable", paid_through: "2099-10-19T12:01:00Z" }))
+  await flush()
+  expect(signal(0).aborted).toBe(true)
+  expect(view.container).toBeEmptyDOMElement()
+})
+
 it.each(["owner", "admin"])("starts only on explicit %s click, even without insert capability", async role => {
   permission(role)
   await mount()

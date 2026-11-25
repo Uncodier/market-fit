@@ -74,6 +74,18 @@ describe("GET /api/sites detail archive filtering", () => {
     expect(createServiceSupabase).not.toHaveBeenCalled()
   })
 
+  it("fails closed before detail or billing enrichment if effective access cannot be verified", async () => {
+    const { admin } = setup(null)
+    jest.mocked(listAccessibleSitesForUser).mockResolvedValueOnce({
+      sites: [], error: "Private database diagnostic",
+    })
+    const response = await GET(new Request("https://example.test/api/sites?detail=site-1&p_user_id=foreign"))
+    expect(response.status).toBe(503)
+    expect(await response.json()).toEqual({ success: false, error: "The complete project list is temporarily unavailable" })
+    expect(listAccessibleSitesForUser).toHaveBeenCalledWith(admin, "user-1", expect.any(AbortSignal))
+    expect(admin.from).not.toHaveBeenCalled()
+  })
+
   it("returns actual annual interval and paid coverage only for authorized sites", async () => {
     const { billingQuery } = setup(null)
     const annualRow = {

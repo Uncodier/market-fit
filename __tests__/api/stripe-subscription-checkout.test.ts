@@ -23,9 +23,10 @@ const auth = { getUser: jest.fn() }
 const leaseRpc = jest.fn()
 const sdk = {
   prices: { retrieve: jest.fn() },
-  invoices: { retrieve: jest.fn() },
+  invoices: { retrieve: jest.fn(), list: jest.fn() },
   customers: { create: jest.fn(), retrieve: jest.fn() },
   subscriptions: { list: jest.fn(), retrieve: jest.fn(), update: jest.fn() },
+  subscriptionSchedules: { list: jest.fn() },
   checkout: { sessions: { list: jest.fn(), retrieve: jest.fn(), expire: jest.fn(), create: jest.fn() } },
   billingPortal: { configurations: { retrieve: jest.fn() }, sessions: { create: jest.fn() } },
 }
@@ -53,6 +54,15 @@ function existing(overrides = {}) {
   from.mockImplementation(() => ({ select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(),
     maybeSingle: jest.fn(async () => ({ data: { stripe_customer_id: 'cus_site', stripe_subscription_id: 'sub_existing' }, error: null })) }))
 }
+function canceledWithInvoice(periodEnd: number, invoiceOverrides = {}) {
+  existing({ status: 'canceled', cancellation_details: { reason: 'payment_failed' }, latest_invoice: 'in_renewal' })
+  sdk.invoices.list.mockResolvedValue({ has_more: false, data: [{ id: 'in_renewal', customer: 'cus_site',
+    parent: { subscription_details: { subscription: 'sub_existing' } }, status: 'paid', amount_remaining: 0,
+    // Top-level invoice period reflects billing activity, not purchased service.
+    period_end: periodEnd - 100_000,
+    lines: { has_more: false, data: [{ period: { start: periodEnd - 100_000, end: periodEnd },
+      parent: { subscription_item_details: { subscription: 'sub_existing' } } }] }, ...invoiceOverrides }] })
+}
 beforeEach(() => {
   jest.clearAllMocks()
   keys.forEach((key, index) => { process.env[key] = `price_${index}` })
@@ -64,7 +74,8 @@ beforeEach(() => {
   jest.mocked(createClient).mockResolvedValue({ auth, from, rpc } as unknown as Awaited<ReturnType<typeof createClient>>)
   jest.mocked(createServiceApiClient).mockReturnValue({ rpc: leaseRpc } as unknown as ReturnType<typeof createServiceApiClient>)
   leaseRpc.mockImplementation(async (name) => ({ data: name === 'claim_site_subscription_checkout'
-    ? { state: 'claimed', token: randomUUID() } : name === 'upsert_billing' ? { success: true } : true, error: null }))
+    ? { state: 'claimed', token: randomUUID() } : name === 'upsert_billing' ? { success: true } :
+      name === 'stripe_late_renewal_paid_through' ? null : true, error: null }))
   auth.getUser.mockResolvedValue({ data: { user: { id: userId, email: 'owner@example.test' } }, error: null })
   rpc.mockImplementation(async (name) => ({ data: name === 'current_user_site_role' ? 'owner'
     : name === 'current_user_has_site_location_restrictions' ? false : { success: true }, error: null }))
@@ -73,9 +84,11 @@ beforeEach(() => {
   from.mockReturnValue(query)
   sdk.prices.retrieve.mockImplementation(async (id) => price(id))
   sdk.invoices.retrieve.mockResolvedValue({ id: 'in_previous', customer: 'cus_site', subscription: 'sub_existing', status: 'paid' })
+  sdk.invoices.list.mockResolvedValue({ has_more: false, data: [] })
   sdk.customers.retrieve.mockResolvedValue({ id: 'cus_site', metadata: { site_id: siteId } })
   sdk.customers.create.mockResolvedValue({ id: 'cus_site' })
   sdk.subscriptions.list.mockResolvedValue({ has_more: false, data: [] })
+  sdk.subscriptionSchedules.list.mockResolvedValue({ has_more: false, data: [] })
   sdk.checkout.sessions.list.mockResolvedValue({ has_more: false, data: [] })
   sdk.checkout.sessions.create.mockResolvedValue({ id: 'cs_payment', status: 'open', url: 'https://pay.example.test/checkout' })
   sdk.billingPortal.configurations.retrieve.mockResolvedValue({ id: 'bpc_safe', active: true, is_default: false, features: {
@@ -354,9 +367,14 @@ describe('existing subscriptions and checkout retries', () => {
     expect(sdk.checkout.sessions.create).not.toHaveBeenCalled()
   })
   it('allows checkout after a verified historical completed subscription ended', async () => {
+    const sub = { id: 'sub_ended', customer: 'cus_site', status: 'canceled', latest_invoice: 'in_voided' }
+    sdk.subscriptions.list.mockResolvedValue({ has_more: false, data: [sub] })
     sdk.checkout.sessions.list.mockResolvedValue({ has_more: false, data: [{ id: 'cs_paid', mode: 'subscription', status: 'complete',
       customer: 'cus_site', subscription: 'sub_ended', metadata: { site_id: siteId, type: 'subscription' } }] })
-    sdk.subscriptions.retrieve.mockResolvedValue({ id: 'sub_ended', customer: 'cus_site', status: 'canceled' })
+    sdk.subscriptions.retrieve.mockResolvedValue(sub)
+    sdk.invoices.list.mockResolvedValue({ has_more: false, data: [
+      { id: 'in_voided', customer: 'cus_site', subscription: 'sub_ended', status: 'void' },
+    ] })
     expect((await POST(request())).status).toBe(200)
     expect(sdk.checkout.sessions.create).toHaveBeenCalledTimes(1)
   })
@@ -366,8 +384,65 @@ describe('existing subscriptions and checkout retries', () => {
     sdk.checkout.sessions.retrieve.mockImplementation(async () => ({ ...pending }))
     sdk.checkout.sessions.expire.mockImplementation(async () => { pending.status = 'expired'; return { ...pending } })
     sdk.subscriptions.list.mockResolvedValueOnce({ has_more: false, data: [] })
+      .mockResolvedValueOnce({ has_more: false, data: [] })
       .mockResolvedValueOnce({ has_more: false, data: [{ status: 'incomplete' }] })
     expect((await POST(request())).status).toBe(409)
+    expect(sdk.checkout.sessions.create).not.toHaveBeenCalled()
+  })
+  it('blocks a late paid renewal even before its webhook attestation exists', async () => {
+    const end = Math.floor(Date.now() / 1000) + 3_600
+    canceledWithInvoice(end)
+    const response = await POST(request({ paidThrough: '2000-01-01' }))
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({ paidThrough: new Date(end * 1000).toISOString() })
+    expect(leaseRpc).toHaveBeenCalledWith('stripe_late_renewal_paid_through', {
+      p_site_id: siteId, p_customer_id: 'cus_site', p_subscription_id: 'sub_existing',
+    })
+    expect(sdk.checkout.sessions.create).not.toHaveBeenCalled()
+    expect(sdk.subscriptions.update).not.toHaveBeenCalled()
+  })
+  it('lets only the owner open ordinary hosted Checkout at the expired paid-through boundary', async () => {
+    const end = Math.floor(Date.now() / 1000)
+    canceledWithInvoice(end)
+    rpc.mockImplementation(async name => ({ data: name === 'current_user_site_role' ? 'admin' : false, error: null }))
+    expect((await POST(request())).status).toBe(403)
+    expect(sdk.invoices.list).not.toHaveBeenCalled()
+    rpc.mockImplementation(async name => ({ data: name === 'current_user_site_role' ? 'owner' : false, error: null }))
+    expect((await POST(request())).status).toBe(200)
+    expect(sdk.checkout.sessions.create).toHaveBeenCalledWith(expect.objectContaining({
+      mode: 'subscription', customer: 'cus_site', subscription_data: { metadata: expect.any(Object) },
+    }), expect.objectContaining({ idempotencyKey: expect.any(String) }))
+    expect(sdk.subscriptions.update).not.toHaveBeenCalled()
+  })
+  it.each(['open', 'draft', 'uncollectible'])('blocks a potentially payable %s prior invoice', async status => {
+    canceledWithInvoice(1_700_000_000, { status })
+    expect((await POST(request())).status).toBe(409)
+    expect(sdk.checkout.sessions.create).not.toHaveBeenCalled()
+  })
+  it('blocks a future schedule before it has a Stripe subscription', async () => {
+    canceledWithInvoice(1_700_000_000)
+    sdk.subscriptionSchedules.list.mockResolvedValue({ has_more: false, data: [{ customer: 'cus_site', status: 'not_started' }] })
+    expect((await POST(request())).status).toBe(409)
+    expect(sdk.checkout.sessions.create).not.toHaveBeenCalled()
+  })
+  it('prefers a later attested boundary and does not reuse an open session while coverage remains', async () => {
+    canceledWithInvoice(1_700_000_000)
+    const end = new Date(Date.now() + 7_200_000).toISOString()
+    leaseRpc.mockResolvedValueOnce({ data: { state: 'claimed', token: 'lease' }, error: null })
+      .mockResolvedValueOnce({ data: end, error: null })
+    sdk.checkout.sessions.list.mockResolvedValue({ has_more: false, data: [{ mode: 'subscription', status: 'open', id: 'cs_previous' }] })
+    const response = await POST(request())
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({ paidThrough: end })
+    expect(sdk.checkout.sessions.retrieve).not.toHaveBeenCalled()
+    expect(sdk.checkout.sessions.expire).not.toHaveBeenCalled()
+    expect(sdk.checkout.sessions.create).not.toHaveBeenCalled()
+  })
+  it('fails closed when the attestation accessor is unavailable', async () => {
+    canceledWithInvoice(1_700_000_000)
+    leaseRpc.mockResolvedValueOnce({ data: { state: 'claimed', token: 'lease' }, error: null })
+      .mockResolvedValueOnce({ data: null, error: { message: 'accessor unavailable' } })
+    expect((await POST(request())).status).toBe(503)
     expect(sdk.checkout.sessions.create).not.toHaveBeenCalled()
   })
   it.each([{ discounts: ['coupon_wrong_object'] }, { discounts: [{ coupon: { id: 'coupon_existing' } }] },
