@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useId, useState } from "react"
+import { useBillingLimit } from "@/app/context/BillingLimitContext"
 import { Button } from "../ui/button"
 import { Input } from "../ui/input"
 import { BlueskyIcon } from "../ui/social-icons"
@@ -8,10 +9,14 @@ import { BlueskyIcon } from "../ui/social-icons"
 interface BlueskyConnectFormProps {
   siteId: string
   onConnected: () => void
+  onCancel?: () => void
+  existingHandle?: string
 }
 
-export function BlueskyConnectForm({ siteId, onConnected }: BlueskyConnectFormProps) {
-  const [handle, setHandle] = useState("")
+export function BlueskyConnectForm({ siteId, onConnected, onCancel, existingHandle }: BlueskyConnectFormProps) {
+  const id = useId()
+  const { showBillingLimitFromError } = useBillingLimit()
+  const [handle, setHandle] = useState(existingHandle || "")
   const [appPassword, setAppPassword] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -31,18 +36,22 @@ export function BlueskyConnectForm({ siteId, onConnected }: BlueskyConnectFormPr
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ handle, app_password: appPassword, siteId }),
+        body: JSON.stringify({ handle: handle.trim(), app_password: appPassword, siteId }),
       })
 
       const data = await res.json()
       if (!res.ok || !data.success) {
-        throw new Error(data.error || "Failed to connect Bluesky account")
+        if (!showBillingLimitFromError(data)) {
+          setError(typeof data.error === "string" ? data.error : "Failed to connect Bluesky account")
+        }
+        return
       }
 
       onConnected()
-    } catch (err: any) {
-      setError(err.message || "Failed to connect Bluesky account")
+    } catch {
+      setError("Failed to connect Bluesky account. Please try again.")
     } finally {
+      setAppPassword("")
       setLoading(false)
     }
   }
@@ -58,23 +67,27 @@ export function BlueskyConnectForm({ siteId, onConnected }: BlueskyConnectFormPr
             Connect Bluesky Account
           </p>
           <p className="text-xs text-blue-700/70 dark:text-blue-300/70 mt-0.5">
-            Enter your handle and an App Password (create one in Bluesky Settings &gt; Advanced &gt; App Passwords)
+            Enter your handle and an app password from{" "}
+            <a className="underline" href="https://bsky.app/settings/app-passwords" target="_blank" rel="noreferrer">Bluesky settings</a>.
+            Do not use your regular password.
           </p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
         <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">Handle</label>
+          <label htmlFor={`${id}-handle`} className="text-xs font-medium text-muted-foreground">Handle</label>
           <Input 
+            id={`${id}-handle`} maxLength={255} autoCapitalize="none" spellCheck={false} readOnly={!!existingHandle}
             placeholder="e.g. yourbrand.bsky.social" 
             value={handle} 
             onChange={(e) => setHandle(e.target.value)} 
           />
         </div>
         <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">App Password</label>
+          <label htmlFor={`${id}-password`} className="text-xs font-medium text-muted-foreground">App Password</label>
           <Input 
+            id={`${id}-password`} maxLength={128} autoComplete="off"
             type="password" 
             placeholder="xxxx-xxxx-xxxx-xxxx" 
             value={appPassword} 
@@ -84,19 +97,20 @@ export function BlueskyConnectForm({ siteId, onConnected }: BlueskyConnectFormPr
       </div>
 
       {error && (
-        <p className="text-xs text-red-600 dark:text-red-400 font-medium">
+        <p role="alert" className="text-xs text-red-600 dark:text-red-400 font-medium">
           {error}
         </p>
       )}
 
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        {onCancel && <Button type="button" variant="outline" onClick={onCancel} disabled={loading}>Cancel</Button>}
         <Button
           type="button"
           onClick={handleConnect}
-          disabled={loading || !handle || !appPassword}
+          disabled={loading || !handle.trim() || !appPassword.trim()}
           className="bg-[#1185fe] hover:bg-[#1185fe]/90 text-white"
         >
-          {loading ? "Connecting..." : "Connect Account"}
+          {loading ? "Connecting..." : onCancel ? "Reconnect Account" : "Connect Account"}
         </Button>
       </div>
     </div>

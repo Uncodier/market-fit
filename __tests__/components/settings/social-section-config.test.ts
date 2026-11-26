@@ -5,16 +5,16 @@ import {
 } from "@/app/components/settings/social-section-config"
 
 describe("social settings platform options", () => {
-  it.each(["twitter", "x"])(
-    "temporarily hides %s from new account options",
-    (value) => {
-      expect(NEW_ACCOUNT_SOCIAL_PLATFORMS.some((platform) => platform.value === value)).toBe(false)
-    },
-  )
+  it("offers X once and preserves the legacy X alias for OAuth", () => {
+    expect(NEW_ACCOUNT_SOCIAL_PLATFORMS.filter(platform => ["x", "twitter"].includes(platform.value)))
+      .toEqual([expect.objectContaining({ value: "twitter", label: "X (Twitter)" })])
+    expect(isOAuthConnectablePlatform("x")).toBe(true)
+  })
 
-  it("makes all eight managed networks available in their original order", () => {
+  it("makes all nine managed networks available", () => {
     expect(NEW_ACCOUNT_SOCIAL_PLATFORMS.map((platform) => platform.value)).toEqual([
       "facebook",
+      "twitter",
       "instagram",
       "threads",
       "linkedin",

@@ -113,23 +113,8 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
       const forceProd = process.env.NEXT_PUBLIC_FORCE_PRODUCTION_OAUTH_REDIRECT === 'true'
       const redirectOrigin = forceProd ? productionDomain : (tunnelBase || (isDevelopment ? productionDomain : window.location.origin))
 
-      // 3-leg flow for Facebook and LinkedIn: OAuth redirects to OUR callback (/api/social/callback/:network).
-      // We exchange code+state with outstand.so for a session token, then redirect to /settings/social_network.
-      // Other networks: outstand.so receives the OAuth callback and redirects to /settings/social_network with session.
-      const is3Leg = social.platform === 'facebook' || social.platform === 'instagram' || social.platform === 'threads' || social.platform === 'twitter' || social.platform === 'x' || social.platform === 'youtube' || social.platform === 'tiktok' || social.platform === 'linkedin' || social.platform === 'pinterest'
-      const redirectUri = is3Leg
-        ? `${redirectOrigin}/api/social/callback/${social.platform}?siteId=${encodeURIComponent(siteId)}`
-        : `${redirectOrigin}/settings/social_network?siteId=${siteId}&network=${social.platform}${isDevelopment ? `&returnTo=${encodeURIComponent(window.location.origin)}` : ''}`
+      const redirectUri = `${redirectOrigin}/api/social/callback/${social.platform}?siteId=${encodeURIComponent(siteId)}`
       
-      console.log('[Social Auth] Initiating OAuth flow:', {
-        platform: social.platform,
-        siteId,
-        redirectUri,
-        isDevelopment,
-        currentOrigin: window.location.origin,
-        productionDomain,
-        note: 'IMPORTANT: This redirect_uri MUST be whitelisted in outstand.so system. Contact support if you get "Missing code or state parameter" error.'
-      })
       
       const response = await fetch(
         `/api/social/${encodeURIComponent(social.platform)}/auth-url?siteId=${encodeURIComponent(siteId)}`,
@@ -148,18 +133,15 @@ export function SocialSection({ active, onSave, siteId }: SocialSectionProps) {
       const result = await response.json()
       
       if (result.success && result.data?.auth_url) {
-        console.log('[Social Auth] Redirecting to OAuth URL:', result.data.auth_url.substring(0, 100) + '...')
         // Redirect to the OAuth URL
         window.location.href = result.data.auth_url
       } else {
-        console.error('[Social Auth] Failed to get auth URL:', result)
         if (showBillingLimitFromError(result) || showBillingLimitFromError(result.error)) {
           return
         }
         throw new Error(result.error || 'Failed to get authentication URL')
       }
     } catch (error) {
-      console.error('Error connecting social account:', error)
       if (!showBillingLimitFromError(error)) {
         toast.error(error instanceof Error ? error.message : 'Failed to connect account')
       }

@@ -66,14 +66,21 @@ function findMergeSlotIndex(
   const byId = socialMedia.findIndex((sm) => sm.id === account.id)
   if (byId >= 0) return byId
 
+  const accountHandle = normalizeHandle(account.username)
+  if (outstandNetwork === "bluesky" && accountHandle) {
+    const byHandle = socialMedia.findIndex(sm => platformMatchesSlot(sm, pathNetwork, outstandNetwork)
+      && [sm.username, sm.handle].some(value => normalizeHandle(value) === accountHandle))
+    if (byHandle >= 0) return byHandle
+  }
+
   const emptyId = socialMedia.findIndex(
     (sm) =>
       platformMatchesSlot(sm, pathNetwork, outstandNetwork) &&
+      (outstandNetwork !== "bluesky" || !normalizeHandle(sm.username || sm.handle)) &&
       (!sm.id || String(sm.id).trim() === "")
   )
   if (emptyId >= 0) return emptyId
 
-  const accountHandle = normalizeHandle(account.username)
   if (accountHandle) {
     const byHandle = socialMedia.findIndex((sm) => {
       if (!platformMatchesSlot(sm, pathNetwork, outstandNetwork) || !isInactiveSlot(sm)) {
@@ -84,6 +91,9 @@ function findMergeSlotIndex(
     })
     if (byHandle >= 0) return byHandle
   }
+
+  // Direct Bluesky connection must not replace someone else's inactive handle.
+  if (outstandNetwork === "bluesky") return -1
 
   return socialMedia.findIndex(
     (sm) => platformMatchesSlot(sm, pathNetwork, outstandNetwork) && isInactiveSlot(sm)

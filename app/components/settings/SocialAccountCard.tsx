@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import type { UseFormReturn } from "react-hook-form"
 import type { SiteFormValues } from "./form-schema"
 import {
@@ -75,7 +76,10 @@ export function SocialAccountCard({
   siteId,
   social,
 }: SocialAccountCardProps) {
+  const [reconnectingId, setReconnectingId] = useState<string | null>(null)
   const isActive = social.isActive === true || social.isActive === 1
+  const blueskyIdentity = social.id || social.username || social.handle
+  const isReconnectingBluesky = !!blueskyIdentity && reconnectingId === blueskyIdentity
   const hasPlatform = !!social.platform
   const platformLabel =
     SOCIAL_PLATFORMS.find((platform) => platform.value === social.platform)?.label ||
@@ -214,13 +218,11 @@ export function SocialAccountCard({
                 Reconnect
               </Button>
             )}
-            {social.platform === "bluesky" && siteId && (
+            {social.platform === "bluesky" && siteId && blueskyIdentity && !isReconnectingBluesky && (
               <Button
                 variant="outline"
                 type="button"
-                onClick={() => {
-                  form.setValue(`social_media.${index}.isActive`, false)
-                }}
+                onClick={() => setReconnectingId(blueskyIdentity)}
                 className="whitespace-nowrap"
               >
                 Reconnect
@@ -268,9 +270,11 @@ export function SocialAccountCard({
           </div>
         )}
 
-        {hasPlatform && !isActive && social.platform === "bluesky" && siteId && (
-          canConnectAccount ? (
-            <BlueskyConnectForm siteId={siteId} onConnected={onConnected} />
+        {social.platform === "bluesky" && siteId && (!isActive || isReconnectingBluesky) && (
+          (canConnectAccount || isReconnectingBluesky) ? (
+            <BlueskyConnectForm key={blueskyIdentity} siteId={siteId} onConnected={onConnected}
+              existingHandle={social.username || social.handle}
+              onCancel={isReconnectingBluesky ? () => setReconnectingId(null) : undefined} />
           ) : (
             <Button
               type="button"

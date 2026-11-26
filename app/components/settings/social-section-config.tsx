@@ -25,7 +25,7 @@ export interface SocialPlatformOption {
 
 export const SOCIAL_PLATFORMS: SocialPlatformOption[] = [
   { value: "facebook", label: "Facebook", icon: FacebookIcon },
-  { value: "twitter", label: "Twitter", icon: TwitterIcon },
+  { value: "twitter", label: "X (Twitter)", icon: TwitterIcon },
   { value: "instagram", label: "Instagram", icon: InstagramIcon },
   { value: "threads", label: "Threads", icon: ThreadsIcon },
   { value: "linkedin", label: "LinkedIn", icon: LinkedInIcon },
@@ -35,15 +35,7 @@ export const SOCIAL_PLATFORMS: SocialPlatformOption[] = [
   { value: "bluesky", label: "Bluesky", icon: BlueskyIcon },
 ]
 
-// Keep Twitter/X hidden without affecting existing accounts.
-const HIDDEN_SOCIAL_PLATFORM_VALUES = new Set([
-  "twitter",
-  "x",
-])
-
-export const NEW_ACCOUNT_SOCIAL_PLATFORMS = SOCIAL_PLATFORMS.filter(
-  (platform) => !HIDDEN_SOCIAL_PLATFORM_VALUES.has(platform.value),
-)
+export const NEW_ACCOUNT_SOCIAL_PLATFORMS = SOCIAL_PLATFORMS
 
 const OAUTH_CONNECT_PLATFORM_VALUES = new Set([
   "facebook",

@@ -16,5 +16,6 @@ export const CALLBACK_NETWORK_TO_OUTSTAND: Record<string, string> = {
 
 export function getOutstandNetworkFromPath(pathNetwork: string | undefined): string | null {
   if (!pathNetwork) return null
-  return CALLBACK_NETWORK_TO_OUTSTAND[pathNetwork.toLowerCase()] ?? null
+  const key = pathNetwork.toLowerCase()
+  return Object.hasOwn(CALLBACK_NETWORK_TO_OUTSTAND, key) ? CALLBACK_NETWORK_TO_OUTSTAND[key] : null
 }

@@ -3,6 +3,16 @@
 Social account connection is proxied through the external Outstand integration.
 The application does not exchange provider authorization codes directly.
 
+X is available for new accounts in Settings. The existing `twitter` callback
+alias resolves to the Outstand `x` network. Bluesky uses a separate handle and
+app-password form, not OAuth. Create an app password in [Bluesky settings](https://bsky.app/settings/app-passwords).
+The server verifies site management access and capacity before forwarding the
+password. The integration sends Outstand `appPassword` and `tenantId`, strips
+tokens from the provider response, and saves only approved account metadata.
+Reconnect targets the same handle without turning off the existing account in
+the form. Deploy the integration API and web changes together and verify both
+connection flows using dedicated accounts before claiming live provider readiness.
+
 ## Current flow
 
 1. An authenticated user requests
@@ -39,10 +49,9 @@ NEXT_PUBLIC_FORCE_PRODUCTION_OAUTH_REDIRECT=
 `SERVICE_API_KEY` is server-only. Variables prefixed `NEXT_PUBLIC_` are visible
 to the browser and must not contain credentials.
 
-The callback chooses an origin from forwarded headers, the non-local request
-origin, tunnel configuration, production configuration, or the application
-fallback. Verify this behavior in every proxy/deployment topology to avoid open
-redirects or callbacks to the wrong environment.
+The callback uses an explicitly configured HTTPS origin (or the production
+fallback). Configure preview or tunnel origins intentionally. Verify callback
+behavior in every proxy/deployment topology.
 
 ## Provider and Outstand configuration
 
@@ -56,12 +65,8 @@ redirects or callbacks to the wrong environment.
 
 ## Known authorization risk
 
-The current auth-url and finalize proxies authenticate the Supabase session but
-accept a caller-supplied `siteId`. They should not be copied as authorization
-examples until explicit site membership/manager checks are added.
-
-Future changes must verify that the authenticated user may connect accounts for
-the requested site before forwarding the request or applying billing limits.
+The auth-url and finalize routes verify site management access before invoking
+Outstand. Validate remaining account-management routes independently before reuse.
 
 ## Verification
 

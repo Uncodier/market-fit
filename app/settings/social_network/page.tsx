@@ -44,10 +44,10 @@ export default function SocialNetworkCallbackPage() {
   const [isFinalizing, setIsFinalizing] = useState(false)
   
   const siteId = searchParams.get("siteId")
+  const connectionSiteId = siteId || currentSite?.id
   const network = searchParams.get("network")
   const session = searchParams.get("session")
   const error = searchParams.get("error")
-  const returnTo = searchParams.get("returnTo")
   const ourRedirectUri = searchParams.get("our_redirect_uri")
   const outstandError = searchParams.get("outstand_error")
   const [copied, setCopied] = useState(false)
@@ -63,18 +63,6 @@ export default function SocialNetworkCallbackPage() {
 
   // Fetch available pages when we have a session token
   useEffect(() => {
-    // Log all URL parameters for debugging
-    console.log('[Social Network Callback] URL params:', {
-      siteId,
-      network,
-      session: session ? `present: ${session.substring(0, 20)}...` : 'missing',
-      error,
-      returnTo,
-      currentUrl: window.location.href,
-      allParams: Object.fromEntries(searchParams.entries()),
-      note: error ? 'Outstand.so redirected with error instead of session token' : 'Waiting for session token from outstand.so'
-    })
-
     if (!session) {
       // Check if there's an error from OAuth
       if (error) {
@@ -106,11 +94,7 @@ export default function SocialNetworkCallbackPage() {
       setMessage({ key: "public.oauth.waiting" })
       
       setTimeout(() => {
-        const redirectUrl = returnTo 
-          ? `${returnTo}/settings?tab=social` 
-          : `/settings?tab=social`
-        console.log('[Social Network Callback] Redirecting back to settings:', redirectUrl)
-        router.push(redirectUrl)
+        router.push("/settings?tab=social")
       }, 3000)
       return
     }
@@ -148,7 +132,7 @@ export default function SocialNetworkCallbackPage() {
     }
 
     fetchAvailablePages()
-  }, [session, error, network, returnTo, router, searchParams])
+  }, [session, error, network, router, searchParams])
 
   const handleTogglePage = (pageId: string) => {
     setSelectedPages(prev => 
@@ -167,7 +151,7 @@ export default function SocialNetworkCallbackPage() {
     const limit = getSocialAccountLimit(effectiveBillingPlan(currentSite?.billing)) + (currentSite?.billing?.addons_count || 0)
     const currentCount = countSocialAccounts(currentSite)
     
-    if (!canConnectSocialAccount(currentSite, selectedPages.length)) {
+    if (connectionSiteId === currentSite?.id && !canConnectSocialAccount(currentSite, selectedPages.length)) {
       showBillingLimit({
         kind: "accounts",
         current: currentCount + selectedPages.length,
@@ -188,7 +172,7 @@ export default function SocialNetworkCallbackPage() {
         body: JSON.stringify({ 
           accountIds: selectedPages, 
           selectedPageIds: selectedPages,
-          siteId: currentSite?.id,
+          siteId: connectionSiteId,
           network
         }),
       })
@@ -203,10 +187,10 @@ export default function SocialNetworkCallbackPage() {
         // router.push keeps the in-memory site, and refreshSites is a no-op on /settings.
         setTimeout(() => {
           const params = new URLSearchParams({ tab: "social", oauth_connected: "1" })
-          if (currentSite?.id) params.set("oauth_site", currentSite.id)
+          if (connectionSiteId) params.set("oauth_site", connectionSiteId)
           if (network) params.set("oauth_network", network)
           const path = `/settings?${params.toString()}`
-          window.location.assign(returnTo ? `${returnTo}${path}` : path)
+          window.location.assign(path)
         }, 2000)
       } else {
         if (showBillingLimitFromError(result) || showBillingLimitFromError(result.error)) {
@@ -231,10 +215,7 @@ export default function SocialNetworkCallbackPage() {
   }
 
   const handleBackToSettings = () => {
-    const redirectUrl = returnTo 
-      ? `${returnTo}/settings?tab=social` 
-      : `/settings?tab=social`
-    router.push(redirectUrl)
+    router.push("/settings?tab=social")
   }
 
   const title = network

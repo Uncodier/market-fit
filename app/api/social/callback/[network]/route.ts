@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server"
 import { createSocialSupabaseClient, SocialLocationAccessError } from "@/app/api/social/supabase-client"
 import { getOutstandNetworkFromPath } from "@/app/api/social/network-map"
 import { syncImplicitOutstandCallback } from "@/app/api/social/lib/sync-outstand-accounts"
+import { isSiteManagerRole } from "@/lib/auth/api-site-access"
+import { lookupCurrentUserSiteRole, SiteRoleLookupError } from "@/lib/auth/site-role-lookup"
+import { z } from "zod"
 
 /**
  * Outstand white-label callback for Facebook, LinkedIn, X, etc.
@@ -27,28 +30,8 @@ export async function GET(
   const { network } = await params
   const outstandNetwork = getOutstandNetworkFromPath(network ?? "")
 
-  // ---- LOG: Outstand redirects HERE with ?session= or ?error= ----
   const { searchParams } = request.nextUrl
-  const allParams = Object.fromEntries(searchParams.entries())
-  const authCookies = request.cookies.getAll().filter((c) => c.name.startsWith("sb-"))
-  const hasAuthCookie = authCookies.some((c) => c.name.includes("-auth-token"))
-  const authCookieNames = authCookies.map((c) => c.name)
   const baseUrl = getBaseUrl(request)
-  console.log("[Social Callback OUTSTAND→US]", {
-    at: new Date().toISOString(),
-    network,
-    url: request.url,
-    queryParams: allParams,
-    hasAuthCookie,
-    authCookieNames: authCookieNames.length ? authCookieNames : "none",
-    baseUrlForRedirect: baseUrl,
-    host: request.headers.get("host"),
-    "x-forwarded-host": request.headers.get("x-forwarded-host"),
-    "x-forwarded-proto": request.headers.get("x-forwarded-proto"),
-    referer: request.headers.get("referer"),
-    "user-agent": request.headers.get("user-agent")?.slice(0, 80),
-  })
-  // ---- end LOG ----
 
   if (!outstandNetwork) {
     return redirectToSettings(`Invalid network: ${network}`, baseUrl)
@@ -58,11 +41,9 @@ export async function GET(
   const tenantFromQuery = searchParams.get("tenant_id")
   const siteId = searchParams.get("siteId") || tenantFromQuery
   const error = searchParams.get("error")
-  const errorDescription = searchParams.get("error_description")
 
   // 1) Outstand sends error: they couldn't get or process code/state from the provider.
   if (error) {
-    console.error(`[Social Callback ${network}] Outstand error:`, error, errorDescription)
     const msg =
       error === "Missing code or state parameter"
         ? "Outstand could not process the code/state from " +
@@ -72,7 +53,7 @@ export async function GET(
           " App: add https://www.outstand.so/app/api/socials/" +
           network +
           "/callback to Valid OAuth Redirect URIs and outstand.so to App Domains. If both are set, contact Outstand (contact@outstand.so)."
-        : (errorDescription || error)
+        : "Social authorization did not complete. Please try again."
     const dest = new URL(`${baseUrl}/settings/social_network`)
     dest.searchParams.set("error", "oauth_failed")
     dest.searchParams.set("error_description", msg)
@@ -81,7 +62,6 @@ export async function GET(
       dest.searchParams.set("our_redirect_uri", `${baseUrl}/api/social/callback/${network}`)
       dest.searchParams.set("outstand_error", "Missing code or state parameter")
     }
-    console.log("[Social Callback OUTSTAND→US] redirect→", dest.toString())
     return NextResponse.redirect(dest.toString())
   }
 
@@ -91,12 +71,11 @@ export async function GET(
     dest.searchParams.set("session", session)
     dest.searchParams.set("network", network)
     if (siteId) dest.searchParams.set("siteId", siteId)
-    console.log("[Social Callback OUTSTAND→US] redirect→", dest.toString())
     return NextResponse.redirect(dest.toString())
   }
 
   // 3) No explicit error: assume provider flow completed — verify via Outstand tenant account list and merge into settings.
-  if (!siteId) {
+  if (!siteId || !z.string().uuid().safeParse(siteId).success) {
     return redirectToSettings(
       "Missing siteId (or tenant_id) in callback URL. Your redirect_uri must include ?siteId=<tenant> so we can verify the connection.",
       baseUrl
@@ -125,6 +104,14 @@ export async function GET(
     return NextResponse.redirect(dest.toString())
   }
 
+  try {
+    if (!isSiteManagerRole(await lookupCurrentUserSiteRole(supabase, siteId))) {
+      return redirectToSettings("You do not have permission to connect accounts for this site.", baseUrl)
+    }
+  } catch (error) {
+    return redirectToSettings(error instanceof SiteRoleLookupError ? error.message : "Site access could not be verified.", baseUrl)
+  }
+
   const sync = await syncImplicitOutstandCallback({
     supabase,
     siteId,
@@ -132,14 +119,8 @@ export async function GET(
   })
 
   if (!sync.ok) {
-    console.warn("[Social Callback OUTSTAND→US] implicit sync failed:", sync.message)
-    return redirectToSettings(sync.message, baseUrl)
+    return redirectToSettings("Could not verify the social connection. Please try again.", baseUrl)
   }
-
-  console.log("[Social Callback OUTSTAND→US] implicit sync ok", {
-    mergedCount: sync.mergedCount,
-    accountsFound: sync.accountsFound,
-  })
 
   const dest = new URL(`${baseUrl}/settings`)
   dest.searchParams.set("tab", "social")
@@ -149,36 +130,16 @@ export async function GET(
   return NextResponse.redirect(dest.toString())
 }
 
-const LOCAL_HOSTS = ["0.0.0.0", "127.0.0.1", "localhost"]
-
-function getBaseUrl(request?: NextRequest): string {
-  if (request) {
-    const fwdHost = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim()
-    const fwdProto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() || "https"
-    if (fwdHost) {
-      const o = `${fwdProto}://${fwdHost}`.replace(/\/$/, "")
-      if (o.startsWith("http")) return o
-    }
-  }
-
-  const reqOrigin = request?.nextUrl?.origin
-  if (reqOrigin) {
-    try {
-      const hostname = new URL(reqOrigin).hostname
-      if (hostname && !LOCAL_HOSTS.includes(hostname)) {
-        return reqOrigin.replace(/\/$/, "")
-      }
-    } catch {
-      // ignore
-    }
-  }
-
-  const u =
-    process.env.SSH_TUNNEL_URL ||
-    process.env.NEXT_PUBLIC_SSH_TUNNEL_URL ||
-    process.env.NEXT_PUBLIC_PRODUCTION_URL ||
-    "https://app.makinari.com"
-  return u.replace(/\/$/, "")
+function getBaseUrl(request: NextRequest): string {
+  const origins = [process.env.SSH_TUNNEL_URL, process.env.NEXT_PUBLIC_SSH_TUNNEL_URL,
+    process.env.NEXT_PUBLIC_APP_URL, process.env.NEXT_PUBLIC_PRODUCTION_URL, "https://app.makinari.com"]
+    .flatMap(value => {
+      try {
+        const url = new URL(value ?? "")
+        return url.protocol === "https:" && !url.username && !url.password ? [url.origin] : []
+      } catch { return [] }
+    })
+  return origins.find(origin => origin === request.nextUrl.origin) ?? origins[0]
 }
 
 function redirectToSettings(message: string, baseUrl: string): NextResponse {
