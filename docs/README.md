@@ -157,6 +157,7 @@ Use the guides below before relying on older implementation notes.
 - [Stripe sale currency and wallet recovery](STRIPE_SALE_CURRENCY_RECOVERY.md)
 - [Stripe sale total payment fee schedule and rollout](STRIPE_SALE_COMMISSION_RATES.md)
 - [Subscription invoice settlement and recovery](STRIPE_INVOICE_RECOVERY.md)
+- [Late-invoice plan credit audit and recovery limits](LATE_INVOICE_PLAN_CREDIT_AUDIT.md)
 - [Monthly credit reset and protected balances](BILLING_CREDIT_RESET.md)
 - [No-card 15-day Startup trial](STARTUP_TRIAL.md)
 - [Automatic credit top-up rollout](AUTO_TOP_UP.md)

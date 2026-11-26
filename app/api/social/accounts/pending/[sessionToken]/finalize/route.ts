@@ -4,6 +4,7 @@ import { getOutstandIntegrationUrl } from "@/lib/api-server-url"
 import { getSocialAccountLimit, countSocialAccounts, canConnectSocialAccount } from "@/lib/billing-limits"
 import { billingLimitApiError } from "@/lib/billing-limit-errors"
 import { effectiveBillingPlan } from "@/lib/billing/startup-trial"
+import { readWithTemporaryWorkspaceLicense, type SocialBillingSiteRow } from "@/lib/billing/read-temporary-workspace-license"
 import { syncImplicitOutstandCallback } from "@/app/api/social/lib/sync-outstand-accounts"
 import { isSiteManagerRole } from "@/lib/auth/api-site-access"
 import { lookupCurrentUserSiteRole, SiteRoleLookupError } from "@/lib/auth/site-role-lookup"
@@ -45,13 +46,15 @@ export async function POST(
     const key = process.env.SERVICE_API_KEY
     if (!key) return fail("Social connection is not configured", 503)
 
-    const { data: site, error } = await supabase.from("sites")
-      .select("id, settings(social_media, channels), billing(plan, auto_renew, addons_count, trial_started_at, trial_ends_at, trial_converted_at)")
-      .eq("id", siteId).is("archived_at", null).maybeSingle()
+    const { data: site, error } = await readWithTemporaryWorkspaceLicense(field => supabase.from("sites")
+      .select(field
+        ? "id, settings(social_media, channels), billing(plan, auto_renew, addons_count, trial_started_at, trial_ends_at, trial_converted_at, subscription_status, paid_subscription_period_start, paid_subscription_period_end, temporary_workspace_license)"
+        : "id, settings(social_media, channels), billing(plan, auto_renew, addons_count, trial_started_at, trial_ends_at, trial_converted_at, subscription_status, paid_subscription_period_start, paid_subscription_period_end)")
+      .eq("id", siteId).is("archived_at", null).maybeSingle().overrideTypes<SocialBillingSiteRow, { merge: false }>())
     if (error || !site) return fail("Site settings are unavailable", 503)
     const settings = Array.isArray(site.settings) ? site.settings[0] : site.settings
     const billing = Array.isArray(site.billing) ? site.billing[0] : site.billing
-    const mappedSite = { settings, billing }
+    const mappedSite = { settings: { channels: settings?.channels, social_media: settings?.social_media }, billing: billing ?? undefined }
     if (!canConnectSocialAccount(mappedSite, selectedPageIds.length)) {
       const limit = getSocialAccountLimit(effectiveBillingPlan(billing)) + (billing?.addons_count || 0)
       return NextResponse.json(billingLimitApiError("accounts", countSocialAccounts(mappedSite) + selectedPageIds.length, limit), { status: 403 })

@@ -251,6 +251,25 @@ and positive `credits_granted`; the application must not add credits itself.
 
 ### Late payment after a terminal payment failure
 
+The forward `20261126210000_opt_in_late_payment_workspace_license.sql` correction
+adds a separate database-operator opt-in for an existing verified paid-month invoice.
+With explicit incident approval, insert only that invoice ID into
+`public.late_payment_workspace_licenses` after verifying the existing grant and its
+current binding. This restores the effective workspace tier for member admission
+and database-managed resource licensing until the existing paid-through deadline.
+It reconciles automatically suspended members and connections using the existing
+rules; it does not modify the recurring plan, add-ons, payments, or credits.
+Other late payments retain the seat-only behavior below. Reversals and approval
+removal reconcile the persisted state; authoritative entitlement reads fall back at
+wall-clock expiry or rebinding. Expiration itself does not rewrite stored settings;
+verify the runtime entitlement and reconcile presentation mirrors at expiry as needed.
+`20261126211000_project_temporary_workspace_license.sql` exposes only the active
+tier and expiration on the existing user-scoped billing read. Deploy this projection
+before the updated UI and social connection checks. The UI distinguishes temporary
+access from recurring billing, and uses temporary limits for connections and add-ons.
+It does not represent the tier's credit allowance as a wallet credit or authorize a
+new credit grant. Verify membership, connections and billing after rollout.
+
 `20261125200000_stripe_late_renewal_access.sql` adds an access-only exception
 for the latest monthly renewal paid after Stripe terminated the same bound
 subscription for `payment_failed`. This is not subscription reactivation. The
@@ -329,6 +348,28 @@ authorized verified paid-invoice replay; monthly renewal cannot invent coverage.
 
 ## Authorized incident recovery
 
+### Emergency grace on a past-due monthly subscription
+
+Install `20261126211000_project_temporary_workspace_license.sql` after the opt-in
+license prerequisite, then `20261126220000_emergency_workspace_license.sql`, before
+deploying the Billing changes. Do not reapply a previously installed migration.
+The Billing action calls `POST /api/billing/emergency-grace` with the selected
+site ID and the current primary owner's session. The database derives the prior
+paid tier and the current unpaid monthly cycle; the browser cannot supply a tier,
+owner, duration, or quota. The grant lasts at most 120 hours from the request,
+never beyond the current cycle, is usable once per cycle, and is limited to three
+grants per site in a rolling twelve-month window. Repeat requests do not extend it.
+It does not settle a bill, restart renewal, grant credits or buy add-ons. Ordinary
+payment, binding changes, cancellation and expiry supersede eligibility. A terminal
+paid invoice is a separate incident; see the [credit audit](LATE_INVOICE_PLAN_CREDIT_AUDIT.md).
+
+For release acceptance, use a Stripe test subscription with prior monthly coverage,
+advance it to an unpaid renewal, request grace, then pay the invoice from Stripe's
+hosted page without returning to the app. Verify one paid settlement, one allowance,
+the same subscription ID and no new Checkout session. Redeliver the invoice event
+and verify that the grant and balances do not change. Local regression tests do not
+verify the Stripe account's retry settings, email delivery, or a hosted browser run.
+
 1. Verify the target project and obtain approval for the migration, deployment,
    and specific invoice recovery. Never accept invoice state or amounts from a
    browser request.
@@ -403,6 +444,35 @@ credentials:
 ```sh
 node node_modules/jest/bin/jest.js --config jest.stripe-offline.config.cjs --runInBand
 ```
+
+### Hosted overdue invoice, without an app return
+
+```sh
+npm test -- --config jest.stripe-offline.config.cjs --runInBand --runTestsByPath __tests__/api/stripe-hosted-invoice-recovery.test.ts
+```
+
+This regression sends locally signed Stripe events directly to the canonical
+webhook route. Disposable, socket-only PostgreSQL executes the actual delivery
+claims, invoice settlement, credit accounting, and late-renewal access SQL.
+Either paid invoice event must work first, even when its payload still says
+`open`: the handler retrieves the paid invoice and settles the existing failed
+payment row. No Checkout Session, browser return, or UI callback participates.
+If Stripe reports the original subscription active, the monthly plan credits
+are granted once. If Stripe canceled it for payment failure, it stays canceled
+with renewal off and no new credits; an eligible member regains access through
+the existing late-renewal seat grant. Replaying the same event ID or delivering
+the other paid event under a new ID does not duplicate payment, credits, or
+access, and Stripe calls are restricted to reads of fixture objects.
+
+The test requires the sibling `../API` migration checkout and local PostgreSQL
+17 binaries (`LICENSE_TEST_PG_BIN` overrides `/opt/homebrew/opt/postgresql@17/bin`).
+It skips if either prerequisite is missing; a skipped run is not evidence.
+Stripe responses come from in-process fixtures. This verifies the application
+contract, not the live hosted page, payment processing, Stripe's real delivery
+or subscription status transitions, or the deployed endpoint/database schema.
+It sends no network requests and performs no external writes.
+
+### Other settlement regressions
 
 Discounted service fixtures mirror Stripe's documented gross regular lines and
 embedded-discount proration lines, including zero-dollar old credits/new debits.

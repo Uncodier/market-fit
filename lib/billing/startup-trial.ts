@@ -32,14 +32,34 @@ export const startupTrialSchema = z.object({
 export type StartupTrial = z.infer<typeof startupTrialSchema>
 export type StartupTrialActivation = StartupTrial & { outcome: "started" | "already_started" }
 
+export const temporaryWorkspaceLicenseSchema = z.object({
+  plan: z.enum(["engine", "foundry", "enterprise"]),
+  ends_at: paidThroughSchema,
+  kind: z.enum(["late_payment", "emergency_grace"]).optional(),
+})
+export type TemporaryWorkspaceLicense = z.infer<typeof temporaryWorkspaceLicenseSchema>
+
+export function activeTemporaryWorkspaceLicense(value: unknown, now = Date.now()) {
+  const result = temporaryWorkspaceLicenseSchema.safeParse(value)
+  return result.success && Date.parse(result.data.ends_at) > now ? result.data : undefined
+}
+
 /** Trial permissions never turn the base billing plan into a paid subscription. */
 export function effectiveBillingPlan(billing: {
   plan?: string | null
   trial_started_at?: string | null
   trial_ends_at?: string | null
   trial_converted_at?: string | null
+  subscription_status?: string | null
+  paid_subscription_period_start?: string | null
+  paid_subscription_period_end?: string | null
+  temporary_workspace_license?: unknown
 } | null | undefined, now = Date.now()): string {
-  const plan = billing?.plan || "commission"
+  let plan = billing?.plan || "commission"
+  const temporary = activeTemporaryWorkspaceLicense(billing?.temporary_workspace_license, now)
+  if (temporary && (plan === "commission" || temporary.kind === "emergency_grace")) return temporary.plan
+  if (billing?.subscription_status === 'past_due' && !(Date.parse(billing.paid_subscription_period_start ?? '') <= now &&
+      now < Date.parse(billing.paid_subscription_period_end ?? ''))) plan = 'commission'
   if (plan !== "commission" || billing?.trial_converted_at) return plan
   const start = Date.parse(billing?.trial_started_at ?? "")
   const end = Date.parse(billing?.trial_ends_at ?? "")

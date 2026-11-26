@@ -7,6 +7,7 @@ import { isSiteManagerRole } from "@/lib/auth/api-site-access"
 import { lookupCurrentUserSiteRole, SiteRoleLookupError } from "@/lib/auth/site-role-lookup"
 import { canConnectSocialAccount, countSocialAccounts, getSocialAccountLimit } from "@/lib/billing-limits"
 import { effectiveBillingPlan } from "@/lib/billing/startup-trial"
+import { readWithTemporaryWorkspaceLicense, type SocialBillingSiteRow } from "@/lib/billing/read-temporary-workspace-license"
 import { billingLimitApiError } from "@/lib/billing-limit-errors"
 import { isSameOriginRequest } from "@/lib/http/is-same-origin-request"
 import { decodeRequestBody, readLimitedRequestBody, RequestBodyTooLargeError } from "@/lib/http/read-limited-request-body"
@@ -42,9 +43,11 @@ export async function POST(request: Request) {
     const { siteId, handle, app_password } = parsed.data
     if (!isSiteManagerRole(await lookupCurrentUserSiteRole(supabase, siteId))) return fail("Forbidden", 403)
 
-    const { data: site, error } = await supabase.from("sites")
-      .select("id, settings(id, social_media, channels, updated_at), billing(plan, auto_renew, addons_count, trial_started_at, trial_ends_at, trial_converted_at)")
-      .eq("id", siteId).is("archived_at", null).maybeSingle()
+    const { data: site, error } = await readWithTemporaryWorkspaceLicense(field => supabase.from("sites")
+      .select(field
+        ? "id, settings(id, social_media, channels, updated_at), billing(plan, auto_renew, addons_count, trial_started_at, trial_ends_at, trial_converted_at, subscription_status, paid_subscription_period_start, paid_subscription_period_end, temporary_workspace_license)"
+        : "id, settings(id, social_media, channels, updated_at), billing(plan, auto_renew, addons_count, trial_started_at, trial_ends_at, trial_converted_at, subscription_status, paid_subscription_period_start, paid_subscription_period_end)")
+      .eq("id", siteId).is("archived_at", null).maybeSingle().overrideTypes<SocialBillingSiteRow, { merge: false }>())
     if (error) return fail("Site settings are unavailable", 503)
     const settings = Array.isArray(site?.settings) ? site.settings[0] : site?.settings
     const billing = Array.isArray(site?.billing) ? site.billing[0] : site?.billing
@@ -53,7 +56,7 @@ export async function POST(request: Request) {
     const matchingAccount = existing.some(row => row?.id && row.platform === "bluesky"
       && (row.isActive === true || row.isActive === 1)
       && [row.username, row.handle].some(value => typeof value === "string" && handleKey(value) === handle))
-    const entitlement = { settings: { ...settings, social_media: existing }, billing }
+    const entitlement = { settings: { channels: settings.channels, social_media: existing }, billing: billing ?? undefined }
     if (!matchingAccount && !canConnectSocialAccount(entitlement)) {
       return reply(billingLimitApiError("accounts", countSocialAccounts(entitlement) + 1,
         getSocialAccountLimit(effectiveBillingPlan(billing)) + (billing?.addons_count || 0)), 403)

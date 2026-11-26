@@ -38,7 +38,8 @@ beforeEach(() => {
   jest.mocked(lookupCurrentUserSiteRole).mockResolvedValue("owner")
   read.mockResolvedValue({ data: { settings: { id: "settings", updated_at: "version-one", social_media: [] }, billing: { plan: "commission" } } })
   stored.mockResolvedValue({ data: { id: "settings" } })
-  const siteQuery = { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), is: jest.fn().mockReturnThis(), maybeSingle: read }
+  const siteQuery = { select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), is: jest.fn().mockReturnThis(),
+    maybeSingle: jest.fn().mockReturnThis(), overrideTypes: read }
   const settingsQuery = { update, eq: jest.fn().mockReturnThis(), is: jest.fn().mockReturnThis(), select: jest.fn().mockReturnThis(), maybeSingle: stored }
   update.mockReturnValue(settingsQuery)
   jest.mocked(createSocialSupabaseClient).mockResolvedValue({ from: (table: string) => table === "sites" ? siteQuery : settingsQuery } as never)
@@ -88,6 +89,14 @@ it("blocks adding a Bluesky account at capacity but lets the same active handle 
   expect(fetchMock).not.toHaveBeenCalled()
   expect((await connectBluesky(bluesky())).status).toBe(200)
   expect(update.mock.calls[0][0].social_media).toHaveLength(1)
+})
+
+it("uses a current temporary workspace license for the Bluesky capacity check", async () => {
+  read.mockResolvedValueOnce({ data: {
+    settings: { id: "settings", updated_at: "version-one", social_media: [{ id: "existing", platform: "instagram", isActive: true }] },
+    billing: { plan: "commission", temporary_workspace_license: { plan: "foundry", ends_at: "2090-12-25T00:00:00Z" } },
+  } })
+  expect((await connectBluesky(bluesky())).status).toBe(200)
 })
 
 it("does not claim success if settings changed after Bluesky accepted the connection", async () => {

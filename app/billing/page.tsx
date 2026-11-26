@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { BillingForm } from "../components/billing/billing-form"
 import { StartupTrialCard } from "../components/billing/startup-trial-card"
+import { EmergencyWorkspaceAccess } from "../components/billing/emergency-workspace-access"
 import { PaymentHistory } from "../components/billing/payment-history"
 import { CreditUsageHistory } from "../components/billing/credit-usage-history"
 import { BillingPageSkeleton } from "../components/billing/billing-skeleton"
@@ -15,6 +16,7 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { BillingInitialization } from "./billing-initialization"
 import { SiteSetupTracking } from "../create-site/site-setup-tracking"
 import { useBillingTarget } from "./use-billing-target"
+import { activeTemporaryWorkspaceLicense } from "@/lib/billing/startup-trial"
 
   // Section configurations for quick navigation
   const getBillingInfoSections = (t: (key: string) => string): QuickNavSection[] => [
@@ -37,7 +39,7 @@ import { useBillingTarget } from "./use-billing-target"
 
 export default function BillingPage() {
   const { t } = useLocalization()
-  const { currentSite, isLoading, requestScope } = useSite()
+  const { currentSite, isLoading, requestScope, refreshSiteBilling } = useSite()
   const router = useRouter()
   const target = useBillingTarget()
   const searchParams = useSearchParams()
@@ -100,6 +102,8 @@ export default function BillingPage() {
     currentSite.billing_read_status !== "unavailable" && billing?.stripe_customer_id && billing.auto_renew === false
     ? JSON.stringify([requestScope.actorId, billing.stripe_customer_id, billing.paid_subscription_invoice_id])
     : undefined
+  const primaryOwner = requestScope?.siteId === currentSite.id && requestScope.actorId === currentSite.user_id
+    ? requestScope.actorId : null
 
   return (
     <div className="min-w-0 flex-1 [&_[id]]:scroll-mt-[calc(var(--topbar-height,64px)+87px)]">
@@ -123,6 +127,11 @@ export default function BillingPage() {
             <Tabs value={activeTab} onValueChange={handleTabChange}>
               <TabsContent value="billing_info" className="mt-0 p-0">
                 <StartupTrialCard siteId={currentSite.id} recoveryScope={recoveryScope} />
+                {primaryOwner && <EmergencyWorkspaceAccess
+                  siteId={currentSite.id} actorId={primaryOwner} refreshBilling={refreshSiteBilling}
+                  eligibleHint={currentSite.billing_read_status === "loaded" && billing?.subscription_status === "past_due" && billing.billing_interval === "month"}
+                  temporaryAccessEndsAt={activeTemporaryWorkspaceLicense(billing?.temporary_workspace_license)?.ends_at}
+                />}
                 {currentSite.billing_read_status !== 'unavailable' ? <BillingForm
                   initialData={{
                     plan: currentSite.billing?.plan || "commission",

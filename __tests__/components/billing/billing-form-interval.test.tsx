@@ -5,11 +5,13 @@ import { billingService } from '@/app/services/billing-service'
 import { toast } from 'sonner'
 import { disconnectOutstandSocial, disconnectZavuChannel } from '@/app/components/settings/disconnect-remote-accounts'
 import { countSocialAccounts } from '@/lib/billing-limits'
+import type { TemporaryWorkspaceLicense } from '@/lib/billing/startup-trial'
 
 const mockUpdateBilling = jest.fn()
 const mockNavigate = jest.fn()
 const originalLocation = window.location
-const mockSite = { id: 'site-example', billing: { plan: 'engine', billing_interval: 'month', addons_count: 0 } }
+const mockSite = { id: 'site-example', billing: { plan: 'engine', billing_interval: 'month', addons_count: 0,
+  temporary_workspace_license: undefined as TemporaryWorkspaceLicense | undefined } }
 
 beforeAll(() => {
   window.matchMedia = jest.fn(query => ({
@@ -38,9 +40,22 @@ describe('billing form interval contract', () => {
       get search() { return originalLocation.search }, origin: originalLocation.origin,
     } })
     mockSite.billing.plan = 'engine'; mockSite.billing.billing_interval = 'month'; mockSite.billing.addons_count = 0
+    mockSite.billing.temporary_workspace_license = undefined
     jest.mocked(countSocialAccounts).mockReturnValue(0)
   })
   afterEach(() => Object.defineProperty(window, 'location', { configurable: true, value: originalLocation }))
+
+  it('shows the approved temporary tier rather than marking the recurring Free plan current', async () => {
+    mockSite.billing.plan = 'commission'
+    mockSite.billing.temporary_workspace_license = { plan: 'foundry', ends_at: '2090-12-25T00:05:11Z' }
+    render(<BillingForm />)
+    expect(screen.getByText('Foundry workspace access')).toBeInTheDocument()
+    expect(screen.getByText('Temporary access')).toBeInTheDocument()
+    expect(screen.queryByText('Current billing: Free plan')).not.toBeInTheDocument()
+    expect(screen.queryByRole('img', { name: 'Selected plan' })).not.toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText('credits available')).toBeInTheDocument())
+    expect(billingService.createSubscriptionCheckoutSession).not.toHaveBeenCalled()
+  })
 
   it('keeps credit information and purchase options without the usage history button', async () => {
     render(<BillingForm />)

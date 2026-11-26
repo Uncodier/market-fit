@@ -23,6 +23,8 @@ import deChat from './locales/chat/de.json';
 import jaChat from './locales/chat/ja.json';
 import enConnectors from './locales/connectors/en.json';
 import { billingInvoiceMessages } from './locales/billing/invoice';
+import { billingWorkspaceAccessMessages } from './locales/billing/workspace-access';
+import { billingEmergencyAccessMessages } from './locales/billing/emergency-access';
 
 export const chatMessages: Record<SupportedLocale, Record<string, string>> = {
   en: enChat, es: esChat, fr: frChat, de: deChat, ja: jaChat,
@@ -49,6 +51,8 @@ function ownMessages(locale: SupportedLocale, legacy: MessageTree): Record<strin
     ...selfServiceMessages[locale],
     ...selfServiceHeaderMessages[locale],
     ...billingInvoiceMessages[locale],
+    ...billingWorkspaceAccessMessages[locale],
+    ...billingEmergencyAccessMessages[locale],
     ...(locale === 'en' ? enConnectors : {}),
   };
 }

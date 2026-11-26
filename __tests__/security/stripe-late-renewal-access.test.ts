@@ -2,6 +2,7 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { licensePostgresAvailable, licenseUuid } from './site-license-postgres'
+import { installBillingLocationPredicate } from './billing-location-prerequisite'
 import { startupTrialPostgres, startupTrialPrerequisitesAvailable } from './startup-trial-postgres'
 
 const live = licensePostgresAvailable && startupTrialPrerequisitesAvailable ? describe : describe.skip
@@ -20,6 +21,7 @@ live('terminal Stripe late-renewal access in disposable PostgreSQL', () => {
   beforeAll(() => {
     pg.start()
     pg.install()
+    installBillingLocationPredicate(pg)
     pg.db(readMigration('20261020002000_manual_agent_channel_activation.sql'))
     pg.db(readMigration('20261021001000_reconcile_paid_coverage_licenses.sql'))
     baseLicensing = licensingDefinitions()
@@ -323,6 +325,79 @@ live('terminal Stripe late-renewal access in disposable PostgreSQL', () => {
       expect(revoke(fresh.evidence.charge_id)).toBe('revoked')
       expect(paidThrough(fresh.evidence)).toBe('')
       expect(primarySelector(fresh.member)).toBe('')
+    })
+  })
+
+  describe('operator-approved workspace license', () => {
+    const approve = (invoice: string) =>
+      `INSERT INTO public.late_payment_workspace_licenses(invoice_id) VALUES ('${invoice}');`
+
+    beforeAll(() => {
+      pg.db(readMigration('20261126210000_opt_in_late_payment_workspace_license.sql'))
+      pg.db(readMigration('20261126211000_project_temporary_workspace_license.sql'))
+    })
+
+    it('restores the existing member and suspended connections, without changing billing or settlement', () => {
+      const { site, actor, member, evidence, settle } = seed()
+      const other = seed()
+      pg.db(`UPDATE settings SET social_media='[{"id":"one","platform":"facebook","isActive":true},
+        {"id":"two","platform":"instagram","isActive":true}]',
+        channels='{"connections":[{"id":"email","type":"email","status":"connected"}]}' WHERE site_id='${site}';`)
+      for (const x of [{ evidence, settle }, other]) {
+        x.settle()
+        expect(record(x.evidence)).toBe('granted')
+      }
+      const resourceState = () => pg.db(`SELECT (social_media->1->>'isActive'),
+        (channels->'connections'->0->>'status') FROM settings WHERE site_id='${site}';`)
+      const suspended = () => pg.db(`SELECT license_suspended FROM site_members WHERE user_id='${member}';`)
+      const snapshot = () => pg.db(`SELECT row_to_json(b),row_to_json(i) FROM billing b
+        JOIN stripe_subscription_invoice_settlements i USING (site_id) WHERE site_id='${site}';`)
+      const before = snapshot()
+      expect(resourceState()).toBe('false|license_suspended')
+      expect(suspended()).toBe('t')
+      for (const role of ['anon', 'authenticated', 'service_role']) {
+        expect(() => pg.call(approve(evidence.invoice_id), undefined, role)).toThrow(/permission denied/)
+      }
+      pg.db(approve(evidence.invoice_id))
+      expect(suspended()).toBe('f')
+      expect(primarySelector(member)).toBe(site)
+      expect(resourceState()).toBe('true|connected')
+      expect(pg.db(`SELECT get_site_member_license('${site}')->>'limit';`)).toBe('10')
+      expect(pg.call(`SELECT get_site_licensed_resources('${site}')->>'effective_plan';`, undefined, 'service_role')).toBe('foundry')
+      const scopedLicense = `SELECT public.temporary_workspace_license(b)->>'plan'
+        FROM jsonb_populate_record(NULL::public.billing, '{"site_id":"${site}","plan":"enterprise"}') b;`
+      expect(pg.call(scopedLicense, actor)).toBe('foundry')
+      expect(pg.call(scopedLicense, member)).toBe('foundry')
+      expect(pg.call(scopedLicense, other.actor)).toBe('')
+      expect(() => pg.call(scopedLicense, actor, 'anon')).toThrow(/permission denied/)
+      expect(effective(other.site)).toBe('commission')
+      expect(snapshot()).toBe(before)
+
+      expect(revoke(evidence.charge_id)).toBe('revoked')
+      expect(effective(site)).toBe('commission')
+      expect(pg.call(scopedLicense, actor)).toBe('')
+      expect(suspended()).toBe('t')
+      expect(resourceState()).toBe('false|license_suspended')
+      expect(snapshot()).toBe(before)
+      pg.db(`DELETE FROM late_payment_workspace_licenses WHERE invoice_id='${evidence.invoice_id}';`)
+      expect(() => pg.db(approve(evidence.invoice_id))).toThrow(/requires current verified late-payment access/)
+    })
+
+    it('expires authoritative access even when the persisted member flag has not been reconciled', () => {
+      const { site, member, evidence, settle } = seed()
+      settle()
+      expect(record(evidence)).toBe('granted')
+      pg.db(approve(evidence.invoice_id))
+      expect(primarySelector(member)).toBe(site)
+      // Age the disposable fixture without firing any license mirror triggers.
+      pg.db(`SET session_replication_role=replica; SET timezone='UTC';
+        UPDATE stripe_late_renewal_access SET period_start=period_start-interval '40 days',
+          period_end=period_end-interval '40 days',ended_at=ended_at-interval '40 days',
+          paid_at=paid_at-interval '40 days' WHERE invoice_id='${evidence.invoice_id}';
+        UPDATE billing SET subscription_end_date=subscription_end_date-interval '40 days' WHERE site_id='${site}';`)
+      expect(pg.db(`SELECT license_suspended FROM site_members WHERE user_id='${member}';`)).toBe('f')
+      expect(primarySelector(member)).toBe('')
+      expect(pg.call(`SELECT get_site_licensed_resources('${site}')->>'effective_plan';`, undefined, 'service_role')).toBe('commission')
     })
   })
 })

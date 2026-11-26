@@ -1,9 +1,12 @@
 import type { BillingCreditBalances } from "@/lib/types/billing-credits.types"
 import type { BillingInterval } from "@/lib/billing-pricing"
+import type { TemporaryWorkspaceLicense } from "@/lib/billing/startup-trial"
 
 export interface BillingData extends BillingCreditBalances {
   plan: "commission" | "engine" | "foundry" | "enterprise"
+  temporary_workspace_license?: TemporaryWorkspaceLicense | null
   billing_interval?: BillingInterval
+  subscription_status?: string | null
   addons_count?: number
   card_name?: string
   card_number?: string

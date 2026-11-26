@@ -5,7 +5,7 @@ type SiteBilling = NonNullable<Site['billing']>
 
 /** Safe billing hydration fields shared by full-site and billing-only reads. */
 export const SITE_BILLING_FIELDS = [
-  'plan', 'billing_interval', 'addons_count', 'masked_card_number', 'card_name',
+  'plan', 'billing_interval', 'subscription_status', 'addons_count', 'masked_card_number', 'card_name',
   'card_expiry', 'stripe_customer_id', 'stripe_payment_method_id', 'card_address',
   'card_city', 'card_postal_code', 'card_country', 'tax_id', 'billing_address',
   'billing_city', 'billing_postal_code', 'billing_country', 'auto_renew',
@@ -16,16 +16,18 @@ export const SITE_BILLING_FIELDS = [
   'paid_subscription_period_end', 'paid_subscription_invoice_id',
   'paid_subscription_paid_at', 'paid_subscription_plan', 'paid_subscription_addons_count',
   'trial_started_at', 'trial_ends_at', 'trial_converted_at', 'trial_credits_available',
+  'temporary_workspace_license',
 ] as const satisfies readonly (keyof SiteBilling)[]
 
 export const SITE_BILLING_READ_FIELDS = SITE_BILLING_FIELDS.join(', ')
+export const BASE_SITE_BILLING_READ_FIELDS = SITE_BILLING_FIELDS.filter(f => f !== 'temporary_workspace_license').join(', ')
 
 export const TRIAL_BILLING_FIELDS = [
   'trial_started_at', 'trial_ends_at', 'trial_converted_at', 'trial_credits_available',
 ] as const satisfies readonly (keyof SiteBilling)[]
 
 export const PRE_TRIAL_SITE_BILLING_READ_FIELDS = SITE_BILLING_FIELDS
-  .filter(field => !(TRIAL_BILLING_FIELDS as readonly string[]).includes(field)).join(', ')
+  .filter(field => field !== 'temporary_workspace_license' && !(TRIAL_BILLING_FIELDS as readonly string[]).includes(field)).join(', ')
 
 // These fields are introduced together by the pending annual-coverage migration.
 export const ANNUAL_BILLING_FIELDS = [
@@ -35,7 +37,7 @@ export const ANNUAL_BILLING_FIELDS = [
 ] as const satisfies readonly (keyof SiteBilling)[]
 
 export const LEGACY_SITE_BILLING_READ_FIELDS = SITE_BILLING_FIELDS
-  .filter(field => !([...ANNUAL_BILLING_FIELDS, ...TRIAL_BILLING_FIELDS] as readonly string[]).includes(field)).join(', ')
+  .filter(field => field !== 'temporary_workspace_license' && !([...ANNUAL_BILLING_FIELDS, ...TRIAL_BILLING_FIELDS] as readonly string[]).includes(field)).join(', ')
 
 /** Keep interval/paid-invoice coverage when rebuilding a site from its API row. */
 export function hydrateSiteBilling(row: Partial<SiteBilling>): SiteBilling {

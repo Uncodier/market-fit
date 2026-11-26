@@ -72,8 +72,8 @@ export function canConnectAgentChannel(site: Partial<Site> | null | undefined, e
   return futureRequired <= (site.billing?.addons_count || 0)
 }
 
-function getRequiredAddonsWithExtra(site: Partial<Site> | null | undefined, extraSocial: number, extraAgent: number): number {
-  const plan = effectiveBillingPlan(site?.billing)
+function getRequiredAddonsWithExtra(site: Partial<Site> | null | undefined, extraSocial: number, extraAgent: number, now?: number): number {
+  const plan = effectiveBillingPlan(site?.billing, now)
   
   const socialLimit = getSocialAccountLimit(plan)
   const agentLimit = getAgentChannelLimit(plan)
@@ -87,6 +87,6 @@ function getRequiredAddonsWithExtra(site: Partial<Site> | null | undefined, extr
   return missingSocial + missingAgent
 }
 
-export function getRequiredAddons(site: Partial<Site> | null | undefined): number {
-  return getRequiredAddonsWithExtra(site, 0, 0)
+export function getRequiredAddons(site: Partial<Site> | null | undefined, now?: number): number {
+  return getRequiredAddonsWithExtra(site, 0, 0, now)
 }

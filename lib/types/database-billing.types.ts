@@ -1,7 +1,12 @@
 import type { StripeSubscriptionInvoiceInput, StripeSubscriptionInvoiceResult } from "@/app/api/stripe/webhook/subscription-invoice-settlement"
 import type { StartupTrial, StartupTrialActivation } from "@/lib/billing/startup-trial"
+import type { EmergencyGraceGrant } from "@/lib/billing/emergency-grace"
 
 export interface BillingDatabaseFunctions {
+  grant_emergency_grace: {
+    Args: { p_business_id: string }
+    Returns: EmergencyGraceGrant | { outcome: 'forbidden' | 'ineligible' | 'limit_reached' }
+  }
   get_site_startup_trial: {
     Args: { p_site_id: string }
     Returns: StartupTrial

@@ -29,7 +29,8 @@ import { UpgradeConfirmationDialog } from "./upgrade-confirmation-dialog"
 import { useRequiredLicense } from "./use-required-license"
 import { requiresSubscriptionManagement } from './subscription-transitions'
 import { BillingHelpTooltip } from "./billing-help-tooltip"
-import { effectiveBillingPlan } from "@/lib/billing/startup-trial"
+import { activeTemporaryWorkspaceLicense, effectiveBillingPlan } from "@/lib/billing/startup-trial"
+import { TemporaryWorkspaceLicenseNotice, useTemporaryWorkspaceLicenseClock } from "./temporary-workspace-license-notice"
 
 const billingFormSchema = z.object({
   plan: z.enum(["commission", "engine", "foundry", "enterprise"]).default("commission"),
@@ -124,11 +125,14 @@ export function BillingForm({ initialData }: BillingFormProps) {
   const totalSocialAccounts = countSocialAccounts(currentSite)
   const totalAgentChannels = countAgentChannels(currentSite)
   
-  const effectivePlan = effectiveBillingPlan(currentSite?.billing)
+  const licenseClock = useTemporaryWorkspaceLicenseClock(currentSite?.billing?.temporary_workspace_license?.ends_at)
+  const projectedLicense = activeTemporaryWorkspaceLicense(currentSite?.billing?.temporary_workspace_license, licenseClock)
+  const temporaryLicense = !isPaidPlan || projectedLicense?.kind === 'emergency_grace' ? projectedLicense : undefined
+  const effectivePlan = effectiveBillingPlan(currentSite?.billing, licenseClock)
   const socialLimit = getSocialAccountLimit(effectivePlan)
   const agentLimit = getAgentChannelLimit(effectivePlan)
   
-  const requiredAddons = getRequiredAddons(currentSite)
+  const requiredAddons = getRequiredAddons(currentSite, licenseClock)
   const missingAddons = Math.max(0, requiredAddons - addonsCount)
   
   const socialUsagePercentage = socialLimit === 0 
@@ -367,11 +371,13 @@ export function BillingForm({ initialData }: BillingFormProps) {
             </BillingHelpTooltip>}
           />
           <SectionCardContent className="space-y-6">
-              <p className="text-sm text-muted-foreground">{t('billing.plan.currentBilling') || 'Current billing:'} {isPaidPlan ? (currentInterval === 'year' ? (t('billing.plan.annual') || 'Annual') : (t('billing.plan.monthly') || 'Monthly')) : (t('billing.plan.free') || 'Free plan')}</p>
+              {temporaryLicense ? <TemporaryWorkspaceLicenseNotice license={temporaryLicense} /> :
+                <p className="text-sm text-muted-foreground">{t('billing.plan.currentBilling') || 'Current billing:'} {isPaidPlan ? (currentInterval === 'year' ? (t('billing.plan.annual') || 'Annual') : (t('billing.plan.monthly') || 'Monthly')) : (t('billing.plan.free') || 'Free plan')}</p>}
               <BillingIntervalSelector value={billingInterval} onChange={changeBillingInterval} disabled={isSavingPlan || downgradeModalOpen || !!pendingUpgradePlan} />
               <SubscriptionPlans
                 currentPlan={currentPlan}
-                requiredPlan={requiredPlan}
+                requiredPlan={temporaryLicense && requiredPlan && PLAN_ORDER[requiredPlan] <= PLAN_ORDER[temporaryLicense.plan] ? undefined : requiredPlan}
+                temporaryPlan={temporaryLicense?.plan}
                 currentInterval={currentInterval}
                 billingInterval={billingInterval}
                 isSaving={isSavingPlan}

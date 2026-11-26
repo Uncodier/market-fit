@@ -1,13 +1,14 @@
 import { render, screen } from '@testing-library/react'
 import BillingPage from '@/app/billing/page'
 import { useSite } from '@/app/context/SiteContext'
+import { useOptionalPermissions } from '@/app/context/PermissionContext'
 
 jest.mock('@/app/context/SiteContext', () => ({ useSite: jest.fn() }))
-jest.mock('@/app/context/LocalizationContext', () => ({ useLocalization: () => ({ t: () => '' }) }))
+jest.mock('@/app/context/LocalizationContext', () => ({ useLocalization: () => ({ t: (key: string) => key.startsWith('billing.emergencyAccess.') ? key : '' }) }))
 jest.mock('next/navigation', () => ({ useRouter: () => ({ push: jest.fn() }), useSearchParams: () => null }))
 jest.mock('@/app/billing/use-billing-target', () => ({ useBillingTarget: () => ({ pending: false, error: null, requestedId: null }) }))
 jest.mock('@/app/create-site/site-setup-tracking', () => ({ SiteSetupTracking: () => null }))
-jest.mock('@/app/context/PermissionContext', () => ({ useOptionalPermissions: () => null }))
+jest.mock('@/app/context/PermissionContext', () => ({ useOptionalPermissions: jest.fn(() => null) }))
 jest.mock('@/app/components/billing/billing-form', () => ({ BillingForm: ({ initialData }: { initialData: { plan: string } }) => <div data-plan={initialData.plan}>Subscription controls</div> }))
 jest.mock('@/app/components/billing/startup-trial-card', () => ({ StartupTrialCard: ({ siteId, recoveryScope }: { siteId: string; recoveryScope?: string }) => <div data-testid="startup-trial-card" data-recovery={!!recoveryScope}>Trial for {siteId}</div> }))
 jest.mock('@/app/components/billing/payment-history', () => ({ PaymentHistory: () => null }))
@@ -46,4 +47,29 @@ it('requests recovery only for the selected site with a non-renewing Stripe bind
   select('site-a', { ...site.billing, auto_renew: true })
   view.rerender(<BillingPage />)
   expect(screen.getByTestId('startup-trial-card')).toHaveAttribute('data-recovery', 'false')
+})
+
+it('offers emergency access only for the selected primary owner and a past-due monthly billing read', () => {
+  const id = 'site-a'
+  const billing = { plan: 'commission', subscription_status: 'past_due', billing_interval: 'month' }
+  const renderScope = (actorId: string, changes = {}) => {
+    jest.mocked(useSite).mockReturnValue({
+      currentSite: { id, user_id: 'primary', billing_read_status: 'loaded', billing: { ...billing, ...changes } },
+      requestScope: { siteId: id, actorId }, isLoading: false, refreshSiteBilling: jest.fn(),
+    } as never)
+  }
+  jest.mocked(useOptionalPermissions).mockReturnValue({ siteId: id, capabilities: { role: 'owner' } } as never)
+  const action = () => screen.queryByRole('button', { name: 'billing.emergencyAccess.request' })
+  renderScope('delegated')
+  const view = render(<BillingPage />)
+  expect(action()).not.toBeInTheDocument()
+  renderScope('primary', { billing_interval: 'year' })
+  view.rerender(<BillingPage />)
+  expect(action()).not.toBeInTheDocument()
+  renderScope('primary', { subscription_status: 'active' })
+  view.rerender(<BillingPage />)
+  expect(action()).not.toBeInTheDocument()
+  renderScope('primary')
+  view.rerender(<BillingPage />)
+  expect(action()).toBeInTheDocument()
 })

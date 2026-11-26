@@ -61,10 +61,11 @@ interface SubscriptionPlansProps {
   isSaving: boolean
   blockedPaidChanges?: boolean
   requiredPlan?: LicensePlan
+  temporaryPlan?: Exclude<BillingPlan, 'commission'>
   onChangePlan: (plan: BillingPlan) => void
 }
 
-export function SubscriptionPlans({ currentPlan, currentInterval = 'month', billingInterval = 'month', isSaving, blockedPaidChanges = false, requiredPlan, onChangePlan }: SubscriptionPlansProps) {
+export function SubscriptionPlans({ currentPlan, currentInterval = 'month', billingInterval = 'month', isSaving, blockedPaidChanges = false, requiredPlan, temporaryPlan, onChangePlan }: SubscriptionPlansProps) {
   const { t } = useLocalization()
 
   return (
@@ -114,7 +115,8 @@ export function SubscriptionPlans({ currentPlan, currentInterval = 'month', bill
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <p className="text-sm font-medium">{planTitle}</p>
-                {isCurrent && (
+                {plan.id === temporaryPlan && <span className="text-xs font-medium text-primary">{t('billing.access.badge') || 'Temporary access'}</span>}
+                {isCurrent && !temporaryPlan && (
                   <span className="text-xs text-muted-foreground">
                     {t("billing.plan.currentBadge") || "Current"}
                   </span>
@@ -138,7 +140,7 @@ export function SubscriptionPlans({ currentPlan, currentInterval = 'month', bill
                   <br />{t("billing.interval.annualSavings", { percent: 10 }) || "Billed annually · save 10%"}
                 </p>}
               </div>
-              {isCurrent ? (
+              {temporaryPlan && (isCurrent || plan.id === temporaryPlan) ? null : isCurrent ? (
                 <span className="flex w-[88px] items-center justify-center text-primary" role="img" aria-label={t("billing.plan.selected") || "Selected plan"}>
                   <Check size={20} strokeWidth={2.5} />
                 </span>

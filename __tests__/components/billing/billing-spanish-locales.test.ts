@@ -1,11 +1,8 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import en from '@/app/context/locales/en.json'
-import es from '@/app/context/locales/es.json'
-import { flattenMessages } from '@/app/context/locale-messages'
+import { rawLocaleMessages } from '@/app/context/locale-catalog'
 
-const english = flattenMessages(en)
-const spanish = flattenMessages(es)
+const { en: english, es: spanish } = rawLocaleMessages
 const billingKeys = Object.keys(english).filter(key => key.startsWith('billing.'))
 const placeholders = (value: string) => [...value.matchAll(/\{\{\s*(\w+)\s*\}\}/g)]
   .map(match => match[1]).sort()
