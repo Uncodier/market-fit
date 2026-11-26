@@ -130,8 +130,8 @@ export function KanbanView({
   const handleCardClick = useCallback((e: React.MouseEvent, requirement: Requirement) => {
     // Evitamos que el clic se propague al draggable
     e.stopPropagation();
-    onRequirementClick(requirement);
-  }, [onRequirementClick]);
+    onRequirementClick(requirement, REQUIREMENT_STATUSES.flatMap(column => collapsedColumns[column.id] ? [] : requirementsByStatus[column.id]));
+  }, [onRequirementClick, collapsedColumns, requirementsByStatus]);
   
   // Check if there are no requirements at all
   const hasNoRequirements = requirements.length === 0

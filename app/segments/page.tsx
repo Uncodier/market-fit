@@ -219,7 +219,7 @@ export default function SegmentsPage() {
               segments={filteredSegments}
               activeById={activeSegments}
               searchQuery={searchTerm}
-              onSegmentClick={(segment) => navigateToSegment({ segmentId: segment.id, segmentName: segment.name, router })}
+              onSegmentClick={(segment) => navigateToSegment({ segmentId: segment.id, segmentName: segment.name, router, origin: { siteId: currentSite?.id, rows: filteredSegments } })}
               onToggleStatus={toggleSegmentStatus}
               onCopyUrl={copySegmentUrl}
               onConfigureUrl={handleConfigureUrl}

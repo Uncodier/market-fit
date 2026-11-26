@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useId, useState } from "react"
 import { RecordCategory } from "../actions"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/app/components/ui/dialog"
 import { Button } from "@/app/components/ui/button"
@@ -18,6 +18,7 @@ import { EmojiPicker } from "@/app/components/ui/emoji-picker"
 import { isEmojiIcon } from "./category-icon"
 import { recordFieldLabel } from "../lib/field-values"
 import { DeleteRecordCategory } from "./DeleteRecordCategory"
+import { primaryDateField } from "../lib/primary-date"
 
 interface CategoryTemplateEditorProps {
   isOpen: boolean
@@ -35,6 +36,10 @@ export function CategoryTemplateEditor({ isOpen, onClose, category, initialField
   const [icon, setIcon] = useState(category?.icon || "")
   const [parentCategoryId, setParentCategoryId] = useState<string>(category?.parent_category_id || "none")
   const [fields, setFields] = useState<any[]>(category?.template_fields || [])
+  const [dateFieldId, setDateFieldId] = useState(category?.primary_date_field_id ?? null)
+  const dateSelectId = useId()
+  const dateFields = fields.filter(field => field.type === "date" && field.name?.trim())
+  const selectedDateField = primaryDateField(dateFields, dateFieldId)
   const [isSaving, setIsSaving] = useState(false)
   const [expandedFields, setExpandedFields] = useState(() => new Set(initialFieldId ? [initialFieldId] : []))
 
@@ -51,6 +56,7 @@ export function CategoryTemplateEditor({ isOpen, onClose, category, initialField
 
   const removeField = (id: string) => {
     setFields(fields.filter(f => f.id !== id))
+    if (dateFieldId === id) setDateFieldId(null)
     if (expandedFields.has(id)) {
       const next = new Set(expandedFields)
       next.delete(id)
@@ -63,6 +69,7 @@ export function CategoryTemplateEditor({ isOpen, onClose, category, initialField
     const existing = category?.template_fields?.find(field => field.id === newFields[index].id)
     const next = { ...newFields[index], ...updates, ...(existing ? { name: existing.name } : {}) }
     if (updates.type && updates.type !== newFields[index].type) {
+      if (next.type !== "date" && dateFieldId === next.id) setDateFieldId(null)
       if (next.type !== "number") {
         delete next.min
         delete next.max
@@ -116,7 +123,8 @@ export function CategoryTemplateEditor({ isOpen, onClose, category, initialField
       description,
       icon,
       parent_category_id: parentCategoryId === "none" ? null : parentCategoryId,
-      template_fields: fields
+      template_fields: fields,
+      primary_date_field_id: selectedDateField?.id ?? null,
     }
     try {
       await onSave(dataToSave)
@@ -180,6 +188,21 @@ export function CategoryTemplateEditor({ isOpen, onClose, category, initialField
             <div className="space-y-2">
               <Label>Description</Label>
               <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What are these records about?" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor={dateSelectId}>Primary date for Insights</Label>
+              <Select value={selectedDateField ? `field:${selectedDateField.id}` : "created"}
+                onValueChange={value => setDateFieldId(value === "created" ? null : value.slice(6))}>
+                <SelectTrigger id={dateSelectId} aria-label="Primary date for Insights"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="created">Record creation date</SelectItem>
+                  {dateFields.map(field => <SelectItem key={field.id} value={`field:${field.id}`}>{recordFieldLabel(field)}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {dateFields.length ? "Insights uses the creation date when this field is empty or invalid."
+                  : "Add a Date field to report by a date other than when the record was created."}
+              </p>
             </div>
           </div>
 

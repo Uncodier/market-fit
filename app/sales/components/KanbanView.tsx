@@ -37,7 +37,7 @@ const SALE_STATUSES = [
 interface KanbanViewProps {
   sales: SalesListRow[]
   onUpdateSaleStatus: (saleId: string, newStatus: string) => Promise<void>
-  onSaleClick: (sale: Sale) => void
+  onSaleClick: (sale: Sale, orderedSales?: Sale[]) => void
   onPrintSale: (sale: Sale) => void
   onRegisterPayment: (sale: Sale) => void
 }
@@ -71,10 +71,12 @@ export function KanbanView({
     await onUpdateSaleStatus(draggableId, destination.droppableId)
   }
 
+  const openSale = (sale: Sale) => onSaleClick(sale, SALE_STATUSES.flatMap(column => salesByStatus[column.id]))
+
   // Handle card click
   const handleCardClick = (e: React.MouseEvent, sale: Sale) => {
     e.preventDefault()
-    onSaleClick(sale)
+    openSale(sale)
   }
 
   // Format date
@@ -149,7 +151,7 @@ export function KanbanView({
                                   >
                                     <DropdownMenuItem
                                       className="cursor-pointer"
-                                      onSelect={() => onSaleClick(sale)}
+                                      onSelect={() => openSale(sale)}
                                     >
                                       <ExternalLink className="mr-2 h-4 w-4" />
                                       Open

@@ -10,6 +10,7 @@ import { processRecordEmbeddingsById } from "./lib/record-embedding-worker"
 import { validateTemplateFieldUpdate } from "./lib/template-validation"
 import { validateRecordWrite } from "./lib/validate-record-write"
 import { validateTemplateTargets } from "./lib/validate-template-targets"
+import { primaryDateField } from "./lib/primary-date"
 import { moveRecordToTrash, moveCategoryToTrash } from "./trash-actions"
 import {
   resolveEntityPreviews as resolveEntityPreviewsAction,
@@ -33,6 +34,7 @@ const categoryMutationSchema = z.object({
   icon: z.string().max(100).nullish(),
   parent_category_id: categoryIdSchema.nullish(),
   template_fields: z.array(z.unknown()).max(200).default([]),
+  primary_date_field_id: z.string().min(1).max(240).nullish(),
 }).strict()
 const createRecordSchema = z.object({
   site_id: siteIdSchema,
@@ -69,6 +71,7 @@ export type RecordCategory = {
   icon: string | null
   parent_category_id?: string | null
   template_fields: any[] // array of fields
+  primary_date_field_id?: string | null
   created_at: string
   updated_at: string
 }
@@ -115,7 +118,8 @@ export async function createRecordCategory({
   description,
   icon,
   parent_category_id,
-  template_fields = []
+  template_fields = [],
+  primary_date_field_id,
 }: {
   site_id: string
   name: string
@@ -123,6 +127,7 @@ export async function createRecordCategory({
   icon?: string
   parent_category_id?: string | null
   template_fields?: any[]
+  primary_date_field_id?: string | null
 }) {
   try {
     const input = categoryMutationSchema.extend({ site_id: siteIdSchema }).parse({
@@ -132,10 +137,12 @@ export async function createRecordCategory({
       icon,
       parent_category_id,
       template_fields,
+      primary_date_field_id,
     })
     const supabase = await getAuthenticatedClient()
     const template = validateTemplateFieldUpdate([], input.template_fields)
     if (!template.valid) throw new Error(template.error)
+    assertPrimaryDateField(template.fields, input.primary_date_field_id)
     await validateTemplateTargets(supabase, input.site_id, template.fields)
     const { data, error } = await supabase
       .from('record_categories')
@@ -152,6 +159,12 @@ export async function createRecordCategory({
   }
 }
 
+function assertPrimaryDateField(fields: RecordCategory["template_fields"] | null, id?: string | null) {
+  if (id != null && (!Array.isArray(fields) || !primaryDateField(fields, id))) {
+    throw new Error("Choose a date field from this category, or use record creation date.")
+  }
+}
+
 export async function updateRecordCategory(
   id: string,
   updates: Partial<RecordCategory>,
@@ -162,14 +175,21 @@ export async function updateRecordCategory(
     const safeUpdates = categoryMutationSchema.partial().parse(updates)
     const expectedVersion = z.string().datetime({ offset: true }).parse(expectedUpdatedAt)
     const supabase = await getAuthenticatedClient()
-    if (safeUpdates.template_fields !== undefined) {
-      const previous = await supabase.from('record_categories').select('site_id, template_fields, updated_at').eq('id', categoryId).maybeSingle()
+    if (safeUpdates.template_fields !== undefined || safeUpdates.primary_date_field_id != null) {
+      const previous = await supabase.from('record_categories').select('site_id, template_fields, updated_at, primary_date_field_id').eq('id', categoryId).maybeSingle()
       if (previous.error || !previous.data) throw new Error("Category not found or access denied")
       if (previous.data.updated_at !== expectedVersion) return { error: "This category changed elsewhere. Reopen the editor before saving again.", conflict: true }
-      // The category trigger checks stored values, including rows hidden by RLS.
-      const template = validateTemplateFieldUpdate(previous.data.template_fields, safeUpdates.template_fields)
-      if (!template.valid) throw new Error(template.error)
-      await validateTemplateTargets(supabase, previous.data.site_id, template.fields)
+      const dateId = safeUpdates.primary_date_field_id === undefined
+        ? previous.data.primary_date_field_id : safeUpdates.primary_date_field_id
+      if (safeUpdates.template_fields !== undefined) {
+        // The category trigger checks stored values, including rows hidden by RLS.
+        const template = validateTemplateFieldUpdate(previous.data.template_fields, safeUpdates.template_fields)
+        if (!template.valid) throw new Error(template.error)
+        assertPrimaryDateField(template.fields, dateId)
+        await validateTemplateTargets(supabase, previous.data.site_id, template.fields)
+      } else {
+        assertPrimaryDateField(previous.data.template_fields, dateId)
+      }
     }
     const { data, error } = await supabase
       .from('record_categories')

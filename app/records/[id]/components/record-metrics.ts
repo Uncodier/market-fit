@@ -34,15 +34,24 @@ export function savedMetricRecords(
   return [...records.values()]
 }
 
-export function metricSeries(records: RecordItem[], metric: string, dateField?: string) {
+export function resolveInsightDate(record: Pick<RecordItem, "data" | "created_at">, dateField?: string, fallback = false) {
+  const fieldDate = dateField ? metricDate(record.data[dateField]) : null
+  if (fieldDate !== null) return { timestamp: fieldDate, usedFallback: false }
+  const timestamp = (!dateField || fallback) ? metricDate(record.created_at) : null
+  return { timestamp, usedFallback: !!dateField && timestamp !== null }
+}
+
+export function metricSeries(records: RecordItem[], metric: string, dateField?: string, fallback = false) {
+  let fallbackDates = 0
   const points = records.flatMap(record => {
-    const timestamp = metricDate(dateField ? record.data[dateField] : record.created_at)
+    const { timestamp, usedFallback } = resolveInsightDate(record, dateField, fallback)
+    if (usedFallback) fallbackDates++
     return timestamp === null ? [] : [{
       id: record.id, title: record.title || "Untitled record", timestamp,
       value: metricNumber(record.data[metric]),
     }]
   }).sort((a, b) => a.timestamp - b.timestamp || a.id.localeCompare(b.id))
-  return { points, omittedDates: records.length - points.length }
+  return { points, omittedDates: records.length - points.length, fallbackDates }
 }
 
 export function metricComparison(points: ReturnType<typeof metricSeries>["points"], recordId?: string) {

@@ -23,7 +23,7 @@ interface ContentTypeViewsProps {
   outstandPosts: any[]
   performanceData?: { byContentId: Record<string, any>, byPostId: Record<string, any> }
   onUpdateContentStatus: (contentId: string, newStatus: string) => Promise<void>
-  onContentClick: (content: ContentItem) => void
+  onContentClick: (content: ContentItem, order?: ContentItem[]) => void
   onRatingChange: (contentId: string, rating: number) => void
   onPageChange: (page: number) => void
   onItemsPerPageChange: (value: string) => void

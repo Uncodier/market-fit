@@ -1,3 +1,4 @@
+import { openDetailFromView } from "./detail-view-navigation"
 import { navigateOrAssign, type AppRouterLike } from "./stale-router"
 
 /**
@@ -20,64 +21,78 @@ export {
   requestNavigationHistoryReset,
 } from '@/lib/navigation/history-reset'
 
+type DetailOrigin = { siteId?: string; rows: readonly { id: string }[] }
+
+function fromView(href: string, origin?: DetailOrigin) {
+  if (!origin) return href
+  const pathname = href.split("?")[0]
+  const base = pathname.slice(0, pathname.lastIndexOf("/"))
+  return openDetailFromView(origin.siteId, href, origin.rows.map(row => `${base}/${row.id}`))
+}
+
 interface NavigateToTaskParams {
   taskId: string
   taskTitle: string
   router: AppRouterLike
+  origin?: DetailOrigin
 }
 
-export function navigateToTask({ taskId, taskTitle, router }: NavigateToTaskParams): void {
+export function navigateToTask({ taskId, taskTitle, router, origin }: NavigateToTaskParams): void {
   markUINavigation()
   const encodedTitle = encodeURIComponent(taskTitle)
-  navigateOrAssign(router, `/control-center/${taskId}?title=${encodedTitle}`, { markUI: false })
+  navigateOrAssign(router, fromView(`/control-center/${taskId}?title=${encodedTitle}`, origin), { markUI: false })
 }
 
 interface NavigateToLeadParams {
   leadId: string
   leadName: string
   router: AppRouterLike
+  origin?: DetailOrigin
 }
 
-export function navigateToLead({ leadId, leadName, router }: NavigateToLeadParams): void {
+export function navigateToLead({ leadId, leadName, router, origin }: NavigateToLeadParams): void {
   markUINavigation()
   const encodedName = encodeURIComponent(leadName)
-  navigateOrAssign(router, `/leads/${leadId}?name=${encodedName}`, { markUI: false })
+  navigateOrAssign(router, fromView(`/leads/${leadId}?name=${encodedName}`, origin), { markUI: false })
 }
 
 interface NavigateToContentParams {
   contentId: string
   contentTitle: string
   router: AppRouterLike
+  origin?: DetailOrigin
 }
 
-export function navigateToContent({ contentId, contentTitle, router }: NavigateToContentParams): void {
+export function navigateToContent({ contentId, contentTitle, router, origin }: NavigateToContentParams): void {
   markUINavigation()
   const encodedTitle = encodeURIComponent(contentTitle)
-  navigateOrAssign(router, `/content/${contentId}?title=${encodedTitle}`, { markUI: false })
+  navigateOrAssign(router, fromView(`/content/${contentId}?title=${encodedTitle}`, origin), { markUI: false })
 }
 
 interface NavigateToSegmentParams {
   segmentId: string
   segmentName: string
   router: AppRouterLike
+  origin?: DetailOrigin
 }
 
-export function navigateToSegment({ segmentId, segmentName, router }: NavigateToSegmentParams): void {
+export function navigateToSegment({ segmentId, segmentName, router, origin }: NavigateToSegmentParams): void {
   markUINavigation()
   const encodedName = encodeURIComponent(segmentName)
-  navigateOrAssign(router, `/segments/${segmentId}?name=${encodedName}`, { markUI: false })
+  navigateOrAssign(router, fromView(`/segments/${segmentId}?name=${encodedName}`, origin), { markUI: false })
 }
 
 interface NavigateToCampaignParams {
   campaignId: string
   campaignName: string
   router: AppRouterLike
+  origin?: DetailOrigin
 }
 
-export function navigateToCampaign({ campaignId, campaignName, router }: NavigateToCampaignParams): void {
+export function navigateToCampaign({ campaignId, campaignName, router, origin }: NavigateToCampaignParams): void {
   markUINavigation()
   const encodedName = encodeURIComponent(campaignName)
-  navigateOrAssign(router, `/campaigns/${campaignId}?name=${encodedName}`, { markUI: false })
+  navigateOrAssign(router, fromView(`/campaigns/${campaignId}?name=${encodedName}`, origin), { markUI: false })
 }
 
 interface NavigateToAgentParams {
@@ -96,12 +111,13 @@ interface NavigateToRequirementParams {
   requirementId: string
   requirementTitle: string
   router: AppRouterLike
+  origin?: DetailOrigin
 }
 
-export function navigateToRequirement({ requirementId, requirementTitle, router }: NavigateToRequirementParams): void {
+export function navigateToRequirement({ requirementId, requirementTitle, router, origin }: NavigateToRequirementParams): void {
   markUINavigation()
   const encodedTitle = encodeURIComponent(requirementTitle)
-  navigateOrAssign(router, `/requirements/${requirementId}?title=${encodedTitle}`, { markUI: false })
+  navigateOrAssign(router, fromView(`/requirements/${requirementId}?title=${encodedTitle}`, origin), { markUI: false })
 }
 
 interface NavigateToExperimentParams {
@@ -150,38 +166,41 @@ interface NavigateToDealParams {
   dealId: string
   dealName: string
   router: AppRouterLike
+  origin?: DetailOrigin
 }
 
-export function navigateToDeal({ dealId, dealName, router }: NavigateToDealParams): void {
+export function navigateToDeal({ dealId, dealName, router, origin }: NavigateToDealParams): void {
   markUINavigation()
   const encodedName = encodeURIComponent(dealName)
-  navigateOrAssign(router, `/deals/${dealId}?name=${encodedName}`, { markUI: false })
+  navigateOrAssign(router, fromView(`/deals/${dealId}?name=${encodedName}`, origin), { markUI: false })
 }
 
 interface NavigateToOrderParams {
   orderId: string
   orderNumber?: string
   router: AppRouterLike
+  origin?: DetailOrigin
 }
 
-export function navigateToOrder({ orderId, orderNumber, router }: NavigateToOrderParams): void {
+export function navigateToOrder({ orderId, orderNumber, router, origin }: NavigateToOrderParams): void {
   markUINavigation()
   const params = new URLSearchParams()
   if (orderNumber) {
     params.set('title', encodeURIComponent(orderNumber))
   }
   const queryString = params.toString()
-  navigateOrAssign(router, `/orders/${orderId}${queryString ? `?${queryString}` : ''}`, { markUI: false })
+  navigateOrAssign(router, fromView(`/orders/${orderId}${queryString ? `?${queryString}` : ''}`, origin), { markUI: false })
 }
 
 interface NavigateToShipmentParams {
   shipmentId: string
   router: AppRouterLike
+  origin?: DetailOrigin
 }
 
-export function navigateToShipment({ shipmentId, router }: NavigateToShipmentParams): void {
+export function navigateToShipment({ shipmentId, router, origin }: NavigateToShipmentParams): void {
   markUINavigation()
-  navigateOrAssign(router, `/shipments/${shipmentId}`, { markUI: false })
+  navigateOrAssign(router, fromView(`/shipments/${shipmentId}`, origin), { markUI: false })
 }
 
 interface NavigateToPurchaseOrderParams {
@@ -206,9 +225,10 @@ interface NavigateToSaleParams {
   saleName?: string
   action?: string
   router: AppRouterLike
+  origin?: DetailOrigin
 }
 
-export function navigateToSale({ saleId, saleName, action, router }: NavigateToSaleParams): void {
+export function navigateToSale({ saleId, saleName, action, router, origin }: NavigateToSaleParams): void {
   markUINavigation()
   const params = new URLSearchParams()
   if (saleName) {
@@ -218,5 +238,5 @@ export function navigateToSale({ saleId, saleName, action, router }: NavigateToS
     params.set('action', action)
   }
   const queryString = params.toString()
-  navigateOrAssign(router, `/sales/${saleId}${queryString ? `?${queryString}` : ''}`, { markUI: false })
+  navigateOrAssign(router, fromView(`/sales/${saleId}${queryString ? `?${queryString}` : ''}`, origin), { markUI: false })
 }

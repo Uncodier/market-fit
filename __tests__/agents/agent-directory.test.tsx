@@ -1,3 +1,4 @@
+import { getDetailViewNeighbors } from "@/lib/navigation/detail-view-navigation"
 import "@testing-library/jest-dom"
 import { act, fireEvent, render, renderHook, screen, waitFor, within } from "@testing-library/react"
 import type { ReactNode } from "react"
@@ -95,13 +96,16 @@ it("exposes a no-write create action, keeps setup separate, and navigates every 
   expect(saved).toHaveLength(2)
   fireEvent.click(saved[0]); fireEvent.click(saved[1])
   fireEvent.click(screen.getByRole("button", { name: "Manage Sales/CRM Specialist" }))
-  expect(mockPush.mock.calls).toEqual([["/agents/saved-1"], ["/agents/saved-2"], ["/agents/sales"]])
+  expect(mockPush.mock.calls).toEqual([[expect.stringMatching(/^\/agents\/saved-1\?detailView=/)], [expect.stringMatching(/^\/agents\/saved-2\?detailView=/)], ["/agents/sales"]])
   expect(screen.getAllByRole("button", { name: "Manage Customer Support" })).toHaveLength(2)
 
   fireEvent.click(screen.getByLabelText("Toggle grid view"))
   expect(screen.getByRole("table")).toBeVisible()
   fireEvent.click(screen.getAllByRole("button", { name: "Manage Sales West" })[1])
-  expect(mockPush).toHaveBeenLastCalledWith("/agents/saved-2")
+  expect(mockPush).toHaveBeenLastCalledWith(expect.stringMatching(/^\/agents\/saved-2\?detailView=/))
+  const href = new URL(mockPush.mock.calls.at(-1)?.[0], "https://workspace.invalid")
+  const key = href.searchParams.get("detailView") || ""
+  expect(getDetailViewNeighbors(mockSiteId, href.pathname, key)?.previous).toBe(`/agents/saved-1?detailView=${key}`)
   fireEvent.change(screen.getByPlaceholderText("Search team..."), { target: { value: "not the template" } })
   expect(screen.queryByRole("button", { name: "Manage Sales West" })).toBeNull()
   fireEvent.click(screen.getByRole("button", { name: "Manage Customer Support" }))
@@ -160,7 +164,7 @@ it("draws only visible persisted edges, keeps card controls, and identifies the 
   fireEvent.click(within(analyst).getByRole("button", { name: /^Show Activities/ }))
   expect(within(analyst).getByRole("button", { name: "Hide Activities" })).toBeVisible()
   fireEvent.click(within(analyst).getByRole("button", { name: "Manage Renamed analyst" }))
-  expect(mockPush).toHaveBeenLastCalledWith("/agents/analyst")
+  expect(mockPush).toHaveBeenLastCalledWith(expect.stringMatching(/^\/agents\/analyst\?detailView=/))
 
   const search = screen.getByPlaceholderText("Search team...")
   fireEvent.change(search, { target: { value: "Renamed" } })

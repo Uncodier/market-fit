@@ -128,6 +128,7 @@ export default function CampaignsPage() {
       campaignId: campaign.id,
       campaignName: campaign.title,
       router,
+      origin: { siteId: currentSite?.id, rows: filteredCampaigns },
     })
   }
 
@@ -292,6 +293,7 @@ export default function CampaignsPage() {
             <CampaignsKanban
               campaignsByType={campaignsByType}
               requirements={requirements}
+              siteId={currentSite?.id}
               searchQuery={searchQuery} />
           )}
         </div>

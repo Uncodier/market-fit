@@ -4,6 +4,8 @@ import { Sparkles } from "@/app/components/ui/icons"
 import { publicPromptImageUrl } from "@/app/lib/image-utils"
 import type { RecordItem } from "../../actions"
 import type { InsightField, InsightsTabProps } from "./insights-types"
+import { primaryDateField } from "../../lib/primary-date"
+import { resolveInsightDate } from "./record-metrics"
 
 interface GeneratedPreviewsProps extends InsightsTabProps {
   activeRelations: InsightField[]
@@ -31,6 +33,7 @@ function showImagePlaceholder(event: SyntheticEvent<HTMLImageElement>) {
 export function InsightGeneratedPreviews({
   fields, formData, record, relationsData, activeRelations, allRelationLabels, categoryHistory,
 }: GeneratedPreviewsProps) {
+  const dateField = primaryDateField(fields, record?.category?.primary_date_field_id)
   return (
     <>
       {fields.filter(f => f.aiPreview?.enabled).length > 0 && (
@@ -60,12 +63,13 @@ export function InsightGeneratedPreviews({
                   // Add history records first (oldest to newest)
                   relatedRecords.forEach(h => {
                     if (h.id !== record?.id && h.data[previewField.name]) {
+                      const { timestamp } = resolveInsightDate(h, dateField?.name, true)
                       items.push({
                         id: h.id,
                         value: h.data[previewField.name],
-                        label: new Date(h.created_at).toLocaleDateString(),
+                        label: timestamp === null ? "Unknown date" : new Date(timestamp).toLocaleDateString(),
                         isCurrent: false,
-                        date: new Date(h.created_at).getTime()
+                        date: timestamp ?? Infinity
                       })
                     }
                   })

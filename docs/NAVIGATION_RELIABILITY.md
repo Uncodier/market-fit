@@ -2,6 +2,12 @@
 
 ## Current behavior
 
+### Desktop detail navigation
+
+The workspace breadcrumb can show previous and next chevrons when a user opens an item from a supported ordered list. The originating view captures its filtered order from rows already loaded in the browser; it does not fetch additional pages or bypass the destination's normal access checks. Server-paginated lists stay within the loaded page. Grouped views use their rendered groups or the current section when sections open independently.
+
+The order is stored per browser tab and workspace. Direct links, Robots, public and buyer routes, standalone creation or edit routes, and views that only open dialogs do not participate. Unsaved or in-flight actions with a detail leave guard can cancel a chevron navigation.
+
 ### Mobile workspace navigation
 
 Below 768px, a floating bottom navigation replaces the workspace sidebar. Each

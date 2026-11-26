@@ -1,5 +1,6 @@
 'use client'
 
+import { useDetailViewLeaveGuard } from "@/app/hooks/use-detail-view-leave-guard"
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useSite } from '@/app/context/SiteContext'
@@ -37,6 +38,7 @@ export function ScopedRuleDetail({ siteId, ruleId: inputRuleId }: { siteId: stri
   const [closing, setClosing] = useState<ReplenishmentCase | null>(null)
   const [reason, setReason] = useState('')
   const [busy, setBusy] = useState(false)
+  useDetailViewLeaveGuard({ busy: busy || !!closing })
   const writeLock = useRef(false)
   const [writeError, setWriteError] = useState('')
   const [result, setResult] = useState<CheckResult | null>(null)

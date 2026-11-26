@@ -1,15 +1,15 @@
 "use client"
 
-import Link from "next/link"
+import { DetailViewLink } from "@/app/components/navigation/DetailViewLink"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { Badge } from "@/app/components/ui/badge"
 import { ConnectorLogo } from "./connector-logo"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import type { Toolkit } from "./types"
 
-export function ConnectorCard({ toolkit, domains }: { toolkit: Toolkit; domains: Record<string, string> }) {
+export function ConnectorCard({ toolkit, domains, siteId, orderedToolkits = [] }: { toolkit: Toolkit; domains: Record<string, string>; siteId?: string; orderedToolkits?: Toolkit[] }) {
   const { t } = useLocalization()
-  return <Link href={`/connectors/${encodeURIComponent(toolkit.slug)}`} aria-label={toolkit.name}
+  return <DetailViewLink siteId={siteId} paths={() => orderedToolkits.map(item => `/connectors/${encodeURIComponent(item.slug)}`)} href={`/connectors/${encodeURIComponent(toolkit.slug)}`} aria-label={toolkit.name}
     aria-description={toolkit.managed_oauth ? t("connectors.managedOAuthBadgeHelp") : undefined}
     className="group block h-full rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
     <Card className="h-full transition-colors group-hover:border-primary/50">
@@ -30,5 +30,5 @@ export function ConnectorCard({ toolkit, domains }: { toolkit: Toolkit; domains:
       <p>{t("connectors.accessSeparate")}</p>
     </CardContent>
     </Card>
-  </Link>
+  </DetailViewLink>
 }

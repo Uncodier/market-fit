@@ -28,6 +28,7 @@ export function AgentTable({ agents, query, isLoading, card, isExpanded }: Agent
       <TableBody>
         {isLoading ? Array.from({ length: 4 }, (_, i) => <GridAgentRowSkeleton key={i} />) : entries.map(({ agent, line, duplicateName }) => (
           <GridAgentRow key={agent.id} agent={agent} {...card} showId={duplicateName} reportingLabel={reportingLabel(line, duplicateNames, t)}
+            onManage={item => card.onManage(item, entries.map(entry => entry.agent))}
             isExpanded={isExpanded(agent)} onToggleExpand={card.onToggleActivities} />
         ))}
       </TableBody>

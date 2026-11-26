@@ -51,9 +51,10 @@ interface KanbanColumnProps {
     }[]
   }[]
   searchQuery?: string
+  siteId?: string
 }
 
-export function KanbanColumn({ title, tasks, searchQuery = "" }: KanbanColumnProps) {
+export function KanbanColumn({ title, tasks, searchQuery = "", siteId }: KanbanColumnProps) {
   const { t } = useLocalization()
   const [isCollapsed, setIsCollapsed] = useState(false)
   const router = useRouter()
@@ -80,6 +81,7 @@ export function KanbanColumn({ title, tasks, searchQuery = "" }: KanbanColumnPro
     navigateToCampaign({
       campaignId: id,
       campaignName: title,
+      origin: { siteId, rows: filteredTasks },
       router
     })
   }

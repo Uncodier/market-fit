@@ -1,5 +1,6 @@
 "use client"
 
+import { detailViewHref } from "@/lib/navigation/detail-view-navigation"
 import React, { useState, useEffect } from "react"
 import { isKnownDemoSite } from '@/lib/demo-data'
 import { useWorkspaceQuotations, type WorkspaceQuote } from "./use-workspace-quotations"
@@ -144,7 +145,7 @@ function WorkspaceQuotations() {
                   : (t("quotations.list.empty.descDefault") || "Create quotations from deals to send to your clients.")
               }
               onPageChange={setPage}
-              onRowClick={(id) => router.push(`/quotations/${id}`)} />
+              onRowClick={(id) => router.push(detailViewHref(currentSite?.id, "/quotations", id, rows))} />
           )}
         </div>
       </Tabs>

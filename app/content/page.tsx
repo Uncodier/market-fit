@@ -186,9 +186,9 @@ export default function ContentPage() {
     }
   }
 
-  const handleContentClick = async (content: ContentItem) => {
+  const handleContentClick = async (content: ContentItem, order: ContentItem[] = []) => {
     if (!currentSite?.id) return
-    await openContentItem(content, currentSite.id, router)
+    await openContentItem(content, currentSite.id, router, order)
   }
 
   const [publishingContent, setPublishingContent] = useState<ContentItem | null>(null)

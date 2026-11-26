@@ -1,6 +1,6 @@
 "use client"
 
-import Link from "next/link"
+import { DetailViewLink } from "@/app/components/navigation/DetailViewLink"
 import { isDemoSiteId, isDemoModeActive } from '@/lib/demo-utils'
 import { demoSuppliers } from '@/lib/demo-data/procurement-suppliers'
 import { ProcurementDemoNotice } from '@/app/purchases/procurement/ui/demo-notice'
@@ -72,13 +72,13 @@ export function SupplierList({ siteId }: { siteId: string }) {
         emptyTitle={t('procurement.partners.suppliers.empty')} description={t('procurement.partners.suppliers.emptyHint')} onRetry={() => setReload(value => value + 1)} />
       {!loading && !error && result && <>
         {!!result.suppliers.length && <>
-        {view === "kanban" && <SupplierBoard suppliers={result.suppliers} status={status} canMessage={result.can_create && !demo} />}
+        {view === "kanban" && <SupplierBoard siteId={siteId} suppliers={result.suppliers} status={status} canMessage={result.can_create && !demo} />}
         {view === "table" && <div className={documentListShellClassName()}><Table>
           <TableHeader><TableRow><DocumentListHead>{t('procurement.partners.suppliers.supplier')}</DocumentListHead><DocumentListHead>{t('procurement.common.status')}</DocumentListHead><DocumentListHead>{t('procurement.partners.contacts.primaryContact')}</DocumentListHead><DocumentListHead>{t('procurement.partners.suppliers.updated')}</DocumentListHead></TableRow></TableHeader>
           <TableBody>{result.suppliers.map(supplier => {
             const contact = supplier.contacts?.find(contact => contact.is_primary) ?? supplier.contacts?.[0]
             return <DocumentListRow key={supplier.id}>
-              <TableCell className="px-4 py-3"><Link aria-label={supplier.name} href={`/suppliers/${supplier.id}`}><EntityCell name={supplier.name} secondary={t(supplier.company_id ? 'procurement.partners.suppliers.company' : 'procurement.partners.suppliers.independent')} secondaryMono={false} /></Link></TableCell>
+              <TableCell className="px-4 py-3"><DetailViewLink aria-label={supplier.name} href={`/suppliers/${supplier.id}`} siteId={siteId} paths={() => result.suppliers.map(item => `/suppliers/${item.id}`)}><EntityCell name={supplier.name} secondary={t(supplier.company_id ? 'procurement.partners.suppliers.company' : 'procurement.partners.suppliers.independent')} secondaryMono={false} /></DetailViewLink></TableCell>
               <TableCell className="px-4 py-3"><StatusDot status={supplier.status === "approved" ? "active" : supplier.status === "under_review" ? "review" : supplier.status === "prospect" ? "new" : supplier.status} label={valueLabel(supplier.status)} /></TableCell>
               <TableCell className="px-4 py-3"><p className="text-sm">{contact?.name || "—"}</p><p className="text-xs text-muted-foreground">{contact?.email || contact?.phone}</p></TableCell>
               <TableCell className="px-4 py-3 text-xs text-muted-foreground"><div className="flex items-center justify-between gap-2">

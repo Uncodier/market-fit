@@ -237,7 +237,8 @@ export default function RecordDetailPage() {
           throw new Error(result.error)
         }
         if (result.record && activeRecordIdRef.current === recordIdAtSave) {
-          setRecord(current => current ? { ...current, updated_at: result.record.updated_at } : current)
+          // Refresh the saved snapshot without replacing any newer edits in the form.
+          setRecord(current => current ? { ...current, ...result.record, category: current.category } : current)
         }
         if (
           activeRecordIdRef.current === recordIdAtSave

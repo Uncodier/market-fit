@@ -18,7 +18,7 @@ export interface InsightsTabProps {
   formData: RecordItem["data"]
   description?: string
   record?: Partial<Omit<RecordItem, "category">> & {
-    category?: Pick<RecordCategory, "name">
+    category?: Pick<RecordCategory, "name" | "primary_date_field_id">
   }
   relationsData?: RecordItem["relations"]
 }

@@ -1,5 +1,6 @@
 "use client"
 
+import { detailViewHref } from "@/lib/navigation/detail-view-navigation"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import useSWR from "swr"
@@ -116,7 +117,7 @@ export default function ModifierGroupsPage() {
         ) : (
           <ModifierGroupsTable
             groups={data || []}
-            onOpen={(id) => router.push(`/catalog/modifier-groups/${id}`)}
+            onOpen={(id) => router.push(detailViewHref(currentSite.id, "/catalog/modifier-groups", id, data || []))}
             onCreate={() => setIsCreateOpen(true)}
           />
         )}

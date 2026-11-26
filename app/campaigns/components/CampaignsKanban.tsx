@@ -60,10 +60,12 @@ function mapCampaignToKanbanTask(campaign: Campaign, requirements: RequirementRo
 export function CampaignsKanban({
   campaignsByType,
   requirements,
+  siteId,
   searchQuery,
 }: {
   campaignsByType: Record<string, Campaign[]>
   requirements: RequirementRow[]
+  siteId?: string
   searchQuery: string
 }) {
   return (
@@ -75,6 +77,7 @@ export function CampaignsKanban({
             title={type === "publicRelations" ? "Public Relations" : type.charAt(0).toUpperCase() + type.slice(1)}
             tasks={typeCampaigns.map((campaign) => mapCampaignToKanbanTask(campaign, requirements))}
             searchQuery={searchQuery}
+            siteId={siteId}
           />
         ))}
       </div>

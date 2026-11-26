@@ -19,9 +19,14 @@ other numeric template fields. It does not infer financial or industry semantics
   populated relations the user must choose the subject relation before a history
   request starts. The authenticated existing Server Action returns accessible
   records from the same collection and relation target under RLS.
-- The date control defaults explicitly to record creation date. A template date
-  field can be selected for measurement/reporting dates. Missing or invalid dates
-  are excluded and counted, not silently replaced by creation time or today.
+- In **Edit Category Template**, select **Primary date for Insights** from the
+  category's Date fields. Edit the value in the record's normal form (or clear it
+  if optional) and save; the original creation timestamp is not changed. The category default drives the
+  metrics timeline, activity summary, and dated preview history. It falls back to
+  creation date for each missing or invalid value. Metrics disclose the count of
+  fallbacks and exclude observations without any valid date. Categories without a
+  configured field continue to use creation date. The chart's temporary manual
+  Date-field override still excludes missing values rather than mixing dates.
 - Timeline observations are saved records, not versions of a record. The current
   saved snapshot keeps its original date. Unsaved form values remain on the rows
   with a label and never enter history, averages or the predecessor comparison.
@@ -48,8 +53,14 @@ or relation groups; the widget performs no conversions or cohort inference.
 History uses the existing Server Action and its database response limits. Counts
 are explicitly **loaded records**, not a claim that arbitrarily large histories
 are complete. No backend, RLS, migration or production configuration change is
-part of this repair. Relation-free timelines reuse the category-wide read;
+part of the original metrics repair. Relation-free timelines reuse the category-wide read;
 subject timelines use only the selected relation group.
+
+The primary date setting requires the forward migration
+`20261126001000_records_primary_date.sql` before app rollout. It does not backfill
+records or change category RLS. The category editor clears the setting if the
+selected field is removed or changed to a non-Date type; direct updates must
+explicitly clear or replace it in the same write.
 
 ## Local regression checks
 

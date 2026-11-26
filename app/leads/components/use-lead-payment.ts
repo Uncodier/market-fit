@@ -1,5 +1,6 @@
 "use client"
 
+import { useDetailViewLeaveGuard } from "@/app/hooks/use-detail-view-leave-guard"
 import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import { getLeadOpenInvoices, registerLeadInvoicePayment } from "@/app/leads/payment-actions"
@@ -34,6 +35,7 @@ export function useLeadPayment({
   const inFlight = useRef(false)
   const unconfirmed = useRef(false)
   const generation = useRef(0)
+  useDetailViewLeaveGuard({ busy: uncertain })
   const mounted = useRef(false)
 
   useEffect(() => {

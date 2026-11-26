@@ -20,7 +20,7 @@ export function RecordInsightView({ fields, formData, description, record, relat
     numericData, metaAnalysis, macroAnalysis, dynamicCrosses,
     metricRecords, historyStatus, setHistoryRelation, retryHistory,
     primaryRelationName, primaryRelationLabel, macroRelationLabels,
-    activeRelations, allRelationLabels, categoryHistory,
+    activeRelations, allRelationLabels, categoryHistory, dateField,
   } = insights
 
   return (
@@ -66,6 +66,9 @@ export function RecordInsightView({ fields, formData, description, record, relat
             {/* Activity Summary */}
             <div>
               <h4 className="text-xs font-medium text-muted-foreground mb-3 border-b border-border/30 pb-1">Saved Record Activity</h4>
+              {dateField && <p className="mb-3 text-[11px] text-muted-foreground">
+                Based on {dateField.label || dateField.name}; uses creation date when unavailable.
+              </p>}
               <div className="grid grid-cols-2 gap-y-4 gap-x-2">
                 <div>
                   <div className="text-[11px] text-muted-foreground mb-0.5">Total Records</div>

@@ -8,6 +8,7 @@ export async function openContentItem(
   content: ContentItem,
   siteId: string,
   router: AppRouterInstance,
+  order: ContentItem[] = [],
 ) {
   if (content.id.startsWith("outstand-")) {
     try {
@@ -53,5 +54,6 @@ export async function openContentItem(
     }
   }
 
-  navigateToContent({ contentId: content.id, contentTitle: content.title, router })
+  navigateToContent({ contentId: content.id, contentTitle: content.title, router,
+    origin: { siteId, rows: order.filter(item => !item.id.startsWith("outstand-")) } })
 }

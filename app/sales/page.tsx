@@ -245,10 +245,11 @@ function WorkspaceSales({ siteId, actorId }: { siteId: string; actorId: string }
   }
   
   // Sale click handler (for future details view)
-  const handleSaleClick = (sale: Sale) => {
+  const handleSaleClick = (sale: Sale, order = filteredSales) => {
     navigateToSale({
       saleId: sale.id,
       saleName: sale.title || `Sale ${sale.id.substring(0, 8)}`,
+      origin: { siteId, rows: order },
       router
     })
   }

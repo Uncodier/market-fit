@@ -1,4 +1,5 @@
 'use client'
+import { DetailViewLink } from "@/app/components/navigation/DetailViewLink"
 import { useProcurementI18n } from '@/app/purchases/procurement/i18n/use-procurement-i18n'
 
 import { useEffect, useState } from 'react'
@@ -87,7 +88,7 @@ function ScopedRules({ siteId, search, status }: { siteId: string; search: strin
           <DocumentListHead className="w-[15%]" align="right">{t('procurement.workflow.replenishment.actions')}</DocumentListHead>
         </TableRow></TableHeader><TableBody>
           {visibleRules.map(rule => <DocumentListRow key={rule.id} className="cursor-default" accent={rule.enabled ? 'none' : 'cancelled'}>
-            <TableCell className="py-3.5"><Link className="block rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={rule.name} title={rule.name} href={`/inventory/minimums/${rule.id}`}><EntityCell name={rule.name} secondary={t('procurement.workflow.common.version', { number: rule.version })} secondaryMono={false} /></Link></TableCell>
+            <TableCell className="py-3.5"><DetailViewLink siteId={siteId} paths={() => visibleRules.map(item => `/inventory/minimums/${item.id}`)} className="block rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={rule.name} title={rule.name} href={`/inventory/minimums/${rule.id}`}><EntityCell name={rule.name} secondary={t('procurement.workflow.common.version', { number: rule.version })} secondaryMono={false} /></DetailViewLink></TableCell>
             <TableCell className="py-3.5"><StatusDot status={rule.enabled ? 'active' : 'inactive'} label={rule.enabled ? t('procurement.workflow.replenishment.enabled') : t('procurement.workflow.replenishment.disabled')} /></TableCell>
             <TableCell className="py-3.5 text-right font-medium tabular-nums">{formatNumber(rule.minimum)} / {formatNumber(rule.target)}</TableCell>
             <TableCell className="py-3.5 text-sm text-muted-foreground">{rule.action === 'draft' ? t('procurement.workflow.replenishment.createDraft') : t('procurement.workflow.replenishment.recordAlert')}</TableCell>

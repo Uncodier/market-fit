@@ -1,5 +1,6 @@
 "use client"
 
+import { detailViewHref } from "@/lib/navigation/detail-view-navigation"
 import React, { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Subscription } from "@/app/types"
@@ -137,7 +138,7 @@ export function SubscriptionsList({ subscriptions, siteId, onUpdate }: Subscript
               <DocumentListRow
                 key={sub.id}
                 accent={subscriptionAccent(sub.status)}
-                onClick={() => router.push(`/subscriptions/${sub.id}`)}
+                onClick={() => router.push(detailViewHref(siteId, "/subscriptions", sub.id, subscriptions))}
               >
                 <TableCell className="py-3.5">
                   <EntityCell

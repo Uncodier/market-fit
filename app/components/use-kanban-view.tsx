@@ -71,7 +71,7 @@ interface KanbanViewProps {
   leads: Lead[]
   onUpdateLeadStatus: (leadId: string, newStatus: string) => Promise<void>
   segments: Array<{ id: string; name: string }>
-  onLeadClick: (lead: Lead) => void
+  onLeadClick: (lead: Lead, order?: Lead[]) => void
   filters?: LeadFilters
   onOpenFilters?: () => void
   onUpdateLead?: (leadId: string, updates: Partial<Lead>) => void // Add callback for lead updates
@@ -391,7 +391,7 @@ export function useKanbanView({
   const handleCardClick = (e: React.MouseEvent, lead: Lead) => {
     // Evitamos que el clic se propague al draggable
     e.stopPropagation();
-    onLeadClick(lead);
+    onLeadClick(lead, LEAD_STATUSES.flatMap(column => leadsByStatus[column.id]));
   }
   
   // Check if there are no leads at all

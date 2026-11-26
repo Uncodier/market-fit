@@ -1,3 +1,4 @@
+import { openDetailFromView } from "@/lib/navigation/detail-view-navigation"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "react-hot-toast"
@@ -58,7 +59,7 @@ export function useAgentListActions(siteId?: string, userId?: string, url?: stri
   return {
     selection: { selectedAgent, setSelectedAgent, selectedActivity, setSelectedActivity },
     card: {
-      onManage: (agent: ListedAgent) => router.push(agentDetailHref(agent)), onChat: chat, onExecuteActivity: execute,
+      onManage: (agent: ListedAgent, order: ListedAgent[] = []) => router.push(openDetailFromView(siteId, agentDetailHref(agent), order.filter(item => item.dbData).map(agentDetailHref))), onChat: chat, onExecuteActivity: execute,
       onToggleActivities: (agent: ListedAgent) => setExpanded(ids => ids.includes(agent.id) ? ids.filter(id => id !== agent.id) : [...ids, agent.id]),
       setSelectedAgent, activityStates,
     },

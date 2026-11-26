@@ -6,6 +6,7 @@ import { SearchInput } from "@/app/components/ui/search-input"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Tabs, TabsContent } from "@/app/components/ui/tabs"
 import { useLocalization } from "@/app/context/LocalizationContext"
+import { useDetailViewLeaveGuard } from "@/app/hooks/use-detail-view-leave-guard"
 import { EditorActivitiesTab } from "./editor-activities-tab"
 import { EditorBasicTab } from "./editor-basic-tab"
 import { EditorContextTab } from "./editor-context-tab"
@@ -20,6 +21,7 @@ export function AgentEditor({ siteId, routeId, initialProfile, initialTab = "bas
   const [queries, setQueries] = useState({ context: "", activities: "" })
   const { t } = useLocalization()
   const { save, saving, disabled } = useEditorSave(siteId, routeId, profile)
+  useDetailViewLeaveGuard({ busy: saving })
   const update = (patch: Partial<EditorProfile>) => setProfile((previous) => ({ ...previous, ...patch }))
   const persistedId = initialProfile.persistedId
   const blank = routeId === "new"

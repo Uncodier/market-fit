@@ -88,10 +88,11 @@ export function useLeadsPage() {
     setCurrentPage(1)
   }
 
-  const handleLeadClick = (lead: Lead) => {
+  const handleLeadClick = (lead: Lead, order: Lead[] = []) => {
     navigateToLead({
       leadId: lead.id,
       leadName: lead.name,
+      origin: { siteId: currentSite?.id, rows: order },
       router
     })
   };

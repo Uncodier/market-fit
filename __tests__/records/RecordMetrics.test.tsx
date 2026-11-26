@@ -109,4 +109,17 @@ describe("generic RecordMetrics widget", () => {
     expect(screen.getByRole("link", { name: "Earlier observation" })).toBeInTheDocument()
     expect(screen.queryByText("+500 vs. previous observation")).not.toBeInTheDocument()
   })
+
+  it("defaults to the category date, reports fallback, and allows explicit creation dates", () => {
+    const saved = { ...current, data: { ...current.data, Measured: "2025-12-01" } }
+    const record = { ...saved, category: { name: "Measurements", primary_date_field_id: "measured" } }
+    render(<RecordMetrics {...props} record={record} formData={record.data} records={[older, saved]}
+      fields={[...props.fields, { id: "measured", name: "Measured", label: "Measurement date", type: "date" }]} />)
+    expect(screen.getByText("Creation date used for 1 record without a valid primary date.")).toBeInTheDocument()
+    expect(screen.queryByText("+500 vs. previous observation")).not.toBeInTheDocument()
+    fireEvent.click(screen.getByText("History settings"))
+    fireEvent.keyDown(screen.getByRole("combobox", { name: "Timeline date" }), { key: "ArrowDown" })
+    fireEvent.click(screen.getByRole("option", { name: "Record creation date" }))
+    expect(screen.getByText("+500 vs. previous observation")).toBeInTheDocument()
+  })
 })

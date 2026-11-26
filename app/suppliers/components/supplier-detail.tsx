@@ -1,5 +1,6 @@
 "use client"
 
+import { useDetailViewLeaveGuard } from "@/app/hooks/use-detail-view-leave-guard"
 import { useRouter } from "next/navigation"
 import { isDemoSiteId, isDemoModeActive } from '@/lib/demo-utils'
 import { demoSuppliers } from '@/lib/demo-data/procurement-suppliers'
@@ -48,6 +49,7 @@ export function SupplierDetail({ siteId, id, onCancel }: { siteId: string; id: s
   const inFlight = useRef(false)
   const alive = useRef(true)
   const dirty = JSON.stringify(draft) !== JSON.stringify(snapshot)
+  useDetailViewLeaveGuard({ busy: saving, dirty: !creating && dirty })
   const companyDetails = useSupplierCompany(siteId, id, snapshot?.company_id, snapshot?.expected_version)
   const company = companyDetails.company?.id === draft?.company_id ? companyDetails.company : null
   const contact = preferredSupplierContact(draft?.contacts || [], company)

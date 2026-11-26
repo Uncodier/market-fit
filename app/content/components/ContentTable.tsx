@@ -62,7 +62,7 @@ interface ContentTableProps {
   totalContent: number
   onPageChange: (page: number) => void
   onItemsPerPageChange: (value: string) => void
-  onContentClick: (content: ContentItem) => void
+  onContentClick: (content: ContentItem, order?: ContentItem[]) => void
   segments: Array<{ id: string; name: string }>
   campaigns: Array<{ id: string; title: string }>
   onRatingChange?: (contentId: string, rating: number) => void
@@ -170,7 +170,7 @@ export function ContentTable({
                   return (
                     <DocumentListRow
                       key={content.id}
-                      onClick={() => onContentClick(content)}
+                      onClick={() => onContentClick(content, CONTENT_STATUSES.flatMap(column => groupedContent[column.id] || []))}
                       accent={contentAccent(content.status)}
                     >
                       <TableCell className="py-3.5">

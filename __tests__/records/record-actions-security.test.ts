@@ -3,6 +3,7 @@ import {
   getRecords,
   updateRecord,
   createRecord,
+  createRecordCategory,
   updateRecordCategory,
 } from "@/app/records/actions"
 
@@ -106,6 +107,31 @@ describe("record action authorization", () => {
     const result = await updateRecordCategory(categoryId, { site_id: siteId }, "2026-11-10T00:00:00Z")
     expect(result.error).toBeTruthy()
     expect(from).not.toHaveBeenCalled()
+  })
+
+  it("rejects creation with a primary date that points to a non-date field", async () => {
+    const from = jest.fn()
+    jest.mocked(createClient).mockResolvedValue({
+      auth: { getUser: jest.fn().mockResolvedValue({ data: { user: { id: "user" } } }) }, from,
+    } as never)
+    const result = await createRecordCategory({ site_id: siteId, name: "Measurements",
+      template_fields: [{ id: "count", name: "Count", type: "number" }], primary_date_field_id: "count" })
+    expect(result.error).toMatch(/Choose a date field/)
+    expect(from).not.toHaveBeenCalled()
+  })
+
+  it("does not orphan the primary date when a partial template update removes the field", async () => {
+    const version = "2026-11-10T00:00:00Z"
+    const query: { select: jest.Mock; eq: jest.Mock; update: jest.Mock; maybeSingle: jest.Mock } = {
+      select: jest.fn(() => query), eq: jest.fn(() => query), update: jest.fn(() => query),
+      maybeSingle: jest.fn().mockResolvedValue({ data: { site_id: siteId, updated_at: version,
+        primary_date_field_id: "day", template_fields: [{ id: "day", name: "Day", type: "date" }] } }),
+    }
+    jest.mocked(createClient).mockResolvedValue({
+      auth: { getUser: jest.fn().mockResolvedValue({ data: { user: { id: "user" } } }) }, from: jest.fn(() => query),
+    } as never)
+    expect((await updateRecordCategory(categoryId, { template_fields: [] }, version)).error).toMatch(/Choose a date field/)
+    expect(query.update).not.toHaveBeenCalled()
   })
 
   it.each(["stale tab", "late concurrent write", "concurrent template edit"])("rejects a %s without overwriting the newer version", async (scenario) => {

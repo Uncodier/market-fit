@@ -10,13 +10,14 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { Archive, DatabaseIcon, Edit } from "@/app/components/ui/icons"
 import { resolveItemImage } from "@/app/lib/image-utils"
 import { PromptImage } from "@/app/components/commerce/PromptImage"
-import { NavigationLink } from "@/app/components/navigation/NavigationLink"
+import { DetailViewLink } from "@/app/components/navigation/DetailViewLink"
 import { GripHorizontal } from "@/app/components/ui/icons"
 
 import { Button } from "@/app/components/ui/button"
 import type { CatalogResultKind } from "@/lib/catalog-search/types"
 
 interface KanbanViewProps {
+  siteId?: string
   items: CatalogItem[]
   categories: CatalogCategory[]
   onDragEnd?: (result: any) => void
@@ -25,7 +26,8 @@ interface KanbanViewProps {
   resultKind?: CatalogResultKind
 }
 
-export function KanbanView({ 
+export function KanbanView({
+  siteId,
   items, 
   categories,
   onDragEnd,
@@ -202,13 +204,14 @@ export function KanbanView({
                                               <div className="text-sm font-medium line-clamp-2 pr-2">
                                                 {item.name}
                                               </div>
-                                              <NavigationLink 
-                                                href={`/catalog/${item.id}`} 
+                                              <DetailViewLink
+                                                href={`/catalog/${item.id}`} siteId={siteId}
+                                                      paths={() => orderedColumns.flatMap(col => col.items.slice(0, getVisibleCount(col.id))).map(row => `/catalog/${row.id}`)}
                                                 className="text-muted-foreground hover:text-muted-foreground shrink-0"
                                                 onClick={e => e.stopPropagation()}
                                               >
                                                 <Edit className="h-3 w-3" />
-                                              </NavigationLink>
+                                              </DetailViewLink>
                                             </div>
                                             {item.parent && (
                                               <div className="text-xs text-primary/80 font-medium mb-1 truncate">

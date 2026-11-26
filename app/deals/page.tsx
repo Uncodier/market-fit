@@ -141,8 +141,8 @@ export default function DealsPage() {
     setCurrentPage(1)
   }
 
-  const handleDealClick = (deal: Deal) => {
-    navigateToDeal({ dealId: deal.id, dealName: deal.name, router })
+  const handleDealClick = (deal: Deal, order = filteredDeals) => {
+    navigateToDeal({ dealId: deal.id, dealName: deal.name, router, origin: { siteId: currentSite?.id, rows: order } })
   }
 
   const handleUpdateDealStage = async (dealId: string, newStage: string) => {

@@ -3,7 +3,8 @@ import { buildPreviewRequests, fieldPreviewKey, fetchPreviewBatches } from "../.
 import { useEffect, useMemo, useState } from "react"
 import { getRecords, type RecordItem } from "../../actions"
 import { useMetricHistory } from "./use-metric-history"
-import { isMetricNumber, metricDate, metricNumber, savedMetricRecords } from "./record-metrics"
+import { primaryDateField } from "../../lib/primary-date"
+import { isMetricNumber, metricNumber, resolveInsightDate, savedMetricRecords } from "./record-metrics"
 import type { InsightChartPoint, InsightCross, InsightsTabProps } from "./insights-types"
 
 export function useRecordInsights({ fields, formData, description, record, relationsData }: InsightsTabProps) {
@@ -12,6 +13,8 @@ export function useRecordInsights({ fields, formData, description, record, relat
 
   // 2. Numeric Charts
   const numberFields = useMemo(() => fields.filter(f => f.type === 'number'), [fields])
+  const dateField = primaryDateField(fields, record?.category?.primary_date_field_id)
+  const dateFieldName = dateField?.name
   
   // 3. Select / Pie Charts
   const selectFields = fields.filter(f => f.type === 'select' && formData[f.name])
@@ -92,14 +95,14 @@ export function useRecordInsights({ fields, formData, description, record, relat
   const chartData = useMemo<InsightChartPoint[]>(() => {
     if (!numberFields.length || historyStatus === "loading" || historyStatus === "error") return []
     return metricRecords.flatMap(item => {
-      const timestamp = metricDate(item.created_at)
+      const { timestamp } = resolveInsightDate(item, dateFieldName, true)
       if (timestamp === null) return []
       const rawDate = new Date(timestamp)
       return [{ id: item.id, rawDate, date: rawDate.toLocaleDateString(),
         values: Object.fromEntries(numberFields.map(field => [field.name, metricNumber(item.data[field.name])])),
       }]
     }).sort((a, b) => a.rawDate.getTime() - b.rawDate.getTime())
-  }, [metricRecords, numberFields, historyStatus])
+  }, [metricRecords, numberFields, historyStatus, dateFieldName])
 
   const numericData = numberFields.map(field => ({ name: field.name, value: metricNumber(formData[field.name]) }))
 
@@ -109,8 +112,10 @@ export function useRecordInsights({ fields, formData, description, record, relat
 
     const totalRecords = categoryHistory.length
 
-    // Sort ascending to calculate time differences
-    const sorted = [...categoryHistory].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+    // Keep undated rows in non-temporal aggregates, after dated rows.
+    const sorted = categoryHistory.map(item => ({
+      item, timestamp: resolveInsightDate(item, dateFieldName, true).timestamp ?? Infinity,
+    })).sort((a, b) => a.timestamp - b.timestamp).map(({ item }) => item)
     
     // Numeric field stats
     const numericStats = numberFields.map(f => {
@@ -178,7 +183,7 @@ export function useRecordInsights({ fields, formData, description, record, relat
       numericStats,
       categoricalStats
     }
-  }, [categoryHistory, numberFields, categoricalFields, formData, relationsData])
+  }, [categoryHistory, numberFields, categoricalFields, formData, relationsData, dateFieldName])
   const [macroRelationLabels, setMacroRelationLabels] = useScopedPreviewState<Record<string, string>>(record?.site_id, {})
 
   useEffect(() => {
@@ -391,6 +396,6 @@ export function useRecordInsights({ fields, formData, description, record, relat
     chartData, numericData, metaAnalysis, macroAnalysis, dynamicCrosses,
     metricRecords, historyStatus, setHistoryRelation, retryHistory,
     primaryRelationName, primaryRelationLabel, macroRelationLabels,
-    activeRelations, allRelationLabels, categoryHistory, categoryStatus,
+    activeRelations, allRelationLabels, categoryHistory, categoryStatus, dateField,
   }
 }

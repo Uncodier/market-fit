@@ -1,5 +1,6 @@
 "use client"
 
+import { detailViewHref } from "@/lib/navigation/detail-view-navigation"
 import React, { useEffect, useState } from "react"
 import useSWR from "swr"
 import { useRouter , useSearchParams} from "next/navigation"
@@ -172,7 +173,7 @@ export default function BillsPage() {
             pageSize={pageSize}
             totalCount={data?.count ?? 0}
             onPageChange={setPage}
-            onOpen={(id) => router.push(`/bills/${id}`)}
+            onOpen={(id) => router.push(detailViewHref(currentSite?.id, "/bills", id, rows))}
             onUpdate={() => void mutate()}
             onDelete={handleDelete} />
         )}

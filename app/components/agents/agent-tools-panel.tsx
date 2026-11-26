@@ -1,6 +1,7 @@
 "use client"
 
-import React, { useState, useEffect, useMemo, useCallback } from "react"
+import { detailViewHref } from "@/lib/navigation/detail-view-navigation"
+import React, { useState, useEffect, useMemo } from "react"
 import useSWR from "swr"
 import { Button } from "@/app/components/ui/button"
 import { CheckCircle2, AlertCircle, Clock, FileText, RotateCcw, PlayCircle } from "@/app/components/ui/icons"
@@ -308,16 +309,6 @@ export function AgentToolsPanel() {
 
   const logs = allLogs;
   
-  // Handle navigation to log detail page
-  const handleNavigateToLog = useCallback((logId: string) => {
-    try {
-      // Navigate to log detail route
-      router.push(`/agents/tools/${logId}`);
-    } catch (err) {
-      console.error("Error navigating to log detail:", err);
-    }
-  }, [router]);
-
   // Load more logs
   const handleLoadMore = async () => {
     if (isLoadingMore || !hasMore) return;
@@ -403,7 +394,7 @@ export function AgentToolsPanel() {
                 isLoading={isLoadingMore}
                 onRowClick={(log) => {
                   if (!log?.id) return;
-                  handleNavigateToLog(log.id);
+                  router.push(detailViewHref(currentSite?.id, "/agents/tools", log.id, filteredLogs));
                 }}
               />
             )}

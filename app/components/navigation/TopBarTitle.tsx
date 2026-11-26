@@ -274,7 +274,7 @@ export function TopBarTitle({
         </h1>
       )}
 
-      {afterTitle ? <div className="shrink-0">{afterTitle}</div> : null}
+      {afterTitle ? <div className="shrink-0 empty:hidden">{afterTitle}</div> : null}
       
       {(helpText || helpWelcomeMessage || helpTask) && (
         <HelpButton

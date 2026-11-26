@@ -1,5 +1,6 @@
 "use client"
 
+import { detailViewHref } from "@/lib/navigation/detail-view-navigation"
 import { MobileFiltersDrawer, FilterContainer, FilterSection, FilterSeparator } from "@/app/components/ui/mobile-filters-drawer"
 import { SortDropdown } from "@/app/components/ui/sort-dropdown"
 
@@ -119,7 +120,7 @@ export default function PromotionsPage() {
             pageSize={pageSize}
             totalCount={data?.count ?? 0}
             onPageChange={setPage}
-            onOpen={(id) => router.push(`/promotions/${id}`)}
+            onOpen={(id) => router.push(detailViewHref(currentSite?.id, "/promotions", id, data?.data || []))}
             onCreate={() => setIsCreateOpen(true)} />
         )}
       </div>

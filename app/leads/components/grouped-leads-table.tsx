@@ -78,7 +78,7 @@ interface GroupedLeadsTableProps {
   totalCompanies: number
   onPageChange: (page: number) => void
   onItemsPerPageChange: (value: string) => void
-  onLeadClick: (lead: Lead) => void
+  onLeadClick: (lead: Lead, order?: Lead[]) => void
   forceReload: number
   invalidateJourneyStageCache: (leadId: string) => void
   onUpdateLead?: (leadId: string, updates: Partial<Lead> & { invalidated?: boolean }) => void
@@ -118,6 +118,9 @@ export function GroupedLeadsTable({
   const indexOfFirstItem = (currentPage - 1) * itemsPerPage
   const totalPages = Math.ceil(totalCompanies / itemsPerPage)
   const paginatedCompanies = (companyGroups || []).slice(indexOfFirstItem, indexOfFirstItem + itemsPerPage)
+  const openLead = (lead: Lead) => onLeadClick(lead, paginatedCompanies.flatMap(group =>
+    group.leadCount <= 1 ? [group.mostAdvancedLead] : group.isExpanded ? group.leads : []
+  ))
   const actions = useLeadTableActions({
     companyGroups,
     invalidateJourneyStageCache,
@@ -196,7 +199,7 @@ export function GroupedLeadsTable({
                   <DocumentListRow
                     onClick={() => {
                       if (group.leadCount > 1) onToggleCompanyExpansion(group.companyKey)
-                      else onLeadClick(lead)
+                      else openLead(lead)
                     }}
                   >
                     <TableCell className="px-3 py-3.5" onClick={(event) => event.stopPropagation()}>
@@ -276,7 +279,7 @@ export function GroupedLeadsTable({
                         onResearch={() => actions.handleLeadResearch(lead.id, group.leadCount > 1, group.leads)}
                         onFollowUp={() => actions.handleLeadFollowUp(lead.id, group.leadCount > 1, group.leads)}
                         onInvalidate={() => actions.handleLeadInvalidation(lead.id, group.leadCount > 1, group.leads)}
-                        onEdit={() => onLeadClick(lead)}
+                        onEdit={() => openLead(lead)}
                         onConversation={() => actions.handleNewConversation(lead.id)}
                         onDelete={onDeleteLead ? () => actions.handleDeleteLead(lead) : undefined}
                       />
@@ -286,7 +289,7 @@ export function GroupedLeadsTable({
                   {group.leadCount > 1 && group.isExpanded && group.leads.map((child) => {
                     const childJourney = leadJourneyStages[child.id] || "not_contacted"
                     return (
-                      <DocumentListRow key={child.id} onClick={() => onLeadClick(child)} className="bg-muted/20">
+                      <DocumentListRow key={child.id} onClick={() => openLead(child)} className="bg-muted/20">
                         <TableCell className="px-3 py-3" onClick={(event) => event.stopPropagation()}>
                           <Checkbox
                             checked={selectedLeads.has(child.id)}
@@ -330,7 +333,7 @@ export function GroupedLeadsTable({
                             onResearch={() => actions.handleLeadResearch(child.id)}
                             onFollowUp={() => actions.handleLeadFollowUp(child.id)}
                             onInvalidate={() => actions.handleLeadInvalidation(child.id)}
-                            onEdit={() => onLeadClick(child)}
+                            onEdit={() => openLead(child)}
                             onConversation={() => actions.handleNewConversation(child.id)}
                             onDelete={onDeleteLead ? () => actions.handleDeleteLead(child) : undefined}
                           />

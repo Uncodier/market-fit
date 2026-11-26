@@ -12,6 +12,8 @@ import { useWorkspaceStartup } from '@/app/workspace-preview/WorkspaceStartupBou
 import { TopBarTitle } from "./TopBarTitle"
 import { PosTopBarActions } from "./PosTopBarActions"
 import { PosTopBarSync } from "./PosTopBarSync"
+import { WorkspaceDetailNavigation } from "./WorkspaceDetailNavigation"
+import { isDetailViewRoute } from "@/lib/navigation/detail-view-navigation"
 
 const TopBarActions = dynamic(
   () => import("./TopBarActions").then((mod) => mod.TopBarActions),
@@ -197,7 +199,7 @@ export function TopBar({
               helpTask={helpTask}
               afterTitle={pathname === "/pos" ? <PosTopBarSync /> : /^\/records\/[^/]+$/.test(pathname) ? (
                 <div id="record-breadcrumb-actions" className="hidden md:block" />
-              ) : null}
+              ) : !startup && isDetailViewRoute(pathname) ? <WorkspaceDetailNavigation pathname={pathname} /> : null}
               isCollapsed={isCollapsed}
               onCollapse={onCollapse}
               hideSidebarToggle={hideSidebarToggle}

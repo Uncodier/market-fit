@@ -69,7 +69,7 @@ export interface KanbanViewProps {
   requirements: Requirement[]
   onUpdateRequirementStatus: (requirementId: string, newStatus: RequirementStatusType) => Promise<void>
   segments: Array<{ id: string; name: string, description: string }>
-  onRequirementClick: (requirement: Requirement) => void
+  onRequirementClick: (requirement: Requirement, ordered?: Requirement[]) => void
   filters?: RequirementFilters
   onOpenFilters?: () => void
 }

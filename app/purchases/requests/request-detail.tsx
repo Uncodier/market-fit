@@ -1,4 +1,5 @@
 'use client'
+import { useDetailViewLeaveGuard } from "@/app/hooks/use-detail-view-leave-guard"
 import { ProcurementDemoNotice } from '@/app/purchases/procurement/ui/demo-notice'
 import { useProcurementI18n } from '@/app/purchases/procurement/i18n/use-procurement-i18n'
 
@@ -43,6 +44,7 @@ function WorkspaceDetail({ siteId, id }: { siteId: string; id: string }) {
   const [tab, setTab] = useState('approvals')
   const [reasons, setReasons] = useState<Record<string, string>>({})
   const [editing, setEditing] = useState(false)
+  useDetailViewLeaveGuard({ busy: busy || editing })
   const [confirmRevalidation, setConfirmRevalidation] = useState(false)
   const [reload, setReload] = useState(0)
   const endpoint = `/api/procurement/requests/${encodeURIComponent(id)}?site_id=${siteId}`

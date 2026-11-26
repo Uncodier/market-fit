@@ -1,5 +1,6 @@
 "use client"
 
+import { openDetailFromView } from "@/lib/navigation/detail-view-navigation"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/utils/supabase/client"
@@ -164,7 +165,9 @@ function RepositoryList({ siteId, searchQuery, viewMode }: { siteId?: string; se
           {latestRepos.map((repo) => (
             <RepositoryItem 
               key={repo.id} 
-              repo={repo} 
+              repo={repo}
+              siteId={siteId}
+              orderedRepos={latestRepos}
             />
           ))}
         </TableBody>
@@ -174,9 +177,11 @@ function RepositoryList({ siteId, searchQuery, viewMode }: { siteId?: string; se
 }
 
 function RepositoryItem({ 
-  repo, 
-}: { 
-  repo: RequirementStatusRepo,
+  repo, siteId, orderedRepos,
+}: {
+  repo: RequirementStatusRepo
+  siteId?: string
+  orderedRepos: RequirementStatusRepo[]
 }) {
   const router = useRouter()
   const title = repo.requirements?.title || 'Unknown Requirement'
@@ -188,7 +193,8 @@ function RepositoryItem({
       onClick={() => {
         // According to user requirements: Code should be an independent app,
         // so we route directly to the standalone code viewer page.
-        router.push(`/applications/repositories/${reqId}?name=${encodeURIComponent(title)}`)
+        router.push(openDetailFromView(siteId, `/applications/repositories/${reqId}?name=${encodeURIComponent(title)}`,
+          orderedRepos.flatMap(item => item.requirements?.id ? [`/applications/repositories/${item.requirements.id}`] : [])))
       }}
       accent="none"
     >

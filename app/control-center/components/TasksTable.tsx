@@ -32,7 +32,7 @@ interface TasksTableProps {
   totalTasks: number
   onPageChange: (page: number) => void
   onItemsPerPageChange: (value: string) => void
-  onTaskClick: (task: ExtendedTask) => void
+  onTaskClick: (task: ExtendedTask, order?: ExtendedTask[]) => void
   categories: Array<{ id: string; name: string }>
   selectedTasks: Set<string>
   onToggleTaskSelection: (taskId: string) => void
@@ -152,7 +152,7 @@ export function TasksTable({
                   return (
                     <DocumentListRow
                       key={task.id}
-                      onClick={() => onTaskClick(task)}
+                      onClick={() => onTaskClick(task, STATUS_ORDER.flatMap(status => groupedTasks[status]))}
                       accent={taskAccent(task)}
                       className={selectedTasks.has(task.id) ? "bg-primary/5" : undefined}
                     >

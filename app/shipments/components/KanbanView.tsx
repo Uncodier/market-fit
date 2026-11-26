@@ -1,5 +1,6 @@
 "use client"
 
+import { DetailViewLink } from "@/app/components/navigation/DetailViewLink"
 import React from "react"
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd"
 import { Card } from "@/app/components/ui/card"
@@ -8,7 +9,6 @@ import { ScrollArea } from "@/app/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
 import { format, formatDistanceToNow } from "date-fns"
 import { Send, ExternalLink } from "@/app/components/ui/icons"
-import Link from "next/link"
 import { navigateToOrder } from "@/lib/navigation/navigation-helpers"
 import { useRouter } from "next/navigation"
 import type { ShipmentWithRelations } from "../types"
@@ -37,11 +37,13 @@ const SHIPMENT_STATUSES = [
 ]
 
 interface KanbanViewProps {
+  siteId?: string
   shipments: ShipmentWithRelations[]
   onUpdateShipmentStatus: (shipmentId: string, newStatus: string) => Promise<void>
 }
 
-export function KanbanView({ 
+export function KanbanView({
+  siteId,
   shipments, 
   onUpdateShipmentStatus
 }: KanbanViewProps) {
@@ -125,13 +127,14 @@ export function KanbanView({
                                         shipment.sale_orders?.order_number || 'Unknown Order'
                                       )}
                                     </div>
-                                    <Link 
-                                      href={`/shipments/${shipment.id}`} 
+                                    <DetailViewLink
+                                      href={`/shipments/${shipment.id}`} siteId={siteId}
+                                      paths={() => SHIPMENT_STATUSES.flatMap(column => shipmentsByStatus[column.id].map(item => `/shipments/${item.id}`))}
                                       className="text-muted-foreground hover:text-muted-foreground"
                                       onClick={e => e.stopPropagation()}
                                     >
                                       <ExternalLink className="h-3 w-3" />
-                                    </Link>
+                                    </DetailViewLink>
                                   </div>
                                   <div className="flex items-center gap-2 mb-2">
                                     <MarketplaceBadges metadata={shipment.metadata} />

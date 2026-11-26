@@ -1,5 +1,6 @@
 "use client"
 
+import { detailViewHref } from "@/lib/navigation/detail-view-navigation"
 import { MobileFiltersDrawer, FilterContainer, FilterSection } from "@/app/components/ui/mobile-filters-drawer"
 import { SortDropdown } from "@/app/components/ui/sort-dropdown"
 
@@ -295,7 +296,7 @@ export default function TransactionsPage() {
             pageSize={pageSize}
             totalCount={data?.count ?? 0}
             onPageChange={setPage}
-            onOpen={(id) => router.push(`/transactions/${id}`)}
+            onOpen={(id) => router.push(detailViewHref(currentSite?.id, "/transactions", id, data?.data || []))}
             onEdit={handleEdit}
             onDelete={handleDelete}
             onPublish={handlePublish}

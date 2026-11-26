@@ -167,10 +167,11 @@ export function useControlCenterPage() {
   }
 
   // Handle task click
-  const handleTaskClick = (task: ExtendedTask) => {
+  const handleTaskClick = (task: ExtendedTask, order: ExtendedTask[] = []) => {
     navigateToTask({
       taskId: task.id,
       taskTitle: task.title,
+      origin: { siteId: currentSite?.id, rows: order },
       router
     })
   }

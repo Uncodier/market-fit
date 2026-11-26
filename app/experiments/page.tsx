@@ -1,5 +1,6 @@
 "use client"
 
+import { detailViewHref } from "@/lib/navigation/detail-view-navigation"
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSite } from '@/app/context/SiteContext'
@@ -86,7 +87,7 @@ function ExperimentIndex({ siteId, waiting }: { siteId?: string; waiting: boolea
                 : <ExperimentEmptyState status={status} />
               : <div className="space-y-2">{visible.map(experiment => <ExperimentRow key={experiment.id} experiment={experiment}
                 isExpanded={false} isLoading={!!busy[experiment.id]} onStart={id => void changeStatus(id, true)}
-                onStop={id => void changeStatus(id, false)} onView={row => router.push(`/experiments/${row.id}`)} />)}</div>}
+                onStop={id => void changeStatus(id, false)} onView={row => router.push(detailViewHref(siteId, "/experiments", row.id, visible))} />)}</div>}
             </TabsContent>
           })}
       </div></div>

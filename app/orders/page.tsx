@@ -175,7 +175,7 @@ export default function OrdersPage() {
         totalCount={data?.count ?? 0}
         searchQuery={searchQuery}
         onPageChange={setPage}
-        onOrderClick={(order) => navigateToOrder({ orderId: order.id, orderNumber: order.order_number, router })}
+        onOrderClick={(order) => navigateToOrder({ orderId: order.id, orderNumber: order.order_number, router, origin: { siteId: currentSite?.id, rows: data?.data || [] } })}
         onPay={(order) => openPosAction(order, "pay")}
         onSplit={(order) => openPosAction(order, "split")}
         onPrintFull={(order) => printOrder(order, "full")}
@@ -333,7 +333,7 @@ export default function OrdersPage() {
               ) : (
                 <OrdersKanban
                   orders={data?.data || []}
-                  onOrderClick={(order) => navigateToOrder({ orderId: order.id, orderNumber: order.order_number, router })}
+                  onOrderClick={(order, rows) => navigateToOrder({ orderId: order.id, orderNumber: order.order_number, router, origin: { siteId: currentSite?.id, rows: rows || [] } })}
                   onUpdateOrderStatus={handleUpdateOrderStatus}
                   onPay={(order) => openPosAction(order, "pay")}
                   onSplit={(order) => openPosAction(order, "split")}
@@ -360,7 +360,7 @@ export default function OrdersPage() {
                   totalCount={data?.count ?? 0}
                   searchQuery={searchQuery}
                   onPageChange={setPage}
-                  onOrderClick={(order) => navigateToOrder({ orderId: order.id, orderNumber: order.order_number, router })}
+                  onOrderClick={(order) => navigateToOrder({ orderId: order.id, orderNumber: order.order_number, router, origin: { siteId: currentSite?.id, rows: data?.data || [] } })}
                   onPay={(order) => openPosAction(order, "pay")}
                   onSplit={(order) => openPosAction(order, "split")}
                   onPrintFull={(order) => printOrder(order, "full")}

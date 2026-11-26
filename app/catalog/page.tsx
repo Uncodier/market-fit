@@ -342,7 +342,7 @@ export default function CatalogPage() {
                 ) : (
                   <div className="h-full min-w-0 w-full flex flex-col">
                       {data?.items.data && data.items.data.length > 0 ? (
-                        <KanbanView 
+                        <KanbanView siteId={currentSite?.id}
                           key={scope}
                           items={data.items.data}
                           categories={data.categories}

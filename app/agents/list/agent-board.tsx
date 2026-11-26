@@ -7,6 +7,7 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { cn } from "@/lib/utils"
 import { projectAgentHierarchy, reportingLabel, type HierarchyNode } from "./agent-hierarchy"
 import type { AgentListViewProps } from "./use-agent-list-actions"
+import type { ListedAgent } from "./agent-list-model"
 
 type BranchProps = Pick<AgentListViewProps, "card" | "isExpanded"> & {
   node: HierarchyNode
@@ -40,12 +41,18 @@ export function AgentBoard({ agents, query, isLoading, card, isExpanded }: Agent
   const { roots, templates, duplicateNames } = useMemo(() => projectAgentHierarchy(agents, query), [agents, query])
   if (isLoading) return <AgentBoardSkeleton />
   if (!roots.length && !templates.length) return <p className="p-8 text-center text-muted-foreground">{t("agents.grid.empty.title")}</p>
+  const hierarchyCard = { ...card, onManage: (agent: ListedAgent) => {
+    const ordered: ListedAgent[] = []
+    const visit = (node: HierarchyNode) => { ordered.push(node.agent); node.children.forEach(visit) }
+    roots.forEach(visit)
+    card.onManage(agent, ordered)
+  } }
   return <ZoomableCanvas>
     <div className="mx-auto flex w-max flex-col items-center gap-12 py-8">
       {roots.length > 0 && <section aria-labelledby="agent-hierarchy-title">
         <h2 id="agent-hierarchy-title" className="mb-8 text-center text-2xl font-bold">{t("agents.hierarchy.title")}</h2>
         <ul className="grid items-start justify-center gap-y-12" style={{ gridTemplateColumns: `repeat(${Math.min(3, roots.length)}, max-content)` }}>
-          {roots.map(node => <AgentBranch key={node.agent.id} node={node} duplicateNames={duplicateNames} card={card} isExpanded={isExpanded} />)}
+          {roots.map(node => <AgentBranch key={node.agent.id} node={node} duplicateNames={duplicateNames} card={hierarchyCard} isExpanded={isExpanded} />)}
         </ul>
       </section>}
       {templates.length > 0 && <section aria-labelledby="agent-templates-title" className="rounded-xl border border-dashed p-6">

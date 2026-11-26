@@ -23,6 +23,16 @@ describe("generic record measurements", () => {
     expect(result.omittedDates).toBe(1)
     expect(result.points.map(point => [point.id, point.value])).toEqual([["second", null], ["first", 0]])
   })
+  it("counts fallback dates separately from observations with no usable date", () => {
+    const records = [
+      insightRecord({ id: "primary", created_at: "invalid", data: { Day: "2026-01-01", Count: 1 } }),
+      insightRecord({ id: "created", data: { Day: "2026-02-30", Count: 2 } }),
+      insightRecord({ id: "omitted", created_at: "invalid", data: { Count: 3 } }),
+    ]
+    const result = metricSeries(records, "Count", "Day", true)
+    expect(result.points.map(point => point.id)).toEqual(["primary", "created"])
+    expect(result).toMatchObject({ fallbackDates: 1, omittedDates: 1 })
+  })
   it("compares an older open record with its predecessor, not a later observation", () => {
     const points = [0, -5, 10].map((value, i) => ({ id: String(i), title: "Measurement", timestamp: i + 1, value }))
     expect(metricComparison(points, "1")).toMatchObject({ delta: -5, previous: { id: "0" } })

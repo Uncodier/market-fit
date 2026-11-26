@@ -90,6 +90,20 @@ describe("record insight calculations", () => {
     expect(history[1].data.Amount).toBe(20)
   })
 
+  it("reorders activity by saved primary date and falls back per observation", async () => {
+    const date = { id: "day", name: "Day", type: "date" }
+    const record = insightRecord({ data: { Amount: 20, Day: "2026-01-01" } })
+    const fallback = insightRecord({ id: "fallback", created_at: "2026-01-03T00:00:00", data: { Amount: 10, Day: "2026-02-30" } })
+    const template = { name: "Measurements", primary_date_field_id: "day" }
+    jest.mocked(getRecords).mockResolvedValue({ records: [fallback, record], error: null })
+    const props = { fields: [fields[0], date], formData: { Day: "2026-01-05" }, record: { ...record, category: template } }
+    const { result, rerender } = renderHook(current => useRecordInsights(current), { initialProps: props })
+    await waitFor(() => expect(result.current.chartData.map(point => point.id)).toEqual([record.id, fallback.id]))
+    expect(result.current.metaAnalysis?.activity.avgPeriodicity).toBe(2)
+    rerender({ ...props, record: { ...props.record, data: { Amount: 20, Day: "2026-01-05" } } })
+    expect(result.current.chartData.map(point => point.id)).toEqual([fallback.id, record.id])
+  })
+
   it("ignores empty categorical values and preserves deduplicated category correlations", async () => {
     const props = {
       fields: [

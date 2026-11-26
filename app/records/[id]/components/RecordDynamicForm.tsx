@@ -18,6 +18,7 @@ import {
   LinkIcon, 
   TableRows,
   Activity,
+  X,
 } from "@/app/components/ui/icons"
 import { AIFieldPreview } from "./AIFieldPreview"
 import { TableWidget } from "./TableWidget"
@@ -139,6 +140,12 @@ export function RecordDynamicForm({ fields, formData, relationsData, status, rec
               className={inlinePickerClass}
               placeholder="Empty"
             />
+            {field.id === record.category?.primary_date_field_id && !field.required && value != null && value !== "" && (
+              <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0"
+                aria-label={`Clear ${recordFieldLabel(field)}`} onClick={() => onChange(field.name, null, "field")}>
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            )}
           </div>
         )
 
@@ -302,6 +309,9 @@ export function RecordDynamicForm({ fields, formData, relationsData, status, rec
                 <span aria-hidden="true" className={fieldIconClass}>{getFieldIcon(field.type)}</span>
                 <span className="min-w-0 [overflow-wrap:anywhere]">
                   {label}{field.required && <span aria-hidden="true">{"\u00a0*"}</span>}
+                  {field.type === "date" && field.id === record?.category?.primary_date_field_id && (
+                    <span className="block text-[10px] text-muted-foreground">Primary date for Insights</span>
+                  )}
                 </span>
               </div>
               <div className="min-w-0">{renderField(field)}</div>

@@ -79,9 +79,11 @@ jest.mock("@/app/records/[id]/components/RecordToolbar", () => ({
   ),
 }))
 jest.mock("@/app/records/[id]/components/RecordDocumentView", () => ({
-  RecordDocumentView: ({ title, onTitleChange }: any) => (
+  RecordDocumentView: ({ title, onTitleChange, record, onFieldChange }: any) => (
     <div>
       <span>Document draft: {title}</span>
+      <span>Saved reporting date: {record.data?.day ?? "None"}</span>
+      <button type="button" onClick={() => onFieldChange("day", "2025-12-31", "field")}>Edit reporting date</button>
       <button
         type="button"
         onClick={() => onTitleChange(title === "Original title" ? "Edited title" : "Newer title")}
@@ -177,6 +179,16 @@ describe("record detail view switch", () => {
     } finally {
       confirm.mockRestore()
     }
+  })
+
+  it("publishes a corrected reporting date to the saved snapshot only after save", async () => {
+    jest.mocked(updateRecord).mockResolvedValueOnce({ record: { data: { day: "2025-12-31" }, updated_at: "2026-01-01T00:00:01Z" } })
+    render(<RecordDetailPage />)
+    fireEvent.click(await screen.findByRole("button", { name: "Edit reporting date" }))
+    expect(screen.getByText("Saved reporting date: None")).toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }))
+    expect(await screen.findByText("Saved reporting date: 2025-12-31")).toBeInTheDocument()
+    expect(updateRecord).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ data: { day: "2025-12-31" } }), "2026-01-01T00:00:00Z")
   })
 
   it("mounts the insights panel only when requested", async () => {

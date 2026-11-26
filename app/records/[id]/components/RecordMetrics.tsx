@@ -6,6 +6,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/app/components/ui/toggle-group"
 import { Button } from "@/app/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { useScopedPreviewState } from "../../hooks/useScopedPreviewState"
+import { primaryDateField } from "../../lib/primary-date"
 import type { RecordItem } from "../../actions"
 import type { InsightsTabProps } from "./insights-types"
 import { formatMetric, metricComparison, metricNumber, metricSeries } from "./record-metrics"
@@ -40,15 +41,18 @@ export function RecordMetrics({ fields, formData, record, relationsData, records
   const scope = JSON.stringify([record?.site_id, record?.category_id, record?.id])
   const detailId = useId()
   const [selectedMetric, setSelectedMetric] = useScopedPreviewState<string | null>(scope, null)
-  const [selectedDate, setSelectedDate] = useScopedPreviewState<string>(scope, "created")
+  const [selectedDate, setSelectedDate] = useScopedPreviewState<string>(scope, "default")
   const [showAll, setShowAll] = useState(false)
   const numbers = fields.filter(field => field.type === "number")
   const dates = fields.filter(field => field.type === "date")
   const relations = fields.filter(field => field.type === "relation"
     && typeof relationsData?.[field.name] === "string" && relationsData[field.name])
   const metric = numbers.find(field => field.id === selectedMetric) ?? numbers[0]
-  const dateField = dates.find(field => `field:${field.id}` === selectedDate)
-  const { points, omittedDates } = metricSeries(records, metric?.name ?? "", dateField?.name)
+  const primary = primaryDateField(dates, record?.category?.primary_date_field_id)
+  const override = dates.find(field => `field:${field.id}` === selectedDate)
+  const usePrimary = !!primary && selectedDate !== "created" && !override
+  const dateField = usePrimary ? primary : override
+  const { points, omittedDates, fallbackDates } = metricSeries(records, metric?.name ?? "", dateField?.name, usePrimary)
   const validPoints = points.filter(point => point.value !== null)
   const canCompare = historyStatus === "ready"
   const comparison = canCompare ? metricComparison(points, record?.id) : null
@@ -133,6 +137,7 @@ export function RecordMetrics({ fields, formData, record, relationsData, records
       </details>}
       <div className="text-[11px] text-muted-foreground">
         {omittedDates > 0 && <p>{omittedDates} records excluded: no valid date.</p>}
+        {fallbackDates > 0 && <p>Creation date used for {fallbackDates} {fallbackDates === 1 ? "record" : "records"} without a valid primary date.</p>}
         {points.some(point => point.value === null) && <p>Missing values are shown as gaps.</p>}
         {!currentSaved && <p>This record is not saved in this group.</p>}
       </div>
@@ -144,8 +149,9 @@ export function RecordMetrics({ fields, formData, record, relationsData, records
     {relations.length > 0 && <MetricSelect label="Compare records linked by" value={relationName ?? ""}
       onChange={onRelationChange} placeholder="Choose a relation"
       options={relations.map(field => ({ value: field.name, label: field.label || field.name }))} />}
-    {dates.length > 0 && <MetricSelect label="Timeline date" value={dateField ? selectedDate : "created"}
+    {dates.length > 0 && <MetricSelect label="Timeline date" value={usePrimary ? "default" : override ? selectedDate : "created"}
       onChange={setSelectedDate} options={[
+        ...(primary ? [{ value: "default", label: `Category default (${primary.label || primary.name})` }] : []),
         { value: "created", label: "Record creation date" },
         ...dates.map(field => ({ value: `field:${field.id}`, label: field.label || field.name })),
       ]} />}

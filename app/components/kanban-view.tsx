@@ -59,7 +59,7 @@ interface KanbanViewProps {
   leads: Lead[]
   onUpdateLeadStatus: (leadId: string, newStatus: string) => Promise<void>
   segments: Array<{ id: string; name: string }>
-  onLeadClick: (lead: Lead) => void
+  onLeadClick: (lead: Lead, order?: Lead[]) => void
   filters?: LeadFilters
   onOpenFilters?: () => void
   onUpdateLead?: (leadId: string, updates: Partial<Lead>) => void // Add callback for lead updates

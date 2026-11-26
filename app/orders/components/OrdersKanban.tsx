@@ -17,7 +17,7 @@ import { marketplaceMetadata, marketplaceCustomer } from "@/lib/marketplace/pres
 
 interface OrdersKanbanProps {
   orders: OrderWithRelations[]
-  onOrderClick: (order: OrderWithRelations) => void
+  onOrderClick: (order: OrderWithRelations, orderedOrders?: OrderWithRelations[]) => void
   onUpdateOrderStatus: (orderId: string, newStatus: string) => void
   onPay: (order: OrderWithRelations) => void
   onPrintFull: (order: OrderWithRelations) => void | Promise<void>
@@ -140,6 +140,8 @@ export function OrdersKanban({
     onUpdateOrderStatus(draggableId, destination.droppableId)
   }
 
+  const openOrder = (order: OrderWithRelations) => onOrderClick(order, ORDER_STATUSES.flatMap(column => orders.filter(item => item.status === column.id)))
+
   return (
     <DragDropContext onDragEnd={onDragEnd}>
       <div className="w-full min-w-0 overflow-x-auto overflow-y-hidden pb-4">
@@ -217,11 +219,11 @@ export function OrdersKanban({
                                       snapshot.isDragging ? "shadow-lg border-primary/50" : "shadow-sm hover:shadow-md",
                                       hasNewItems && "bg-amber-50/40 dark:bg-amber-500/5"
                                     )}
-                                    onClick={() => onOrderClick(order)}
+                                    onClick={() => openOrder(order)}
                                   >
                                     <OrderActionsMenu
                                       order={order}
-                                      onOpen={onOrderClick}
+                                      onOpen={openOrder}
                                       onPay={onPay}
                                       onPrintFull={onPrintFull}
                                       onPrintDelta={onPrintDelta}

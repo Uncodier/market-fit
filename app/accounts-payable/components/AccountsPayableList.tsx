@@ -1,7 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import Link from "next/link"
+import { DetailViewLink } from "@/app/components/navigation/DetailViewLink"
+import { openDetailFromView } from "@/lib/navigation/detail-view-navigation"
 import { useRouter } from "next/navigation"
 import { useOptionalPermissions } from "@/app/context/PermissionContext"
 import { useLocalization } from "@/app/context/LocalizationContext"
@@ -76,13 +77,14 @@ export function AccountsPayableList({ accounts, siteId, today, orderFilter }: {
             {accounts.map(account => {
               const status = payableStatus(account, today)
               const href = `/companies/${account.vendorId}`
+              const paths = () => accounts.map(row => `/companies/${row.vendorId}`)
               const name = account.name === "Unknown supplier" ? t("operations.payables.unknownSupplier") : account.name
               return <DocumentListRow key={account.vendorId} accent={status === "overdue" ? "due" : "none"}
-                onClick={() => router.push(href)}>
+                onClick={() => router.push(openDetailFromView(siteId, href, paths()))}>
                 <TableCell className="py-3.5">
-                  <Link href={href} onClick={event => event.stopPropagation()} className="block rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                  <DetailViewLink href={href} siteId={siteId} paths={paths} onClick={event => event.stopPropagation()} className="block rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                     <EntityCell name={name} secondary={account.email || account.phone} secondaryMono={false} />
-                  </Link>
+                  </DetailViewLink>
                 </TableCell>
                 <TableCell className="py-3.5">
                   <StatusDot status={status === "overdue" ? "pending" : status === "current" ? "active" : "draft"} label={t(STATUS_KEYS[status])} />
@@ -107,7 +109,7 @@ export function AccountsPayableList({ accounts, siteId, today, orderFilter }: {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onSelect={() => router.push(href)}>
+                      <DropdownMenuItem onSelect={() => router.push(openDetailFromView(siteId, href, paths()))}>
                         <Users className="h-4 w-4 mr-2" />{t("operations.payables.viewSupplier")}
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />

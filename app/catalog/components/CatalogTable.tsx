@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Archive, Edit, GripHorizontal, Plus, Settings } from "@/app/components/ui/icons"
 import { resolveItemImage } from "@/app/lib/image-utils"
 import { PromptImage } from "@/app/components/commerce/PromptImage"
-import { NavigationLink } from "@/app/components/navigation/NavigationLink"
+import { DetailViewLink } from "@/app/components/navigation/DetailViewLink"
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd"
 import { Accordion, AccordionItem, AccordionHeader, AccordionTrigger, AccordionContent } from "@/app/components/ui/accordion"
 import { EmptyCard } from "@/app/components/ui/empty-card"
@@ -398,12 +398,13 @@ export function CatalogTable({
                                                     </div>
                                                   </TableCell>
                                                   <TableCell className="py-3.5 text-right">
-                                                    <NavigationLink 
-                                                      href={`/catalog/${item.id}`} 
+                                                    <DetailViewLink
+                                                      href={`/catalog/${item.id}`} siteId={currentSite?.id}
+                                                      paths={() => visibleItems.map(row => `/catalog/${row.id}`)}
                                                       className="inline-flex items-center justify-center rounded-md h-8 w-8 text-muted-foreground hover:bg-muted/50 hover:text-foreground opacity-100 md:opacity-0 transition-opacity group-hover:opacity-100"
                                                     >
                                                       <Edit className="h-4 w-4" />
-                                                    </NavigationLink>
+                                                    </DetailViewLink>
                                                   </TableCell>
                                                 </TableRow>
                                               )}

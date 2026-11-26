@@ -4,6 +4,7 @@ import { useOptionalPermissions } from "@/app/context/PermissionContext"
 import { AccountsPayableList } from "@/app/accounts-payable/components/AccountsPayableList"
 import type { PayableAccount } from "@/app/accounts-payable/summary"
 import { LocalizationProvider } from "@/app/context/LocalizationContext"
+import { getDetailViewNeighbors } from "@/lib/navigation/detail-view-navigation"
 
 jest.mock("@/app/context/PermissionContext", () => ({ useOptionalPermissions: jest.fn(() => null) }))
 jest.mock("@/app/components/ui/empty-card", () => ({ EmptyCard: ({ title, description }: { title: string; description: string }) => <div>{title}{description}</div> }))
@@ -72,6 +73,17 @@ describe("accounts payable cloned document list", () => {
     expect(screen.getByRole("link", { name: /Avery/ })).toHaveAttribute("href", "/companies/vendor-1")
     fireEvent.click(screen.getByText("Overdue"))
     expect(push).toHaveBeenCalledWith("/companies/vendor-1")
+  })
+
+  it("opens the company with the order of the visible payables list", () => {
+    setup([{ ...account, vendorId: "vendor-2", name: "Morgan" }, account])
+    fireEvent.click(within(screen.getByRole("row", { name: /Avery/ })).getByText("Overdue"))
+    const url = new URL(push.mock.calls[0][0], "https://workspace.invalid")
+    const key = url.searchParams.get("detailView") || ""
+    expect(url.pathname).toBe("/companies/vendor-1")
+    expect(getDetailViewNeighbors("site", url.pathname, key)).toEqual({
+      previous: `/companies/vendor-2?detailView=${key}`, next: null,
+    })
   })
 
   it("offers supplier navigation without any subscription lifecycle or destructive actions", async () => {

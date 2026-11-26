@@ -34,7 +34,7 @@ interface TaskKanbanProps {
   tasks: ExtendedTask[]
   sortBy: "priority" | "newest" | "oldest" | "dueDateNearest" | "dueDateOldest"
   onUpdateTaskStatus: (taskId: string, newStatus: string) => Promise<void>
-  onTaskClick: (task: ExtendedTask) => void
+  onTaskClick: (task: ExtendedTask, order?: ExtendedTask[]) => void
   kanbanPagination: Record<string, KanbanPaginationState>
   onLoadMore: (status: string) => void
   totalCounts: Record<string, number>
@@ -311,7 +311,7 @@ export function TaskKanban({ tasks, sortBy, onUpdateTaskStatus, onTaskClick, kan
                                   snapshot.isDragging && "shadow-lg",
                                   selectedTasks.has(task.id) && "ring-2 ring-primary/40 bg-primary/5"
                                 )}
-                                onClick={() => onTaskClick(task)}
+                                onClick={() => onTaskClick(task, TASK_STATUSES.flatMap(status => tasksByStatus[status.id]))}
                               >
                                 <CardContent className="p-3">
                                   <div className="flex items-start justify-between min-w-0">

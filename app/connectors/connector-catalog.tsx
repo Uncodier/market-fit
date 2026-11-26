@@ -92,7 +92,7 @@ export function CatalogContent({ siteId }: { siteId: string }) {
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground" aria-live="polite">{data.total === null ? t("connectors.pageCount", { count: data.items.length }) : t("connectors.resultCount", { count: data.total })}</p>
             {data.items.length === 0 ? <ConnectorEmpty title={t(filters.tab === "connected" ? "connectors.noConnections" : "connectors.noResults")} description={t("connectors.noResultsHelp")} /> :
-              <div className={connectorGridClassName}>{data.items.map(toolkit => <ConnectorCard key={toolkit.slug} toolkit={toolkit} domains={domainLabels} />)}</div>}
+              <div className={connectorGridClassName}>{data.items.map(toolkit => <ConnectorCard key={toolkit.slug} toolkit={toolkit} domains={domainLabels} siteId={siteId} orderedToolkits={data.items} />)}</div>}
             {data.total === null && filters.category && <p className="text-xs text-muted-foreground">{t("connectors.filteredPages")}</p>}
             <ConnectorPagination page={data.current_page ?? filters.page} totalPages={data.total_pages ?? null}
               hasNext={!!data.next_cursor} onPageChange={page => update({ page })} />

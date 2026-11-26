@@ -1,5 +1,5 @@
 import React from "react"
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import { RecordDynamicForm } from "@/app/records/[id]/components/RecordDynamicForm"
 import { CategoryTemplateEditor } from "@/app/records/components/CategoryTemplateEditor"
 import type { RecordCategory, RecordItem } from "@/app/records/actions"
@@ -30,7 +30,6 @@ jest.mock("@/app/components/ui/date-picker", () => ({
     <div>
       <output data-testid="date-value">{date ? `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}` : "empty"}</output>
       <button onClick={() => setDate(new Date(2026, 2, 8))}>Pick date</button>
-      <button onClick={() => setDate(undefined)}>Clear date</button>
     </div>
   ),
 }))
@@ -96,11 +95,13 @@ describe("RecordDynamicForm field repairs", () => {
 
   it("uses date-only serialization and local display", () => {
     const onChange = jest.fn()
-    render(<RecordDynamicForm {...baseProps} onChange={onChange} fields={[field("day", "date")]} formData={{ day: "2026-03-08" }} />)
+    render(<RecordDynamicForm {...baseProps} onChange={onChange} fields={[field("day", "date")]}
+      record={{ ...baseProps.record, category: { primary_date_field_id: "day" } as RecordCategory }} formData={{ day: "2026-03-08" }} />)
+    expect(screen.getByText("Primary date for Insights")).toBeInTheDocument()
     expect(screen.getByTestId("date-value")).toHaveTextContent("2026-3-8")
     fireEvent.click(screen.getByText("Pick date"))
     expect(onChange).toHaveBeenLastCalledWith("day", "2026-03-08", "field")
-    fireEvent.click(screen.getByText("Clear date"))
+    fireEvent.click(screen.getByRole("button", { name: "Clear day" }))
     expect(onChange).toHaveBeenLastCalledWith("day", null, "field")
   })
 
@@ -143,6 +144,24 @@ describe("RecordDynamicForm field repairs", () => {
     render(<RecordDynamicForm {...baseProps} fields={[field("contact", "relation", { relationTarget: "person" })]} onChange={jest.fn()} />)
     expect(screen.getByRole("alert")).toHaveTextContent("This relation target is no longer supported.")
   })
+})
+
+it("only offers date fields for the category default and clears the setting when its field is removed", async () => {
+  const category = { id: "cat", name: "Measurements", template_fields: [field("day", "date"), field("count", "number")] } as RecordCategory
+  const onSave = jest.fn()
+  const { rerender } = render(<CategoryTemplateEditor key="select" isOpen onClose={jest.fn()} category={category} onSave={onSave} />)
+  const dateSelect = () => within(screen.getByText("Primary date for Insights").parentElement!).getByRole("combobox")
+  const select = dateSelect()
+  expect(select).toHaveValue("created")
+  expect(screen.queryByRole("option", { name: "count" })).not.toBeInTheDocument()
+  fireEvent.change(select, { target: { value: "field:day" } })
+  fireEvent.click(screen.getByRole("button", { name: "Save Template" }))
+  await waitFor(() => expect(onSave).toHaveBeenLastCalledWith(expect.objectContaining({ primary_date_field_id: "day" })))
+  rerender(<CategoryTemplateEditor key="remove" isOpen onClose={jest.fn()} category={{ ...category, primary_date_field_id: "day" }} onSave={onSave} />)
+  expect(dateSelect()).toHaveValue("field:day")
+  fireEvent.click(screen.getByRole("button", { name: "Remove field day" }))
+  fireEvent.click(screen.getByRole("button", { name: "Save Template" }))
+  await waitFor(() => expect(onSave).toHaveBeenLastCalledWith(expect.objectContaining({ primary_date_field_id: null })))
 })
 
 describe("CategoryTemplateEditor field repairs", () => {

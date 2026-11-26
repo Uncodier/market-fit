@@ -1,5 +1,6 @@
 "use client"
 
+import { detailViewHref } from "@/lib/navigation/detail-view-navigation"
 import { useEffect, useState } from "react"
 import { useRouter } from 'next/navigation'
 import { QuotesTable, QuotesTableSkeleton } from '@/app/components/documents/quotes-table'
@@ -77,7 +78,7 @@ function QuotesContent({ siteId, tenderId, embedded = false, demo }: QuotesPanel
     {!error && (loading ? <QuotesTableSkeleton /> : (embedded || rows.length > 0 || envelopes.length === 0) && <QuotesTable rows={rows.slice((page - 1) * 50, page * 50)} page={page} pageSize={50} totalCount={rows.length}
       keepEmptyTable={embedded} showTenderBadge={!tenderId} toolbar={embedded ? toolbar : undefined}
       entityColumnLabel={t('procurement.workflow.common.supplier')} emptyTitle={t(envelopes.length ? 'procurement.partners.quotes.noOpened' : 'procurement.partners.quotes.empty')} emptyDescription=""
-      onPageChange={setPage} onRowClick={id => router.push(`/purchases/quotes/${encodeURIComponent(id)}`)} />)}
+      onPageChange={setPage} onRowClick={id => router.push(detailViewHref(siteId, "/purchases/quotes", id, rows))} />)}
     </div>
     {editing && <RecordQuotationDialog siteId={siteId} tenderId={tenderId} initial={draft}
       onClose={next => { setDraft(next); setEditing(false) }}

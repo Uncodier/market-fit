@@ -82,7 +82,7 @@ export function DealsKanbanSkeleton() {
 
 interface DealsKanbanProps {
   deals: Deal[]
-  onDealClick: (deal: Deal) => void
+  onDealClick: (deal: Deal, orderedDeals?: Deal[]) => void
   onUpdateDealStage: (dealId: string, newStage: string) => void
 }
 
@@ -186,7 +186,7 @@ export function DealsKanban({ deals, onDealClick, onUpdateDealStage }: DealsKanb
                                     "mb-3 cursor-pointer transition-all duration-200 border-border/60 hover:border-primary/40 relative group select-none",
                                     snapshot.isDragging ? "shadow-lg border-primary/50" : "shadow-sm hover:shadow-md"
                                   )}
-                                  onClick={() => onDealClick(deal)}
+                                  onClick={() => onDealClick(deal, DEAL_STAGES.flatMap(column => deals.filter(item => item.stage === column.id)))}
                                 >
                                   <CardContent className="p-3">
                                     <div className="flex flex-col gap-1.5">

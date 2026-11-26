@@ -1,5 +1,6 @@
 "use client"
 
+import { detailViewHref } from "@/lib/navigation/detail-view-navigation"
 import { useState, useEffect } from "react"
 import useSWR from "swr"
 import { useRouter , useSearchParams} from "next/navigation"
@@ -136,7 +137,7 @@ export default function PriceListsPage() {
             pageSize={pageSize}
             totalCount={data?.count ?? 0}
             onPageChange={setPage}
-            onOpen={(id) => router.push(`/price-lists/${id}`)}
+            onOpen={(id) => router.push(detailViewHref(currentSite?.id, "/price-lists", id, filteredLists))}
             onEdit={openEdit}
             onCreate={() => {
               setEditingList(null)

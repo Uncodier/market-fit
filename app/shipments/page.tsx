@@ -209,6 +209,7 @@ export default function ShipmentsPage() {
                 data?.data && data.data.length > 0 ? (
                   <KanbanView
                     shipments={data.data}
+                    siteId={currentSite?.id}
                     onUpdateShipmentStatus={handleUpdateShipmentStatus} />
                 ) : (
                   <EmptyCard
@@ -224,7 +225,7 @@ export default function ShipmentsPage() {
                   totalCount={data?.count ?? 0}
                   searchQuery={searchQuery}
                   onPageChange={setPage}
-                  onShipmentClick={(shipment) => navigateToShipment({ shipmentId: shipment.id, router })} />
+                  onShipmentClick={(shipment) => navigateToShipment({ shipmentId: shipment.id, router, origin: { siteId: currentSite?.id, rows: data?.data || [] } })} />
               )}
         </div>
       </Tabs>

@@ -46,10 +46,11 @@ export default function RequirementsPage() {
   const list = useRequirementsList()
   const [debouncedError, isMaskingError] = useOptimisticError(list.visibleError)
 
-  const handleOpen = (requirement: Requirement) => {
+  const handleOpen = (requirement: Requirement, order = list.filteredRequirements) => {
     navigateToRequirement({
       requirementId: requirement.id,
       requirementTitle: requirement.title,
+      origin: { siteId: list.currentSite?.id, rows: order },
       router,
     })
   }

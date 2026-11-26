@@ -54,7 +54,7 @@ export function ContentKanban({
   onUpdateContentStatus: (contentId: string, newStatus: string) => Promise<void>
   segments: Array<{ id: string; name: string }>
   campaigns: Array<{ id: string; title: string }>
-  onContentClick: (content: ContentItem) => void
+  onContentClick: (content: ContentItem, order?: ContentItem[]) => void
   onRatingChange?: (contentId: string, rating: number) => void
   isLoadingCampaigns?: boolean
   assetsByContentId?: Record<string, ContentAssetWithDetails[]>
@@ -209,7 +209,7 @@ export function ContentKanban({
                                 content={item} 
                                 segments={segments}
                                 campaigns={campaigns}
-                                onClick={onContentClick}
+                                onClick={content => onContentClick(content, CONTENT_STATUSES.flatMap(column => items[column.id]))}
                                 onRatingChange={handleRatingChange}
                                 isLoadingCampaigns={isLoadingCampaigns}
                                 assets={assetsByContentId?.[item.id] || []}
