@@ -8,6 +8,7 @@ import { Skeleton } from "@/app/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/app/components/ui/table"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import type { CopywritingItem } from "./copywriting-model"
+import { WHATSAPP_TEMPLATE_TAG } from "./template-model"
 
 const cardGrid = "grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
 const cardShell = "min-w-0 rounded-xl border-border/70 shadow-none"
@@ -30,7 +31,7 @@ type Props = {
 export function CopywritingResults({ items, table, loading, canWrite, onOpen }: Props) {
   const { t } = useLocalization()
   const text = (key: string) => t(`copywriting.screen.${key}`)
-  const typeLabel = (item: CopywritingItem) => text(`types.${item.copy_type}`)
+  const typeLabel = (item: CopywritingItem) => text(item.tags?.includes(WHATSAPP_TEMPLATE_TAG) ? "template.whatsapp" : `types.${item.copy_type}`)
   const status = (item: CopywritingItem) => {
     const key = item.status ?? "draft"
     return <StatusDot status={key} label={text(`statuses.${key}`)} />

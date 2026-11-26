@@ -9,6 +9,8 @@ import { isSocialCommentMetadata } from '@/lib/chat/social-comment-context'
 import { validateCommentReplyTarget } from './comment-reply-preflight'
 import { newLeadMessageSchema, newSupplierMessageSchema } from '@/lib/chat/new-lead-message'
 import { createOutboundConversation } from './new-lead-conversation'
+import { copyTestSchema } from '@/app/copywriting/template-model'
+import { admitCopyTest, copyTestMessage } from './copy-test'
 import { isDeliveryRetryBlocked, isChatResponseFormat, requestedResponseFormat, supportsAudioResponse } from '@/lib/chat/response-format'
 
 export const maxDuration = 120
@@ -24,11 +26,13 @@ const inputSchema = z.object({
   response_format: z.enum(['text', 'audio']).optional(),
   new_lead_message: newLeadMessageSchema.optional(),
   new_supplier_message: newSupplierMessageSchema.optional(),
+  copy_test: copyTestSchema.optional(),
 }).refine(input => !(input.new_lead_message && input.new_supplier_message))
-  .refine(input => input.new_lead_message || input.new_supplier_message
+  .refine(input => !input.copy_test || (!input.new_lead_message && !input.new_supplier_message && !input.message))
+  .refine(input => input.new_lead_message || input.new_supplier_message || input.copy_test
   ? !input.conversationId && !input.conversation_id && !input.message_id && !input.reply_to_message_id && input.response_format !== 'audio'
   : Boolean(input.conversationId || input.conversation_id))
-  .refine(input => Boolean(input.message || input.new_lead_message?.asset_id || input.new_supplier_message?.asset_id))
+  .refine(input => Boolean(input.message || input.new_lead_message?.asset_id || input.new_supplier_message?.asset_id || input.copy_test))
   .refine(input => !input.conversationId || !input.conversation_id || input.conversationId === input.conversation_id)
 
 // Only lifecycle evidence crosses the proxy, never provider payloads or database errors.
@@ -98,7 +102,8 @@ export async function POST(request: Request): Promise<Response> {
   if (!await userCanOnSite(access.supabase, input.site_id, input.message_id ? 'update' : 'insert')) {
     return failure('You do not have permission to send messages in this site.', 403)
   }
-  const newDraft = input.new_lead_message ?? input.new_supplier_message
+  const test = input.copy_test ? copyTestMessage(input.copy_test) : undefined
+  const newDraft = input.new_lead_message ?? input.new_supplier_message ?? test?.recipient
   if (input.new_supplier_message && (!['owner', 'admin', 'collaborator'].includes(access.role) ||
       /(?:^|;\s*)market_fit_demo_site_id=/.test(request.headers.get('cookie') ?? ''))) {
     return failure('You do not have permission to message suppliers in this site.', 403, 'SUPPLIER_ACCESS_DENIED')
@@ -110,6 +115,10 @@ export async function POST(request: Request): Promise<Response> {
     return failure('Please sign in again to send messages.', 401, 'INVALID_SESSION')
   }
   if (newDraft && !target) return failure('Intervention API is not configured', 503, 'BACKEND_UNAVAILABLE')
+  if (input.copy_test) {
+    const status = await admitCopyTest(access, input.site_id, input.copy_test).catch(() => 503)
+    if (status !== 200) return failure('Copy test could not start', status, 'COPY_TEST_NOT_ADMITTED')
+  }
 
   let conversation
   let media
@@ -130,8 +139,8 @@ export async function POST(request: Request): Promise<Response> {
     return failure(VOICE_LEAD_REQUIRED, 409, 'VOICE_LEAD_REQUIRED')
   }
 
-  let message = input.message
-  let responseFormat = input.response_format
+  let message = test?.message ?? input.message
+  let responseFormat = test ? 'text' as const : input.response_format
   let replyToMessageId = input.reply_to_message_id
   if (input.message_id) {
     const { data: saved, error } = await access.supabase.from('messages')

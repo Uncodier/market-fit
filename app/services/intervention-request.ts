@@ -1,5 +1,7 @@
 import type { ChatResponseFormat } from '@/lib/chat/response-format'
 import type { NewLeadMessage, NewSupplierMessage } from '@/lib/chat/new-lead-message'
+import type { copyTestSchema } from '@/app/copywriting/template-model'
+import type { z } from 'zod'
 
 export type InterventionRequestOptions = {
   response_format?: ChatResponseFormat
@@ -11,6 +13,7 @@ export type InterventionRequestOptions = {
   reply_to_message_id?: string
   new_lead_message?: NewLeadMessage
   new_supplier_message?: NewSupplierMessage
+  copy_test?: z.infer<typeof copyTestSchema>
 }
 
 export type InterventionChannelSend = {
@@ -83,5 +86,6 @@ export function buildInterventionRequestBody(
     response_format: options?.response_format,
     new_lead_message: options?.new_lead_message,
     new_supplier_message: options?.new_supplier_message,
+    copy_test: options?.copy_test,
   }
 }

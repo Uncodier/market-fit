@@ -1,8 +1,11 @@
 import { render, screen } from "@testing-library/react"
-import { useSearchParams } from "next/navigation"
+import { ReadonlyURLSearchParams, useSearchParams } from "next/navigation"
 import ContextPage from "@/app/context/page"
 
-jest.mock("next/navigation", () => ({ useSearchParams: jest.fn() }))
+jest.mock("next/navigation", () => ({
+  ...jest.requireActual<typeof import("next/navigation")>("next/navigation"),
+  useSearchParams: jest.fn(),
+}))
 jest.mock("@/app/hooks/use-prevent-refresh", () => ({ useSimpleRefreshPrevention: jest.fn() }))
 jest.mock("@/app/context/SiteContext", () => ({ useSite: () => ({ currentSite: mockSite }) }))
 jest.mock("@/app/context/ThemeContext", () => ({ useTheme: () => ({}) }))
@@ -24,7 +27,7 @@ describe("Context Copy Sequences deep link", () => {
     ["", "Branding", "branding"],
     ["tab=unknown", "Branding", "branding"],
   ])("selects the correct editor for query %j", (query, tab, editor) => {
-    jest.mocked(useSearchParams).mockReturnValue(new URLSearchParams(query))
+    jest.mocked(useSearchParams).mockReturnValue(new ReadonlyURLSearchParams(query))
     render(<ContextPage />)
 
     expect(screen.getByRole("tab", { name: tab, selected: true })).toBeInTheDocument()

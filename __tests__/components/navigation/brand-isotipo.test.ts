@@ -26,15 +26,16 @@ describe('Makinari isotipo', () => {
     }
   })
 
-  it('provides a white transparent SVG favicon and cache-versioned metadata', () => {
+  it('provides a padded SVG favicon and cache-versioned metadata', () => {
     const svg = read('public/favicon.svg')
-    expect(svg).toContain('svg { color: #fff; }')
-    expect(svg).not.toContain('#000')
-    expect(svg).not.toContain('<rect')
+    expect(svg).toContain('viewBox="-359.5 -256 2000 2000"')
+    expect(svg).toContain('color="#fff"')
+    expect(svg).toContain('<rect x="-359.5" y="-256" width="2000" height="2000" fill="#0a0a0c"/>')
     expect(svg.match(/fill="currentColor"/g)).toHaveLength(3)
     const layout = read('app/layout.tsx')
-    expect(layout).toContain("url: '/favicon.svg?v=white-transparent-2', type: 'image/svg+xml'")
-    expect(layout).toContain("url: '/favicon.ico?v=white-transparent-2'")
+    expect(layout).toContain("url: '/favicon.svg?v=solid-mark-1', type: 'image/svg+xml'")
+    expect(layout).toContain("url: '/favicon.ico?v=solid-mark-1'")
+    expect(layout).toContain("url: '/apple-touch-icon.png?v=solid-mark-1', sizes: '180x180'")
   })
 
   it('keeps the legacy PNG URL with the current artwork for image previews', async () => {
@@ -61,7 +62,7 @@ describe('Makinari isotipo', () => {
     expect(matched / visible).toBeGreaterThan(0.99)
   })
 
-  it('provides valid multi-size ICO and Apple PNG fallbacks', async () => {
+  it('provides opaque ICO and Apple PNG fallbacks with a dark margin', async () => {
     const ico = readFileSync(path.join(process.cwd(), 'public/favicon.ico'))
     expect(ico.readUInt16LE(2)).toBe(1)
     expect(ico.readUInt16LE(4)).toBe(3)
@@ -69,26 +70,19 @@ describe('Makinari isotipo', () => {
       const entry = 6 + i * 16
       const offset = ico.readUInt32LE(entry + 12)
       const length = ico.readUInt32LE(entry + 8)
-      const metadata = await sharp(ico.subarray(offset, offset + length)).metadata()
-      expect(metadata.width).toBe([16, 32, 48][i])
-      expect(metadata.height).toBe(metadata.width)
-      expect(metadata.hasAlpha).toBe(true)
-      const pixels = await sharp(ico.subarray(offset, offset + length)).ensureAlpha().raw().toBuffer()
-      let transparent = 0
-      let visible = 0
-      for (let pixel = 0; pixel < pixels.length; pixel += 4) {
-        if (pixels[pixel + 3] === 0) {
-          transparent++
-        } else {
-          visible++
-          expect([...pixels.subarray(pixel, pixel + 3)]).toEqual([255, 255, 255])
-        }
-      }
-      expect(transparent).toBeGreaterThan(0)
-      expect(visible).toBeGreaterThan(0)
+      await expectSolidMark(ico.subarray(offset, offset + length), [16, 32, 48][i], true)
     }
-    const apple = await sharp(path.join(process.cwd(), 'public/apple-touch-icon.png')).metadata()
-    expect(apple.width).toBe(180)
-    expect(apple.height).toBe(180)
+    await expectSolidMark(path.join(process.cwd(), 'public/apple-touch-icon.png'), 180)
   })
 })
+
+async function expectSolidMark(image: Buffer | string, size: number, hasAlpha = false) {
+  const png = sharp(image)
+  expect(await png.metadata()).toMatchObject({ format: 'png', width: size, height: size, hasAlpha })
+  const pixels = await png.ensureAlpha().raw().toBuffer()
+  for (const index of [0, size - 1, size * (size - 1), size * size - 1]) {
+    expect([...pixels.subarray(index * 4, index * 4 + 4)]).toEqual([10, 10, 12, 255])
+  }
+  expect(pixels.every((channel, index) => index % 4 !== 3 || channel === 255)).toBe(true)
+  expect(pixels.some((channel, index) => index % 4 === 0 && channel > 225)).toBe(true)
+}

@@ -2,8 +2,12 @@
 
 import { POST } from '@/app/api/agents/chat/intervention/route'
 import { requireSiteAccess } from '@/lib/auth/api-site-access'
+import { readWorkspaceScreenScope } from '@/lib/permissions/workspace-screen-scope'
+import { checkRateLimit } from '@/lib/redis/control-plane'
 
 jest.mock('@/lib/auth/api-site-access', () => ({ requireSiteAccess: jest.fn() }))
+jest.mock('@/lib/permissions/workspace-screen-scope', () => ({ readWorkspaceScreenScope: jest.fn() }))
+jest.mock('@/lib/redis/control-plane', () => ({ checkRateLimit: jest.fn() }))
 
 const siteId = '00000000-0000-4000-8000-000000000001'
 const conversationId = '00000000-0000-4000-8000-000000000002'
@@ -106,7 +110,7 @@ it.each([2, 3])('admits only the current version of a scoped supplier contact (%
 })
 
 function mockNewLeadConversation(lead: unknown = { id: leadId, name: 'Test lead', email: 'lead@example.test' }, asset?: unknown) {
-  const site = query({ settings: { channels: { email: { enabled: true, status: 'connected' } } } })
+  const site = query({ settings: { channels: { email: { enabled: true, status: 'connected' }, whatsapp: { enabled: true, status: 'connected' } } } })
   const recipient = query(lead)
   const agent = { ...query({}), or: jest.fn().mockReturnThis(), single: jest.fn().mockResolvedValue({ data: { id: agentId } }) }
   agent.select.mockReturnValue(agent)
@@ -114,10 +118,53 @@ function mockNewLeadConversation(lead: unknown = { id: leadId, name: 'Test lead'
   const conversation = { id: conversationId, site_id: siteId, agent_id: agentId, lead_id: leadId, channel: 'email' }
   const insert = jest.fn().mockReturnValue({ select: () => ({ single: async () => ({ data: conversation }) }) })
   const attachment = query(asset)
-  const tables: Record<string, unknown> = { sites: site, leads: recipient, agents: agent, assets: attachment, conversations: { insert } }
+  const copy = query({ id: messageId })
+  const tables: Record<string, unknown> = { sites: site, leads: recipient, agents: agent, assets: attachment, conversations: { insert }, copywriting: copy }
   from.mockImplementation(table => tables[table as string])
-  return { recipient, insert, attachment }
+  return { recipient, insert, attachment, copy }
 }
+
+function copyTestRequest(kind: 'newsletter' | 'whatsapp', body = 'Hello there', change = {}) {
+  return request({ conversationId: undefined, message: '', copy_test: { copy_id: messageId, lead_id: leadId,
+    draft: { kind, title: 'A spring update', body } }, ...change })
+}
+
+function allowCopyTests() {
+  jest.mocked(readWorkspaceScreenScope).mockResolvedValue({ role: 'owner', status: 'ready', blockedScreens: [], locationRestricted: false })
+  jest.mocked(checkRateLimit).mockResolvedValue({ allowed: true, limit: 8, remaining: 7, resetMs: 600_000, unavailable: false })
+}
+
+it.each([
+  ['newsletter', 'email', 'Hello there', '[TEST] A spring update'],
+  ['whatsapp', 'whatsapp', '[TEST] Hello there', undefined],
+] as const)('dispatches the %s test exactly once through the selected lead channel', async (kind, channel, message, subject) => {
+  allowCopyTests()
+  const { copy, recipient, insert } = mockNewLeadConversation({ id: leadId, name: 'Test lead', email: 'lead@example.test', phone: '+14155550101' })
+  const result = await POST(copyTestRequest(kind))
+  expect(result.status).toBe(200)
+  expect(copy.eq.mock.calls).toEqual([['site_id', siteId], ['id', messageId]])
+  expect(recipient.eq.mock.calls).toEqual([['site_id', siteId], ['id', leadId]])
+  expect(insert).toHaveBeenCalledWith(expect.objectContaining({ channel, lead_id: leadId, ...(subject ? { title: subject } : {}) }))
+  expect(fetch).toHaveBeenCalledTimes(1)
+  const payload = JSON.parse(String(jest.mocked(fetch).mock.calls[0][1]?.body))
+  expect(payload).toMatchObject({ message, lead_id: leadId, site_id: siteId })
+  expect(payload.conversation_title).toBe(subject)
+  expect(payload).not.toHaveProperty('copy_test')
+})
+
+it('never dispatches invalid, rate-limited or foreign copy tests', async () => {
+  allowCopyTests()
+  const { copy, insert } = mockNewLeadConversation()
+  expect((await POST(copyTestRequest('newsletter', 'Hello {{name}}'))).status).toBe(400)
+  expect((await POST(copyTestRequest('whatsapp', 'x'.repeat(1018)))).status).toBe(400)
+  expect((await POST(copyTestRequest('newsletter', 'hello', { new_lead_message: newLeadDraft }))).status).toBe(400)
+  copy.maybeSingle.mockResolvedValueOnce({ data: null })
+  expect((await POST(copyTestRequest('newsletter'))).status).toBe(404)
+  jest.mocked(checkRateLimit).mockResolvedValueOnce({ allowed: false, limit: 8, remaining: 0, resetMs: 600_000, unavailable: false })
+  expect((await POST(copyTestRequest('newsletter'))).status).toBe(429)
+  expect(insert).not.toHaveBeenCalled()
+  expect(fetch).not.toHaveBeenCalled()
+})
 
 it('starts a lead thread via the same intervention dispatcher using server-owned identities', async () => {
   const { recipient, insert } = mockNewLeadConversation()

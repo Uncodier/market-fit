@@ -1,5 +1,5 @@
 import { siteConfig } from '@/config'
-import Layout from './layout'
+import Layout, { metadata as layoutMetadata } from './layout'
 
 export const metadata = {
   title: {
@@ -30,11 +30,7 @@ export const metadata = {
     images: [`${siteConfig.url}/og.jpg`],
     creator: '@shadcn',
   },
-  icons: {
-    icon: '/favicon.ico',
-    shortcut: '/favicon-16x16.png',
-    apple: '/apple-touch-icon.png',
-  },
+  icons: layoutMetadata.icons,
   manifest: `${siteConfig.url}/site.webmanifest`,
 }
 

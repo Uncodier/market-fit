@@ -32,6 +32,7 @@ export type CopywritingItem = Omit<CopyFields, "target_audience" | "use_case" | 
   target_audience: string | null
   use_case: string | null
   notes: string | null
+  tags?: string[] | null
 }
 
 export function initialCopyFields(item?: CopywritingItem, tab: CopyTab = "all"): CopyFields {

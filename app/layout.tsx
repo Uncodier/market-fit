@@ -27,10 +27,10 @@ export const metadata: Metadata = {
   description: 'Find your product market fit.',
   icons: {
     icon: [
-      { url: '/favicon.ico?v=white-transparent-2', sizes: 'any' },
-      { url: '/favicon.svg?v=white-transparent-2', type: 'image/svg+xml', sizes: 'any' },
+      { url: '/favicon.ico?v=solid-mark-1', sizes: '16x16 32x32 48x48' },
+      { url: '/favicon.svg?v=solid-mark-1', type: 'image/svg+xml', sizes: 'any' },
     ],
-    apple: '/apple-touch-icon.png',
+    apple: { url: '/apple-touch-icon.png?v=solid-mark-1', sizes: '180x180', type: 'image/png' },
   },
   openGraph: {
     title: 'MAKINARI',

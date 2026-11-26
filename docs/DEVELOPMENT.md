@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Node.js 22 or newer, as declared in `package.json`.
+- Node.js 22.x, as declared in `package.json` and used by CI and Vercel.
 - npm for the commands documented below.
 - Access to the required Supabase project and any external services needed by
   the feature being developed.

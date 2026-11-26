@@ -18,12 +18,14 @@ import { useSite } from "@/app/context/SiteContext"
 import { useIsMobile } from "@/app/hooks/use-mobile-view"
 import { getCopywriting, saveCopywriting } from "./actions"
 import { CopywritingDialog } from "./CopywritingDialog"
+import { CopyTemplateDialog } from "./CopyTemplateDialog"
 import { CopywritingResults } from "./CopywritingResults"
 import { COPY_TABS, type CopyFields, type CopyTab, type CopywritingItem } from "./copywriting-model"
+import type { CopyTemplateKind } from "./template-model"
 
 const PAGE_SIZE = 12
 type ListState = { status: "loading" | "error" } | { status: "ready"; items: CopywritingItem[]; canWrite: boolean }
-type DialogState = { mode: "create" } | { mode: "view" | "edit"; id: string }
+type DialogState = { mode: "create" } | { mode: "view" | "edit"; id: string } | { mode: "template"; id: string; kind: CopyTemplateKind }
 
 export default function CopywritingPage() {
   const { currentSite } = useSite()
@@ -161,7 +163,14 @@ function CopywritingWorkspace({ siteId }: { siteId: string }) {
         </TabsContent>
       </Tabs>
 
-      {dialog && (dialog.mode === "create" || selected) && <CopywritingDialog
+      {dialog?.mode === "template" && selected ? <CopyTemplateDialog
+        siteId={siteId} item={selected} kind={dialog.kind}
+        onBack={() => setDialog({ mode: "view", id: selected.id })}
+        onSaved={item => {
+          setState(previous => previous.status === "ready" ? { ...previous, items: [item, ...previous.items] } : previous)
+          setTab("all"); setSearch(""); setPage(1)
+        }}
+      /> : dialog && (dialog.mode === "create" || selected) && <CopywritingDialog
         key={`${selected?.id ?? "new"}:${dialog.mode}`}
         item={selected}
         tab={tab}
@@ -174,6 +183,7 @@ function CopywritingWorkspace({ siteId }: { siteId: string }) {
           if (!document.querySelector('[role="dialog"]')) returnFocus?.focus()
         }}
         onSave={save}
+        onTemplate={kind => { if (selected) setDialog({ mode: "template", kind, id: selected.id }) }}
       />}
     </>
   )

@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/app/components/ui/textarea"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { COPY_STATUSES, COPY_TYPES, copyFieldsSchema, initialCopyFields, type CopyFields, type CopyTab, type CopywritingItem } from "./copywriting-model"
+import { WHATSAPP_TEMPLATE_TAG, type CopyTemplateKind } from "./template-model"
 
 const extraFields = ["target_audience", "use_case", "notes"] as const
 
@@ -21,9 +22,10 @@ type Props = {
   onClose: () => void
   onCloseAutoFocus: (event: Event) => void
   onSave: (fields: CopyFields) => Promise<void>
+  onTemplate: (kind: CopyTemplateKind) => void
 }
 
-export function CopywritingDialog({ item, tab, editing, canWrite, onEdit, onClose, onCloseAutoFocus, onSave }: Props) {
+export function CopywritingDialog({ item, tab, editing, canWrite, onEdit, onClose, onCloseAutoFocus, onSave, onTemplate }: Props) {
   const { t } = useLocalization()
   const prefix = useId()
   const [fields, setFields] = useState(() => initialCopyFields(item, tab))
@@ -104,7 +106,7 @@ export function CopywritingDialog({ item, tab, editing, canWrite, onEdit, onClos
           <>
             <DialogHeader>
               <DialogTitle className="break-words">{item.title}</DialogTitle>
-              <DialogDescription>{text(`types.${item.copy_type}`)} · {text(`statuses.${item.status ?? "draft"}`)}</DialogDescription>
+              <DialogDescription>{text(item.tags?.includes(WHATSAPP_TEMPLATE_TAG) ? "template.whatsapp" : `types.${item.copy_type}`)} · {text(`statuses.${item.status ?? "draft"}`)}</DialogDescription>
             </DialogHeader>
             <DialogBody className="space-y-5">
               <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{item.content}</p>
@@ -116,6 +118,10 @@ export function CopywritingDialog({ item, tab, editing, canWrite, onEdit, onClos
               ))}
             </DialogBody>
             <DialogFooter>
+              {canWrite && <>
+                <Button variant="outline" onClick={() => onTemplate("whatsapp")}>{text("template.whatsapp")}</Button>
+                <Button variant="outline" onClick={() => onTemplate("newsletter")}>{text("template.newsletter")}</Button>
+              </>}
               <Button variant="outline" onClick={onClose}>{text("close")}</Button>
               {canWrite && <Button onClick={onEdit}>{text("edit")}</Button>}
             </DialogFooter>

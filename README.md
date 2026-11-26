@@ -20,7 +20,7 @@ dependencies.
 
 ## Requirements
 
-- Node.js 22 or newer
+- Node.js 22.x
 - npm
 - Supabase configuration for authenticated and database-backed features
 - Feature-specific credentials for Stripe, the external orchestration API, or

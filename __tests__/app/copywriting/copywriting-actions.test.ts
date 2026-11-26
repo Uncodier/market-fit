@@ -1,6 +1,6 @@
 /** @jest-environment node */
 
-import { getCopywriting, saveCopywriting } from "@/app/copywriting/actions"
+import { createCopyTemplate, getCopywriting, saveCopywriting } from "@/app/copywriting/actions"
 import { COPY_STATUSES, COPY_TYPES, initialCopyFields } from "@/app/copywriting/copywriting-model"
 import { siteFormSchema } from "@/app/components/settings/form-schema"
 import { rawLocaleMessages } from "@/app/context/locale-catalog"
@@ -15,12 +15,14 @@ jest.mock("@/lib/supabase/server", () => ({ createClient: jest.fn() }))
 jest.mock("@/lib/permissions/workspace-screen-scope", () => ({ readWorkspaceScreenScope: jest.fn() }))
 jest.mock("@/lib/auth/site-role-lookup", () => ({ lookupCurrentUserSiteRole: jest.fn() }))
 jest.mock("next/cache", () => ({ revalidatePath: jest.fn() }))
+jest.mock("@/lib/permissions/site-access", () => ({ userCanOnSite: async () => true }))
+jest.mock("@/lib/permissions/location-boundary", () => ({ canAccessUnscopedSite: async () => true }))
 
 const site = "b576fa67-6e80-4d19-a273-0de8459048a7"
 const id = "a365be64-82ea-41b3-b7de-b91d08d6957b"
 const fields = { ...initialCopyFields(undefined, "sales_pitch"), title: "Pitch", content: "Hello" }
 const row = { ...fields, target_audience: null, use_case: null, notes: null, id }
-const query = { insert: jest.fn(), update: jest.fn(), select: jest.fn(), eq: jest.fn(), single: jest.fn() }
+const query = { insert: jest.fn(), update: jest.fn(), select: jest.fn(), eq: jest.fn(), single: jest.fn(), maybeSingle: jest.fn() }
 const from = jest.fn()
 
 beforeEach(() => {
@@ -28,6 +30,7 @@ beforeEach(() => {
   from.mockReturnValue(query)
   for (const method of [query.insert, query.update, query.select, query.eq]) method.mockReturnValue(query)
   query.single.mockResolvedValue({ data: row, error: null })
+  query.maybeSingle.mockResolvedValue({ data: row, error: null })
   jest.mocked(createClient).mockResolvedValue({
     from, auth: { getUser: async () => ({ data: { user: { id: "actor" } }, error: null }) },
   } as unknown as Awaited<ReturnType<typeof createClient>>)
@@ -54,6 +57,31 @@ it("does not query blocked screens or allow writes from read-only members", asyn
   await expect(saveCopywriting(site, id, fields)).rejects.toThrow("write denied")
   await expect(saveCopywriting(site, id, { ...fields, site_id: "other" } as typeof fields)).rejects.toThrow()
   expect(from).not.toHaveBeenCalled()
+})
+
+it("creates a private newsletter draft in Content without modifying the copy", async () => {
+  await expect(createCopyTemplate(site, id, { kind: "newsletter", title: "April", body: "Newsletter body" })).resolves.toEqual({ id })
+  expect(from.mock.calls).toEqual([["copywriting"], ["content"]])
+  expect(query.insert).toHaveBeenCalledWith({ site_id: site, user_id: "actor", author_id: "actor", type: "newsletter",
+    title: "April", text: "Newsletter body", status: "draft", metadata: { source_copywriting_id: id } })
+  expect(query.update).not.toHaveBeenCalled()
+})
+
+it("saves a reusable WhatsApp draft without creating a provider approval record", async () => {
+  await createCopyTemplate(site, id, { kind: "whatsapp", title: "WhatsApp April", body: "WhatsApp body" })
+  expect(from.mock.calls).toEqual([["copywriting"], ["copywriting"]])
+  expect(query.insert).toHaveBeenCalledWith(expect.objectContaining({ site_id: site, user_id: "actor", copy_type: "other",
+    status: "draft", tags: ["whatsapp-template"], content: "WhatsApp body" }))
+  expect(query.update).not.toHaveBeenCalled()
+})
+
+it("does not create a template from a missing source or blocked Content screen", async () => {
+  const draft = { kind: "newsletter", title: "April", body: "Newsletter body" } as const
+  jest.mocked(readWorkspaceScreenScope).mockResolvedValueOnce({ status: "ready", role: "collaborator", blockedScreens: ["content"], locationRestricted: false })
+  await expect(createCopyTemplate(site, id, draft)).rejects.toThrow("denied")
+  query.maybeSingle.mockResolvedValueOnce({ data: null })
+  await expect(createCopyTemplate(site, id, draft)).rejects.toThrow("Source copy unavailable")
+  expect(query.insert).not.toHaveBeenCalled()
 })
 
 it("uses the Settings data contract and has a localized Sales launch entry", () => {

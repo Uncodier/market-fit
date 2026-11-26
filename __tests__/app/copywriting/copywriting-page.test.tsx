@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import CopywritingPage from "@/app/copywriting/page"
-import { getCopywriting, saveCopywriting } from "@/app/copywriting/actions"
+import { createCopyTemplate, findCopyTestRecipients, getCopywriting, saveCopywriting } from "@/app/copywriting/actions"
+import { sendTeamMemberIntervention } from "@/app/services/chat-send"
 import { LocalizationProvider } from "@/app/context/LocalizationContext"
 import { TopBarPrimaryActionsSlot } from "@/app/components/navigation/topbar-primary-actions"
 import { useIsMobile } from "@/app/hooks/use-mobile-view"
@@ -13,10 +14,11 @@ jest.mock("next/navigation", () => ({
   usePathname: () => "/copywriting",
   useSearchParams: () => new URLSearchParams(),
 }))
-jest.mock("@/app/copywriting/actions", () => ({ getCopywriting: jest.fn(), saveCopywriting: jest.fn() }))
+jest.mock("@/app/copywriting/actions", () => ({ getCopywriting: jest.fn(), saveCopywriting: jest.fn(), createCopyTemplate: jest.fn(), findCopyTestRecipients: jest.fn() }))
+jest.mock("@/app/services/chat-send", () => ({ sendTeamMemberIntervention: jest.fn() }))
 
 const email: CopywritingItem = {
-  id: "email", title: "Contact agencies", content: "Hello team\nSecond line", copy_type: "cold_email",
+  id: "a365be64-82ea-41b3-b7de-b91d08d6957b", title: "Contact agencies", content: "Hello team\nSecond line", copy_type: "cold_email",
   status: "approved", notes: "Keep it brief", target_audience: null, use_case: null,
 }
 const pitch: CopywritingItem = { ...email, id: "pitch", title: "Product intro", content: "Meet our product", copy_type: "sales_pitch" }
@@ -36,8 +38,9 @@ const originalResizeObserver = globalThis.ResizeObserver
 beforeAll(() => {
   globalThis.ResizeObserver = class {
     observe() {}
+    unobserve() {}
     disconnect() {}
-  } as typeof ResizeObserver
+  }
 })
 afterAll(() => { globalThis.ResizeObserver = originalResizeObserver })
 afterEach(() => jest.restoreAllMocks())
@@ -106,6 +109,35 @@ it("opens the editor directly from the table action, not the read-only detail", 
   fireEvent.click(within(screen.getByRole("table")).getByRole("button", { name: `Editar texto: ${email.title}` }))
   expect(screen.getByRole("dialog", { name: "Editar texto" })).toBeInTheDocument()
   expect(screen.getByLabelText("Título")).toHaveValue(email.title)
+})
+
+it.each([
+  ["newsletter", "Plantilla de boletín", "QA · preview@example.test"],
+  ["whatsapp", "Plantilla de WhatsApp", "QA · +14155550101"],
+] as const)("saves and tests the %s template independently from the original", async (kind, title, contact) => {
+  const lead = { id: "00000000-0000-4000-8000-000000000006", label: contact }
+  jest.mocked(findCopyTestRecipients).mockResolvedValue([lead])
+  jest.mocked(createCopyTemplate).mockResolvedValue({ id: "draft" })
+  jest.mocked(sendTeamMemberIntervention).mockResolvedValue({ success: true, conversation_id: "conversation" })
+  renderPage()
+  fireEvent.click(await screen.findByRole("button", { name: email.title }))
+  fireEvent.click(screen.getByRole("button", { name: title }))
+  const dialog = screen.getByRole("dialog", { name: title })
+  expect(within(dialog).getByLabelText("Contenido")).toHaveValue(email.content)
+  expect(within(dialog).getByRole("button", { name: "Enviar prueba" })).toBeDisabled()
+  fireEvent.click(within(dialog).getByRole("button", { name: "Guardar borrador" }))
+  expect(await within(dialog).findByText("Borrador guardado.")).toBeInTheDocument()
+  expect(createCopyTemplate).toHaveBeenCalledWith("site-a", email.id, expect.objectContaining({ kind, body: email.content }))
+  expect(sendTeamMemberIntervention).not.toHaveBeenCalled()
+  const picker = within(dialog).getByPlaceholderText("Busca contactos existentes")
+  fireEvent.change(picker, { target: { value: "QA" } })
+  fireEvent.click(await screen.findByText(contact))
+  fireEvent.click(within(dialog).getByRole("button", { name: "Enviar prueba" }))
+  expect(await screen.findByRole("link", { name: "Abrir conversación" })).toHaveAttribute("href", "/chat?conversationId=conversation")
+  expect(sendTeamMemberIntervention).toHaveBeenCalledTimes(1)
+  expect(sendTeamMemberIntervention).toHaveBeenCalledWith(undefined, "", undefined, undefined, {
+    site_id: "site-a", copy_test: { copy_id: email.id, lead_id: lead.id, draft: expect.objectContaining({ kind, body: email.content }) },
+  })
 })
 
 it("places creation in the topbar and shows the saved row in detail", async () => {
