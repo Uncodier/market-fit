@@ -50,3 +50,13 @@ test('keeps icon actions outside Safari input-plus-div layout overrides', () => 
   expect(screen.getByRole('button', { name: 'Clear selection' }).parentElement?.tagName).toBe('SPAN')
   expect(screen.getByLabelText('Supplier').parentElement?.querySelector('input + div')).toBeNull()
 })
+
+test('marks a listbox option as selected only for a matching existing value', () => {
+  const props = { options, label: 'Supplier', onValueChange: jest.fn(), openOnFocus: true }
+  const view = render(<RelationSelect {...props} value={{ mode: 'create', label: options[0].label }} />)
+  fireEvent.focus(screen.getByRole('combobox', { name: 'Supplier' }))
+  expect(screen.getByRole('option', { name: 'Approved supplier', selected: false })).toBeInTheDocument()
+
+  view.rerender(<RelationSelect {...props} value={{ mode: 'existing', ...options[0] }} />)
+  expect(screen.getByRole('option', { name: 'Approved supplier', selected: true })).toBeInTheDocument()
+})

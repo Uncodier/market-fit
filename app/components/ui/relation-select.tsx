@@ -337,6 +337,7 @@ export function RelationSelect({
                 const prevGroup = filteredOptions[index - 1]?.group
                 const showGroupHeader =
                   Boolean(option.group) && option.group !== prevGroup
+                const isSelected = value?.mode === "existing" && value.id === option.id
                 return (
                   <React.Fragment key={option.id}>
                     {showGroupHeader && (
@@ -350,12 +351,12 @@ export function RelationSelect({
                     <div
                       id={openOnFocus ? `${listId}-${index}` : undefined}
                       role={openOnFocus ? "option" : undefined}
-                      aria-selected={openOnFocus ? value?.id === option.id : undefined}
+                      aria-selected={openOnFocus ? isSelected : undefined}
                       data-relation-id={option.id}
                       aria-disabled={option.disabled || undefined}
                       className={cn(
                         "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm font-inter outline-none hover:bg-accent hover:text-accent-foreground transition-colors",
-                        value?.mode === "existing" && value.id === option.id && "bg-accent text-accent-foreground",
+                        isSelected && "bg-accent text-accent-foreground",
                         openOnFocus && highlightedId === option.id && "bg-accent text-accent-foreground",
                         option.disabled && "cursor-not-allowed opacity-60"
                       )}
