@@ -59,15 +59,13 @@ export function resolveSelectedInstanceId(opts: {
 }): string {
   const { requestedId, localId, instanceIds, isLoading } = opts
 
-  if (requestedId && requestedId !== "new") {
-    return requestedId
-  }
+  if (requestedId) return requestedId
 
   if (localId && localId !== "new") {
     if (instanceIds.includes(localId) || isLoading) return localId
   }
 
-  if (localId === "new" || requestedId === "new") return "new"
+  if (localId === "new") return "new"
   return instanceIds[0] || "new"
 }
 

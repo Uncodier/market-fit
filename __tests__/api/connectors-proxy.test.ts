@@ -260,17 +260,12 @@ it.each(["all", "selected"])("forwards an explicit %s tool mode with an empty ID
   expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual(update)
 })
 
-it("forwards only explicit boolean catalogue consent and rejects non-booleans before forwarding", async () => {
+it("does not accept legacy catalogue-read writes from the web app", async () => {
   const path = ["connections", attemptId, "policy"]
   const update = { site_id: siteId, expected_revision: 1, tool_access_mode: "selected", allowed_tools: ["MAIL_LIST"], allowed_hosts: ["assistant"], require_approval: false, enabled: true }
   const submit = (catalog_reads: unknown) => proxyConnector(request(path.join("/"), "PATCH", { ...update, catalog_reads }), path)
-  for (const value of [null, 1, "false"]) expect((await submit(value)).status).toBe(400)
+  for (const value of [true, false, null, 1, "false"]) expect((await submit(value)).status).toBe(400)
   expect(fetchMock).not.toHaveBeenCalled()
-  for (const value of [false, true]) {
-    fetchMock.mockResolvedValueOnce(Response.json({ revision: 2 }))
-    expect((await submit(value)).status).toBe(200)
-    expect(JSON.parse(fetchMock.mock.calls.at(-1)![1].body)).toEqual({ ...update, catalog_reads: value })
-  }
 })
 
 describe("atomic Ask policy save", () => {
@@ -312,15 +307,42 @@ describe("atomic Ask policy save", () => {
   })
 })
 
-it("accepts a standalone opt-out, never an abbreviated opt-in or a mixed partial policy", async () => {
+it("rejects standalone legacy catalogue updates", async () => {
   const path = ["connections", attemptId, "policy"], base = { site_id: siteId, expected_revision: 1 }
   const submit = (body: unknown) => proxyConnector(request(path.join("/"), "PATCH", body), path)
-  for (const bad of [{ catalog_reads:true }, {catalog_reads:false, enabled:true}, {catalog_reads:false, allowed_tools:["NEW"]}]) {
+  for (const bad of [{ catalog_reads:true }, { catalog_reads:false }, {catalog_reads:false, enabled:true}, {catalog_reads:false, allowed_tools:["NEW"]}]) {
     expect((await submit({...base, ...bad})).status).toBe(400)
   }
   expect(fetchMock).not.toHaveBeenCalled()
-  expect((await submit({...base, catalog_reads:false})).status).toBe(200)
-  expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({...base, catalog_reads:false})
+})
+
+it("strictly validates and runs account management with the authenticated database client", async () => {
+  const path = ["connections", attemptId, "manage"]
+  const base = { site_id: siteId, expected_revision: 1 }
+  const submit = (body: unknown, query = "") => proxyConnector(request(path.join("/") + query, "PATCH", body), path)
+  for (const invalid of [{ operation: "rename", display_name: " " }, { operation: "rename", display_name: "a\u0085b" },
+    { operation: "rename", display_name: "x".repeat(201) }, { operation: "remove_members", members: [] },
+    { operation: "remove_agents", expected_revision: 0 }, { operation: "remove_agents", actor_id: userId }]) {
+    expect((await submit({ ...base, ...invalid })).status).toBe(400)
+  }
+  expect((await submit({ ...base, operation: "remove_members" }, `?site_id=${siteId}`)).status).toBe(400)
+  expect(rpc).not.toHaveBeenCalled()
+  rpc.mockResolvedValueOnce({ data: [{ can_view: true, can_manage: false }], error: null })
+  expect((await submit({ ...base, operation: "remove_agents" })).status).toBe(403)
+  const receipt = { connector_id: attemptId, revision: 2, operation: "rename", display_name: "Sales CRM" }
+  const databaseResult = (result: unknown) => {
+    rpc.mockResolvedValueOnce({ data: [{ can_view: true, can_manage: true }], error: null })
+      .mockReturnValueOnce({ abortSignal: async () => result })
+  }
+  databaseResult({ data: { ...receipt, connector_id: userId } })
+  expect((await submit({ ...base, operation: "rename", display_name: "Sales CRM" })).status).toBe(502)
+  databaseResult({ data: receipt })
+  expect(await (await submit({ ...base, operation: "rename", display_name: " Sales CRM " })).json()).toEqual(receipt)
+  expect(rpc).toHaveBeenLastCalledWith("connector_manage_account", { p_site_id: siteId, p_connector_id: attemptId,
+    p_expected_revision: 1, p_operation: "rename", p_display_name: "Sales CRM" })
+  databaseResult({ error: { code: "40001" } })
+  expect((await submit({ ...base, operation: "remove_members" })).status).toBe(409)
+  expect(fetchMock).not.toHaveBeenCalled()
 })
 
 it("never reflects token fields or provider error messages from token setup", async () => {

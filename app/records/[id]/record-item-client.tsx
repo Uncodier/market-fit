@@ -26,6 +26,9 @@ import { RecordDetailSkeleton } from "./components/RecordDetailSkeleton"
 import { RecordDocumentView } from "./components/RecordDocumentView"
 import { RecordRightPanel } from "./components/RecordRightPanel"
 import { RecordToolbar } from "./components/RecordToolbar"
+import { RecordOutputActions } from "./components/RecordOutputActions"
+import { RecordInsightProvider } from "./components/record-insight-context"
+import type { InsightField } from "./components/insights-types"
 import {
   RecordDiagramView,
   type RecordDiagramEditorHandle,
@@ -35,6 +38,8 @@ import { RecordDiagramEditControls } from "./components/record-diagram/RecordDia
 import { RecordNodeMarkdownControls } from "./components/record-diagram/RecordNodeMarkdownControls"
 import { htmlToMarkdown } from "./record-markdown"
 import "@/app/content/styles/editor.css"
+
+const emptyFields: InsightField[] = []
 
 export default function RecordDetailPage() {
   const params = useParams()
@@ -56,7 +61,7 @@ export default function RecordDetailPage() {
   const [diagramDirty, setDiagramDirty] = useState(false)
   const [activeView, setActiveView] = useState<"document" | "nodes">("document")
   const [activeRightTab, setActiveRightTab] = useState<"insights" | "relations">("insights")
-  const [isRightPanelOpen, setIsRightPanelOpen] = useState(true)
+  const [isRightPanelOpen, setIsRightPanelOpen] = useState(false)
   const [isEditorFocused, setIsEditorFocused] = useState(false)
   const [debouncedTitle] = useDebounce(title, 500)
   const [debouncedFormData] = useDebounce(formData, 500)
@@ -346,11 +351,17 @@ export default function RecordDetailPage() {
   if (!record) return null
 
   const hasChanges = documentDirty || diagramDirty
+  const fields = record.category?.template_fields ?? emptyFields
 
   return (
+    <RecordInsightProvider key={record.id} visible={isRightPanelOpen && activeRightTab === "insights"}
+      fields={fields} record={record} formData={debouncedFormData} relationsData={relationsData} description={description}>
     <div className="flex h-[calc(100vh-64px)] min-h-0 bg-background">
       <div className="relative flex min-w-0 flex-1 flex-col bg-muted/10">
         <RecordToolbar
+          outputActions={<RecordOutputActions pendingEdits={formData !== debouncedFormData} draft={{
+            title, status, description, category: record.category?.name, fields, formData, relationsData,
+          }} />}
           editor={editor}
           activeView={activeView}
           hasChanges={hasChanges}
@@ -478,5 +489,6 @@ export default function RecordDetailPage() {
         />
       )}
     </div>
+    </RecordInsightProvider>
   )
 }

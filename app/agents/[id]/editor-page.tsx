@@ -20,7 +20,7 @@ function Unavailable({ message }: { message: string }) {
   </div>
 }
 
-function PersistedEditor({ siteId, agentId }: { siteId: string; agentId: string }) {
+function PersistedEditor({ siteId, agentId, initialTab }: { siteId: string; agentId: string; initialTab: "basic" | "connectors" }) {
   const [result, setResult] = useState<EditorProfile | "unavailable" | null>(null)
   useEffect(() => {
     const request = new AbortController()
@@ -33,13 +33,15 @@ function PersistedEditor({ siteId, agentId }: { siteId: string; agentId: string 
   }, [siteId, agentId])
   if (result === "unavailable") return <Unavailable message="Agent not found or unavailable for this site" />
   if (!result) return <AgentPageSkeleton />
-  return <AgentEditor siteId={siteId} routeId={agentId} initialProfile={result} />
+  return <AgentEditor siteId={siteId} routeId={agentId} initialProfile={result} initialTab={initialTab} />
 }
 
 function EditorRoute({ draft }: { draft: boolean }) {
   const params = useParams<{ id?: string }>()
   const id = draft ? 'new' : params.id || ''
-  const roleHint = useSearchParams().get("role")
+  const searchParams = useSearchParams()
+  const roleHint = searchParams.get("role")
+  const initialTab = searchParams.get("tab") === "connectors" ? "connectors" : "basic"
   const { currentSite, isLoading } = useSite()
   const { t } = useLocalization()
   if (!currentSite?.id) return isLoading ? <AgentPageSkeleton draft={id === "new"} /> : <Unavailable message={t("settings.empty.noSite")} />
@@ -47,7 +49,7 @@ function EditorRoute({ draft }: { draft: boolean }) {
   // Reset the whole editor (including active tab, pending loads, and draft edits)
   // in the same render as a site/route switch, not in a later effect.
   const key = `${currentSite.id}:${id}`
-  if (isAgentUuid(id)) return <PersistedEditor key={key} siteId={currentSite.id} agentId={id.toLowerCase()} />
+  if (isAgentUuid(id)) return <PersistedEditor key={key} siteId={currentSite.id} agentId={id.toLowerCase()} initialTab={initialTab} />
   const profile = createDraft(id, roleHint)
   if (!profile) return <Unavailable message="Agent not found" />
   return <AgentEditor key={`${key}:${profile.role}`} siteId={currentSite.id} routeId={id} initialProfile={profile} />

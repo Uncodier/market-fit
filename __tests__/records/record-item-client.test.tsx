@@ -51,6 +51,7 @@ jest.mock("@/app/components/ui/tabs", () => {
   }
 })
 jest.mock("@/app/records/actions", () => ({
+  getRecords: jest.fn().mockResolvedValue({ records: [], error: null }),
   getRecordById: jest.fn(),
   updateRecord: jest.fn(),
   deleteRecord: jest.fn(),
@@ -63,9 +64,10 @@ jest.mock("@/app/records/[id]/components/RecordDetailSkeleton", () => ({
   RecordDetailSkeleton: () => <div>Loading record</div>,
 }))
 jest.mock("@/app/records/[id]/components/RecordToolbar", () => ({
-  RecordToolbar: ({ hasChanges, isSaving, onSave, saveStatus }: any) => (
+  RecordToolbar: ({ hasChanges, isSaving, onSave, onToggleRightPanel, saveStatus }: any) => (
     <div>
       <button type="button" onClick={onSave} disabled={!hasChanges || isSaving || saveStatus === "conflict"}>Save changes</button>
+      <button type="button" onClick={onToggleRightPanel}>Toggle insights</button>
       <span role="status">{saveStatus}</span>
     </div>
   ),
@@ -84,7 +86,7 @@ jest.mock("@/app/records/[id]/components/RecordDocumentView", () => ({
   ),
 }))
 jest.mock("@/app/records/[id]/components/RecordRightPanel", () => ({
-  RecordRightPanel: () => null,
+  RecordRightPanel: () => <aside aria-label="Record insights" />,
 }))
 jest.mock("@/app/records/[id]/components/record-diagram/RecordDiagramView", () => ({
   RecordDiagramView: ({ diagram, onChange, onViewportChange }: any) => (
@@ -150,6 +152,17 @@ describe("record detail view switch", () => {
       revision: 1,
       changedNodeIds: [],
     })
+  })
+
+  it("mounts the insights panel only when requested", async () => {
+    render(<RecordDetailPage />)
+    const toggle = await screen.findByRole("button", { name: "Toggle insights" })
+    const panel = () => screen.queryByRole("complementary", { name: "Record insights" })
+    expect(panel()).not.toBeInTheDocument()
+    fireEvent.click(toggle)
+    expect(panel()).toBeInTheDocument()
+    fireEvent.click(toggle)
+    expect(panel()).not.toBeInTheDocument()
   })
 
   it("preserves both drafts across switches and saves dirty resources together", async () => {

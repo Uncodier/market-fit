@@ -54,30 +54,6 @@ export const RecordDetailSkeleton = () => {
           </div>
         </div>
       </div>
-
-      {/* Right side: Insights & Relations Skeleton */}
-      <div className="w-[400px] flex-none flex flex-col bg-background">
-        <div className="flex-1 flex flex-col min-h-0">
-          <div className="border-b px-4 h-[71px] flex items-center justify-center gap-2">
-            <Skeleton className="h-10 w-full rounded-md" />
-          </div>
-
-          <div className="flex-1 p-4 space-y-6">
-            <div className="space-y-2">
-              <Skeleton className="h-5 w-32" />
-              <Skeleton className="h-24 w-full rounded-lg" />
-            </div>
-            <div className="space-y-2">
-              <Skeleton className="h-5 w-40" />
-              <Skeleton className="h-20 w-full rounded-lg" />
-            </div>
-            <div className="space-y-2">
-              <Skeleton className="h-5 w-24" />
-              <Skeleton className="h-16 w-full rounded-lg" />
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   )
 }

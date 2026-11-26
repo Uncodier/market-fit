@@ -102,7 +102,15 @@ export function hasId(fullPath: string): boolean {
   const segments = pathname.split('/').filter(Boolean)
   const sectionSegmentsCount = getSection(fullPath).split('/').filter(Boolean).length
   const params = new URLSearchParams(search || '')
+  if (pathname === '/robots' && resolveInstanceIdParam(params) === 'new') return false
   return segments.length > sectionSegmentsCount || ID_PARAMS.some((param) => params.has(param))
+}
+
+export function isAgentSessionDetail(path: string): boolean {
+  if (getSection(path) !== '/robots' || !hasId(path)) return false
+  const params = new URLSearchParams(path.split('?')[1])
+  const mode = params.get('mode')
+  return mode !== 'workflow' && mode !== 'imprenta' && params.get('artifact') !== 'true'
 }
 
 export function isReturnableDetail(path: string): boolean {
@@ -127,6 +135,11 @@ export function enforceInvariants(items: HistoryItem[]): HistoryItem[] {
   const last = items[items.length - 1]
   const section = getSection(last.path)
   if (!hasId(last.path)) return [last]
+  // Agent tabs are siblings, not ancestors. Repair old trails that used a
+  // previously selected session (or its title) as the parent.
+  if (isAgentSessionDetail(last.path)) {
+    return [item('/robots', SECTION_TITLES['/robots'], last.timestamp - 1), last]
+  }
   // Repair persisted trails created when Purchases was treated as a real screen.
   if (section.startsWith('/purchases/')) {
     items = items.filter(entry => entry.path.split('?')[0] !== '/purchases')
@@ -165,6 +178,8 @@ export function reduceBreadcrumb(items: HistoryItem[], event: BreadcrumbEvent): 
     if (isRoot) {
       return enforceInvariants([newItem])
     }
+
+    if (isAgentSessionDetail(event.path)) return enforceInvariants([newItem])
 
     if (isReturnableDetail(event.path)) {
       const existingIndex = items.findIndex(entry => getScreenKey(entry.path) === getScreenKey(event.path))

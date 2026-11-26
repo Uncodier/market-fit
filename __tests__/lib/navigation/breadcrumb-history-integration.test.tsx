@@ -60,7 +60,10 @@ test.each([
   [true, '/robots?instance=one', '/robots', '/robots?view=instances'],
   [true, '/robots?instance=one&mode=workflow', '/robots', '/robots?mode=workflow&view=instances'],
   [true, '/robots?instance=one&mode=imprenta', '/robots', '/robots?mode=imprenta&view=instances'],
-  [false, '/robots?instance=one', '/robots', '/robots'],
+  [false, '/robots?instance=one', '/robots', '/robots?instance=new'],
+  [false, '/robots/one', '/robots', '/robots?instance=new'],
+  [false, '/robots?instance=one&mode=workflow', '/robots?mode=workflow', '/robots?mode=workflow'],
+  [false, '/robots?instance=one&artifact=true', '/robots', '/robots'],
   [true, '/robots?instance=one&artifact=true', '/robots', '/robots'],
   [true, '/robots?instance=one', '/robots?instance=two', '/robots?instance=two'],
   [true, '/robots?instance=one&mode=workflow', '/robots?view=instances', '/robots?view=instances'],
@@ -80,6 +83,38 @@ test.each([
   } finally {
     window.matchMedia = originalMatchMedia
   }
+})
+
+test('the Robots parent stays fixed across root title updates, session switches and a blank session', () => {
+  const root = '/robots'
+  setRoute(root)
+  const hook = renderHook(() => useNavigationHistory())
+  const update = (path: string, title: string) => act(() => window.dispatchEvent(
+    new CustomEvent('breadcrumb:update', { detail: { path, title } }),
+  ))
+  update(root, 'Old report')
+
+  const first = '/robots?instance=one'
+  const second = '/robots?instance=two'
+  setRoute(first)
+  hook.rerender()
+  update(first, 'First report')
+  expect(hook.result.current.items.map(({ path, label }) => [path, label])).toEqual([
+    [root, 'Agents'], [first, 'First report'],
+  ])
+
+  setRoute(second)
+  hook.rerender()
+  update(second, 'Second report')
+  update(first, 'Late first report')
+  expect(hook.result.current.items.map(({ path, label }) => [path, label])).toEqual([
+    [root, 'Agents'], [second, 'Second report'],
+  ])
+
+  const blank = '/robots?instance=new'
+  setRoute(blank)
+  hook.rerender()
+  expect(hook.result.current.items.map(({ path }) => path)).toEqual([blank])
 })
 
 test.each([

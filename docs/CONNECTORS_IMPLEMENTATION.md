@@ -214,6 +214,15 @@ schemas. Every page rechecks site access and uses the selected server credential
 Live Gmail reads returned 61 total tools, with two distinct 20-item pages. Provider
 calls were metadata-only; no tool execution or OAuth effects occurred.
 
+Saved agent profiles have a **Connectors** tab and a dedicated
+`/agents/[id]/connectors` view. Under the existing manager-only grant RLS, the
+directory separates current explicit agent grants from active accounts that can
+be added. Workspace sharing alone does not assign an account to an agent.
+Expanding a row loads the existing versioned account policy and reviewed-tool
+metadata, not the provider catalogue. The display is not a runtime admission
+check. Adding an account reuses the existing revision-checked access mutation
+and leaves member grants and the tool policy unchanged. No migration is needed.
+
 ## Full-card navigation and detail parsing — 2026-11-19
 
 Each catalogue card is one keyboard-accessible link, covering logo, description,

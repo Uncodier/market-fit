@@ -31,15 +31,21 @@ export function shouldCanonicalizeMobileInstance(search: string, selectedId: str
     !resolveInstanceIdParam(params) && selectedId !== "new"
 }
 
-/** A mobile breadcrumb root means the list, not automatic instance selection. */
-export function mobileInstanceBreadcrumbHref(target: string, current: string, isMobile: boolean) {
+/** An agent breadcrumb root opens the list on mobile and a blank session on desktop. */
+export function robotsBreadcrumbHref(target: string, current: string, isMobile: boolean) {
   const [currentPath, currentSearch] = current.split("?")
   const [targetPath, targetSearch] = target.split("?")
   const currentParams = new URLSearchParams(currentSearch)
   const targetParams = new URLSearchParams(targetSearch)
-  if (!isMobile || !(currentPath === "/robots" || currentPath.startsWith("/robots/")) ||
+  if (!(currentPath === "/robots" || currentPath.startsWith("/robots/")) ||
     targetPath !== "/robots" || resolveInstanceIdParam(targetParams) ||
     currentParams.get("artifact") === "true" || targetParams.get("artifact") === "true") return target
   if (isInstanceListView(targetParams)) return target
+  if (!isMobile) {
+    const mode = targetParams.get("mode") ?? currentParams.get("mode")
+    if (mode === "workflow" || mode === "imprenta") return target
+    targetParams.set("instance", "new")
+    return `/robots?${targetParams}`
+  }
   return mobileInstanceListHref(targetParams.has("mode") ? targetParams.toString() : currentParams.toString())
 }

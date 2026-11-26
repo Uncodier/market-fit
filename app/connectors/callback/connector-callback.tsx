@@ -7,6 +7,7 @@ import { z } from "zod"
 import { useAuthContext } from "@/app/components/auth/auth-context"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { Button } from "@/app/components/ui/button"
+import { CheckCircle } from "@/app/components/ui/icons"
 import { SectionCard, SectionCardContent, SectionCardHeader } from "@/app/components/ui/section-card"
 import { ConnectorError, ConnectorLoading } from "../connector-feedback"
 import { connectorRequest, ConnectorRequestError } from "../connector-request"
@@ -61,14 +62,36 @@ export default function ConnectorCallback() {
   }, [hydrated, isLoading, user, proof, tab, target, invalidProof, actorChanged, credentialFlow, check])
   const current = state?.actor === user?.id ? state : undefined
   const retryableCredential = credentialFlow && current?.error instanceof ConnectorRequestError && ["connector_not_active", "credential_check_unavailable"].includes(current.error.code)
+  if (hydrated && user && !invalidProof && !actorChanged && current?.result) {
+    const { connector_id, toolkit_slug, site_id } = current.result
+    const query = new URLSearchParams({ connector: connector_id, ...(site_id && { workspace: site_id }) })
+
+    return <div className="mx-auto max-w-lg px-4 py-10">
+      <SectionCard>
+        <SectionCardContent className="space-y-6 px-6 py-8 text-center sm:px-8">
+          <div role="status" className="space-y-3">
+            <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
+              <CheckCircle aria-hidden="true" className="size-8 text-green-600 dark:text-green-400" />
+            </div>
+            <h2 className="text-2xl font-semibold tracking-tight">{t("connectors.callbackSuccessTitle")}</h2>
+            <p className="text-sm text-muted-foreground">{t("connectors.callbackSuccess")}</p>
+          </div>
+          <div className="flex flex-col justify-center gap-3 sm:flex-row">
+            <Button asChild><Link href={`/connectors/${encodeURIComponent(toolkit_slug)}?${query}`}>{t("connectors.reviewAccess")}</Link></Button>
+            <Button asChild variant="outline"><Link href="/connectors">{t("connectors.backToCatalog")}</Link></Button>
+          </div>
+        </SectionCardContent>
+      </SectionCard>
+    </div>
+  }
+
   return <div className="mx-auto max-w-2xl px-4 py-10">
     <SectionCard><SectionCardHeader title={t("connectors.callbackTitle")} description={t("connectors.callbackHelp")} />
       <SectionCardContent>
         {!hydrated ? <ConnectorLoading /> : !isLoading && !user ? <p>{t("connectors.errors.unauthorized")}</p> : invalidProof ? <ConnectorError error={new ConnectorRequestError(proof.denied ? "cancelled" : "invalid_callback")} /> : actorChanged ? <ConnectorError error={new ConnectorRequestError("forbidden", 403)} /> : current?.error ? <>
           <ConnectorError error={current.error} />
           {retryableCredential && <Button variant="outline" onClick={() => { setState(undefined); setCheck(value => value + 1) }}>{t("connectors.checkCredentialAccount")}</Button>}
-        </> : current?.result ?
-          <div className="space-y-4"><p role="status">{t("connectors.callbackSuccess")}</p><Button asChild><Link href={`/connectors/${encodeURIComponent(current.result.toolkit_slug)}?${new URLSearchParams({ connector: current.result.connector_id, ...(current.result.site_id && { workspace: current.result.site_id }) })}`}>{t("connectors.reviewAccess")}</Link></Button></div> : <ConnectorLoading />}
+        </> : <ConnectorLoading />}
         <Button asChild variant="outline"><Link href="/connectors">{t("connectors.backToCatalog")}</Link></Button>
       </SectionCardContent>
     </SectionCard>

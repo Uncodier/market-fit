@@ -11,6 +11,7 @@ import { markdownComponents } from '../utils/markdownComponents'
 import { InstanceNodeChildren } from './InstanceNodeChildren'
 import { InstanceLogCopyFeedbackBar } from './InstanceLogCopyFeedbackBar'
 import { UserWorkflowMeta } from './UserWorkflowMeta'
+import { RobotAnswerBody, privateAnswerId } from './RobotAnswerBody'
 
 interface MessageItemProps {
   log: InstanceLog
@@ -188,14 +189,12 @@ export const MessageItem: React.FC<MessageItemProps> = ({
       {/* Message content */}
       <div className="w-full min-w-0 overflow-hidden">
         <div className="text-sm text-foreground leading-relaxed prose prose-sm max-w-none dark:prose-invert prose-headings:font-medium prose-p:leading-relaxed prose-pre:bg-muted w-full overflow-hidden break-words" style={{ wordWrap: 'break-word', overflowWrap: 'break-word', wordBreak: 'break-word', paddingLeft: isBrowserVisible ? '0.75rem' : '2rem' }}>
-          <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} components={markdownComponents}>
-            {log.message}
-          </ReactMarkdown>
+          <RobotAnswerBody log={log} />
         </div>
       </div>
 
       {/* Copy / feedback + Branch to Node — one row; hover only (node list below stays visible) */}
-      <div className={`mt-2 w-full min-w-0 ${isBrowserVisible ? 'pl-3' : 'pl-8'}`}>
+      {!privateAnswerId(log) && <div className={`mt-2 w-full min-w-0 ${isBrowserVisible ? 'pl-3' : 'pl-8'}`}>
         {log.instance_id ? (
           <InstanceNodeChildren
             parentLogId={log.id}
@@ -224,7 +223,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({
             />
           </div>
         )}
-      </div>
+      </div>}
       
     </div>
   )

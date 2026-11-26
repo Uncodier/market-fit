@@ -55,6 +55,7 @@ test("member cannot edit, see the full ACL or use management as execution permis
   expect(screen.queryByText("Member One")).not.toBeInTheDocument()
   expect(screen.queryByRole("button", { name: "Save policy" })).not.toBeInTheDocument()
   expect(screen.queryByRole("button", { name: "Add tool" })).not.toBeInTheDocument()
+  expect(screen.queryByRole("button", { name: /Remove access for all/ })).not.toBeInTheDocument()
   expect(screen.getByText(/You do not currently have effective member-use access/)).toBeVisible()
 })
 
@@ -88,6 +89,28 @@ const workspaceAccess = {
   agent_options: [...access.agent_options, { id: "allowed", label: "Allowed Agent" }],
   policy: { ...access.policy, allowed_tools: ["GMAIL_FETCH_EMAILS"], require_approval: false },
 }
+
+test.each([ ["members", "remove_members"], ["agents", "remove_agents"] ] as const)("removes %s in one confirmed account-scoped request", async (kind, operation) => {
+  const dto = { ...workspaceAccess, members: [], policy: { ...workspaceAccess.policy, catalog_reads: true } }
+  fetchMock.mockResolvedValueOnce(jsonResponse(dto)).mockResolvedValueOnce(jsonResponse({ connector_id: connector.id,
+    revision: connector.revision + 1, operation, display_name: null }))
+  const changed = jest.fn()
+  render(<ConnectorAccessPanel siteId="site-1" connector={connector} canManage onChanged={changed} />)
+  const button = await screen.findByRole("button", { name: `Remove access for all ${kind}` })
+  expect(screen.queryByText("Legacy catalogue reads")).not.toBeInTheDocument()
+  fireEvent.click(button)
+  expect(await screen.findByRole("alertdialog")).toHaveTextContent(connector.display_name)
+  expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "PATCH")).toHaveLength(0)
+  fireEvent.click(screen.getByRole("button", { name: "Cancel" }))
+  await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument())
+  fireEvent.click(button)
+  fireEvent.click(await screen.findByRole("button", { name: /^Remove access$/ }))
+  await waitFor(() => expect(changed).toHaveBeenCalledTimes(1))
+  const writes = fetchMock.mock.calls.filter(([, init]) => init?.method === "PATCH")
+  expect(writes).toHaveLength(1)
+  expect(writes[0][0]).toBe(`/api/connectors/connections/${connector.id}/manage`)
+  expect(JSON.parse(String(writes[0][1]?.body))).toEqual({ site_id: "site-1", expected_revision: connector.revision, operation })
+})
 
 test("workspace separates inherited members, ungranted agents and saved agent grants", async () => {
   fetchMock.mockResolvedValueOnce(jsonResponse(workspaceAccess))

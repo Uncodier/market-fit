@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, within } from "@testing-library/react"
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import { useRouter, useSearchParams } from "next/navigation"
 import ConnectorDetailPage, { DetailContent } from "@/app/connectors/connector-detail"
 import ConnectorDetailLoading from "@/app/connectors/[slug]/loading"
@@ -21,6 +21,28 @@ beforeAll(() => {
 function selectAccountByUrl() {
   jest.mocked(useSearchParams).mockReturnValue(new URLSearchParams({ connector: connector.id }) as ReturnType<typeof useSearchParams>)
 }
+
+test("renames only the selected account and refreshes its selector label", async () => {
+  selectAccountByUrl()
+  const name = "Marketing mailbox"
+  fetchMock.mockResolvedValueOnce(jsonResponse({ ...detail, connections: [active, newestActive] }))
+    .mockResolvedValueOnce(jsonResponse({ connector_id: active.id, revision: active.revision + 1, operation: "rename", display_name: name }))
+    .mockResolvedValueOnce(jsonResponse({ ...detail, connections: [{ ...active, display_name: name, revision: active.revision + 1 }, newestActive] }))
+  render(<DetailContent slug="mail" siteId="site-1" />)
+  const input = await screen.findByRole("textbox", { name: "Connection name" })
+  expect(input).toHaveValue(active.display_name)
+  fireEvent.change(input, { target: { value: ` ${name} ` } })
+  fireEvent.click(screen.getByRole("button", { name: "Save name" }))
+  await waitFor(() => {
+    const saved = screen.getByRole("textbox", { name: "Connection name" })
+    expect(saved).toBeEnabled()
+    expect(saved).toHaveValue(name)
+  })
+  expect(screen.getByRole("combobox", { name: "Connected account" })).toHaveTextContent(name)
+  const [path, init] = fetchMock.mock.calls.find(([, options]) => options?.method === "PATCH")!
+  expect(path).toBe(`/api/connectors/connections/${active.id}/manage`)
+  expect(JSON.parse(String(init?.body))).toEqual({ site_id: "site-1", expected_revision: active.revision, operation: "rename", display_name: name })
+})
 beforeEach(() => {
   fetchMock.mockReset()
   push.mockReset()

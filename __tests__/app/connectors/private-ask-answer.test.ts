@@ -1,6 +1,8 @@
 /** @jest-environment node */
 import { randomUUID } from 'node:crypto'
 import { GET } from '@/app/robots/private-answer/[id]/route'
+import { GET as inline } from '@/app/robots/private-answer/[id]/inline/route'
+import { GET as download } from '@/app/robots/private-answer/[id]/download/route'
 import { createClient } from '@/lib/supabase/server'
 
 jest.mock('@/lib/supabase/server', () => ({ createClient: jest.fn() }))
@@ -14,6 +16,38 @@ beforeEach(() => {
   jest.resetAllMocks()
   jest.mocked(createClient).mockResolvedValue({auth:{getUser},rpc} as never)
   getUser.mockResolvedValue({data:{user:{id:owner,is_anonymous:false}}})
+})
+
+it('isolates inline content from the workspace and only links to validated, same-origin deliverables', async () => {
+  const report = `/connectors/results/${randomUUID()}`
+  rpc.mockReturnValue(reply(`![pixel](https://tracker.test/a.png) <img src=x>\n[Table](${report})\n[invalid](${report}?public=1)`))
+  const response = await inline(new Request(`${url}/inline`), { params: Promise.resolve({ id }) })
+  expect(response.status).toBe(200)
+  expect(response.headers.get('cache-control')).toContain('private, no-store')
+  expect(response.headers.get('content-security-policy')).toContain("frame-ancestors 'self'")
+  expect(response.headers.get('content-security-policy')).toContain('sandbox ')
+  expect(response.headers.get('content-security-policy')).not.toMatch(/allow-same-origin|allow-scripts/)
+  const html = await response.text()
+  expect(html).not.toMatch(/<img|href="https|href="[^"\n]*\?public/)
+  expect(html).toContain(`<a href="${report}" target="_blank" rel="noopener noreferrer">Table</a>`)
+  expect(html).toContain(`href="/robots/private-answer/${id}/download"`)
+})
+
+it('exports the complete authorized answer, not a provider record; revocation denies every presentation', async () => {
+  const params = { params: Promise.resolve({ id }) }
+  const text = '# Quarterly analysis\n\nNo saved record is needed.'
+  rpc.mockReturnValueOnce(reply(text)).mockReturnValue(reply(null))
+  const file = await download(new Request(`${url}/download`), params)
+  expect(file.headers.get('content-disposition')).toContain('attachment; filename="private-ask-report.md"')
+  expect(await file.text()).toBe(text)
+  for (const handler of [inline, download, GET]) {
+    const denied = await handler(new Request(url), params)
+    expect(denied.status).toBe(404)
+    expect(denied.headers.get('content-disposition')).toBeNull()
+    expect(await denied.text()).not.toMatch(/Quarterly analysis|Download report/)
+  }
+  expect(rpc).toHaveBeenCalledTimes(4)
+  expect(getUser).toHaveBeenCalledTimes(4)
 })
 
 it('renders only the owner RPC response without executing markup or using a shared cache', async () => {

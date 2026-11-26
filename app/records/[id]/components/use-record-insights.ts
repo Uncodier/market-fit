@@ -26,9 +26,10 @@ export function useRecordInsights({ fields, formData, description, record, relat
   // History logic
   const { history, historyStatus, primaryRelationName, primaryRelationId, setHistoryRelation, retryHistory } =
     useMetricHistory({ fields, formData, record, relationsData })
-  const [categoryHistory, setCategoryHistory] = useScopedPreviewState<RecordItem[]>(
-    JSON.stringify([record?.site_id, record?.category_id]), [],
-  )
+  const categoryScope = JSON.stringify([record?.site_id, record?.category_id])
+  const [categoryHistory, setCategoryHistory] = useScopedPreviewState<RecordItem[]>(categoryScope, [])
+  const [categoryStatus, setCategoryStatus] = useScopedPreviewState(categoryScope,
+    record?.site_id && record.category_id ? "loading" : "idle")
 
   // Resolve the actual name of the related entity for UI context
   const labelScope = JSON.stringify([record?.site_id, primaryRelationName, primaryRelationId, relationsData])
@@ -62,16 +63,20 @@ export function useRecordInsights({ fields, formData, description, record, relat
   useEffect(() => {
     let active = true
     if (record?.category_id && record?.site_id) {
+      setCategoryStatus("loading")
       getRecords(record.site_id, record.category_id)
-        .then(({ records }) => {
-          if (active && records) setCategoryHistory(records)
+        .then(({ records, error }) => {
+          if (!active) return
+          setCategoryStatus(error || !records ? "error" : "ready")
+          setCategoryHistory(records ?? [])
         })
-        .catch(() => { if (active) setCategoryHistory([]) })
+        .catch(() => { if (active) setCategoryStatus("error") })
     } else {
+      setCategoryStatus("idle")
       setCategoryHistory([])
     }
     return () => { active = false }
-  }, [record?.category_id, record?.site_id, setCategoryHistory])
+  }, [record?.category_id, record?.site_id, setCategoryHistory, setCategoryStatus])
 
   const metricRecords = useMemo(() => savedMetricRecords(
     history, record, primaryRelationName, primaryRelationId,
@@ -380,6 +385,6 @@ export function useRecordInsights({ fields, formData, description, record, relat
     chartData, numericData, metaAnalysis, macroAnalysis, dynamicCrosses,
     metricRecords, historyStatus, setHistoryRelation, retryHistory,
     primaryRelationName, primaryRelationLabel, macroRelationLabels,
-    activeRelations, allRelationLabels, categoryHistory,
+    activeRelations, allRelationLabels, categoryHistory, categoryStatus,
   }
 }

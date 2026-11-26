@@ -32,7 +32,7 @@ describe("RecordToolbar", () => {
     render(<RecordToolbar {...baseProps} />)
     expect(screen.getByRole("button", { name: "Delete record" })).toBeVisible()
     expect(screen.queryByTestId("record-toolbar-tools-spacer")).not.toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "Hide right panel" }).closest("[data-automatic-toolbar-tooltip]")).toHaveClass("ml-auto")
+    expect(screen.getByRole("button", { name: "Hide insights" }).closest("[data-automatic-toolbar-tooltip]")).toHaveClass("ml-auto")
   })
 
   it("keeps the action spacer while contextual tools are visible", () => {
@@ -53,6 +53,6 @@ describe("RecordToolbar", () => {
     expect(screen.getByRole("button", { name: "Save" })).toBeVisible()
     expect(screen.getByRole("button", { name: "Bold" })).toBeVisible()
     expect(screen.queryByRole("button", { name: "Delete record" })).not.toBeInTheDocument()
-    expect(screen.queryByRole("button", { name: "Hide right panel" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Hide insights" })).not.toBeInTheDocument()
   })
 })

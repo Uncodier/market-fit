@@ -3,7 +3,8 @@
 import { ScrollArea } from "@/app/components/ui/scroll-area"
 import { ToggleGroup, ToggleGroupItem } from "@/app/components/ui/toggle-group"
 import type { RecordItem } from "../../actions"
-import { InsightsTab } from "./InsightsTab"
+import { RecordInsightView } from "./InsightsTab"
+import { useSharedRecordInsights } from "./record-insight-context"
 import { RelationsTab } from "./RelationsTab"
 
 interface RecordRightPanelProps {
@@ -24,6 +25,7 @@ export function RecordRightPanel({
   onTabChange,
 }: RecordRightPanelProps) {
   const templateFields = record.category?.template_fields || []
+  const { insights } = useSharedRecordInsights()
 
   return (
     <div className="w-[400px] flex-none border-l border-border bg-background">
@@ -47,7 +49,8 @@ export function RecordRightPanel({
         <ScrollArea className="flex-1">
           <div className="p-4">
             {activeTab === "insights" ? (
-              <InsightsTab
+              <RecordInsightView
+                insights={insights}
                 fields={templateFields}
                 formData={formData}
                 description={description}

@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react"
 import type { ReactNode } from "react"
 import { ProcessGroupItem } from "@/app/components/simple-messages-view/components/ProcessGroupItem"
+import { AuthContext, type AuthContextValue } from '@/app/components/auth/auth-context'
 
 jest.mock("react-markdown", () => ({
   __esModule: true,
@@ -109,8 +110,21 @@ describe("ProcessGroupItem", () => {
     )
 
     expect(screen.getByRole("toolbar", { name: "Copy and rate this response" })).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "Mark as good" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Good response" })).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Save as record" })).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Branch to Node" })).toBeInTheDocument()
+  })
+
+  it('renders the private final receipt inline without the shared copy, feedback, record or branch actions', () => {
+    const id = '00000000-0000-4000-8000-000000000001'
+    const auth = { user: { id, is_anonymous: false }, isLoading: false } as AuthContextValue
+    render(<AuthContext.Provider value={auth}><ProcessGroupItem group={{ groupId: 'group', entries: [{
+      type: 'log', timestamp: '', data: { id: 'response', instance_id: 'instance', created_at: '', level: 'info',
+        log_type: 'agent_action', user_id: id, parent_log_id: id, details: { response_type: 'assistant_response', user_log_id: id },
+        message: `This answer uses private connector data. [Open your answer](/robots/private-answer/${id}).` },
+    }] }} isDarkMode={false} isExpanded={false} onToggleExpand={jest.fn()} collapsedToolDetails={new Set()} onToggleToolDetails={jest.fn()} /></AuthContext.Provider>)
+    expect(screen.getByTitle('Private Ask answer')).toHaveAttribute('src', `/robots/private-answer/${id}/inline`)
+    expect(screen.queryByRole('toolbar')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Branch to Node' })).toBeNull()
   })
 })

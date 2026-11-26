@@ -91,6 +91,15 @@ describe("resolveSelectedInstanceId", () => {
     ).toBe("paused-req")
   })
 
+  it("opens a blank session even when a previous tab is still selected locally", () => {
+    expect(resolveSelectedInstanceId({
+      requestedId: "new",
+      localId: "previous",
+      instanceIds: ["previous"],
+      isLoading: false,
+    })).toBe("new")
+  })
+
   it("falls back to the first instance only when nothing was requested", () => {
     expect(
       resolveSelectedInstanceId({

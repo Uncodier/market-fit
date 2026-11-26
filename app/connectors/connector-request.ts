@@ -39,7 +39,6 @@ export function connectorErrorKey(error: unknown): string {
   if (error.code === "provider_auth_failed") return "providerAuth"
   if (error.code === "storage_unavailable") return "storage"
   if (error.code === "direct_attestation_required") return "directAttestationRequired"
-  if (error.code === "catalog_opt_out_separate") return "catalogOptOutSeparate"
   if (error.code === "api_not_configured" || error.code === "upstream_unavailable") return "apiUnavailable"
   if (error.code === "provider_invalid_response") return "providerResponse"
   if (error.code === "credential_check_unavailable") return "credentialCheckUnavailable"

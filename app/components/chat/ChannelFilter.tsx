@@ -68,7 +68,7 @@ export const ChannelFilter = memo(function ChannelFilter({
     <div 
       className={cn(
     "px-4 py-3 border-b dark:border-white/5 border-black/5 flex justify-center flex-shrink-0 h-[56px] max-h-[56px] min-h-[56px] overflow-hidden",
-    "sticky top-0 z-[20]",
+    "md:sticky md:top-0 md:z-[20]",
     "bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80",
         className
       )}

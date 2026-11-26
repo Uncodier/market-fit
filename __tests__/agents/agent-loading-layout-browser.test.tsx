@@ -6,13 +6,14 @@ import tailwindcss from "tailwindcss"
 import tailwindConfig from "@/tailwind.config"
 import DirectoryLoading from "@/app/agents/loading"
 import ProfileLoading from "@/app/agents/[id]/loading"
+import ConnectorAccessLoading from "@/app/agents/[id]/connectors/loading"
 import CommandLoading from "@/app/agents/[id]/[commandId]/loading"
 import LogLoading from "@/app/agents/tools/[logId]/loading"
 import { AgentChannelsSkeleton } from "@/app/components/agents/channel-skeletons"
 import { LocalizationProvider } from "@/app/context/LocalizationContext"
 
 const markup = renderToStaticMarkup(<LocalizationProvider preferredLocale="es"><main>
-  <DirectoryLoading /><ProfileLoading /><AgentChannelsSkeleton /><CommandLoading /><LogLoading />
+  <DirectoryLoading /><ProfileLoading /><AgentChannelsSkeleton /><ConnectorAccessLoading /><CommandLoading /><LogLoading />
 </main></LocalizationProvider>)
 
 describe.each([{ name: 'Chromium', engine: chromium }, { name: 'WebKit', engine: webkit }])('responsive agent loading UI in $name', ({ engine }) => {
@@ -36,7 +37,7 @@ describe.each([{ name: 'Chromium', engine: chromium }, { name: 'WebKit', engine:
       const page = await context.newPage()
       await page.setContent(`<!doctype html><html lang="es"><body>${markup}</body></html>`)
       await page.addStyleTag({ content: css })
-      expect(await page.getByRole('status', { name: 'Cargando...' }).count()).toBe(5)
+      expect(await page.getByRole('status', { name: 'Cargando...' }).count()).toBe(6)
       const geometry = await page.evaluate(() => {
         const shapes = [...document.querySelectorAll<HTMLElement>('.animate-pulse')].filter(el => el.offsetWidth > 0)
         return { pageWidth: document.documentElement.scrollWidth, visible: shapes.length,

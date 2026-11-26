@@ -1,5 +1,6 @@
 import { useLayoutEffect, useMemo, useState } from "react"
 import { AgentChannelsTab } from "@/app/components/agents/agent-channels-tab"
+import { AgentConnectorsTab } from "@/app/components/agents/agent-connectors-tab"
 import { ResponsiveTabsList } from "@/app/components/ui/responsive-tabs-list"
 import { SearchInput } from "@/app/components/ui/search-input"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
@@ -11,11 +12,11 @@ import { EditorContextTab } from "./editor-context-tab"
 import type { EditorProfile } from "./editor-profile"
 import { useEditorSave } from "./use-editor-save"
 
-type Props = { siteId: string; routeId: string; initialProfile: EditorProfile }
+type Props = { siteId: string; routeId: string; initialProfile: EditorProfile; initialTab?: "basic" | "connectors" }
 
-export function AgentEditor({ siteId, routeId, initialProfile }: Props) {
+export function AgentEditor({ siteId, routeId, initialProfile, initialTab = "basic" }: Props) {
   const [profile, setProfile] = useState(initialProfile)
-  const [activeTab, setActiveTab] = useState("basic")
+  const [activeTab, setActiveTab] = useState(initialProfile.persistedId ? initialTab : "basic")
   const [queries, setQueries] = useState({ context: "", activities: "" })
   const { t } = useLocalization()
   const { save, saving, disabled } = useEditorSave(siteId, routeId, profile)
@@ -25,7 +26,10 @@ export function AgentEditor({ siteId, routeId, initialProfile }: Props) {
   const tabs = useMemo(() => [
     { value: "basic", label: "Basic Information" },
     ...(blank ? [] : [{ value: "context", label: "Context Files" }, { value: "activities", label: "Activities" }]),
-    ...(persistedId ? [{ value: "channels", label: t("settings.agentChannels.tab") }] : []),
+    ...(persistedId ? [
+      { value: "channels", label: t("settings.agentChannels.tab") },
+      { value: "connectors", label: t("connectors.title") },
+    ] : []),
   ], [blank, persistedId, t])
 
   const title = blank ? t("newAgent") : profile.name || "Agent"
@@ -61,6 +65,9 @@ export function AgentEditor({ siteId, routeId, initialProfile }: Props) {
         </>}
         {persistedId && <TabsContent value="channels" className="min-w-0">
           {activeTab === "channels" && <AgentChannelsTab siteId={siteId} agentId={persistedId} />}
+        </TabsContent>}
+        {persistedId && <TabsContent value="connectors" className="min-w-0">
+          {activeTab === "connectors" && <AgentConnectorsTab siteId={siteId} agentId={persistedId} showDetailsLink />}
         </TabsContent>}
       </div>
     </Tabs>

@@ -27,6 +27,7 @@ import { StepCompletedItem } from './StepCompletedItem'
 import { CompletedPlanCard } from './CompletedPlanCard'
 import { InstanceLogCopyFeedbackBar } from './InstanceLogCopyFeedbackBar'
 import { InstanceNodeChildren } from './InstanceNodeChildren'
+import { RobotAnswerBody, privateAnswerId } from './RobotAnswerBody'
 
 interface ProcessGroupItemProps {
   group: ProcessGroup
@@ -85,6 +86,7 @@ function ProcessEntryBody({
 
   const text = (log.message || '').trim()
   if (!text) return null
+  if (privateAnswerId(log)) return <RobotAnswerBody log={log} />
 
   return (
     <div className="text-xs leading-relaxed text-muted-foreground prose prose-sm max-w-none dark:prose-invert prose-p:my-1">
@@ -132,9 +134,7 @@ export function ProcessGroupItem({
               paddingLeft: isBrowserVisible ? '0.75rem' : '2rem',
             }}
           >
-            <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]} components={markdownComponents}>
-              {answer.message}
-            </ReactMarkdown>
+            <RobotAnswerBody log={answer} />
           </div>
         </div>
       )}
@@ -177,7 +177,7 @@ export function ProcessGroupItem({
         </div>
       )}
 
-      {answer && (
+      {answer && !privateAnswerId(answer) && (
         <div
           className={`mt-2 w-full min-w-0 ${isBrowserVisible ? 'pl-3' : 'pl-8'}`}
         >

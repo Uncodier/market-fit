@@ -11,7 +11,7 @@ const site = "11111111-1111-4111-8111-111111111111"
 const account = { ...connector, enabled: true, id: "22222222-2222-4222-8222-222222222222" }
 const status = { connector_id: account.id, revision: account.revision, direct_revision: 4, attested: true, enabled: false }
 const base = `/api/connectors/connections/${account.id}`
-const accessDto: ConnectorAccess = { ...access, connector_id: account.id, policy: { ...access.policy, tool_access_mode: "all", catalog_reads: true } }
+const accessDto: ConnectorAccess = { ...access, connector_id: account.id, policy: { ...access.policy, tool_access_mode: "all" } }
 const allow = () => screen.findByRole("checkbox", { name: "Allow Ask to use this account" })
 const save = () => screen.getByRole("button", { name: "Save policy" })
 const patchCalls = () => http.mock.calls.filter(([, init]) => init?.method === "PATCH")

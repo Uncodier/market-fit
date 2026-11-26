@@ -37,7 +37,7 @@ export function ConnectorSelector({ siteId, canSelect, selectedId, selectedName,
     </PopoverTrigger>
     <PopoverContent side="top" align="start" aria-label="Connector selection">
       <p className="mb-2 text-xs text-muted-foreground">Choose the account Ask should use. Match its ID here if Ask asks which connection you mean.</p>
-      <fieldset disabled={disabled} className="space-y-2">
+      <fieldset disabled={disabled} className="min-w-0 space-y-2">
         <legend className="sr-only">Connector account</legend>
         {selectedId !== undefined && <Button type="button" variant="ghost" size="sm" onClick={() => onChange()}>
           Clear connector selection
@@ -73,8 +73,8 @@ function ConnectorOptions({ siteId, selectedId, onChange }: Pick<Props, 'selecte
   return <>
     <input aria-label="Filter connectors" placeholder="Find a connector" value={search} onChange={event => setSearch(event.target.value)}
       className="w-full rounded-md border bg-background p-1 text-sm" />
-    <div className="max-h-44 space-y-2 overflow-auto text-sm">
-      {matching.map(account => <label key={account.id} className="flex items-center gap-2">
+    <div className="grid max-h-44 grid-cols-1 gap-2 overflow-y-auto text-sm">
+      {matching.map(account => <label key={account.id} className="flex min-w-0 items-center gap-2">
         <input type="radio" name={group} checked={account.id === selectedId} onChange={() => onChange(account.id)} />
         <ConnectorLogo compact src={connectorToolkitLogo(account.toolkit_slug)} name={account.toolkit_slug} />
         <span className="min-w-0 break-words">{account.display_name || account.toolkit_slug}

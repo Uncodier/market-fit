@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/server"
 import { configuredApiUrl, isSameOriginApiRequest } from "@/lib/http/api-proxy-security"
 import { decodeRequestBody, readLimitedRequestBody, RequestBodyTooLargeError } from "@/lib/http/read-limited-request-body"
 import { connectorRoute, parseConnectorBody, parseConnectorQuery } from "./contracts"
+import { manageConnectorAccount } from "./account-management"
 import { clearAttemptCookie, readAttemptCookie, setAttemptCookie, tabContinuation } from "./attempt-cookie"
 
 const headers = { "Cache-Control": "private, no-store" }
@@ -40,7 +41,7 @@ export async function proxyConnector(request: NextRequest, path: string[]): Prom
       if (kind === 'connection-summary' && Object.keys(query).length !== 1) return connectorProxyFailure(400, 'INVALID_REQUEST')
       siteId = query.site_id
     } else {
-      if ((isStart || kind === "provider-direct") && request.nextUrl.search) return connectorProxyFailure(400, "INVALID_REQUEST")
+      if ((isStart || kind === "provider-direct" || kind === "manage") && request.nextUrl.search) return connectorProxyFailure(400, "INVALID_REQUEST")
       if (request.headers.get("content-type")?.split(";")[0].trim() !== "application/json") return connectorProxyFailure(415, "JSON_REQUIRED")
       body = parseConnectorBody(kind, JSON.parse(decodeRequestBody(await readLimitedRequestBody(request, kind === "provider-direct" ? 2048 : 32_768))))
       if (kind === "complete") {
@@ -64,6 +65,10 @@ export async function proxyConnector(request: NextRequest, path: string[]): Prom
     const permission = Array.isArray(screen.data) ? screen.data[0] : screen.data
     const managerOnly = request.method !== "GET" || ["attempt", "approval-inbox", "provider-direct"].includes(kind)
     if (permission?.can_view !== true || (managerOnly && permission.can_manage !== true)) return connectorProxyFailure(403, "ACCESS_DENIED")
+    if (kind === "manage" && body) {
+      const result = await manageConnectorAccount(supabase, siteId, path[1], body)
+      return result.status === 200 ? NextResponse.json(result.data, { headers }) : connectorProxyFailure(result.status, result.code)
+    }
     const { data: { session }, error } = await supabase.auth.getSession()
     if (error || !session?.access_token || session.user?.id !== user.id) return connectorProxyFailure(401, "UNAUTHORIZED")
     const target = configuredApiUrl(request, `/api/connectors/${path.map(encodeURIComponent).join("/")}`)

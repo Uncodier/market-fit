@@ -8,14 +8,20 @@ import type { InsightsTabProps } from "./insights-types"
 
 const COLORS = ['#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
 
-export function InsightsTab({ fields, formData, description, record, relationsData }: InsightsTabProps) {
+export function InsightsTab(props: InsightsTabProps) {
+  const insights = useRecordInsights(props)
+  return <RecordInsightView {...props} insights={insights} />
+}
+
+export function RecordInsightView({ fields, formData, description, record, relationsData, insights }:
+  InsightsTabProps & { insights: ReturnType<typeof useRecordInsights> }) {
   const {
     hasDescription, selectFields, fileFields,
     numericData, metaAnalysis, macroAnalysis, dynamicCrosses,
     metricRecords, historyStatus, setHistoryRelation, retryHistory,
     primaryRelationName, primaryRelationLabel, macroRelationLabels,
     activeRelations, allRelationLabels, categoryHistory,
-  } = useRecordInsights({ fields, formData, description, record, relationsData })
+  } = insights
 
   return (
     <div className="space-y-10 pb-8 px-2">

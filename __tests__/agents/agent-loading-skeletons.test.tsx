@@ -3,12 +3,14 @@ import { LocalizationProvider } from "@/app/context/LocalizationContext"
 import DirectoryLoading from "@/app/agents/loading"
 import ProfileLoading from "@/app/agents/[id]/loading"
 import DraftLoading from "@/app/agents/new/loading"
+import AgentConnectorsLoading from "@/app/agents/[id]/connectors/loading"
 import { ContextFilesSkeleton } from "@/app/agents/agent-detail-skeletons"
 import { AgentChannelsSkeleton } from "@/app/components/agents/channel-skeletons"
 
 it.each([
   ['directory', DirectoryLoading], ['profile', ProfileLoading],
   ['new agent', DraftLoading], ['channels', AgentChannelsSkeleton], ['files', ContextFilesSkeleton],
+  ['connector access', AgentConnectorsLoading],
 ] as const)('renders an inert, localized skeleton for %s', (_name, Content) => {
   render(<LocalizationProvider preferredLocale="es"><Content /></LocalizationProvider>)
   const region = screen.getByRole('status', { name: 'Cargando...' })

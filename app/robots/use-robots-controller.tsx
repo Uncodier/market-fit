@@ -208,41 +208,27 @@ export function useRobotsController() {
   // Get instance without site filtering
   const activeRobotInstance = selectedInstanceId !== 'new' ? getInstanceById(selectedInstanceId) : null
 
-  // Update page title based on selected instance
+  // Publish session titles only for detail URLs, never for the workspace root.
+  const breadcrumbPath = selectedInstanceParam ? `${pathname}?${searchParams.toString()}` : null
   useEffect(() => {
-    let title = 'Agents';
-    if (activeRobotInstance) {
-      if (activeRobotInstance.requirement_title) {
-        title = activeRobotInstance.requirement_title;
-      } else {
-        title = activeRobotInstance.name || `ag-${activeRobotInstance.id.slice(-4)}`;
-      }
-    }
+    if (!breadcrumbPath || !activeRobotInstance) return
+    const title = activeRobotInstance.requirement_title || activeRobotInstance.name || `ag-${activeRobotInstance.id.slice(-4)}`
     
     // Use timeout to ensure this runs after navigation history updates its label
     const timer = setTimeout(() => {
       window.dispatchEvent(new CustomEvent('breadcrumb:update', { 
-        detail: { title } 
+        detail: { title, path: breadcrumbPath }
       }));
     }, 50);
     
     return () => {
       clearTimeout(timer);
     }
-  }, [activeRobotInstance]);
+  }, [activeRobotInstance, breadcrumbPath]);
 
   const shouldFetchStats = isCanvasMode
   const { instanceStats } = useInstanceBrowserData(shouldFetchStats, tabInstances, currentSite?.id, "canvas")
   
-  // Clean up title on unmount
-  useEffect(() => {
-    return () => {
-      window.dispatchEvent(new CustomEvent('breadcrumb:update', { 
-        detail: { title: null } 
-      }));
-    }
-  }, []);
-
   // Activity param for controlling explorer visibility
   const activityParam = searchParams.get('activity')
   const isActivityRobot = activityParam === 'robot'

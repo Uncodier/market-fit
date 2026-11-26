@@ -94,9 +94,33 @@ test.each(['/robots?instance=one', '/robots/one', '/robots?instance=one&mode=wor
     expect(screen.getByRole('heading', { name: 'Current detail' })).toHaveAttribute('aria-current', 'page')
     const parent = breadcrumb.querySelector('button')!
     fireEvent.click(parent)
-    expect(mockNavigate).toHaveBeenCalledWith(mockItems[0])
+    expect(mockNavigate).toHaveBeenCalledWith(
+      path.startsWith('/robots') && !path.includes('mode=workflow')
+        ? { ...mockItems[0], label: 'Agents' }
+        : mockItems[0],
+    )
   },
 )
+
+test.each(['en', 'es'] as const)('keeps the Robots session title out of the parent crumb in %s', locale => {
+  mockLocale = locale
+  const path = '/robots?instance=one'
+  mockItems = [
+    { path: '/robots?instance=old', label: 'KPI report', timestamp: 1 },
+    { path, label: 'KPI report', timestamp: 2 },
+  ]
+  setRoute(path)
+  const view = render(<TopBarTitle title="AI Workspace" isCollapsed onCollapse={() => {}} />)
+  expect(screen.getAllByText('KPI report')).toHaveLength(1)
+  expect(screen.getByRole('heading', { name: 'KPI report' })).toHaveAttribute('aria-current', 'page')
+  fireEvent.click(screen.getByRole('button', { name: translate('layout.nav.robots.title') }))
+  expect(mockNavigate).toHaveBeenCalledWith({ path: '/robots', label: 'Agents', timestamp: 1 })
+
+  setRoute('/robots?instance=new')
+  view.rerender(<TopBarTitle title="AI Workspace" isCollapsed onCollapse={() => {}} />)
+  expect(screen.queryByRole('navigation', { name: 'Breadcrumb' })).not.toBeInTheDocument()
+  expect(screen.queryByText('KPI report')).not.toBeInTheDocument()
+})
 
 test('keeps breadcrumbs on desktop for non-Robots details', () => {
   mockItems = [

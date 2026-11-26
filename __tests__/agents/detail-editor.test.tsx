@@ -12,12 +12,15 @@ const SITE = "11111111-bbbb-4ccc-8ddd-eeeeeeeeeeee"
 let mockRoute = ID
 let mockSite: string | null = SITE
 let mockRole: string | null = null
+let mockTab: string | null = null
 const mockReplace = jest.fn(), mockPush = jest.fn(), mockFrom = jest.fn(), mockSession = jest.fn()
 const mockChannels = jest.fn(({ siteId, agentId }: { siteId: string; agentId: string }) =>
   <div data-testid="channels-panel">{siteId}/{agentId}</div>)
+const mockConnectors = jest.fn(({ siteId, agentId }: { siteId: string; agentId: string; showDetailsLink?: boolean }) =>
+  <div data-testid="connectors-panel">{siteId}/{agentId}</div>)
 
 jest.mock("next/navigation", () => ({
-  useParams: () => ({ id: mockRoute }), useSearchParams: () => ({ get: (key: string) => key === "role" ? mockRole : null }),
+  useParams: () => ({ id: mockRoute }), useSearchParams: () => ({ get: (key: string) => key === "role" ? mockRole : key === "tab" ? mockTab : null }),
   useRouter: () => ({ push: mockPush, replace: mockReplace }),
 }))
 jest.mock("@/app/context/SiteContext", () => ({ useSite: () => ({ currentSite: mockSite ? { id: mockSite } : null }) }))
@@ -25,6 +28,7 @@ jest.mock("@/app/context/LocalizationContext", () => ({ useLocalization: () => (
 jest.mock("@/lib/supabase/client", () => ({ createClient: () => ({ from: mockFrom, auth: { getSession: mockSession } }) }))
 jest.mock("@/app/assets/actions", () => ({ getAssets: () => Promise.resolve({ assets: [] }) }))
 jest.mock("@/app/components/agents/agent-channels-tab", () => ({ AgentChannelsTab: (props: Parameters<typeof mockChannels>[0]) => mockChannels(props) }))
+jest.mock("@/app/components/agents/agent-connectors-tab", () => ({ AgentConnectorsTab: (props: Parameters<typeof mockConnectors>[0]) => mockConnectors(props) }))
 jest.mock("@/app/components/agents/context-file", () => ({ ContextFile: ({ name }: { name: string }) => <span>{name}</span> }))
 jest.mock("@/app/components/agents/upload-file-dialog", () => ({ UploadFileDialog: () => <button>Add File</button> }))
 jest.mock("@/app/components/ui/sticky-header", () => ({ StickyHeader: ({ children }: { children: ReactNode }) => <header>{children}</header> }))
@@ -76,7 +80,7 @@ afterAll(() => {
 })
 beforeEach(() => {
   jest.clearAllMocks()
-  mockSite = SITE; mockRoute = ID; mockRole = null
+  mockSite = SITE; mockRoute = ID; mockRole = null; mockTab = null
   readRow.mockReset().mockResolvedValue({ data: row, error: null })
   mockFrom.mockImplementation((table: string) => {
     if (table === "agents") return query
@@ -101,22 +105,33 @@ it("never fills an independent stored profile's empty fields with legacy templat
     description: "", prompt: "", backstory: "", configuration: { triggers: {}, contextFiles: [] } }))
 })
 
-it("adds the localized Channels tab only after the site-scoped profile read and retains unsaved edits on tab changes", async () => {
+it("opens the Connectors tab on return from the dedicated access view", async () => {
+  mockTab = "connectors"
+  render(<AgentDetailPage />)
+  expect(await screen.findByRole("tab", { name: "connectors.title" })).toHaveAttribute("aria-selected", "true")
+  expect(screen.getByTestId("connectors-panel")).toHaveTextContent(`${SITE}/${ID}`)
+})
+
+it("adds Channels and Connectors only after the site-scoped profile read and retains unsaved edits on tab changes", async () => {
   const loading = deferred<Result>()
   readRow.mockReturnValueOnce(loading.promise)
   render(<AgentDetailPage />)
   expect(screen.getByRole('status')).toHaveAttribute('aria-busy', 'true')
   expect(screen.queryByText('Save changes')).not.toBeInTheDocument()
   expect(screen.queryByRole("tab", { name: channelLabel })).not.toBeInTheDocument()
+  expect(screen.queryByRole("tab", { name: "connectors.title" })).not.toBeInTheDocument()
   expect(query.eq.mock.calls).toEqual([["site_id", SITE], ["id", ID]])
   await act(async () => loading.resolve({ data: row, error: null }))
   expect(screen.queryByRole('status')).not.toBeInTheDocument()
-  expect(screen.getAllByRole("tab").map((el) => el.textContent)).toEqual(["Basic Information", "Context Files", "Activities", channelLabel])
+  expect(screen.getAllByRole("tab").map((el) => el.textContent)).toEqual(["Basic Information", "Context Files", "Activities", channelLabel, "connectors.title"])
   expect(mockChannels).not.toHaveBeenCalled()
+  expect(mockConnectors).not.toHaveBeenCalled()
   fireEvent.change(screen.getByLabelText("Name", { exact: true }), { target: { value: "Edited name" } })
   selectTab(channelLabel)
   expect(screen.getByTestId("channels-panel")).toHaveTextContent(`${SITE}/${ID}`)
   expect(mockChannels).toHaveBeenCalledWith({ siteId: SITE, agentId: ID })
+  selectTab("connectors.title")
+  expect(screen.getByTestId("connectors-panel")).toHaveTextContent(`${SITE}/${ID}`)
   selectTab("Context Files")
   expect(screen.getByText("Legacy context")).toBeVisible()
   selectTab("Activities")

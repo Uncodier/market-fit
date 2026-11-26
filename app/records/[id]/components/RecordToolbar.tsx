@@ -13,13 +13,12 @@ import {
   ChevronDown,
   Code,
   Image as ImageIcon,
+  Info,
   Italic,
   Link as LinkIcon,
   List,
   ListOrdered,
   Loader,
-  PanelRightClose,
-  PanelRightOpen,
   Quote,
   Redo,
   RotateCw,
@@ -60,6 +59,7 @@ interface RecordToolbarProps {
   onToggleRightPanel: () => void
   saveLabel: string
   diagramControls?: ReactNode
+  outputActions?: ReactNode
   isNodeTextEditing?: boolean
 }
 
@@ -77,6 +77,7 @@ export function RecordToolbar({
   onToggleRightPanel,
   saveLabel,
   diagramControls,
+  outputActions,
   isNodeTextEditing = false,
 }: RecordToolbarProps) {
   const [isToolbarHovered, setIsToolbarHovered] = useState(false)
@@ -236,6 +237,7 @@ export function RecordToolbar({
       {hasVisibleTools && <div className="flex-1" data-testid="record-toolbar-tools-spacer" />}
       {!isNodeTextEditing && (
         <>
+          {outputActions}
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button
@@ -270,9 +272,10 @@ export function RecordToolbar({
             size="sm"
             onClick={onToggleRightPanel}
             className="ml-auto text-muted-foreground hover:text-foreground"
-            aria-label={isRightPanelOpen ? "Hide right panel" : "Show right panel"}
+            aria-expanded={isRightPanelOpen}
+            aria-label={isRightPanelOpen ? "Hide insights" : "Show insights"}
           >
-            {isRightPanelOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
+            <Info className="h-4 w-4" aria-hidden />
           </Button>
         </>
       )}

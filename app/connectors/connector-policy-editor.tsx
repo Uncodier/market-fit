@@ -11,7 +11,7 @@ import { isAskVerified, type AskAccessIntent } from "./provider-direct-contract"
 import { SectionCard, SectionCardHeader, SectionCardContent, SectionCardFooter } from "@/app/components/ui/section-card"
 import type { Connector, ConnectorAccess, ToolAccessMode } from "./types"
 
-export type PolicyUpdate = { catalog_reads: false } | { tool_access_mode: ToolAccessMode; allowed_tools: string[]; allowed_hosts: string[]; require_approval: boolean; enabled: boolean; catalog_reads?: true; ask_access?: AskAccessIntent; support_publication?: null }
+export type PolicyUpdate = { tool_access_mode: ToolAccessMode; allowed_tools: string[]; allowed_hosts: string[]; require_approval: boolean; enabled: boolean; ask_access?: AskAccessIntent; support_publication?: null }
 
 export function ConnectorPolicyEditor({ siteId, access, connector, canManage, pending, blocked = false, save, onChanged }: {
   siteId: string; access: ConnectorAccess; connector: Connector; canManage: boolean; pending: boolean; blocked?: boolean; save: (policy: PolicyUpdate) => void; onChanged: () => void
@@ -36,29 +36,22 @@ export function ConnectorPolicyEditor({ siteId, access, connector, canManage, pe
   const legacyHostOnly = !!status && !status.enabled && !status.setup_pending && !verified
   const [hostDraft, setHostDraft] = useState(savedAssistant)
   const assistant = hostPolicy ? hostDraft : intent?.enabled ?? (legacyHostOnly ? hostDraft : savedAssistant)
-  const [catalogReads, setCatalogReads] = useState(access.policy.catalog_reads === true)
-  const catalogChanged = catalogReads !== (access.policy.catalog_reads === true)
   const [approval, setApproval] = useState(access.policy.require_approval)
   const [enabled, setEnabled] = useState(connector.enabled)
   const savedPublication = access.policy.support_publication
   const [clearPublication, setClearPublication] = useState(false)
   const publicationChanged = canManage && !!savedPublication && clearPublication
-  const otherChanges = !!intent || assistant !== savedAssistant || direct !== savedDirect || publicationChanged || mode !== savedMode || tools.length !== access.policy.allowed_tools.length || tools.some(id => !access.policy.allowed_tools.includes(id)) || approval !== access.policy.require_approval || enabled !== connector.enabled
-  const dirty = catalogChanged || otherChanges
-  const optingOut = catalogChanged && !catalogReads
+  const dirty = !!intent || assistant !== savedAssistant || direct !== savedDirect || publicationChanged || mode !== savedMode || tools.length !== access.policy.allowed_tools.length || tools.some(id => !access.policy.allowed_tools.includes(id)) || approval !== access.policy.require_approval || enabled !== connector.enabled
   const activatable = connector.provider_status.toUpperCase() === "ACTIVE" && !!connector.verified_at && !connector.revocation_pending
-  const catalogReady = assistant && enabled && activatable && !connector.revocation_dispatched
   const askReady = verified && !!access.policy.tool_access_mode && enabled && activatable && !connector.revocation_dispatched && (mode === "all" || tools.length > 0)
-  const invalidDraft = optingOut ? otherChanges : (restrictedAsk && !savedAssistant && assistant) || (enabled && !activatable) || (catalogChanged && !catalogReady) || (intent?.enabled && (!askReady || !assistant))
+  const invalidDraft = (restrictedAsk && !savedAssistant && assistant) || (enabled && !activatable) || (intent?.enabled && (!askReady || !assistant))
   function savePolicy() {
     if (!canManage || pending || ask.pending || blocked || !dirty || invalidDraft) return
-    if (optingOut) return save({ catalog_reads: false })
     const askHosts = assistant === savedAssistant ? access.policy.allowed_hosts : assistant
       ? [...access.policy.allowed_hosts, "assistant"] : access.policy.allowed_hosts.filter(host => host !== "assistant")
     const hosts = direct === savedDirect ? askHosts : direct ? [...askHosts, "direct"] : askHosts.filter(host => host !== "direct")
     save({ tool_access_mode: mode, allowed_tools: tools, allowed_hosts: hosts, require_approval: approval, enabled,
       ...(intent ? { ask_access: intent } : {}),
-      ...(catalogChanged ? { catalog_reads: true as const } : {}),
       ...(publicationChanged ? { support_publication: null } : {}),
     })
   }
@@ -106,15 +99,6 @@ export function ConnectorPolicyEditor({ siteId, access, connector, canManage, pe
       {canManage && savedPublication && <label className="flex items-center gap-2 text-sm"><Checkbox checked={clearPublication} disabled={blocked || pending} onCheckedChange={value => setClearPublication(value === true)} />{t("connectors.removeLegacyPublication")}</label>}
       <label className="flex items-center gap-2 text-sm"><Checkbox checked={enabled} disabled={!canManage || pending || (!enabled && !activatable)} onCheckedChange={value => setEnabled(value === true)} />{t("connectors.enabled")}</label>
       <p className="text-xs text-muted-foreground">{t("connectors.enableHelp")}</p>
-      {access.policy.catalog_reads !== undefined && <details className="space-y-2 text-sm">
-        <summary className="w-fit cursor-pointer font-medium">{t("connectors.legacyReadsTitle")}</summary>
-        <label className="flex items-center gap-2"><Checkbox checked={catalogReads}
-          disabled={!canManage || blocked || pending || (!catalogReads && !catalogReady)}
-          onCheckedChange={value => setCatalogReads(value === true)} />{t("connectors.catalogReads")}</label>
-        <p className="text-xs text-muted-foreground">{t(mode === "all" ? "connectors.catalogReadsAll" : "connectors.catalogReadsSelected")} {t("connectors.catalogReadsLimits")}</p>
-        {canManage && !catalogReady && <p className="text-xs text-muted-foreground">{t("connectors.catalogReadsUnavailable")}</p>}
-      </details>}
-      {optingOut && otherChanges && <p role="alert" className="text-sm">{t("connectors.errors.catalogOptOutSeparate")}</p>}
     </SectionCardContent>
     {canManage && <SectionCardFooter onSave={savePolicy} dirty={dirty} saving={pending} saveDisabled={blocked || pending || ask.pending || !dirty || invalidDraft} saveLabel={t("connectors.savePolicy")} savingLabel={t("connectors.saving")} />}
   </SectionCard>

@@ -19,7 +19,7 @@ export default function ChatLoading() {
             <div className="h-full overflow-auto flex flex-col pt-0">
               <div className="w-full min-w-0 flex flex-col flex-1">
                 {/* Channel filter skeleton */}
-                <div className="px-4 py-3 border-b dark:border-white/5 border-black/5 flex justify-center flex-shrink-0 h-[56px] max-h-[56px] min-h-[56px] overflow-hidden sticky top-0 z-[20] bg-background">
+                <div className="px-4 py-3 border-b dark:border-white/5 border-black/5 flex justify-center flex-shrink-0 h-[56px] max-h-[56px] min-h-[56px] overflow-hidden md:sticky md:top-0 md:z-[20] bg-background">
                   <div className="h-8 w-full max-w-[240px] bg-muted/30 rounded-full flex items-center p-0.5 justify-between px-1">
                     {Array.from({ length: 7 }).map((_, i) => (
                       <Skeleton key={i} className="h-7 w-7 rounded-full" />

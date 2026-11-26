@@ -27,9 +27,14 @@ test("posts proof only once in StrictMode, strips query, and waits for server ve
   expect(fetchMock).toHaveBeenCalledTimes(1)
   expect(fetchMock.mock.calls[0][0]).toBe(`/api/connectors/auth-attempts/${attemptId}/complete`)
   expect(JSON.parse(fetchMock.mock.calls[0][1]?.body as string)).toEqual({ session_uri: "provider-proof", continuation })
-  expect(screen.queryByText(/Authorization verified/)).not.toBeInTheDocument()
+  expect(screen.getByRole("heading", { name: "Verify connector authorization" })).toBeVisible()
+  expect(screen.queryByRole("heading", { name: "Account authorization verified" })).not.toBeInTheDocument()
   await act(async () => pending.resolve(jsonResponse({ connector_id: "connector-1", toolkit_slug: "mail", status: "completed" })))
-  expect(await screen.findByRole("link", { name: "Review account access" })).toHaveAttribute("href", "/connectors/mail?connector=connector-1")
+  expect(await screen.findByRole("heading", { name: "Account authorization verified" })).toBeVisible()
+  expect(screen.queryByRole("heading", { name: "Verify connector authorization" })).not.toBeInTheDocument()
+  expect(screen.getByRole("status")).toHaveTextContent("Robots Ask access and permissions are managed separately.")
+  expect(screen.getByRole("link", { name: "Review Robots Ask access" })).toHaveAttribute("href", "/connectors/mail?connector=connector-1")
+  expect(screen.getByRole("link", { name: "Back to connectors" })).toHaveAttribute("href", "/connectors")
 })
 
 test.each([`session_uri=provider-proof`, `attempt_id=${attemptId}&session_uri=provider-proof`])("an unbound tab never spends proof, even with an explicit attempt: %s", async query => {
@@ -66,9 +71,9 @@ test("credential redirect requests only server verification even when the callba
   expect(fetchMock).toHaveBeenCalledTimes(1)
   expect(fetchMock).toHaveBeenCalledWith(`/api/connectors/auth-attempts/${attemptId}/complete`, expect.objectContaining({
     method: "POST", body: JSON.stringify({ hosted_credentials: true }) }))
-  expect(screen.queryByRole("link", { name: "Review account access" })).not.toBeInTheDocument()
+  expect(screen.queryByRole("link", { name: "Review Robots Ask access" })).not.toBeInTheDocument()
   await act(async () => pending.resolve(jsonResponse({ connector_id: "connector-1", toolkit_slug: "example", status: "completed" })))
-  expect(await screen.findByRole("link", { name: "Review account access" })).toHaveAttribute("href", "/connectors/example?connector=connector-1")
+  expect(await screen.findByRole("link", { name: "Review Robots Ask access" })).toHaveAttribute("href", "/connectors/example?connector=connector-1")
 })
 
 test("does not verify a failed, malformed, or ambiguous credential callback", async () => {
@@ -91,7 +96,7 @@ test.each(["CONNECTOR_NOT_ACTIVE", "CREDENTIAL_CHECK_UNAVAILABLE"])("%s allows a
   const retry = await screen.findByRole("button", { name: "Check connection again" })
   expect(fetchMock).toHaveBeenCalledTimes(1)
   fireEvent.click(retry)
-  expect(await screen.findByRole("link", { name: "Review account access" })).toBeVisible()
+  expect(await screen.findByRole("link", { name: "Review Robots Ask access" })).toBeVisible()
   expect(fetchMock).toHaveBeenCalledTimes(2)
 })
 
@@ -109,7 +114,7 @@ test("lost completion is unknown, not automatically retried or shown as successf
   render(<ConnectorCallback />)
   expect(await screen.findByRole("alert")).toHaveTextContent("The outcome is not confirmed")
   expect(fetchMock).toHaveBeenCalledTimes(1)
-  expect(screen.queryByRole("link", { name: "Review account access" })).not.toBeInTheDocument()
+  expect(screen.queryByRole("link", { name: "Review Robots Ask access" })).not.toBeInTheDocument()
 })
 
 test("identity change prevents returning a previous actor's successful account", async () => {
@@ -120,6 +125,6 @@ test("identity change prevents returning a previous actor's successful account",
   view.rerender(<ConnectorCallback />)
   await act(async () => pending.resolve(jsonResponse({ connector_id: "connector-1", toolkit_slug: "mail", status: "completed" })))
   await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("You do not have access"))
-  expect(screen.queryByRole("link", { name: "Review account access" })).not.toBeInTheDocument()
+  expect(screen.queryByRole("link", { name: "Review Robots Ask access" })).not.toBeInTheDocument()
   expect(fetchMock).toHaveBeenCalledTimes(1)
 })

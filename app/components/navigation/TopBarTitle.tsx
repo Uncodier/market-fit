@@ -2,7 +2,7 @@
 
 import { procurementRouteTitle } from '@/lib/navigation/procurement-route-title'
 import { localeMessages } from '@/app/context/locale-catalog'
-import { enforceInvariants, getScreenKey, hasId } from '@/lib/navigation/breadcrumb-engine'
+import { enforceInvariants, getScreenKey, hasId, isAgentSessionDetail } from '@/lib/navigation/breadcrumb-engine'
 import { workspaceScreenTitle } from '@/lib/navigation/workspace-screen'
 import { usePathname, useSearchParams } from "next/navigation"
 import { Button } from "../ui/button"
@@ -163,7 +163,9 @@ export function TopBarTitle({
     
     // Only translate bare roots (/chat).
     const isBareRoot = pathSegments.length === 1 && !queryString
-    const translatedRoot = !hasId(item.path)
+    const translatedRoot = item.path === '/robots' && isAgentSessionDetail(fullPath)
+      ? t('layout.nav.robots.title')
+      : !hasId(item.path)
       ? workspaceScreenTitle(item.path, t) || (isBareRoot ? getRouteTitle(pathSegments[0]) : undefined)
       : undefined
     const procurementLabel = procurementRouteTitle(pathnameOnly, t)

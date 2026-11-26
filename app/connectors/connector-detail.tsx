@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/ta
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { SectionCard, SectionCardContent, SectionCardHeader } from "@/app/components/ui/section-card"
 import { ConnectorAccessPanel } from "./connector-access"
+import { ConnectorRename } from "./connector-rename"
 import { ConnectorProviderMode } from "./connector-provider-mode"
 import { ConnectorLogo } from "./connector-logo"
 import { ConnectorTools, ConnectorToolsLoading } from "./connector-tools"
@@ -140,6 +141,7 @@ export function DetailContent({ siteId, slug }: { siteId: string; slug: string }
             {data.connections.length > 0 && !selected && !requestedAccount && <p className="text-sm text-muted-foreground">{t("connectors.noActiveAccounts")}</p>}
             {requestedAccount && !selected && <ConnectorError error={new ConnectorRequestError("not_found", 404)} />}
             {selected && <div className="space-y-3">
+              {data.can_manage && <ConnectorRename key={`${siteId}:${selected.id}:${selected.revision}`} siteId={siteId} connector={selected} onChanged={reload} />}
               <Badge variant="outline">{t(supabaseDisconnect ? "connectors.status.disabledInMakinari" : `connectors.status.${connectorStatus(selected)}`)}</Badge>
               {supabaseDisconnect ? <p className="text-sm text-muted-foreground">
                 {t("connectors.supabaseDisconnectHelp")} {data.can_manage && <a className="underline" href="https://supabase.com/dashboard/account/tokens" target="_blank" rel="noopener noreferrer">{t("connectors.supabaseTokenLink")}</a>}

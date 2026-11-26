@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { connectionName } from "@/app/connectors/account-management-contract"
 import { hostedSetupKey } from "@/app/connectors/connection-setup"
 import { askAccessIntent, directPolicyUpdate } from "@/app/connectors/provider-direct-contract"
 import { toolActionFilterSchema } from "@/app/connectors/tool-action-types"
@@ -37,6 +38,7 @@ export function connectorRoute(path: string[], method: string) {
       if (method === "POST" && ["disconnect", "sync"].includes(path[2])) return "disconnect"
       if (method === "PATCH" && path[2] === "access") return "access"
       if (method === "PATCH" && path[2] === "policy") return "policy"
+      if (method === "PATCH" && path[2] === "manage") return "manage"
     }
   }
   return null
@@ -53,9 +55,15 @@ export function parseConnectorBody(kind: string, input: unknown) {
   if (kind === "complete") return z.union([z.object({ continuation: z.string().regex(/^[a-f0-9]{64}$/), session_uri: z.string().min(1).max(4096) }).strict(),
     z.object({ hosted_credentials: z.literal(true) }).strict()]).parse(input)
   if (kind === "disconnect") return versioned.parse(input)
+  if (kind === "manage") {
+    const managed = versioned.extend({ expected_revision: z.number().int().min(1).max(2_147_483_646) })
+    return z.discriminatedUnion("operation", [
+      managed.extend({ operation: z.literal("rename"), display_name: connectionName }).strict(),
+      managed.extend({ operation: z.enum(["remove_members", "remove_agents"]) }).strict(),
+    ]).parse(input)
+  }
   if (kind === "access") return versioned.extend({ members: z.array(member).max(100).default([]), agents: z.array(agent).max(100).default([]) }).strict().parse(input)
-  if (kind === "policy") return z.union([versioned.extend({ catalog_reads: z.literal(false) }).strict(), versioned.extend({
-    catalog_reads: z.boolean().optional(),
+  if (kind === "policy") return versioned.extend({
     ask_access: askAccessIntent.optional(),
     tool_access_mode: z.enum(["all", "selected"]).optional(),
     support_publication: z.null().optional(),
@@ -63,10 +71,10 @@ export function parseConnectorBody(kind: string, input: unknown) {
     allowed_hosts: z.array(z.enum(["assistant", "direct"])).max(2),
     require_approval: z.boolean(), enabled: z.boolean(),
   }).strict().refine(value => !value.ask_access || (
-    value.tool_access_mode && value.catalog_reads !== false && value.expected_revision > 0 && value.expected_revision <= 2_147_483_646 &&
+    value.tool_access_mode && value.expected_revision > 0 && value.expected_revision <= 2_147_483_646 &&
     value.allowed_hosts.includes("assistant") === value.ask_access.enabled &&
     (!value.ask_access.enabled || (value.enabled && (value.tool_access_mode === "all" || value.allowed_tools.length > 0)))
-  ))]).parse(input)
+  )).parse(input)
   throw new Error("Unsupported connector operation")
 }
 

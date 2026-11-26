@@ -5,6 +5,7 @@ const mockReplace = jest.fn()
 const mockPush = jest.fn()
 let mockMobile = true
 let mockQuery = "instance=one"
+let mockHasFiles = true
 const mockInstances = [
   { id: "one", name: "Research", status: "running" },
   { id: "two", name: "Support", status: "stopped" },
@@ -18,7 +19,7 @@ jest.mock("@/app/robots/use-robots-controller", () => ({
     setLocalSelectedInstanceId: jest.fn(), getInstanceById: (id: string) => mockInstances.find(instance => instance.id === id),
     currentSite: { id: "site-a" }, tabInstances: mockInstances, instanceAvatars: {},
     t: (key: string) => key === "robots.browser.search" ? "Search instances..." : key,
-    workspaceTabs: [{ value: "agent", label: "Agent" }, { value: "files", label: "Files" }],
+    workspaceTabs: [{ value: "agent", label: "Agent" }, ...(mockHasFiles ? [{ value: "files", label: "Files" }] : [])],
     activeWorkspaceTab: "agent", handleWorkspaceTabChange: jest.fn(), isCanvasMode: false,
   }),
 }))
@@ -31,7 +32,6 @@ jest.mock("@/app/robots/instance-header", () => ({ InstanceHeader: () => <div>De
 jest.mock("@/app/robots/instance-modals", () => ({ InstanceModals: () => null }))
 jest.mock("@/app/robots/robots-workspace", () => ({ RobotsWorkspace: () => <input aria-label="Agent draft" /> }))
 jest.mock("@/app/context/RobotsContext", () => ({ useRobots: () => ({ error: null }) }))
-jest.mock("@/app/components/ui/sticky-header", () => ({ StickyHeader: ({ children }: { children: React.ReactNode }) => <header>{children}</header> }))
 jest.mock("@/app/components/ui/responsive-tabs-list", () => ({
   ResponsiveTabsList: () => <div aria-label="Workspace sections">Agent · Files</div>,
 }))
@@ -39,9 +39,9 @@ jest.mock("@/lib/navigation/stale-router", () => ({
   navigateOrAssign: (router: { push: (href: string) => void }, href: string) => router.push(href),
 }))
 
-beforeEach(() => { mockMobile = true; mockQuery = "instance=one"; jest.clearAllMocks() })
+beforeEach(() => { mockMobile = true; mockQuery = "instance=one"; mockHasFiles = true; jest.clearAllMocks() })
 
-test("uses a full list screen, preserves the mounted draft and brings the selector into the sticky header", () => {
+test("uses a full list screen, preserves the mounted draft and keeps the workspace selector accessible", () => {
   const view = render(<RobotsPage />)
   expect(screen.queryByText("Desktop instances")).not.toBeInTheDocument()
   expect(screen.getByLabelText("Workspace sections").closest("header")).toBeInTheDocument()
@@ -91,10 +91,29 @@ test("desktop keeps the full-height absolute workspace without a second topbar i
   expect(detail.parentElement).not.toHaveClass("pt-[var(--topbar-height,64px)]")
 })
 
-test("centers workspace tabs vertically using a full-height flex row rather than an inline baseline", () => {
+test("uses a compact in-flow selector instead of reserving sticky-header height", () => {
   render(<RobotsPage />)
   const tabsRoot = screen.getByLabelText("Workspace sections").parentElement!
 
-  expect(tabsRoot).toHaveClass("flex", "h-full", "items-center")
-  expect(tabsRoot.parentElement).toHaveClass("flex", "h-full", "items-center")
+  expect(tabsRoot).toHaveClass("flex", "items-center")
+  const toolbar = tabsRoot.closest("header")
+  expect(toolbar).not.toHaveClass("sticky")
+  expect(toolbar).not.toHaveClass("fixed")
+  expect(toolbar).not.toHaveClass("h-[71px]")
+})
+
+test("removes the entire mobile toolbar when Agent is the only tab without remounting the workspace", () => {
+  const view = render(<RobotsPage />)
+  const draft = screen.getByLabelText("Agent draft")
+  fireEvent.change(draft, { target: { value: "Unsent draft" } })
+
+  mockHasFiles = false
+  view.rerender(<RobotsPage />)
+  expect(view.container.querySelector("header")).not.toBeInTheDocument()
+  expect(screen.getByLabelText("Agent draft")).toBe(draft)
+  expect(draft).toHaveValue("Unsent draft")
+
+  mockHasFiles = true
+  view.rerender(<RobotsPage />)
+  expect(screen.getByLabelText("Workspace sections")).toBeVisible()
 })

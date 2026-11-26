@@ -156,7 +156,6 @@ export function ChatList({
       <div className="flex-1 min-h-0 overflow-hidden">
         <div className="h-full overflow-auto flex flex-col pt-0">
           <div className="w-full min-w-0 flex flex-col flex-1">
-            {/* Combined Filter - always visible */}
             <ChannelFilter
               selectedFilter={combinedFilter}
               onFilterChange={setCombinedFilter}
@@ -197,7 +196,7 @@ export function ChatList({
               {pendingConversations.length > 0 && (
                 <div className="mb-2">
                   <div className={cn(
-                    "px-4 py-2 text-xs font-medium uppercase tracking-wide sticky top-[56px] z-10",
+                    "px-4 py-2 text-xs font-medium uppercase tracking-wide sticky top-0 z-10 md:top-[56px]",
                     "bg-background/80 text-muted-foreground backdrop-blur supports-[backdrop-filter]:bg-background/80"
                   )} style={{ WebkitBackdropFilter: 'blur(10px)' }}>
                     Pending ({pendingConversations.length})
@@ -254,7 +253,7 @@ export function ChatList({
                 <div>
                   {pendingConversations.length > 0 && (
                     <div className={cn(
-                      "px-4 py-2 text-xs font-medium uppercase tracking-wide sticky top-[56px] z-10",
+                      "px-4 py-2 text-xs font-medium uppercase tracking-wide sticky top-0 z-10 md:top-[56px]",
                       "bg-background/80 text-muted-foreground backdrop-blur supports-[backdrop-filter]:bg-background/80"
                     )} style={{ WebkitBackdropFilter: 'blur(10px)' }}>
                       Active Conversations
