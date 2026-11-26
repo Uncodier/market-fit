@@ -3,8 +3,8 @@
 import { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/app/components/ui/button"
-import { Plus, Minus } from "@/app/components/ui/icons"
 import { PromptImage } from "@/app/components/commerce/PromptImage"
+import { QuantityStepper } from "@/app/components/commerce/QuantityStepper"
 import { VariantPicker } from "@/app/components/commerce/pdp/VariantPicker"
 import { ModifierPickerPanel, isModifierSelectionValid } from "@/app/components/commerce/ModifierPickerPanel"
 import { PdpItemDescription } from "@/app/components/commerce/pdp/PdpItemDescription"
@@ -70,10 +70,10 @@ export function SelfServiceProductDetail({ item, modifierGroups, modifierError, 
   const unit = Number(active.target_sale_price || 0) + modifiersUnitTotal(modifiers)
   const home = `/shop/${context.location.id}`
 
-  return <div className="min-h-screen bg-white text-gray-900">
+  return <div className="min-h-screen bg-background text-foreground">
     <SelfServiceHeader backHref={home} />
     <main className="mx-auto grid max-w-6xl gap-8 px-4 py-8 md:grid-cols-2 md:px-8">
-      <div className="overflow-hidden rounded-2xl bg-gray-50">
+      <div className="overflow-hidden rounded-2xl bg-muted">
         <PromptImage src={resolveItemImage(active, "full")} alt={active.name} className="aspect-square w-full object-cover" />
       </div>
       <div className="space-y-6">
@@ -84,12 +84,9 @@ export function SelfServiceProductDetail({ item, modifierGroups, modifierError, 
         {!modifierState.ready ? <p role="status">{t("shop.selfService.product.loading")}</p> : modifierState.error ? <p role="alert">{translateModifierMessage(modifierState.error, t)}</p>
           : modifierState.unavailableReason ? <p role="alert">{translateModifierMessage(modifierState.unavailableReason, t)}</p>
           : <ModifierPickerPanel key={modifierState.key} groups={modifierState.groups} value={modifiers} onChange={setModifiers} currency={currency} />}
-        <div className="flex items-center gap-4" role="group" aria-label={t("shop.selfService.product.quantity")}>
-          <Button type="button" size="icon" variant="outline" aria-label={t("shop.selfService.product.decrease")} onClick={() => setQuantity(Math.max(1, quantity - 1))}><Minus className="h-4 w-4" /></Button>
-          <span aria-live="polite">{quantity}</span>
-          <Button type="button" size="icon" variant="outline" aria-label={t("shop.selfService.product.increase")} onClick={() => setQuantity(Math.min(1000, quantity + 1))}><Plus className="h-4 w-4" /></Button>
-        </div>
-        {!resolved && <p className="text-sm text-gray-500">{t("shop.selfService.product.chooseOptions")}</p>}
+        <QuantityStepper label={t("shop.selfService.product.quantity")} quantity={quantity}
+          min={1} canIncrease={quantity < 1000} onChange={setQuantity} />
+        {!resolved && <p className="text-sm text-muted-foreground">{t("shop.selfService.product.chooseOptions")}</p>}
         {resolved && !available(resolved) && <p role="alert">{t("shop.selfService.product.unavailable")}</p>}
         {error && <p role="alert" className="text-red-600">{t(error)}</p>}
         <Button type="button" size="lg" className="w-full" disabled={!canAdd} onClick={() => {

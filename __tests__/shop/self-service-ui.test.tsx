@@ -180,14 +180,19 @@ it("uses the authoritative free order total for payment messaging", async () => 
 it("keeps PDP variant/modifier selection and checkout in the location route without login", async () => {
   const item = { ...product, _shop: { hasVariants: true, sellable: false, children: [{ ...product, id: "small", is_marketplace_listed: false, metadata: { option_values: { size: "small" } } }] },
     metadata: { pickup_location_ids: ["branch"], variant_axes: [{ id: "size", kind: "custom" as const, values: [{ id: "small", label: "Small" }] }] } }
-  render(<SelfServiceProductDetail item={item} modifierGroups={[]} />)
+  const { container } = render(<SelfServiceProductDetail item={item} modifierGroups={[]} />)
+  expect(container.firstElementChild).toHaveClass("bg-background", "text-foreground")
+  const decrease = screen.getByRole("button", { name: "Decrease quantity" })
+  expect(decrease).toBeDisabled()
+  fireEvent.click(screen.getByRole("button", { name: "Increase quantity" }))
+  expect(decrease).toBeEnabled()
   expect(screen.getByRole("button", { name: /Add to order/ })).toBeDisabled()
   fireEvent.click(screen.getByRole("button", { name: "Select small" }))
   await waitFor(() => expect(screen.getByRole("button", { name: "Select oat" })).toBeVisible())
   expect(getSelfServiceModifierOptions).toHaveBeenCalledWith({ locationId: "branch", hostId: "coffee", selectedId: "small", fulfillment: "pickup" })
   fireEvent.click(screen.getByRole("button", { name: "Select oat" }))
   fireEvent.click(screen.getByRole("button", { name: /Add to order/ }))
-  expect(addItem).toHaveBeenCalledWith(expect.objectContaining({ id: "small", metadata: expect.objectContaining({ pickup_location_ids: ["branch"] }) }), 1,
+  expect(addItem).toHaveBeenCalledWith(expect.objectContaining({ id: "small", metadata: expect.objectContaining({ pickup_location_ids: ["branch"] }) }), 2,
     [{ groupId: "milk", catalogItemId: "oat", name: "Oat", cartQty: 1, cartPrice: 2 }])
   expect(push).toHaveBeenCalledWith("/shop/branch?cart=1")
   expect(screen.queryByText(/sign in/i)).not.toBeInTheDocument()

@@ -13,8 +13,7 @@ import {
   validateModifierSelections,
 } from "@/app/catalog/modifier-validate"
 import type { CartModifier } from "@/app/commerce/cart-modifiers"
-import { Button } from "@/app/components/ui/button"
-import { Minus, Plus } from "@/app/components/ui/icons"
+import { QuantityStepper } from "@/app/components/commerce/QuantityStepper"
 import { Checkbox } from "@/app/components/ui/checkbox"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
@@ -214,29 +213,14 @@ export function ModifierPickerPanel({
                           }}
                         />
                       ) : (
-                        <>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            className="h-8 w-8 rounded-full"
-                            onClick={() => setQty(group.id, opt.catalog_item_id, qty - 1)}
-                            disabled={qty <= 0}
-                          >
-                            <Minus className="h-3 w-3" />
-                          </Button>
-                          <span className="w-5 text-center text-sm font-medium">{qty}</span>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            className="h-8 w-8 rounded-full"
-                            onClick={() => setQty(group.id, opt.catalog_item_id, qty + 1)}
-                            disabled={max != null && groupTotal >= max}
-                          >
-                            <Plus className="h-3 w-3" />
-                          </Button>
-                        </>
+                        <QuantityStepper
+                          label={opt.name}
+                          quantity={qty}
+                          min={0}
+                          canIncrease={max == null || groupTotal < max}
+                          onChange={(nextQty) => setQty(group.id, opt.catalog_item_id, nextQty)}
+                          compact
+                        />
                       )}
                     </div>
                   </>

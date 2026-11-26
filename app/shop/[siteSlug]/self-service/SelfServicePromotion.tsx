@@ -27,13 +27,13 @@ export function SelfServicePromotion({ promo, items, availableNow }: {
   const router = useRouter()
   const [added, setAdded] = useState<string | null>(null)
   const home = `/shop/${context.location.id}`
-  return <div className="min-h-screen bg-white text-gray-900">
+  return <div className="min-h-screen bg-background text-foreground">
     <SelfServiceHeader backHref={home} />
     <main className="mx-auto max-w-4xl space-y-6 px-4 py-8 md:px-8">
       <PromptImage src={resolvePromotionImage(promo)} alt={promo.name} className="max-h-80 w-full rounded-2xl object-cover" />
       <h2 className="text-3xl font-bold">{promo.name}</h2>
       <p className="text-lg font-semibold">{promoBadgeLabel(promo, t)}</p>
-      {promo.description && <p className="whitespace-pre-wrap text-gray-600">{promo.description}</p>}
+      {promo.description && <p className="whitespace-pre-wrap text-muted-foreground">{promo.description}</p>}
       {!availableNow && <p role="alert" className="rounded-lg bg-amber-50 p-4">{t("shop.selfService.promotion.unavailable")}</p>}
       {((promo.required_items?.length || 0) + (promo.required_categories?.length || 0) > 0) &&
         <p>{t(promo.required_items_mode === "any" ? "shop.selfService.promotion.anyRequirement" : "shop.selfService.promotion.allRequirements")}</p>}
@@ -41,15 +41,15 @@ export function SelfServicePromotion({ promo, items, availableNow }: {
         const candidates = new Set((promo.category_pick_items || []).filter((item) => item.category_id === category.id).map((item) => item.id))
         const quantity = cart.filter((line) => line.category_id === category.id || candidates.has(line.id) || (line.parent_id && candidates.has(line.parent_id)))
           .reduce((sum, line) => sum + line.cartQty, 0)
-        return <section key={category.id} aria-label={t("shop.selfService.promotion.categoryLabel", { name: category.name })} className="rounded-xl bg-gray-50 p-4">
+        return <section key={category.id} aria-label={t("shop.selfService.promotion.categoryLabel", { name: category.name })} className="rounded-xl border bg-card text-card-foreground p-4">
           <h3 className="font-semibold">{category.name}</h3>
           <p>{t("shop.selfService.promotion.categoryMinimum", { minimum: category.minimum, quantity })}</p>
-          <p className="text-sm text-gray-500">{t("shop.selfService.promotion.mix")}</p>
+          <p className="text-sm text-muted-foreground">{t("shop.selfService.promotion.mix")}</p>
         </section>
       })}
       {items.length > 0 && <>
         <h3 className="text-xl font-semibold">{t("shop.selfService.promotion.chooseItems")}</h3>
-        <p className="text-sm text-gray-500">{t("shop.selfService.promotion.optionsHelp")}</p>
+        <p className="text-sm text-muted-foreground">{t("shop.selfService.promotion.optionsHelp")}</p>
         {items.map(({ item, minimum, configurable }) => {
           const compatible = isSelfServiceItem(item, context.fulfillmentOptions, context.location.id) && isItemCompatibleWithFulfillment(item, fulfillment) && item._shop?.sellable !== false &&
             (item.is_purchasable !== false || requiresVariantSelection(item))
@@ -58,7 +58,7 @@ export function SelfServicePromotion({ promo, items, availableNow }: {
             <PromptImage src={resolveItemImage(item, "thumb")} alt="" className="h-20 w-20 rounded-lg object-cover" />
             <div className="flex-1"><Link href={`${home}/${item.id}`} className="font-semibold">{item.name}</Link>
               <p className="text-sm">{formatPrice(Number(item.target_sale_price || 0), item.currency || "USD")}</p>
-              <p className="text-sm text-gray-500">{t(minimum > 0 ? "shop.selfService.promotion.minimum" : "shop.selfService.promotion.categoryChoice", { minimum, quantity: inCart })}</p></div>
+              <p className="text-sm text-muted-foreground">{t(minimum > 0 ? "shop.selfService.promotion.minimum" : "shop.selfService.promotion.categoryChoice", { minimum, quantity: inCart })}</p></div>
             <Button type="button" variant="outline" disabled={!availableNow || !compatible} onClick={() => {
               setPromotion({ id: promo.id, code: promo.code })
               if (configurable || requiresVariantSelection(item)) router.push(`${home}/${item.id}`)

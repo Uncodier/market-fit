@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import type { CatalogItem, VariantAxis } from '@/app/types'
 import { CatalogListingCard } from '@/app/components/commerce/CatalogListingCard'
 import { PromoListingCard } from '@/app/components/commerce/PromoListingCard'
@@ -12,7 +12,10 @@ import type { StorefrontPromoCard } from '@/app/promotions/promotion-merchandisi
 import type { ModifierGroupWithItems } from '@/app/catalog/modifier-types'
 
 jest.mock('@/app/context/LocalizationContext', () => ({
-  useLocalization: () => ({ t: (key: string) => key, locale: 'en' }),
+  useLocalization: () => ({ t: (key: string) => ({
+    'commerce.cart.decreaseQuantity': 'Decrease quantity',
+    'commerce.cart.increaseQuantity': 'Increase quantity',
+  } as Record<string, string>)[key] ?? key, locale: 'en' }),
 }))
 jest.mock('@/app/context/DisplayCurrencyContext', () => ({
   useDisplayCurrency: () => ({ formatPrice: (price: number) => `$${price}` }),
@@ -111,6 +114,32 @@ it('shows modifier placeholders without disabling option selection', () => {
   assertFallback(container.querySelector('img')!)
   fireEvent.click(screen.getByRole('checkbox'))
   expect(onChange).toHaveBeenCalledWith([expect.objectContaining({ catalogItemId: 'ribbon', cartQty: 1 })])
+})
+
+it('keeps shared modifier controls labeled and legible at the group limit', () => {
+  const groups: ModifierGroupWithItems[] = [{ id: 'extras', site_id: 'site', name: 'Extras', min_select: 0, max_select: 2, sort_order: 0,
+    items: [
+      { id: 'extra', catalog_item_id: 'ribbon', sort_order: 0, name: 'Ribbon', price: 2 },
+      { id: 'card', catalog_item_id: 'card', sort_order: 1, name: 'Card', price: 1 },
+    ] }]
+  const onChange = jest.fn()
+  render(<ModifierPickerPanel groups={groups} onChange={onChange} />)
+  const ribbon = within(screen.getByRole('group', { name: 'Ribbon' }))
+  const addRibbon = ribbon.getByRole('button', { name: 'Increase quantity' })
+  const removeRibbon = ribbon.getByRole('button', { name: 'Decrease quantity' })
+  const addCard = within(screen.getByRole('group', { name: 'Card' })).getByRole('button', { name: 'Increase quantity' })
+
+  expect(removeRibbon).toBeDisabled()
+  expect(addRibbon).toHaveClass('bg-background', 'text-foreground', 'disabled:bg-muted', 'disabled:text-muted-foreground', 'disabled:opacity-100')
+  fireEvent.click(addRibbon)
+  fireEvent.click(addRibbon)
+  expect(ribbon.getByText('2')).toHaveAttribute('aria-live', 'polite')
+  expect(addRibbon).toBeDisabled()
+  expect(addCard).toBeDisabled()
+  expect(removeRibbon).toBeEnabled()
+  expect(onChange).toHaveBeenLastCalledWith([expect.objectContaining({ catalogItemId: 'ribbon', cartQty: 2 })])
+  fireEvent.click(removeRibbon)
+  expect(addCard).toBeEnabled()
 })
 
 it.each([1, 2, 3, 4])('keeps placeholders visible in a %s-item saved-order mosaic', count => {
