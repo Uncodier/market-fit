@@ -185,6 +185,7 @@ export function RecordsTable({
                   const createdDate = record.created_at ? new Date(record.created_at) : null
                   const createdValid = createdDate && !isNaN(createdDate.getTime())
                   const recordCategory = !activeCategory && categories.find(category => category.id === record.category_id)
+                  const categoryLabel = (recordCategory || record.category)?.name || (t("records.uncategorized") || "Uncategorized")
 
                   return (
                     <TableRow
@@ -207,10 +208,11 @@ export function RecordsTable({
                       <TableCell className="px-2 py-1">
                         <RecordPropertyCell record={record} property={notesProperty} onSave={onSaveProperty} className="text-muted-foreground" />
                       </TableCell>
-                      {!activeCategory && <TableCell className="truncate py-1 text-muted-foreground">
-                        {recordCategory ? <button type="button" className="max-w-full truncate rounded px-1 text-left hover:underline"
-                          title={`View ${recordCategory.name} properties`} onClick={() => onViewCategory(recordCategory)}>{recordCategory.name}</button>
-                          : record.category?.name || (t("records.uncategorized") || "Uncategorized")}
+                      {!activeCategory && <TableCell className="px-3 py-1 text-muted-foreground">
+                        {recordCategory ? <button type="button" className="flex w-full items-center rounded px-1 text-left hover:underline"
+                          title={`View ${categoryLabel} properties`} onClick={() => onViewCategory(recordCategory)}>
+                          <span className="min-w-0 flex-1 truncate">{categoryLabel}</span>
+                        </button> : <span className="block truncate px-1" title={categoryLabel}>{categoryLabel}</span>}
                       </TableCell>}
                       <TableCell className="px-2 py-1">
                         <RecordPropertyCell record={record} property={statusProperty} onSave={onSaveProperty}>

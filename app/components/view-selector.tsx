@@ -47,7 +47,8 @@ function ViewToggle({ value, label, children }: { value: ViewType; label: string
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <ToggleGroupItem value={value} aria-label={label} className="px-2">
+        {/* Tooltip and ToggleGroup both use data-state; aria-checked tracks only the selected view. */}
+        <ToggleGroupItem value={value} aria-label={label} className="px-2 aria-checked:bg-background aria-checked:text-foreground aria-checked:shadow-sm aria-checked:ring-1 aria-checked:ring-inset aria-checked:ring-border">
           {children}
         </ToggleGroupItem>
       </TooltipTrigger>

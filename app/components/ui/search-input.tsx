@@ -1,7 +1,6 @@
 "use client"
 
 import React, { forwardRef, useCallback, useEffect, useRef, useState } from "react"
-import { useSearchParams } from "next/navigation"
 import { Input } from "./input"
 import { Search, X } from "./icons"
 import { Button } from "./button"
@@ -15,6 +14,7 @@ export interface SearchInputProps extends Omit<React.InputHTMLAttributes<HTMLInp
   className?: string
   containerClassName?: string
   expandedHeightClassName?: string
+  clearLabel?: string
   alwaysExpanded?: boolean
   onExpandedChange?: (expanded: boolean) => void
 }
@@ -29,13 +29,12 @@ const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
     className,
     containerClassName,
     expandedHeightClassName,
+    clearLabel = "Clear search",
     value,
     alwaysExpanded = false,
     onExpandedChange,
     ...props 
   }, ref) => {
-    const searchParams = useSearchParams()
-    const isArtifact = searchParams?.get("artifact") === "true"
     const localRef = useRef<HTMLInputElement>(null)
     const actualRef = ref || localRef
 
@@ -88,10 +87,10 @@ const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       // Llamar a onSearch si se proporciona
-      onSearch && onSearch(e.target.value)
+      onSearch?.(e.target.value)
       
       // También propagar el evento onChange original si se proporciona
-      onChange && onChange(e)
+      onChange?.(e)
     }
 
     const handleClear = () => {
@@ -117,6 +116,7 @@ const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
       >
         {/* Collapsed State: Button */}
         <div 
+          aria-hidden={isExpanded || undefined}
           className={cn(
             "absolute right-0 top-1/2 -translate-y-1/2 h-10 w-10 transition-[opacity,transform] duration-150 ease-out motion-reduce:transition-none",
             isExpanded
@@ -138,6 +138,7 @@ const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
               }, 50)
             }}
             title={placeholder}
+            tabIndex={isExpanded ? -1 : undefined}
           >
             <Search className="h-4 w-4" />
           </Button>
@@ -145,6 +146,7 @@ const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
 
         {/* Expanded State: Input */}
         <div 
+          aria-hidden={!isExpanded || undefined}
           className={cn(
             "absolute right-0 top-0 w-full flex origin-right items-center transition-[opacity,transform] duration-200 ease-out motion-reduce:transition-none",
             isExpanded
@@ -175,6 +177,7 @@ const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
               props.onBlur?.(e)
             }}
             {...props}
+            tabIndex={isExpanded ? props.tabIndex : -1}
           />
           {showShortcut && !hasValue && (
             <kbd className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex z-20">
@@ -188,7 +191,7 @@ const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
               size="icon"
               className="absolute inset-y-0 right-1 z-20 my-auto h-7 w-7 text-muted-foreground opacity-100 hover:text-foreground"
               onClick={handleClear}
-              aria-label="Clear search"
+              aria-label={clearLabel}
               data-toolbar-icon-action="off"
             >
               <X className="h-3 w-3" />

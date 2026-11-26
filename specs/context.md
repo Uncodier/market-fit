@@ -16,7 +16,7 @@ From `app/config/navigation-areas.ts`:
 | Area | Representative routes |
 |------|------------------------|
 | Marketing | `/campaigns`, `/segments`, `/promotions`, `/content`, `/assets` |
-| Sales | `/pos`, `/catalog`, `/price-lists`, `/subscriptions`, `/accounts-receivable`, `/sales`, `/leads`, `/deals`, `/quotations`, `/people` |
+| Sales | `/pos`, `/catalog`, `/price-lists`, `/subscriptions`, `/accounts-receivable`, `/sales`, `/leads`, `/deals`, `/quotations`, `/copywriting`, `/people` |
 | Operations | `/chat`, `/records`, `/orders`, `/shipments`, `/control-center`, `/reservations`, `/visits`, `/inventory` |
 | Buying | `/bills`, `/accounts-payable`, `/transactions`, `/purchases/orders`, `/purchases/quotes` |
 | Finance | `/finance`, `/accounting`, `/accounting/entries`, `/costs` |

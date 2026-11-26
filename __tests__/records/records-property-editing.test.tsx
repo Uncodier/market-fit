@@ -33,12 +33,12 @@ const record: RecordItem = {
   created_at: category.created_at, updated_at: category.updated_at,
 }
 
-function renderTable(activeCategory?: RecordCategory, onSave = jest.fn().mockResolvedValue({}), records = [record]) {
+function renderTable(activeCategory?: RecordCategory, onSave = jest.fn().mockResolvedValue({}), records = [record], categories = [category]) {
   const onOpen = jest.fn()
   const onAdd = jest.fn().mockResolvedValue({})
   const onManage = jest.fn()
   const onView = jest.fn()
-  render(<RecordsTable records={records} categories={[category]} activeCategory={activeCategory}
+  render(<RecordsTable records={records} categories={categories} activeCategory={activeCategory}
     currentPage={1} itemsPerPage={RECORDS_TABLE_PAGE_SIZES[0]} totalRecords={records.length} onPageChange={jest.fn()} onItemsPerPageChange={jest.fn()}
     selectedRecords={new Set()} onToggleRecordSelection={jest.fn()} onRecordClick={onOpen} onSaveProperty={onSave}
     onAddProperty={onAdd} onManageProperties={onManage} onViewCategory={onView} />)
@@ -85,6 +85,23 @@ it("keeps inline editing and category navigation in All records without row prop
   expect(onSave).toHaveBeenCalledWith(record, { status: "published" })
   expect(onOpen).not.toHaveBeenCalled()
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+})
+
+it.each([true, false])("truncates long category labels without shortening their text (navigable: %s)", navigable => {
+  const longCategory = { ...category, name: "Quarterly Reports for International Investors" }
+  const { onView } = renderTable(undefined, undefined, [{ ...record, category: longCategory }], navigable ? [longCategory] : [])
+  const label = screen.getByText(longCategory.name)
+  expect(label).toHaveClass("truncate")
+  if (navigable) {
+    const button = screen.getByRole("button", { name: longCategory.name })
+    expect(button).toHaveClass("w-full")
+    expect(button).toHaveAttribute("title", `View ${longCategory.name} properties`)
+    fireEvent.click(button)
+    expect(onView).toHaveBeenCalledWith(longCategory)
+  } else {
+    expect(label).toHaveAttribute("title", longCategory.name)
+    expect(label.closest("button")).toBeNull()
+  }
 })
 
 it("discards an inline draft with Escape without reopening the editor or saving", () => {

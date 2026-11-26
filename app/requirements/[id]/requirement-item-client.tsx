@@ -1,6 +1,7 @@
 "use client"
 
 import { Button } from "@/app/components/ui/button"
+import { stickyHeaderBorderClassName } from "@/app/components/ui/sticky-header-styles"
 import React,{ Suspense } from "react"
 import { RequirementStatusList } from "./components/RequirementStatusList"
 import { RequirementViewSwitcher } from "./components/RequirementViewSwitcher"
@@ -122,7 +123,7 @@ function RequirementDetailContent() {
       {showRightPanel && (
         <div className="w-80 border-l bg-muted/30 flex flex-col h-full shrink-0 overflow-hidden relative">
           <Tabs defaultValue="info" className="flex flex-col h-full">
-            <div className="flex-none h-[71px] border-b flex items-center justify-center px-4 z-10 bg-muted/95 backdrop-blur-sm">
+            <div className={`flex-none h-[71px] flex items-center justify-center px-4 z-10 bg-muted/95 backdrop-blur-sm ${stickyHeaderBorderClassName}`}>
               <TabsList className="grid grid-cols-2 w-full">
                 <TabsTrigger value="info">Details</TabsTrigger>
                 <TabsTrigger value="outsource">Agents</TabsTrigger>

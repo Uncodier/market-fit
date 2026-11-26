@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
-import type { ReactNode } from "react"
+import type { ComponentProps } from "react"
 import { FormProvider, useForm } from "react-hook-form"
 import { ActivitiesSection } from "@/app/components/settings/ActivitiesSection"
 import { mergeActivitySettings, normalizeActivitySettings } from "@/app/components/settings/activity-settings"
@@ -13,7 +13,7 @@ const whatsappId = "33333333-3333-4333-8333-333333333333"
 let mockCurrentSite: { id: string; settings: Record<string, unknown> }
 jest.mock("@/app/context/SiteContext", () => ({ useSite: () => ({ currentSite: mockCurrentSite }) }))
 jest.mock("@/app/context/LocalizationContext", () => ({ useLocalization: () => ({ t: () => "AI Activities" }) }))
-jest.mock("@/app/components/navigation/NavigationLink", () => ({ NavigationLink: ({ children }: { children: ReactNode }) => <span>{children}</span> }))
+jest.mock("@/app/components/navigation/NavigationLink", () => ({ NavigationLink: (props: ComponentProps<"a">) => <a {...props} /> }))
 jest.mock("@/app/components/settings/outreach-segments", () => ({ fetchOutreachSegments: jest.fn() }))
 jest.mock("@/app/components/settings/icp-mining-lists", () => ({ fetchIcpMiningLists: jest.fn().mockResolvedValue([]) }))
 
@@ -155,6 +155,22 @@ describe("ActivitiesSection outreach controls", () => {
     expect(card().getByRole("alert")).toHaveTextContent("Select at least one segment")
     expect(onSave).not.toHaveBeenCalled()
     expect(card().getByRole("button", { name: "Hide setup for Leads Follow Up" })).toHaveAttribute("aria-expanded", "true")
+  })
+
+  it("links to the copywriting references on both lead outreach cards even when inactive", () => {
+    const onSave = jest.fn()
+    render(<TestForm onSave={onSave} />)
+
+    for (const key of ["leads_follow_up", "leads_initial_cold_outreach"]) {
+      expect(card(key).getByRole("radio", { name: "Inactive Default" })).toBeChecked()
+      const link = card(key).getByRole("link", { name: "Open Copy Sequences (new tab)" })
+      expect(link).toHaveAttribute("href", "/context?tab=copywriting")
+      expect(link).toHaveAttribute("target", "_blank")
+      expect(link).toHaveAttribute("rel", "noopener noreferrer")
+    }
+
+    expect(card("invoices_due").queryByRole("link", { name: /Copy Sequences/ })).not.toBeInTheDocument()
+    expect(onSave).not.toHaveBeenCalled()
   })
 
   it("configures opt-in Due Invoices without lead targeting or unanswered controls and reloads it", async () => {

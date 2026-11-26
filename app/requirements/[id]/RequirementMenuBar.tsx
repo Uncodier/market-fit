@@ -1,6 +1,7 @@
 "use client"
 
 import { Button } from "@/app/components/ui/button"
+import { stickyHeaderBorderClassName } from "@/app/components/ui/sticky-header-styles"
 
 import {
 AlertDialog,
@@ -57,7 +58,7 @@ export const MenuBar = ({
   }
 
   return (
-    <div className="border-b pl-[20px] pr-4 py-2 flex flex-wrap gap-1 h-[71px] items-center justify-between">
+    <div className={`pl-[20px] pr-4 py-2 flex flex-wrap gap-1 h-[71px] items-center justify-between ${stickyHeaderBorderClassName}`}>
       <div className="flex items-center gap-1">
         <Button
           variant="secondary" 

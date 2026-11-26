@@ -12,6 +12,9 @@ Use the guides below before relying on older implementation notes.
 - [Agent reporting hierarchy](AGENT_REPORTING_HIERARCHY.md) — the Supervisor field in agent profiles, ID-based diagram, hierarchy validation and rollout boundaries.
 - [Projects performance and contention audit — 2026-11-20](PROJECTS_PERFORMANCE_2026-11-20.md) — selector visibility, bounded cache/query work, timing diagnostics, index evidence and rollout boundaries.
 - [Leads list and count performance](LEADS_READ_PERFORMANCE.md) — measured row-policy work, unchanged access rules, single-request totals and rollout checks.
+- [Chat and Tasks read performance](CHAT_TASK_READ_PERFORMANCE.md) — applied membership-set optimization, access equivalence and verification limits.
+- [Workspace RLS completion](WORKSPACE_RLS_COMPLETION.md) — remaining screen membership sets, Robots ownership work, measured results and compatibility limits.
+- [Robots read performance](ROBOTS_READ_PERFORMANCE.md) — applied duplicate capability-check removal and remaining ownership work.
 - [Finder selected-person lists](FINDER_SELECTED_LISTS.md) — add selected people,
   create a selected-only list, immediate enrichment and coordinated rollout.
 

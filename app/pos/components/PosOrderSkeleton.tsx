@@ -1,5 +1,6 @@
 import { Button } from "@/app/components/ui/button";
 import { Skeleton } from "@/app/components/ui/skeleton";
+import { stickyHeaderBorderClassName } from "@/app/components/ui/sticky-header-styles";
 import { X } from "@/app/components/ui/icons";
 
 export function PosOrderLinesSkeleton() {
@@ -32,7 +33,7 @@ export function PosCartPanelSkeleton({
   return (
     <div role="status" aria-label="Loading order data" aria-busy="true" className="flex h-full flex-col overflow-hidden">
       <span className="sr-only">Loading order data</span>
-      <div className="flex min-h-[71px] shrink-0 items-center gap-2 border-b bg-background/80 px-4">
+      <div className={`flex min-h-[71px] shrink-0 items-center gap-2 bg-background/80 px-4 ${stickyHeaderBorderClassName}`}>
         <Skeleton aria-hidden="true" className="h-10 flex-1" />
         {isMobile && closeCart && (
           <Button variant="ghost" size="icon" onClick={closeCart} aria-label="Close cart" className="md:hidden shrink-0">

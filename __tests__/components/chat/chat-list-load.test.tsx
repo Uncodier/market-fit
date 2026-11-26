@@ -2,6 +2,7 @@ import { StrictMode, type ReactNode } from 'react'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { SWRConfig } from 'swr'
 import { ChatList } from '@/app/components/chat/chat-list'
+import ChatLoading from '@/app/chat/loading'
 import { SWRProvider } from '@/app/providers/swr-provider'
 import { createConversationListCache } from '@/app/providers/conversation-list-cache'
 import { ConversationListCacheOnly } from '@/app/providers/conversation-list-read-scope'
@@ -58,6 +59,21 @@ beforeEach(() => {
   jest.mocked(createClient).mockReturnValue({ from, channel: openChannel, removeChannel: jest.fn() } as ReturnType<typeof createClient>)
 })
 afterEach(() => { jest.useRealTimers() })
+
+it('matches the shared header divider beneath the search input', () => {
+  mount()
+  const header = screen.getByPlaceholderText('Search conversations...').closest('[class~="h-[71px]"]')
+
+  expect(header).toHaveClass('border-b', 'border-black/5', 'dark:border-white/5')
+})
+
+it('keeps the same search header divider during route loading', () => {
+  render(<ChatLoading />)
+  const header = screen.getByRole('status', { name: 'Loading conversations' })
+    .querySelector('[aria-hidden="true"] [class~="h-[71px]"]')
+
+  expect(header).toHaveClass('border-b', 'border-black/5', 'dark:border-white/5')
+})
 
 it.each(['Refreshed conversation', 'Loaded conversation'])('only auto-opens the confirmed first page: %s', async title => {
   const cache = await priorVisit()

@@ -42,8 +42,8 @@ function authorizationScans(plan: PlanNode) {
     .reduce((sum, node) => sum + node['Actual Loops'], 0)
 }
 
-function explain(call: ReturnType<typeof isolatedPostgres>['call'], sql: string): Explain {
-  return JSON.parse(call(`EXPLAIN (ANALYZE, BUFFERS, TIMING OFF, FORMAT JSON) ${sql}`, a.collaborator))[0]
+function explain(call: ReturnType<typeof isolatedPostgres>['call'], sql: string, actor = a.collaborator): Explain {
+  return JSON.parse(call(`EXPLAIN (ANALYZE, BUFFERS, TIMING OFF, FORMAT JSON) ${sql}`, actor))[0]
 }
 
 if (process.env.REQUIRE_REAL_POSTGRES === '1' && !postgresAvailable) throw Error('Socket-only PostgreSQL binaries required')
@@ -72,6 +72,31 @@ if (process.env.REQUIRE_REAL_POSTGRES === '1' && !postgresAvailable) throw Error
       console.info([baseline, optimized].map(samples => samples.map(plan => ({
         parentScans: authorizationScans(plan.Plan), ms: plan['Execution Time'],
       }))))
+    }
+  }, 30_000)
+
+  it('bounds sparse assigned-only reads without exposing the other leads in the site', () => {
+    pg.db(`INSERT INTO public.leads(id,site_id,user_id,assignee_id,company_id,created_at)
+      SELECT md5('assigned-read-'||i)::uuid, '${a.site}', '${a.owner}',
+        CASE WHEN i<=57 THEN '${a.assigned}'::uuid ELSE NULL END,
+        '${uuid(300)}', now()-i*interval '1 second' FROM generate_series(1,3052) g(i);
+      ANALYZE public.leads; ANALYZE public.sites; ANALYZE public.site_members;`)
+    const selection = `SELECT l.id FROM public.leads l WHERE ${siteFilter} ORDER BY l.id`
+    const before = pg.call(selection, a.assigned)
+    expect(before.split('\n')).toHaveLength(59)
+    expect(pg.call(countSql, a.owner)).toBe('3056')
+    const baseline = [listSql, countSql].map(sql => explain(pg.call, sql, a.assigned))
+    for (const sample of baseline) expect(authorizationScans(sample.Plan)).toBeGreaterThan(3000)
+
+    pg.db(change())
+
+    expect(pg.call(selection, a.assigned)).toBe(before)
+    expect(pg.call(countSql, a.owner)).toBe('3056')
+    expect(pg.call(`SELECT total, returned FROM (${listAndCountSql}) result`, a.assigned)).toBe('59|59')
+    for (const actor of [a.assigned, a.owner]) {
+      for (const sql of [listSql, countSql, listAndCountSql]) {
+        expect(authorizationScans(explain(pg.call, sql, actor).Plan)).toBeLessThan(100)
+      }
     }
   }, 30_000)
 

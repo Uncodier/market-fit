@@ -8,7 +8,7 @@ import { useCommandK } from "@/app/hooks/use-command-k"
 import { useIsMobile } from "@/app/hooks/use-mobile-view"
 import { Input } from "./input"
 import { Search } from "./icons"
-import { stickyHeaderSelectClassName } from "./sticky-header-styles"
+import { stickyHeaderBorderClassName, stickyHeaderSelectClassName } from "./sticky-header-styles"
 
 interface StickyHeaderProps {
   children: ReactNode
@@ -58,7 +58,8 @@ export function StickyHeader({
       className={cn(
         "flex shrink-0 items-center p-0",
         "bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80",
-        "border-b dark:border-white/5 border-black/5 z-[150]",
+        stickyHeaderBorderClassName,
+        "z-[150]",
         useFixedPosition ? "static md:fixed transition-all duration-300 ease-in-out" : "static md:sticky",
         "md:top-[var(--topbar-height,64px)] min-h-[71px]",
         stickyHeaderSelectClassName,

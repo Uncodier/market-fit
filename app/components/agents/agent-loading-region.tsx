@@ -1,6 +1,7 @@
 "use client"
 
 import type { ReactNode } from "react"
+import { stickyHeaderBorderClassName } from "@/app/components/ui/sticky-header-styles"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { cn } from "@/lib/utils"
 
@@ -15,7 +16,7 @@ export function AgentLoadingRegion({ label, className, children }: { label?: str
 
 /** Keep the toolbar footprint without mounting navigation, shortcuts or layout listeners. */
 export function AgentSkeletonToolbar({ children }: { children: ReactNode }) {
-  return <div className="flex min-h-[71px] w-full min-w-0 flex-wrap items-center gap-3 border-b bg-background px-4 py-3 lg:px-8">
+  return <div className={`flex min-h-[71px] w-full min-w-0 flex-wrap items-center gap-3 bg-background px-4 py-3 lg:px-8 ${stickyHeaderBorderClassName}`}>
     {children}
   </div>
 }

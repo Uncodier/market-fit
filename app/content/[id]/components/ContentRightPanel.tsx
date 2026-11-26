@@ -2,6 +2,7 @@
 
 import { ContentPerformancePanel } from "../../components/ContentPerformancePanel"
 import { ScrollArea } from "@/app/components/ui/scroll-area"
+import { stickyHeaderBorderClassName } from "@/app/components/ui/sticky-header-styles"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import type {
   CampaignOption,
@@ -43,7 +44,7 @@ export function ContentRightPanel(props: Props) {
   return (
     <div className="flex h-full w-80 flex-col border-l bg-muted/30">
       <Tabs defaultValue="ai" className="flex h-full flex-col">
-        <div className="flex h-[71px] items-center justify-center border-b px-4">
+        <div className={`flex h-[71px] items-center justify-center px-4 ${stickyHeaderBorderClassName}`}>
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="ai" className="px-1 text-xs">AI Assistant</TabsTrigger>
             <TabsTrigger value="details" className="px-1 text-xs">Details</TabsTrigger>

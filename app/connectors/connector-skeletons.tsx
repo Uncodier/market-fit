@@ -4,6 +4,7 @@ import type { ReactNode } from "react"
 import { Card, CardContent, CardHeader } from "@/app/components/ui/card"
 import { SectionCard, SectionCardContent, SectionCardFooter, SectionCardHeader } from "@/app/components/ui/section-card"
 import { Skeleton } from "@/app/components/ui/skeleton"
+import { stickyHeaderBorderClassName } from "@/app/components/ui/sticky-header-styles"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { cn } from "@/lib/utils"
 
@@ -22,7 +23,7 @@ function LoadingStatus({ children, message = "connectors.loading" }: { children:
 }
 
 function CatalogueToolbarSkeleton() {
-  return <div className="flex min-h-[71px] items-center gap-2 border-b px-4 sm:gap-3 lg:px-8">
+  return <div className={`flex min-h-[71px] items-center gap-2 px-4 sm:gap-3 lg:px-8 ${stickyHeaderBorderClassName}`}>
     <Skeleton className="h-10 w-10 shrink-0 rounded-full" />
     <Skeleton className="h-8 w-40 rounded-full" />
     <Skeleton className="h-10 w-10 shrink-0 rounded-full" />
@@ -35,7 +36,7 @@ export function ConnectorAccountSkeleton() {
 }
 
 function DetailToolbarSkeleton() {
-  return <div className="flex min-h-[71px] items-center border-b border-black/5 px-4 dark:border-white/5 lg:px-8">
+  return <div className={`flex min-h-[71px] items-center px-4 lg:px-8 ${stickyHeaderBorderClassName}`}>
     <div className={connectorDetailToolbarClassName}>
       <div className="flex h-8 shrink-0 items-center gap-2 rounded-full bg-muted/30 px-2">
         <Skeleton className="h-6 w-16 rounded-full" />

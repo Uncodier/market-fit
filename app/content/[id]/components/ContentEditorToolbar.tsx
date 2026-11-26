@@ -3,6 +3,7 @@
 import { useState } from "react"
 import type { Editor } from "@tiptap/react"
 import { Button } from "@/app/components/ui/button"
+import { stickyHeaderBorderClassName } from "@/app/components/ui/sticky-header-styles"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
 import { ContentDeleteDialog } from "./ContentDeleteDialog"
 import type { DeleteContentOptions, DeleteContentResult } from "../../delete-content-types"
@@ -95,7 +96,7 @@ export function ContentEditorToolbar({
   )
 
   return (
-    <div data-toolbar-icon-actions className="flex h-[71px] items-center gap-1 overflow-hidden whitespace-nowrap border-b py-2 pl-5 pr-4">
+    <div data-toolbar-icon-actions className={`flex h-[71px] items-center gap-1 overflow-hidden whitespace-nowrap py-2 pl-5 pr-4 ${stickyHeaderBorderClassName}`}>
       <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
         <Button
           variant="secondary"

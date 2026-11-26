@@ -28,6 +28,8 @@ interface ResponsiveTabsListProps {
   className?: string
   containerClassName?: string
   triggerClassName?: string
+  "aria-label"?: string
+  overflowLabel?: string
   onPreferredWidthChange?: (width: number) => void
 }
 
@@ -38,6 +40,8 @@ export function ResponsiveTabsList({
   className,
   containerClassName,
   triggerClassName,
+  "aria-label": ariaLabel,
+  overflowLabel = "More options",
   onPreferredWidthChange,
 }: ResponsiveTabsListProps) {
   const measurementContent = useMemo(() => [tabs, className, triggerClassName, containerClassName],
@@ -120,7 +124,7 @@ export function ResponsiveTabsList({
         </div>
       </div>
 
-      <TabsList className={cn(listClassName, "overflow-hidden")}>
+      <TabsList aria-label={ariaLabel} className={cn(listClassName, "overflow-hidden")}>
         {visibleTabs.map((tab) => {
           const hasActions = Boolean(tab.leadingAction || tab.trailingAction)
           const trigger = (
@@ -154,8 +158,8 @@ export function ResponsiveTabsList({
               <button
                 type="button"
                 className={overflowClassName}
-                title="More options"
-                aria-label="More options"
+                title={overflowLabel}
+                aria-label={overflowLabel}
               >
                 {renderOverflowContent(hiddenTabs.length)}
               </button>

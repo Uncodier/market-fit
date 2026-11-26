@@ -91,6 +91,11 @@ requires a previous authentic inbound message. Backend orchestration and deliver
 remain responsible for enforcing audiences, quotas, timing and account access.
 UI validation is not an authorization boundary.
 
+Both lead outreach cards link to **Context → Copy Sequences** in a new tab so
+users can refine their copy examples without leaving unsaved activity edits.
+The link does not select a sequence for the activity or change how messages
+are generated or delivered.
+
 ## Sending accounts and message formats
 
 ### Due invoices

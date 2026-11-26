@@ -15,6 +15,7 @@ describe("selected realistic navigation refresh", () => {
     ["themeLight", "golden yellow", "pastel sky-blue"],
     ["themeDark", "violet", "pastel lavender-blue"],
     ["theme", "violet", "pastel sky-blue"],
+    ["copywriting", "royal violet", "pastel peach"],
   ])("combines realistic rendering with UI clarity for %s", (key, color, background) => {
     const prompt = getModuleImagePrompt("buying", key, "Ignored title")
     expect(prompt).toContain(key === "appsLauncher" ? "Front-facing 3D App Store symbol" : "Volumetric 3D isometric")
@@ -29,6 +30,10 @@ describe("selected realistic navigation refresh", () => {
     expect(prompt).toContain(background)
     expect(prompt).toContain("Unreal Engine 5")
     expect(prompt.length).toBeLessThanOrEqual(2000)
+    if (key === "copywriting") {
+      expect(prompt).toContain("Show one fountain pen nib")
+      expect(prompt).toContain("no paper, pen body, ink, stars, or extra objects")
+    }
     if (key === "appsLauncher") {
       expect(prompt).toContain("Strict frontal orthographic view")
       expect(prompt).toContain("no isometric angle")

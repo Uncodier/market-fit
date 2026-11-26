@@ -1,6 +1,7 @@
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/app/components/ui/button"
+import { stickyHeaderBorderClassName } from "@/app/components/ui/sticky-header-styles"
 import { Search } from "@/app/components/ui/icons"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { SavedListsPanel } from "./saved-lists-panel"
@@ -91,7 +92,7 @@ export function PeopleSidebar({ workspace }: { workspace: PeopleWorkspace }) {
     )} style={{ left: sidebarLeft, top: "var(--topbar-height, 64px)", height: "calc(100vh - var(--topbar-height, 64px))" }}>
       <div className="h-full bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-r relative flex flex-col">
         {/* Tab selector - min height matches main toolbar (71px) */}
-        <div className="flex-shrink-0 min-h-[71px] flex items-center p-3 border-b border-border/50">
+        <div className={`flex-shrink-0 min-h-[71px] flex items-center p-3 ${stickyHeaderBorderClassName}`}>
           <Tabs value={peopleTab} onValueChange={(v) => setPeopleTab(v as "search" | "saved")} className="w-full">
             <TabsList className="grid w-full grid-cols-2 h-9">
               <TabsTrigger value="search" className="text-xs">{t('people.tabs.search') || 'Search people'}</TabsTrigger>

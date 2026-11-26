@@ -72,7 +72,7 @@ it("keeps bulk actions accessible through mobile options without crowding the he
 it("preserves inline desktop controls and the fixed desktop header", () => {
   const { container } = renderHeader(false)
   expect(container.querySelector("[data-toolbar-font]")).not.toBeInTheDocument()
-  expect(container.firstChild).toHaveClass("fixed")
+  expect(container.firstChild).toHaveClass("fixed", "border-b", "border-black/5", "dark:border-white/5")
   expect(screen.getByRole("textbox", { name: "Search tasks" })).toBeInTheDocument()
   expect(screen.getByRole("button", { name: "Filters" })).toBeInTheDocument()
   expect(screen.getByRole("button", { name: "Sort tasks" })).toBeInTheDocument()

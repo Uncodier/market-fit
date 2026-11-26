@@ -32,6 +32,8 @@ describe("ContentEditorToolbar", () => {
     expect(
       screen.getByRole("button", { name: "Delete content" }),
     ).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Delete content" }).closest("[data-toolbar-icon-actions]"))
+      .toHaveClass("border-b", "border-black/5", "dark:border-white/5")
   })
 
   it("passes the content ID to the contextual deletion dialog", async () => {

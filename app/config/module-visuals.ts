@@ -134,6 +134,7 @@ export const NAV_ITEM_ICON: Record<string, LucideIcon> = {
   leads: Users,
   deals: Briefcase,
   quotations: FileText,
+  copywriting: PenTool,
   chat: MessageCircle,
   people: Search,
   controlCenter: Rocket,

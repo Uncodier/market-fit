@@ -1,5 +1,6 @@
 import React from 'react'
 import { Skeleton } from '@/app/components/ui/skeleton'
+import { stickyHeaderBorderClassName } from '@/app/components/ui/sticky-header-styles'
 
 export default function ChatLoading() {
   return (
@@ -9,7 +10,7 @@ export default function ChatLoading() {
       <div aria-hidden="true" className="h-full transition-all duration-300 ease-in-out z-[55] bg-background flex-shrink-0 border-r dark:border-white/5 border-black/5 absolute md:relative left-0 hidden md:block md:w-[319px] md:min-w-[319px]" style={{ overflow: 'hidden' }}>
         <div className="flex flex-col h-full w-full bg-transparent overflow-hidden">
           {/* Top bar with search input skeleton */}
-          <div className="flex items-center justify-center h-[71px] max-h-[71px] min-h-[71px] border-b transition-colors duration-300 flex-shrink-0 bg-background w-full">
+          <div className={`flex items-center justify-center h-[71px] max-h-[71px] min-h-[71px] transition-colors duration-300 flex-shrink-0 bg-background w-full ${stickyHeaderBorderClassName}`}>
             <div className="relative w-full px-4 flex items-center justify-center min-w-0">
               <Skeleton className="h-10 w-full rounded-lg" />
             </div>

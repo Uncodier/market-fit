@@ -13,6 +13,7 @@ const REALISTIC_MODULE_PALETTES: Readonly<Record<string, string>> = {
   procurementRules: "vibrant royal purple as the dominant object color against a uniform pastel butter-yellow background",
   procurementTenders: "vibrant warm red as the dominant object color against a uniform pastel mint background",
   connectors: "vibrant turquoise as the dominant color with a restrained cobalt accent against a uniform pastel peach background",
+  copywriting: "vibrant royal violet polished metal as the dominant object color with a restrained rose-gold collar against a uniform pastel peach background",
 }
 
 export function getRealisticModuleImagePrompt(

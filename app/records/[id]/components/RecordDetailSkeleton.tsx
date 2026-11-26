@@ -1,4 +1,5 @@
 import { Skeleton } from "@/app/components/ui/skeleton"
+import { stickyHeaderBorderClassName } from "@/app/components/ui/sticky-header-styles"
 
 export const RecordDetailSkeleton = () => {
   return (
@@ -6,7 +7,7 @@ export const RecordDetailSkeleton = () => {
       {/* Left side: Main Content / Form */}
       <div className="flex-1 flex flex-col min-w-0 bg-muted/10 relative">
         {/* Formatting Toolbar Skeleton */}
-        <div className="border-b pl-[20px] pr-4 py-2 flex items-center h-[71px] bg-background gap-2 overflow-x-auto">
+        <div className={`pl-[20px] pr-4 py-2 flex items-center h-[71px] bg-background gap-2 overflow-x-auto ${stickyHeaderBorderClassName}`}>
           <Skeleton className="h-9 w-24 rounded-md" />
           <div className="w-px h-6 bg-border mx-1" />
           <div className="flex items-center gap-1">

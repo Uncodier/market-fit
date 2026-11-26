@@ -1,6 +1,7 @@
 "use client"
 
 import { Skeleton } from "@/app/components/ui/skeleton"
+import { stickyHeaderBorderClassName } from "@/app/components/ui/sticky-header-styles"
 import { Card } from "@/app/components/ui/card"
 import { cn } from "@/lib/utils"
 
@@ -165,7 +166,7 @@ export function ControlCenterSkeleton({
         )}
       >
         {/* Header - matches ControlCenterHeader */}
-        <div className="border-b flex-none h-[71px] flex items-center fixed w-[-webkit-fill-available] z-[99] bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+        <div className={`flex-none h-[71px] flex items-center fixed w-[-webkit-fill-available] z-[99] bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80 ${stickyHeaderBorderClassName}`}>
           {/* Sidebar toggle - desktop only */}
           <div className="hidden md:flex absolute top-0 left-0 h-[71px] items-center pl-4">
             <Skeleton className="h-8 w-8 rounded-md" />

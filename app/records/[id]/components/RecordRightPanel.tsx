@@ -1,6 +1,7 @@
 "use client"
 
 import { ScrollArea } from "@/app/components/ui/scroll-area"
+import { stickyHeaderBorderClassName } from "@/app/components/ui/sticky-header-styles"
 import { ToggleGroup, ToggleGroupItem } from "@/app/components/ui/toggle-group"
 import type { RecordItem } from "../../actions"
 import { RecordInsightView } from "./InsightsTab"
@@ -30,7 +31,7 @@ export function RecordRightPanel({
   return (
     <div className="w-[400px] flex-none border-l border-border bg-background">
       <div className="flex h-full min-h-0 flex-col">
-        <div className="flex h-[71px] items-center justify-center border-b px-4">
+        <div className={`flex h-[71px] items-center justify-center px-4 ${stickyHeaderBorderClassName}`}>
           <ToggleGroup
             type="single"
             value={activeTab}

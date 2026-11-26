@@ -17,6 +17,13 @@ const baseProps = {
 }
 
 describe("RecordToolbar", () => {
+  it("uses the same subtle bottom border as sticky headers in both themes", () => {
+    render(<RecordToolbar {...baseProps} />)
+
+    expect(screen.getByRole("button", { name: "Save" }).closest("[data-toolbar-icon-actions]"))
+      .toHaveClass("border-b", "border-black/5", "dark:border-white/5")
+  })
+
   it("shows a reload icon and preserves its handler when saving conflicts", () => {
     const onReload = jest.fn()
     render(<RecordToolbar {...baseProps} saveStatus="conflict" onReload={onReload} />)

@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useSimpleRefreshPrevention } from "@/app/hooks/use-prevent-refresh";
 import { useSite } from "@/app/context/SiteContext";
 import { StickyHeader } from "@/app/components/ui/sticky-header";
+import { stickyHeaderBorderClassName } from "@/app/components/ui/sticky-header-styles";
 import {
   ResponsiveTabsList,
 } from "@/app/components/ui/responsive-tabs-list";
@@ -170,7 +171,7 @@ function SettingsWorkspace({ site, searchParams, activeSegment, setActiveSegment
   if (isLoading) {
     return (
       <div className="min-w-0 flex-1">
-        {activeSegment !== "activities" && <div aria-hidden="true" className="flex min-h-[71px] items-center border-b px-4 md:px-16">
+        {activeSegment !== "activities" && <div aria-hidden="true" className={`flex min-h-[71px] items-center px-4 md:px-16 ${stickyHeaderBorderClassName}`}>
           <Skeleton className="h-8 w-full max-w-xl rounded-full motion-reduce:animate-none" />
         </div>}
         <div className="py-8 pb-16">

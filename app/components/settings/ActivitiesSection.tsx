@@ -356,6 +356,22 @@ function ActivityCards({ activeSiteId, currentSite, onSave }: {
                   )
                 }}
               />}
+              {(key === "leads_follow_up" || key === "leads_initial_cold_outreach") && (
+                <p className="mt-3 text-sm text-muted-foreground">
+                  {key === "leads_follow_up"
+                    ? "Refine examples that pick up where the last conversation left off."
+                    : "Refine examples that explain why you’re reaching out and suggest one clear next step."}
+                  {" "}
+                  <NavigationLink
+                    href="/context?tab=copywriting"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary underline underline-offset-4"
+                  >
+                    Open Copy Sequences (new tab)
+                  </NavigationLink>
+                </p>
+              )}
               {canToggleSetup && <Collapsible open={setupOpen}>
                 <CollapsibleContent id={setupId} forceMount hidden={!setupOpen} className={cn(!setupOpen && "hidden")}>
                   {setupOpen && isIcp && <IcpLeadGenerationFields siteId={activeSiteId} />}

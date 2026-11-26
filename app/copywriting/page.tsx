@@ -1,342 +1,180 @@
 "use client"
 
-import { getCampaigns } from "@/app/campaigns/actions/campaigns/read"
+import { useEffect, useState, type MouseEvent } from "react"
+import { toast } from "sonner"
+import { TopBarPrimaryActions } from "@/app/components/navigation/topbar-primary-actions"
 import { Badge } from "@/app/components/ui/badge"
 import { Button } from "@/app/components/ui/button"
-import {
-PenTool,
-Plus
-} from "@/app/components/ui/icons"
-import { FilterContainer,FilterSection,MobileFiltersDrawer } from "@/app/components/ui/mobile-filters-drawer"
+import { EmptyCard } from "@/app/components/ui/empty-card"
+import { PenTool, Plus } from "@/app/components/ui/icons"
 import { Pagination } from "@/app/components/ui/pagination"
+import { ResponsiveTabsList } from "@/app/components/ui/responsive-tabs-list"
 import { SearchInput } from "@/app/components/ui/search-input"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
-import { Tabs,TabsContent,TabsList,TabsTrigger } from "@/app/components/ui/tabs"
-import { ViewSelector,ViewType } from "@/app/components/view-selector"
-import { useSite } from "@/app/context/SiteContext"
-import { useCommandK } from "@/app/hooks/use-command-k"
-import { getSegments } from "@/app/segments/actions"
-import { useRouter } from "next/navigation"
-import { useCallback,useEffect,useState } from "react"
-import { toast } from "sonner"
-import { createCopywriting,getCopywriting,updateCopywritingStatus,type CopywritingItem } from "./actions"
-
-
+import { Tabs, TabsContent } from "@/app/components/ui/tabs"
+import { ViewSelector, type ViewType } from "@/app/components/view-selector"
 import { useLocalization } from "@/app/context/LocalizationContext"
-import { retryOnError,useOptimisticLoadState } from "@/app/hooks/use-optimistic-error"
+import { useSite } from "@/app/context/SiteContext"
+import { useIsMobile } from "@/app/hooks/use-mobile-view"
+import { getCopywriting, saveCopywriting } from "./actions"
+import { CopywritingDialog } from "./CopywritingDialog"
+import { CopywritingResults } from "./CopywritingResults"
+import { COPY_TABS, type CopyFields, type CopyTab, type CopywritingItem } from "./copywriting-model"
 
-import { COPYWRITING_TYPES,type CopywritingFilters,type CopywritingStatus } from "./copywriting-presentation"
-import { CopywritingCard,CopywritingSkeleton } from "./CopywritingCards"
-import { CreateCopywritingDialog } from "./CreateCopywritingDialog"
+const PAGE_SIZE = 12
+type ListState = { status: "loading" | "error" } | { status: "ready"; items: CopywritingItem[]; canWrite: boolean }
+type DialogState = { mode: "create" } | { mode: "view" | "edit"; id: string }
 
 export default function CopywritingPage() {
   const { currentSite } = useSite()
   const { t } = useLocalization()
-  const router = useRouter()
-  const [copywritingItems, setCopywritingItems] = useState<CopywritingItem[]>([])
-  const [segments, setSegments] = useState<Array<{ id: string; name: string }>>([])
-  const [campaigns, setCampaigns] = useState<Array<{ id: string; title: string; description?: string }>>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [viewType, setViewType] = useState<ViewType>('kanban')
-  const [selectedCopywriting, setSelectedCopywriting] = useState<CopywritingItem | null>(null)
-  const [isDetailOpen, setIsDetailOpen] = useState(false)
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
-  const [filters, setFilters] = useState<CopywritingFilters>({
-    status: [],
-    type: [],
-    segments: []
-  })
-  const [searchTerm, setSearchTerm] = useState('')
-  const [filteredCopywriting, setFilteredCopywriting] = useState<CopywritingItem[]>([])
-  const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(12)
+  if (!currentSite || currentSite.id.startsWith("demo-")) {
+    return <p className="px-4 py-8 text-sm text-muted-foreground lg:px-8">{t("copywriting.screen.siteRequired")}</p>
+  }
+  return <CopywritingWorkspace key={currentSite.id} siteId={currentSite.id} />
+}
 
-  // Initialize command+k hook
-  useCommandK()
+function CopywritingWorkspace({ siteId }: { siteId: string }) {
+  const { t, locale } = useLocalization()
+  const isMobile = useIsMobile()
+  const text = (key: string) => t(`copywriting.screen.${key}`)
+  const [state, setState] = useState<ListState>({ status: "loading" })
+  const [attempt, setAttempt] = useState(0)
+  const [view, setView] = useState<ViewType>("kanban")
+  const [tab, setTab] = useState<CopyTab>("all")
+  const [tabsWidth, setTabsWidth] = useState<number>()
+  const [search, setSearch] = useState("")
+  const [page, setPage] = useState(1)
+  const [dialog, setDialog] = useState<DialogState | null>(null)
+  const [returnFocus, setReturnFocus] = useState<HTMLElement | null>(null)
 
   useEffect(() => {
-    if (currentSite?.id) {
-      loadCopywriting()
-      loadSegments()
-      loadCampaigns()
-    }
-  }, [currentSite?.id])
+    let active = true
+    getCopywriting(siteId).then(result => {
+      if (active) setState({ status: "ready", ...result })
+    }).catch(() => {
+      if (active) setState({ status: "error" })
+    })
+    return () => { active = false }
+  }, [attempt, siteId])
 
-  const loadCopywriting = async () => {
-    if (!currentSite?.id) return
-    
-    try {
-      setIsLoading(true)
-      const items = await retryOnError(() => getCopywriting(currentSite.id))
-      setCopywritingItems(items)
-      setFilteredCopywriting(items)
-      setError(null)
-    } catch (error) {
-      console.error('Error loading copywriting:', error)
-      setError('Failed to load copywriting items')
-    } finally {
-      setIsLoading(false)
-    }
+  const items = state.status === "ready" ? state.items : []
+  const canWrite = state.status === "ready" && state.canWrite
+  const query = search.trim().toLocaleLowerCase(locale)
+  const matchingSearch = items.filter(item => !query || [item.title, item.content].some(value => value.toLocaleLowerCase(locale).includes(query)))
+  const results = matchingSearch.filter(item => tab === "all" || item.copy_type === tab)
+  const totalPages = Math.ceil(results.length / PAGE_SIZE)
+  const currentPage = Math.min(page, Math.max(1, totalPages))
+  const selected = dialog && dialog.mode !== "create" ? items.find(item => item.id === dialog.id) : undefined
+  const filterTabs = COPY_TABS.map(type => ({
+    value: type,
+    label: <span className="inline-flex items-center gap-1.5">
+      {text(`tabs.${type}`)}
+      {state.status === "ready" && <Badge variant="secondary" className="px-1.5">
+        {type === "all" ? matchingSearch.length : matchingSearch.filter(item => item.copy_type === type).length}
+      </Badge>}
+    </span>,
+  }))
+  const changeTab = (value: string) => { setTab(value as CopyTab); setPage(1) }
+
+  const openNew = (event: MouseEvent<HTMLButtonElement>) => {
+    setReturnFocus(event.currentTarget)
+    setDialog({ mode: "create" })
   }
-
-  const loadSegments = async () => {
-    if (!currentSite?.id) return
-    
-    try {
-      const segmentsData = await getSegments(currentSite.id)
-      if (segmentsData.error) throw new Error(segmentsData.error)
-      setSegments(segmentsData.segments || [])
-    } catch (error) {
-      console.error('Error loading segments:', error)
-    }
-  }
-
-  const loadCampaigns = async () => {
-    if (!currentSite?.id) return
-    
-    try {
-      const campaignsData = await getCampaigns(currentSite.id)
-      if (campaignsData.error) throw new Error(campaignsData.error)
-      setCampaigns((campaignsData.data || []).map(({ id, title }) => ({ id, title })))
-    } catch (error) {
-      console.error('Error loading campaigns:', error)
-    }
-  }
-
-  const handleCreateCopywriting = async (data: Partial<CopywritingItem>) => {
-    if (!currentSite?.id) return
-
-    try {
-      const newItem = await createCopywriting(currentSite.id, data)
-      setCopywritingItems(prev => [newItem, ...prev])
-      updateFilteredCopywriting(searchTerm, filters, [newItem, ...copywritingItems])
-      toast.success('Copy created successfully')
-    } catch (error) {
-      console.error('Error creating copywriting:', error)
-      toast.error('Failed to create copy')
-    }
-  }
-
-  const handleStatusChange = async (id: string, status: CopywritingStatus) => {
-    try {
-      await updateCopywritingStatus(id, status)
-      const updatedItems = copywritingItems.map(item => 
-        item.id === id ? { ...item, status } : item
-      )
-      setCopywritingItems(updatedItems)
-      updateFilteredCopywriting(searchTerm, filters, updatedItems)
-      toast.success('Status updated successfully')
-    } catch (error) {
-      console.error('Error updating status:', error)
-      toast.error('Failed to update status')
-    }
-  }
-
-  const updateFilteredCopywriting = useCallback((search: string, filters: CopywritingFilters, items: CopywritingItem[]) => {
-    let filtered = items
-
-    // Apply search filter
-    if (search.trim()) {
-      const searchLower = search.toLowerCase()
-      filtered = filtered.filter(item =>
-        item.title.toLowerCase().includes(searchLower) ||
-        item.description?.toLowerCase().includes(searchLower) ||
-        item.content?.toLowerCase().includes(searchLower)
-      )
-    }
-
-    // Apply status filter
-    if (filters.status.length > 0) {
-      filtered = filtered.filter(item => filters.status.includes(item.status))
-    }
-
-    // Apply type filter
-    if (filters.type.length > 0) {
-      filtered = filtered.filter(item => filters.type.includes(item.type))
-    }
-
-    // Apply segments filter
-    if (filters.segments.length > 0) {
-      filtered = filtered.filter(item => 
-        item.segment_id && filters.segments.includes(item.segment_id)
-      )
-    }
-
-    setFilteredCopywriting(filtered)
-    setCurrentPage(1) // Reset to first page when filtering
-  }, [])
-
-  useEffect(() => {
-    updateFilteredCopywriting(searchTerm, filters, copywritingItems)
-  }, [searchTerm, filters, copywritingItems, updateFilteredCopywriting])
-
-  // Pagination
-  const totalPages = Math.ceil(filteredCopywriting.length / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const endIndex = startIndex + itemsPerPage
-  const paginatedCopywriting = filteredCopywriting.slice(startIndex, endIndex)
-  const { error: visibleError, isLoading: showLoading } = useOptimisticLoadState(isLoading, error)
-
-  useEffect(() => {
-    if (visibleError) toast.error(String(visibleError))
-  }, [visibleError])
-
-  if (visibleError) {
-    return (
-      <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-        <div className="text-center space-y-4">
-          <p className="text-red-500 mb-4">{String(visibleError)}</p>
-          <Button 
-            variant="outline" 
-            onClick={loadCopywriting}
-          >
-            Try Again
-          </Button>
-        </div>
-      </div>
-    )
+  const save = async (fields: CopyFields) => {
+    const saved = await saveCopywriting(siteId, selected?.id ?? null, fields)
+    setState(previous => previous.status === "ready" ? {
+      ...previous,
+      items: selected ? previous.items.map(item => item.id === saved.id ? saved : item) : [saved, ...previous.items],
+    } : previous)
+    if (!selected) { setTab("all"); setSearch(""); setPage(1) }
+    setDialog({ mode: "view", id: saved.id })
+    toast.success(text("saved"))
   }
 
   return (
-    <div className="h-full flex flex-col">
-      <Tabs defaultValue="all">
-        <StickyHeader>
-          <div className="px-4 md:px-16 pt-0">
-            <MobileFiltersDrawer triggerText={t('common.search') || "Search"}>
-              <FilterContainer>
-                <FilterSection mobileOnly>
-                  <SearchInput placeholder="Search copy..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} alwaysExpanded={true} className="w-full h-10 md:h-9" containerClassName="w-full" />
-                </FilterSection>
+    <>
+      <TopBarPrimaryActions>
+        {canWrite && <Button size="sm" onClick={openNew} aria-label={text("new")} title={text("new")} className="gap-2 max-sm:!w-9 max-sm:!px-0">
+          <Plus className="h-4 w-4 shrink-0" aria-hidden />
+          <span className="hidden sm:inline">{text("new")}</span>
+        </Button>}
+      </TopBarPrimaryActions>
 
-                
-
-                <FilterSection title={t('common.status') || 'Status'}>
-                  <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-none md:rounded-full flex flex-wrap md:flex-nowrap md:flex-row w-full md:max-w-full overflow-y-visible md:overflow-x-auto justify-start items-center gap-2 md:gap-0">
-                    <TabsTrigger value="all" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5">
-                      All Copy
-                      <Badge variant="secondary" className="ml-2">
-                        {copywritingItems.length}
-                      </Badge>
-                    </TabsTrigger>
-                    <TabsTrigger value="tweet" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5">
-                      Tweets
-                      <Badge variant="secondary" className="ml-2">
-                        {copywritingItems.filter(item => item.type === 'tweet').length}
-                      </Badge>
-                    </TabsTrigger>
-                    <TabsTrigger value="cold_email" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5">
-                      Cold Emails
-                      <Badge variant="secondary" className="ml-2">
-                        {copywritingItems.filter(item => item.type === 'cold_email').length}
-                      </Badge>
-                    </TabsTrigger>
-                    <TabsTrigger value="pitch" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5">
-                      Pitches
-                      <Badge variant="secondary" className="ml-2">
-                        {copywritingItems.filter(item => item.type === 'pitch').length}
-                      </Badge>
-                    </TabsTrigger>
-                    <TabsTrigger value="ad_copy" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5">
-                      Ad Copy
-                      <Badge variant="secondary" className="ml-2">
-                        {copywritingItems.filter(item => item.type === 'ad_copy').length}
-                      </Badge>
-                    </TabsTrigger>
-                  </TabsList>
-                </FilterSection>
-
-                <FilterSection desktopOnly className="ml-auto">
-                  <SearchInput placeholder="Search copy..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full" containerClassName="w-48 lg:w-64" />
-                </FilterSection>
-              </FilterContainer>
-            </MobileFiltersDrawer>
-            <div className="ml-auto flex items-center gap-4 shrink-0 mt-2 md:mt-0">
-              <ViewSelector currentView={viewType} onViewChange={setViewType} />
-              
-              <Button onClick={() => setIsCreateDialogOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                New Copy
-              </Button>
+      <Tabs value={tab} onValueChange={changeTab} className="min-w-0">
+        <StickyHeader className="!sticky top-[var(--topbar-height,64px)]">
+          <div className="flex w-full min-w-0 flex-wrap items-center gap-2 py-3 lg:flex-nowrap">
+            <div className="min-w-0 basis-full lg:basis-auto" style={{ width: tabsWidth ? Math.ceil(tabsWidth) : undefined }}>
+              <ResponsiveTabsList
+                tabs={filterTabs}
+                activeTab={tab}
+                onTabChange={changeTab}
+                onPreferredWidthChange={setTabsWidth}
+                aria-label={text("type")}
+                overflowLabel={text("moreTypes")}
+                className="h-auto rounded-full p-0.5"
+                triggerClassName="px-1 py-1 text-xs"
+              />
+            </div>
+            <div className="flex min-w-0 flex-1 items-center lg:flex-none">
+              <SearchInput
+                type="search"
+                placeholder={text("search")}
+                aria-label={text("search")}
+                clearLabel={text("clearSearch")}
+                value={search}
+                onSearch={value => { setSearch(value); setPage(1) }}
+                alwaysExpanded={isMobile}
+                className="h-10 w-full md:h-9 [&::-webkit-search-cancel-button]:hidden"
+                expandedHeightClassName="h-10 md:h-9"
+                containerClassName="min-w-0 flex-1 lg:w-64 lg:flex-none"
+              />
+            </div>
+            <div className="ml-auto shrink-0">
+              <ViewSelector currentView={view} onViewChange={setView} labels={{ table: text("table"), kanban: text("grid") }} />
             </div>
           </div>
         </StickyHeader>
 
-        <div className="flex-1 px-4 md:px-16 py-8">
-          <TabsContent value="all" className="mt-0">
-            {showLoading ? (
-              <CopywritingSkeleton />
-            ) : (
-              <>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
-                  {paginatedCopywriting.map((item) => (
-                    <CopywritingCard
-                      key={item.id}
-                      item={item}
-                      onEdit={setSelectedCopywriting}
-                      onStatusChange={handleStatusChange} />
-                  ))}
-                </div>
-
-                {totalPages > 1 && (
-                  <div className="flex justify-center">
-                    <Pagination
-                      currentPage={currentPage}
-                      totalPages={totalPages}
-                      onPageChange={setCurrentPage} />
-                  </div>
-                )}
-
-                {filteredCopywriting.length === 0 && !showLoading && (
-                  <div className="text-center py-12">
-                    <PenTool className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">No copy found</h3>
-                    <p className="text-muted-foreground mb-4">
-                      {searchTerm || filters.status.length > 0 || filters.type.length > 0 || filters.segments.length > 0
-                        ? "Try adjusting your search or filters"
-                        : "Create your first piece of copy to get started"
-                      }
-                    </p>
-                    <Button onClick={() => setIsCreateDialogOpen(true)}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Create First Copy
-                    </Button>
-                  </div>
-                )}
-              </>
-            )}
-          </TabsContent>
-
-          {/* Individual type tabs */}
-          {COPYWRITING_TYPES.slice(0, 4).map(type => (
-            <TabsContent key={type.id} value={type.id} className="mt-0">
-              {showLoading ? (
-                <CopywritingSkeleton />
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {copywritingItems
-                    .filter(item => item.type === type.id)
-                    .map((item) => (
-                      <CopywritingCard
-                        key={item.id}
-                        item={item}
-                        onEdit={setSelectedCopywriting}
-                        onStatusChange={handleStatusChange} />
-                    ))}
-                </div>
-              )}
-            </TabsContent>
-          ))}
-        </div>
+        <TabsContent key={tab} value={tab} className="mt-0 px-4 pb-24 pt-6 lg:px-8">
+          {state.status === "error" ? (
+            <div className="space-y-4 py-12 text-center">
+              <p role="alert" className="text-sm text-destructive">{text("loadError")}</p>
+              <Button variant="outline" onClick={() => { setState({ status: "loading" }); setAttempt(value => value + 1) }}>{text("retry")}</Button>
+            </div>
+          ) : state.status === "ready" && !results.length ? (
+            <EmptyCard
+              variant="simple"
+              icon={<PenTool aria-hidden />}
+              title={text("empty")}
+              description={text(query || tab !== "all" ? "emptyFiltered" : "emptyLibrary")}
+            />
+          ) : (
+            <>
+              <CopywritingResults items={results.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)} table={view === "table"} loading={state.status === "loading"} canWrite={canWrite} onOpen={(item, edit) => {
+                setReturnFocus(document.activeElement instanceof HTMLElement ? document.activeElement : null)
+                setDialog({ mode: edit ? "edit" : "view", id: item.id })
+              }} />
+              <Pagination className="mt-6 justify-center" currentPage={currentPage} totalPages={totalPages} onPageChange={setPage} />
+            </>
+          )}
+        </TabsContent>
       </Tabs>
 
-      {/* Create Dialog */}
-      <CreateCopywritingDialog
-        isOpen={isCreateDialogOpen}
-        onClose={() => setIsCreateDialogOpen(false)}
-        onSubmit={handleCreateCopywriting}
-        segments={segments}
-        campaigns={campaigns} />
-    </div>
+      {dialog && (dialog.mode === "create" || selected) && <CopywritingDialog
+        key={`${selected?.id ?? "new"}:${dialog.mode}`}
+        item={selected}
+        tab={tab}
+        editing={dialog.mode !== "view"}
+        canWrite={canWrite}
+        onEdit={() => { if (selected) setDialog({ id: selected.id, mode: dialog.mode === "edit" ? "view" : "edit" }) }}
+        onClose={() => setDialog(null)}
+        onCloseAutoFocus={event => {
+          event.preventDefault()
+          if (!document.querySelector('[role="dialog"]')) returnFocus?.focus()
+        }}
+        onSave={save}
+      />}
+    </>
   )
 }

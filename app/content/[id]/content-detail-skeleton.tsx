@@ -1,9 +1,11 @@
+import { stickyHeaderBorderClassName } from "@/app/components/ui/sticky-header-styles"
+
 export const ContentSkeleton = () => {
   return (
     <div className="flex h-[calc(100vh-var(--topbar-height,64px))]">
       {/* Main Content Area Skeleton */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex-none border-b p-2 h-[71px]">
+        <div className={`flex-none p-2 h-[71px] ${stickyHeaderBorderClassName}`}>
           <div className="flex gap-1 h-full items-center">
             <div className="h-8 w-36 bg-muted animate-pulse rounded"></div>
             <div className="ml-auto h-8 w-32 bg-muted animate-pulse rounded"></div>
@@ -27,7 +29,7 @@ export const ContentSkeleton = () => {
 
       {/* AI Assistant Panel Skeleton */}
       <div className="w-80 border-l bg-muted/30 flex flex-col h-full">
-        <div className="h-[71px] border-b flex items-center justify-center">
+        <div className={`h-[71px] flex items-center justify-center ${stickyHeaderBorderClassName}`}>
           <div className="w-60 h-8 bg-muted animate-pulse rounded"></div>
         </div>
         <div className="p-4 space-y-6">

@@ -28,6 +28,7 @@ export const MODULE_IMAGE_HINTS: Record<string, string> = {
   leads: "user avatar",
   deals: "briefcase",
   quotations: "stack of papers",
+  copywriting: "fountain pen nib",
   people: "magnifying glass",
 
   chat: "chat bubble",
@@ -155,6 +156,8 @@ const COMPACT_FULL_SIZE_COMPOSITION =
   "Use the Apple iOS Calendar, Notes, Contacts, and Reminders icons as references for visual polish, spacing discipline, and clarity rather than copying their symbols or outer app tiles: one recognizable object, full-size at 88 to 92 percent of the canvas, optically centered, evenly balanced, with a narrow consistent safe margin and softly rounded geometry; no app tile, iOS-style squircle, rounded-square container, badge, frame, floor, scenery, or secondary icon"
 
 const MODULE_IMAGE_CLARIFIERS: Partial<Record<string, string>> = {
+  copywriting:
+    "Show one fountain pen nib with broad tapered shoulders, a round breather hole, a split tip, and an attached short metal collar; no paper, pen body, ink, stars, or extra objects",
   businessOpen:
     "Show one compact welcoming storefront with a broad striped awning and an open doorway, instantly recognizable as a shop; no signs, text, letters, products, people, street, or extra objects",
   businessClosed:

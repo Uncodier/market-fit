@@ -2,6 +2,7 @@
 
 
 import { Skeleton } from "@/app/components/ui/skeleton"
+import { stickyHeaderBorderClassName } from "@/app/components/ui/sticky-header-styles"
 
 // Loading state skeleton component
 export const RequirementSkeleton = () => {
@@ -9,7 +10,7 @@ export const RequirementSkeleton = () => {
     <div className="flex h-[calc(100dvh-var(--topbar-height,64px))]">
       {/* Main Content Area Skeleton */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex-none border-b pl-[20px] pr-4 py-2 h-[71px]">
+        <div className={`flex-none pl-[20px] pr-4 py-2 h-[71px] ${stickyHeaderBorderClassName}`}>
           <div className="flex gap-2 h-full items-center">
             <Skeleton className="h-9 w-24 rounded" />
             <Skeleton className="h-9 w-24 rounded" />
@@ -48,7 +49,7 @@ export const RequirementSkeleton = () => {
       {/* Right Panel Skeleton */}
       <div className="w-80 border-l bg-muted/30 flex flex-col h-full">
         {/* Tabs Header */}
-        <div className="flex-none h-[71px] border-b flex items-center justify-center px-4">
+        <div className={`flex-none h-[71px] flex items-center justify-center px-4 ${stickyHeaderBorderClassName}`}>
           <div className="grid grid-cols-2 w-full gap-2 h-10">
             <Skeleton className="h-full rounded" />
             <Skeleton className="h-full rounded" />

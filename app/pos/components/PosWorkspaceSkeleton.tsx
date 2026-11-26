@@ -1,4 +1,5 @@
 import { Skeleton } from "@/app/components/ui/skeleton";
+import { stickyHeaderBorderClassName } from "@/app/components/ui/sticky-header-styles";
 import { PosCartPanelSkeleton } from "./PosOrderSkeleton";
 
 /** Presentation only: no private cache, cart, catalog, or synchronization hooks. */
@@ -12,7 +13,7 @@ export function PosWorkspaceSkeleton() {
     >
       <span className="sr-only">Loading point of sale</span>
       <div aria-hidden="true" className="flex min-w-0 flex-1 flex-col">
-        <div className="flex min-h-[71px] items-center gap-3 border-b bg-background/80 px-4">
+        <div className={`flex min-h-[71px] items-center gap-3 bg-background/80 px-4 ${stickyHeaderBorderClassName}`}>
           <Skeleton className="h-9 w-20" />
           <Skeleton className="hidden h-9 w-28 sm:block" />
           <Skeleton className="hidden h-9 w-24 sm:block" />

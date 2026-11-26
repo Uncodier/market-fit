@@ -5,6 +5,26 @@ import { ContentEditorToolbar } from "@/app/content/[id]/components/ContentEdito
 import { RecordToolbar } from "@/app/records/[id]/components/RecordToolbar"
 
 describe("ViewSelector tooltips", () => {
+  it("styles the checked view independently of tooltip state", async () => {
+    const onViewChange = jest.fn()
+    const { rerender } = render(<ViewSelector currentView="kanban" onViewChange={onViewChange} />)
+    const cards = screen.getByRole("radio", { name: "Toggle kanban view" })
+    const table = screen.getByRole("radio", { name: "Toggle table view" })
+    expect(cards).toBeChecked()
+    expect(table).not.toBeChecked()
+    expect(cards).toHaveClass("aria-checked:bg-background", "aria-checked:text-foreground")
+    fireEvent.pointerMove(table, { pointerType: "mouse" })
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("Toggle table view")
+    expect(cards).toBeChecked()
+    expect(table).not.toBeChecked()
+    fireEvent.click(table)
+    expect(onViewChange).toHaveBeenCalledWith("table")
+    rerender(<ViewSelector currentView="table" onViewChange={onViewChange} />)
+    expect(table).toBeChecked()
+    expect(cards).not.toBeChecked()
+    expect(table).toHaveClass("aria-checked:bg-background", "aria-checked:text-foreground")
+  })
+
   it("shows custom labels on hover without adding a focusable wrapper", async () => {
     render(<ViewSelector currentView="table" onViewChange={jest.fn()} labels={{ kanban: "Board view" }} />)
     const item = screen.getByRole("radio", { name: "Board view" })

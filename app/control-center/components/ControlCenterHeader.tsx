@@ -1,6 +1,7 @@
 "use client"
 
 import { cn } from "@/lib/utils"
+import { stickyHeaderBorderClassName } from "@/app/components/ui/sticky-header-styles"
 import { SidebarToggle } from "./SidebarToggle"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useIsMobile } from "@/app/hooks/use-mobile-view"
@@ -25,7 +26,7 @@ export function ControlCenterHeader({
 
   return (
     <div 
-      className="border-b flex-none h-[71px] flex items-center fixed z-[99] bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80 transition-all duration-300 ease-in-out"
+      className={`flex-none h-[71px] flex items-center fixed z-[99] bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80 transition-all duration-300 ease-in-out ${stickyHeaderBorderClassName}`}
       style={{
         left: 0,
         width: '100%',

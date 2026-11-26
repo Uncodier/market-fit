@@ -12,6 +12,7 @@ import { flattenMessages, type MessageTree } from './locale-messages';
 import type { SupportedLocale } from './locale-preferences';
 import { spanishWorkspaceMessages } from './locales/workspace/es';
 import { screenMessages } from './locales/screens';
+import { copywritingMessages } from './locales/screens/copywriting';
 import { procurementMessages } from './locales/procurement';
 import { selfServiceMessages } from './locales/self-service';
 import { selfServiceHeaderMessages } from './locales/self-service/header';
@@ -41,6 +42,7 @@ function ownMessages(locale: SupportedLocale, legacy: MessageTree): Record<strin
     ...flattenMessages(legacy),
     ...(locale === 'es' ? spanishWorkspaceMessages : {}),
     ...screenMessages[locale],
+    ...copywritingMessages(locale),
     ...commerceMessages[locale],
     ...procurementMessages[locale],
     ...chatMessages[locale],

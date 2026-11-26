@@ -81,6 +81,7 @@ export const NAVIGATION_AREAS: Record<
       { key: "leads", href: "/leads" },
       { key: "deals", href: "/deals" },
       { key: "quotations", href: "/quotations" },
+      { key: "copywriting", href: "/copywriting" },
       { key: "people", href: "/people" },
     ],
   },

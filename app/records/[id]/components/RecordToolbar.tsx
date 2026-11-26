@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react"
 import type { Editor } from "@tiptap/react"
 import { Button } from "@/app/components/ui/button"
+import { stickyHeaderBorderClassName } from "@/app/components/ui/sticky-header-styles"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
 import {
   AlignCenter,
@@ -87,7 +88,7 @@ export function RecordToolbar({
   const hasVisibleTools = Boolean(diagramControls || (showFormatting && formattingExpanded))
 
   return (
-    <div data-toolbar-icon-actions className="flex h-[71px] items-center gap-1 overflow-x-auto border-b bg-background py-2 pl-5 pr-4">
+    <div data-toolbar-icon-actions className={`flex h-[71px] items-center gap-1 overflow-x-auto bg-background py-2 pl-5 pr-4 ${stickyHeaderBorderClassName}`}>
       <Button
         variant="secondary"
         onClick={onSave}

@@ -51,13 +51,29 @@ wall-clock threshold. These are isolated measurements, not production latency.
 The suite also compares allowed rows, exact totals, and write checks before and
 after the migration for representative allowed and denied roles.
 
-## Rollout
+The sparse assigned-only regression uses synthetic data with 3,056 site leads and
+59 visible rows. It compares the exact visible IDs before and after the policy
+change, preserves owner visibility, and bounds parent-policy scans for the list,
+count and combined request. Six focused Jest suites passed (34 tests), including
+real socket-only PostgreSQL, on November 26, 2026.
 
-The migration is a local candidate, mirrored in the canonical schema repository.
-It refuses policy drift and limits its acquisition of the required DDL lock to
-two seconds. Plan a low-traffic rollout and apply the migration before releasing
-the combined list/count read. Check authenticated list/count plans and access for
-an owner and an assigned-only member. In production, compare `leads` request
-latency/`57014` rates and confirm the standalone browser total request disappears.
-Use a forward corrective migration if policy rollback is needed; do not edit or
-replay an applied migration.
+## Rollout — applied November 26, 2026
+
+Only `20261123183000_bound_leads_rls_membership.sql` was applied to shared Makinari
+at **19:25:30 UTC**, after explicit repair approval. Canonical and web copies
+match; the exact-source history entry committed atomically with the policy.
+TLS certificate and hostname verification remained enabled. The migration refuses
+policy drift and limits acquisition of its DDL lock to two seconds.
+
+Production verification used `SET LOCAL ROLE authenticated` and transaction-local
+actor claims, not a service-role row read. The restricted member's exact visible
+IDs and the owner's IDs matched the expected sets before commit. An independent
+connection confirmed one exact-source history entry and no unrelated visible leads.
+The restricted-member list with its company join took 90.432 ms and the count
+24.180 ms in single production SQL measurements; these are not browser latency
+or a performance SLA. The location and anonymous policies remain unchanged.
+
+No lead, assignment, membership, license, index or application deployment changed.
+Browser confirmation from the affected session and longer-term timeout monitoring
+remain separate checks. Use a forward corrective migration if rollback is needed;
+do not edit or replay this applied migration.

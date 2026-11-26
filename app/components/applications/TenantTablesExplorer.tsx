@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo, useCallback } from "react"
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
 import { useTheme } from "@/app/context/ThemeContext"
 import { Skeleton } from "@/app/components/ui/skeleton"
+import { stickyHeaderBorderClassName } from "@/app/components/ui/sticky-header-styles"
 import { Search, ChevronLeft, ChevronRight, Database, X, Plus } from "@/app/components/ui/icons"
 import { TableDataGrid } from "./TableDataGrid"
 import { Input } from "@/app/components/ui/input"
@@ -176,7 +177,7 @@ export function TenantTablesExplorer({ tenantId }: { tenantId: string }) {
           ? "w-0 md:w-0 opacity-0 border-none pointer-events-none"
           : "md:w-[319px] w-full"
       )}>
-        <div className="p-4 border-b h-[71px] min-h-[71px] flex items-center shrink-0">
+        <div className={`p-4 h-[71px] min-h-[71px] flex items-center shrink-0 ${stickyHeaderBorderClassName}`}>
           <div className="relative w-full">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input

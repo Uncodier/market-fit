@@ -8,8 +8,7 @@ import { type Site, type SiteSettings } from "@/app/context/SiteContext"
 import { Button } from "@/app/components/ui/button"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
-import { Skeleton } from "@/app/components/ui/skeleton"
-import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
+import { ContextFormSkeleton } from "./ContextFormSkeleton"
 import { useSearchParams } from "next/navigation"
 import { SortDropdown } from "@/app/components/ui/sort-dropdown"
 import {
@@ -30,118 +29,6 @@ import { Input } from "@/app/components/ui/input"
 import { useAuthContext } from "@/app/components/auth/auth-provider"
 import { QuickNav, type QuickNavSection } from "@/app/components/ui/quick-nav"
 import { useLocalization } from "@/app/context/LocalizationContext"
-
-function ContextFormSkeleton() {
-  return (
-    <div className="space-y-8">
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            <Skeleton className="h-6 w-1/4" />
-          </CardTitle>
-          <Skeleton className="h-4 w-2/3 mt-2" />
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
-          </div>
-          <Skeleton className="h-24 w-full" />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            <Skeleton className="h-6 w-1/3" />
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 gap-4">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-4">
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-10 w-24" />
-              </div>
-            ))}
-            <Skeleton className="h-10 w-32" />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            <Skeleton className="h-6 w-1/3" />
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 gap-4">
-            {Array.from({ length: 2 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-4">
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-10 w-24" />
-              </div>
-            ))}
-            <Skeleton className="h-10 w-32" />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            <Skeleton className="h-6 w-1/4" />
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-12 w-full" />
-            <div className="flex justify-end">
-              <Skeleton className="h-10 w-32" />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-      
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            <Skeleton className="h-6 w-1/4" />
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-32 w-full" />
-            ))}
-          </div>
-          <div className="flex items-center justify-between">
-            <Skeleton className="h-4 w-1/3" />
-            <Skeleton className="h-6 w-12" />
-          </div>
-        </CardContent>
-      </Card>
-      
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            <Skeleton className="h-6 w-1/4" />
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
 
 // Section configurations for quick navigation
 const getCompanySections = (t: (key: string) => string): QuickNavSection[] => [
@@ -250,7 +137,9 @@ export default function ContextPage() {
   const { theme } = useTheme()
   const { user } = useAuthContext()
   const { t } = useLocalization()
-  const [activeSegment, setActiveSegment] = useState("branding")
+  const [activeSegment, setActiveSegment] = useState(() =>
+    searchParams?.get("tab") === "copywriting" ? "copywriting" : "branding"
+  )
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [formKey, setFormKey] = useState(0)
   const [confirmationName, setConfirmationName] = useState("")
@@ -473,7 +362,7 @@ export default function ContextPage() {
       <div className="flex-1">
         <StickyHeader>
           <div className="flex items-center justify-between px-4 md:px-16 w-full">
-            <Tabs value="company" className="w-auto">
+            <Tabs value={activeSegment} className="w-auto">
               <TabsList className="h-8 p-0.5 bg-muted/30 rounded-full">
                 <TabsTrigger value="company" className="text-xs rounded-full px-4 whitespace-nowrap">{t('context.tabs.company') || 'Company'}</TabsTrigger>
                 <TabsTrigger value="branding" className="text-xs rounded-full px-4 whitespace-nowrap">{t('context.tabs.branding') || 'Branding'}</TabsTrigger>

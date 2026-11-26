@@ -27,6 +27,7 @@ export const MODULE_ICON_FILES: Readonly<Record<string, string | undefined>> = {
   contentCreator: "contentCreator.2fd61cf71956.webp",
   context: "context.b74fd2c19989.webp",
   controlCenter: "controlCenter.acb02bd99c00.webp",
+  copywriting: "copywriting.676b2bb8996f.webp",
   deals: "deals.876dec0e545c.webp",
   financeReports: "financeReports.2c1b367bbdc2.webp",
   integrations: "integrations.654417e294c4.webp",
