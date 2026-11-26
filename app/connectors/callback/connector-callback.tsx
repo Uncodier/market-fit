@@ -71,7 +71,7 @@ export default function ConnectorCallback() {
         <SectionCardContent className="space-y-6 px-6 py-8 text-center sm:px-8">
           <div role="status" className="space-y-3">
             <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
-              <CheckCircle aria-hidden="true" className="size-8 text-green-600 dark:text-green-400" />
+              <CheckCircle aria-hidden={true} className="size-8 text-green-600 dark:text-green-400" />
             </div>
             <h2 className="text-2xl font-semibold tracking-tight">{t("connectors.callbackSuccessTitle")}</h2>
             <p className="text-sm text-muted-foreground">{t("connectors.callbackSuccess")}</p>

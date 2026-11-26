@@ -16,7 +16,7 @@ type Props = { siteId: string; routeId: string; initialProfile: EditorProfile; i
 
 export function AgentEditor({ siteId, routeId, initialProfile, initialTab = "basic" }: Props) {
   const [profile, setProfile] = useState(initialProfile)
-  const [activeTab, setActiveTab] = useState(initialProfile.persistedId ? initialTab : "basic")
+  const [activeTab, setActiveTab] = useState<string>(initialProfile.persistedId ? initialTab : "basic")
   const [queries, setQueries] = useState({ context: "", activities: "" })
   const { t } = useLocalization()
   const { save, saving, disabled } = useEditorSave(siteId, routeId, profile)
