@@ -9,12 +9,15 @@ function subscribe(listener: () => void) {
   observer.observe(document.body, { childList: true, subtree: true })
   return () => observer.disconnect()
 }
-function snapshot() { return document.getElementById(SLOT_ID) }
 function serverSnapshot() { return null }
 
 /** Keeps page-owned handlers/state while rendering primary actions in the real shell. */
 export function TopBarPrimaryActions({ children }: { children: ReactNode }) {
-  const slot = useSyncExternalStore(subscribe, snapshot, serverSnapshot)
+  return <TopBarActionPortal slotId={SLOT_ID}>{children}</TopBarActionPortal>
+}
+
+export function TopBarActionPortal({ slotId, children }: { slotId: string; children: ReactNode }) {
+  const slot = useSyncExternalStore(subscribe, () => document.getElementById(slotId), serverSnapshot)
   return slot ? createPortal(children, slot) : null
 }
 

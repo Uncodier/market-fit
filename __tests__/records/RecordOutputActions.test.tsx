@@ -35,7 +35,7 @@ it("does not print or fetch insights on cancel; prints draft content without ins
   fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Print" }))
   await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull())
   expect(writeRecordOutput).toHaveBeenCalledWith("print", {
-    title: "Unsaved title", description: "**New** content", metadata: ["Status: draft"], fields: ["Amount paid: 0"],
+    title: "Unsaved title", description: "**New** content", metadata: ["Status: draft"], fields: [{ label: "Amount paid", value: "0" }],
   })
   expect(getRecords).not.toHaveBeenCalled()
 })

@@ -4,6 +4,7 @@ import { Skeleton } from "@/app/components/ui/skeleton"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { ArrowLeft, ShoppingCart, User } from "@/app/components/ui/icons"
 import { CommerceShellHeader, shellClasses } from "@/app/components/commerce/CommerceShellHeader"
+import { MakinariHeaderIsotype } from "../MakinariHeaderIsotype"
 
 export function PdpModifierSkeleton({ rows = 3 }: { rows?: number }) {
   return (
@@ -42,7 +43,8 @@ export function PdpPageSkeleton() {
             <button type="button" className={`${shellClasses.iconButton} shrink-0 md:mr-2`} disabled>
               <ArrowLeft className="w-5 h-5" />
             </button>
-            <div className="flex items-center gap-2 border-l border-black/10 dark:border-white/10 pl-3 ml-1 min-w-0 overflow-hidden">
+            <MakinariHeaderIsotype alt="" className="ml-1 md:hidden" />
+            <div className="hidden md:flex items-center gap-2 border-l border-black/10 dark:border-white/10 pl-3 ml-1 min-w-0 overflow-hidden">
               <Skeleton className="w-6 h-6 rounded-full shrink-0" />
               <Skeleton className="h-4 w-20 max-w-full min-w-0" />
             </div>

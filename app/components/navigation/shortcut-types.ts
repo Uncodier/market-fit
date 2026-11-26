@@ -16,7 +16,7 @@ export type ShortcutRecord = {
   isCustom?: boolean
 }
 
-/** Always shown at the top of the sidebar (not stored as user shortcuts). */
+/** Fixed desktop sidebar entries (not stored as user shortcuts). */
 export const SIDEBAR_PINNED_NAV_KEYS = ["contentCreator", "workflows"] as const
 
 export function isPinnedShortcutKey(key: string): boolean {

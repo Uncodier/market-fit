@@ -1,9 +1,10 @@
-import React from 'react'
+import React, { useLayoutEffect, useRef } from 'react'
 import { TextDecoder } from 'node:util'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MessageInput } from '@/app/components/simple-messages-view/components/MessageInput'
 import { useMessageSending } from '@/app/components/simple-messages-view/hooks/useMessageSending'
 import { useOptimizedMessageState } from '@/app/hooks/useOptimizedMessageState'
+import type { InstanceLog } from '@/app/components/simple-messages-view/types'
 
 const toast = jest.fn()
 const getSession = jest.fn()
@@ -29,11 +30,13 @@ jest.mock('@/app/components/simple-messages-view/components/InstanceContextUsage
 jest.mock('@/app/components/ui/context-selector-modal', () => ({ ContextSelectorModal: () => null }))
 jest.mock('@/app/components/context/context-mention-picker', () => ({ ContextMentionPicker: () => null }))
 
-function Composer() {
+function Composer({ instanceId = 'instance', logs = [] }: { instanceId?: string; logs?: InstanceLog[] }) {
   const { message, setMessage, messageRef, handleMessageChange, clearMessage, textareaRef } = useOptimizedMessageState('', 'stream-composer-test')
+  const logsRef = useRef(logs)
+  useLayoutEffect(() => { logsRef.current = logs }, [logs])
   const { handleSendMessage } = useMessageSending({
-    activeRobotInstance: { id: 'instance' }, selectedActivity: 'ask', selectedContext: {} as any,
-    skillSelection: { skill_mode: 'auto', skill_slugs: [] }, messageRef, onClearMessage: clearMessage,
+    activeRobotInstance: { id: instanceId }, selectedActivity: 'ask', selectedContext: {} as any,
+    skillSelection: { skill_mode: 'auto', skill_slugs: [] }, messageRef, logsRef, onClearMessage: clearMessage,
   })
   return <MessageInput
     message={message}
@@ -53,7 +56,7 @@ function Composer() {
     onImageParameterChange={jest.fn()}
     onVideoParameterChange={jest.fn()}
     onAudioParameterChange={jest.fn()}
-    activeRobotInstance={{ id: 'instance' }}
+    activeRobotInstance={{ id: instanceId }}
     skillSelection={{ skill_mode: 'auto', skill_slugs: [] }}
     onSkillSelectionChange={jest.fn()}
   />
@@ -161,4 +164,56 @@ it('retains the /robots draft when the server rejects admission', async () => {
   expect(textarea.value).toBe('Retry this')
   expect(textarea).toBeEnabled()
   expect(screen.getByRole('button', { name: 'Send' })).toBeEnabled()
+})
+
+const incompleteMessage = 'Assistant execution paused before completion. Its progress is saved in this session.'
+
+it.each([
+  ['ASSISTANT_WORKFLOW_INCOMPLETE', 'Assistant status unconfirmed'],
+  ['ASSISTANT_WORKFLOW_CONTINUING', 'Assistant is still working'],
+  ['ASSISTANT_PRIVATE_CONTEXT_UNAVAILABLE', 'Assistant paused'],
+])('does not show a generic error or resend after SSE %s', async (code, title) => {
+  const pendingReads = mockAssistantStream()
+  render(<Composer />)
+  const textarea = screen.getByPlaceholderText('Type a message') as HTMLTextAreaElement
+  fireEvent.change(textarea, { target: { value: 'First request' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+  await waitFor(() => expect(pendingReads).toHaveLength(1))
+  await act(async () => {
+    pendingReads.shift()!({ value: Buffer.from('event: accepted\ndata: {"type":"accepted","success":true}\n\n'), done: false })
+  })
+  fireEvent.change(textarea, { target: { value: 'My next draft' } })
+  await act(async () => {
+    const error = { code, message: incompleteMessage }
+    pendingReads.shift()!({ value: Buffer.from(`event: error\ndata: ${JSON.stringify({ success: false, error })}\n\n`), done: false })
+  })
+  expect(toast).toHaveBeenCalledTimes(1)
+  expect(toast.mock.calls[0][0]).toMatchObject({ title })
+  expect(toast.mock.calls[0][0]).not.toHaveProperty('variant', 'destructive')
+  expect(textarea.value).toBe('My next draft')
+  expect(fetch).toHaveBeenCalledTimes(1)
+})
+
+it.each(['same turn', 'earlier turn', 'other instance', 'unmounted'])('scopes late SSE notices to the current turn: %s', async scenario => {
+  const pendingReads = mockAssistantStream()
+  const view = render(<Composer />)
+  fireEvent.change(screen.getByPlaceholderText('Type a message'), { target: { value: 'Repeated text' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+  await waitFor(() => expect(pendingReads).toHaveLength(1))
+  const { request_id } = JSON.parse((fetch as jest.Mock).mock.calls[0][1].body)
+  await act(async () => {
+    pendingReads.shift()!({ value: Buffer.from('event: accepted\ndata: {"type":"accepted","success":true}\n\n'), done: false })
+  })
+  if (scenario === 'unmounted') view.unmount()
+  else view.rerender(<Composer instanceId={scenario === 'other instance' ? 'another-instance' : 'instance'} logs={[{
+    id: 'saved', instance_id: 'instance', site_id: 'site', log_type: 'user_action', level: 'info',
+    message: 'Repeated text', created_at: new Date().toISOString(),
+    details: { status: 'completed', request_id: scenario === 'same turn' ? request_id : 'unrelated-request' },
+  }]} />)
+  await act(async () => {
+    const error = { code: 'ASSISTANT_WORKFLOW_INCOMPLETE', message: incompleteMessage }
+    pendingReads.shift()!({ value: Buffer.from(`event: error\ndata: ${JSON.stringify({ success: false, error })}\n\n`), done: false })
+  })
+  expect(toast).toHaveBeenCalledTimes(scenario === 'earlier turn' ? 1 : 0)
+  expect(fetch).toHaveBeenCalledTimes(1)
 })

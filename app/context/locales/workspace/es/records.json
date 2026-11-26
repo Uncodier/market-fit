@@ -21,6 +21,7 @@
   "records.table.noRecords": "No se encontraron registros.",
   "records.empty.desc": "Crea un registro nuevo o ajusta los filtros.",
   "records.table.title": "Título",
+  "records.table.notes": "Notas del registro",
   "records.table.category": "Categoría",
   "records.table.status": "Estado",
   "records.table.createdAt": "Fecha de creación",

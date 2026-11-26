@@ -26,6 +26,7 @@ import { RecordDetailSkeleton } from "./components/RecordDetailSkeleton"
 import { RecordDocumentView } from "./components/RecordDocumentView"
 import { RecordRightPanel } from "./components/RecordRightPanel"
 import { RecordToolbar } from "./components/RecordToolbar"
+import { RecordBreadcrumbActions } from "./components/RecordBreadcrumbActions"
 import { RecordOutputActions } from "./components/RecordOutputActions"
 import { RecordInsightProvider } from "./components/record-insight-context"
 import type { InsightField } from "./components/insights-types"
@@ -357,6 +358,7 @@ export default function RecordDetailPage() {
     <RecordInsightProvider key={record.id} visible={isRightPanelOpen && activeRightTab === "insights"}
       fields={fields} record={record} formData={debouncedFormData} relationsData={relationsData} description={description}>
     <div className="flex h-[calc(100vh-64px)] min-h-0 bg-background">
+      <RecordBreadcrumbActions recordId={record.id} siteId={record.site_id} isSaving={isSaving} />
       <div className="relative flex min-w-0 flex-1 flex-col bg-muted/10">
         <RecordToolbar
           outputActions={<RecordOutputActions pendingEdits={formData !== debouncedFormData} draft={{

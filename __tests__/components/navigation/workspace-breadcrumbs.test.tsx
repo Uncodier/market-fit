@@ -56,6 +56,22 @@ test.each(items)('renders $key as its own root in English and Spanish with stale
   expect(state[0].path).toBe(path)
 })
 
+test.each(['/robots', '/skills?tab=manage', '/context'])(
+  'keeps an accessible heading but only shows it on desktop for %s', path => {
+    setRoute(path)
+    render(<TopBarTitle title="Workspace" isCollapsed onCollapse={() => {}} />)
+    expect(screen.getByRole('heading', { level: 1 })).toHaveClass('max-md:sr-only')
+  },
+)
+
+test.each(['/robots?instance=one', '/connectors'])(
+  'does not hide the heading on mobile for %s', path => {
+    setRoute(path)
+    render(<TopBarTitle title="Workspace" isCollapsed onCollapse={() => {}} />)
+    expect(screen.getByRole('heading', { level: 1 })).not.toHaveClass('max-md:sr-only')
+  },
+)
+
 test('does not flash the previous title when moving between buying screens', () => {
   setRoute('/purchases/rules')
   const view = render(<TopBarTitle title="Purchases" isCollapsed={false} onCollapse={() => {}} />)

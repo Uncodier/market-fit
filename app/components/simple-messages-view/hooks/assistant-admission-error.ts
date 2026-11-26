@@ -13,7 +13,24 @@ export function isAssistantResultUnconfirmed(response: ApiResponse): boolean {
     'ASSISTANT_ADMISSION_UNCONFIRMED',
     'ASSISTANT_CONNECTION_UNCONFIRMED',
     'ASSISTANT_START_FAILED', // Older servers could lose the workflow start acknowledgement.
+    'ASSISTANT_WORKFLOW_INCOMPLETE', // Also used when a recovery checkpoint may still be active.
+    'ASSISTANT_WORKFLOW_CONTINUING',
+    'ASSISTANT_RESPONSE_TIMEOUT',
+    'ASSISTANT_STATUS_UNAVAILABLE',
   ].includes(response.error?.code || '')
+}
+
+export function assistantUnconfirmedNotification(code?: string) {
+  if (code === 'ASSISTANT_WORKFLOW_CONTINUING') {
+    return {
+      title: 'Assistant is still working',
+      description: 'This request is continuing in the background. Follow its progress in this conversation instead of resending it.',
+    }
+  }
+  return {
+    title: 'Assistant status unconfirmed',
+    description: 'A final result could not be confirmed. Check this turn for updates before sending the message again.',
+  }
 }
 
 export function getAssistantAdmissionFailure(response: ApiResponse): AdmissionFailure | null {

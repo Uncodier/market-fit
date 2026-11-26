@@ -13,7 +13,9 @@ other numeric template fields. It does not infer financial or industry semantics
   only that metric on the chart when available. Unrelated units and scales
   never share an axis. Field names do not imply currencies, percentages, units,
   targets or whether an increase is good.
-- One populated relation is selected automatically and disclosed. With multiple
+- Templates without relation fields compare saved records within the same site and collection.
+  When a template defines a relation, an empty subject does not widen that comparison.
+  One populated relation is selected automatically and disclosed. With multiple
   populated relations the user must choose the subject relation before a history
   request starts. The authenticated existing Server Action returns accessible
   records from the same collection and relation target under RLS.
@@ -46,8 +48,8 @@ or relation groups; the widget performs no conversions or cohort inference.
 History uses the existing Server Action and its database response limits. Counts
 are explicitly **loaded records**, not a claim that arbitrarily large histories
 are complete. No backend, RLS, migration or production configuration change is
-part of this repair. Category-wide analysis elsewhere in the panel remains a
-separate feature, not the source for the metric timeline.
+part of this repair. Relation-free timelines reuse the category-wide read;
+subject timelines use only the selected relation group.
 
 ## Local regression checks
 

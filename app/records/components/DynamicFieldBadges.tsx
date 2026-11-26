@@ -13,11 +13,14 @@ interface DynamicFieldBadgesProps {
   ignoreFields?: string[]
 }
 
-export function DynamicFieldBadges({ record, className, limit = 5, ignoreFields = [] }: DynamicFieldBadgesProps) {
+const NO_TEMPLATE_FIELDS: NonNullable<RecordItem["category"]>["template_fields"] = []
+const NO_IGNORED_FIELDS: string[] = []
+
+export function DynamicFieldBadges({ record, className, limit = 5, ignoreFields = NO_IGNORED_FIELDS }: DynamicFieldBadgesProps) {
   const [resolvedRelations, setResolvedRelations] = useScopedPreviewState<Record<string, string>>(record.site_id, {})
   const [isResolving, setIsResolving] = useState(false)
 
-  const templateFields = record.category?.template_fields || []
+  const templateFields = record.category?.template_fields ?? NO_TEMPLATE_FIELDS
   
   const displayableFields = useMemo(() => {
     return templateFields.filter(f => {
@@ -27,7 +30,7 @@ export function DynamicFieldBadges({ record, className, limit = 5, ignoreFields 
       const isDisplayableType = type === 'location' || type === 'file' || type === 'relation' || f.aiPreview?.enabled
       return isDisplayableType && hasValue
     }).slice(0, limit)
-  }, [templateFields, record, limit])
+  }, [templateFields, record, limit, ignoreFields])
 
   useEffect(() => {
     let active = true

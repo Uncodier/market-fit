@@ -2,7 +2,7 @@
 
 import { availableDemos } from "@/lib/demo-data";
 import { useState, useEffect, Suspense } from "react";
-import Image from "next/image";
+import { MakinariIsotype } from "@/app/components/ui/makinari-isotype";
 import { Card, CardContent } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
 import { Badge } from "@/app/components/ui/badge";
@@ -118,14 +118,7 @@ function DemoSelectorContent() {
     <div className="w-full">
       <div className="flex items-center justify-center mb-8">
         <div className="p-3 rounded-full bg-primary/10">
-          <Image 
-            src="/images/logo.png"
-            alt={t("public.demo.logoAlt")}
-            width={48}
-            height={48}
-            className="h-12 w-12 object-contain"
-            priority
-          />
+          <MakinariIsotype height={48} loading="eager" />
         </div>
       </div>
 

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react"
 import Link from "next/link"
 import { AuthForm } from "@/app/components/auth/auth-form"
 import Image from "next/image"
+import { MakinariIsotype } from "@/app/components/ui/makinari-isotype"
 import { useTheme } from "@/app/context/ThemeContext"
 import { useSafariDetection } from "@/app/hooks/use-safari-detection"
 import { WhatsApp } from "@/app/components/ui/icons"
@@ -313,14 +314,7 @@ export function AuthLandingClient() {
           <div className="mx-auto w-full max-w-md relative z-10">
             <div className="flex items-center justify-center mb-8 animate-fade-in-up-1">
               <div className="p-3 rounded-full font-inter font-bold bg-primary/10">
-                <Image 
-                  src="/images/logo.png"
-                  alt="Market Fit Logo"
-                  width={48}
-                  height={48}
-                  className="h-12 w-12 object-contain drop-shadow-md"
-                  priority
-                />
+                <MakinariIsotype height={48} loading="eager" className="drop-shadow-md" />
               </div>
             </div>
 

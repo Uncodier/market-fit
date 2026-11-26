@@ -1,6 +1,7 @@
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { Search, ShoppingCart, User } from "@/app/components/ui/icons"
 import { CommerceShellHeader, shellClasses } from "@/app/components/commerce/CommerceShellHeader"
+import { MakinariHeaderIsotype } from "@/app/components/commerce/MakinariHeaderIsotype"
 import { CatalogListingCardSkeleton } from "@/app/components/commerce/CatalogListingCardSkeleton"
 
 export default function MarketplaceLoading() {
@@ -11,7 +12,7 @@ export default function MarketplaceLoading() {
         hideCenterOnMobile={false}
         brand={
           <>
-            <Skeleton className="h-6 w-6 rounded-md md:hidden" />
+            <MakinariHeaderIsotype alt="" />
             <div className="hidden md:block text-xl font-black tracking-tight text-primary">
               MARKETPLACE
             </div>

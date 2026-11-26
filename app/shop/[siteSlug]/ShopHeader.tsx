@@ -8,6 +8,7 @@ import { CommerceSearchInput } from "@/app/components/commerce/CommerceSearchInp
 import { CartButton } from "@/app/components/commerce/CartButton"
 import { CommerceShareControl } from "@/app/components/commerce/CommerceShareControl"
 import { CommerceShellHeader, shellClasses } from "@/app/components/commerce/CommerceShellHeader"
+import { MakinariHeaderIsotype } from "@/app/components/commerce/MakinariHeaderIsotype"
 import {
   MobileShellSearchExpanded,
   MobileShellSearchIconButton,
@@ -174,12 +175,14 @@ export function ShopHeader({
           <Link
             href={`/shop/${siteSlug}`}
             data-toolbar-font
+            aria-label={site.name}
             className="shrink-0 flex items-center hover:opacity-80 transition-opacity"
           >
+            <MakinariHeaderIsotype alt="" />
             {site.logo_url ? (
-              <img src={site.logo_url} alt={site.name} fetchPriority="high" decoding="async" className="w-8 h-8 min-w-8 rounded-full object-cover border border-border shadow-sm shrink-0" />
+              <img src={site.logo_url} alt={site.name} fetchPriority="high" decoding="async" className="hidden md:block w-8 h-8 min-w-8 rounded-full object-cover border border-border shadow-sm shrink-0" />
             ) : (
-              <span className="text-xl font-black tracking-tight text-gray-900 dark:text-gray-100 truncate lowercase max-w-[150px] md:max-w-none">
+              <span className="hidden md:inline text-xl font-black tracking-tight text-gray-900 dark:text-gray-100 truncate lowercase">
                 {site.name}
               </span>
             )}

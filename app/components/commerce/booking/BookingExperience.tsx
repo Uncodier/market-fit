@@ -18,6 +18,7 @@ import { toast } from "sonner"
 import { RelationSelect } from "@/app/components/ui/relation-select"
 import { upsertReservation, validateReservationSlot } from "@/app/reservations/actions"
 import { CommerceShellHeader } from "@/app/components/commerce/CommerceShellHeader"
+import { MakinariHeaderIsotype } from "../MakinariHeaderIsotype"
 import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
 import { PdpMetricChips } from "@/app/components/commerce/pdp/PdpMetricChips"
 import type { ReservationSlotOption } from "../reservation-slot-utils"
@@ -192,13 +193,15 @@ export function BookingExperience({
               backUrl ? (
                 <Link
                   href={backUrl}
+                  aria-label={backLabel}
                   className="flex items-center text-muted-foreground hover:text-foreground transition-colors"
                 >
                   <ArrowLeft className="w-5 h-5 mr-2" />
-                  <span className="font-medium">{backLabel}</span>
+                  <MakinariHeaderIsotype alt="" />
+                  <span className="hidden md:inline font-medium">{backLabel}</span>
                 </Link>
               ) : (
-                <div />
+                <MakinariHeaderIsotype />
               )
             }
             center={

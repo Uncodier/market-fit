@@ -11,7 +11,7 @@ import { Card, CardContent } from "../components/ui/card"
 import { Button } from "../components/ui/button"
 import { Skeleton } from "../components/ui/skeleton"
 import { Badge } from "../components/ui/badge"
-import Image from "next/image"
+import { MakinariIsotype } from "@/app/components/ui/makinari-isotype"
 import { rememberBillingInterval } from "@/lib/billing-interval-preference"
 
 function getCookieValue(name: string): string | null {
@@ -244,14 +244,7 @@ export default function ProjectsPage() {
       <div className="w-full">
         <div className="flex items-center justify-center mb-8">
           <div className="p-3 rounded-full bg-primary/10">
-            <Image 
-              src="/images/logo.png"
-              alt={t("account.projects.logoAlt")}
-              width={48}
-              height={48}
-              className="h-12 w-12 object-contain"
-              loading="eager"
-            />
+            <MakinariIsotype height={48} loading="eager" />
           </div>
         </div>
         {workspaceAccessLost && (

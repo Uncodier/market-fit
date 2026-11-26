@@ -131,7 +131,8 @@ it.each(['running', 'completed', 'failed', 'cancelled', 'unknown'])('recognizes 
 })
 
 it.each(['ASSISTANT_STREAM_MISSING', 'ASSISTANT_STREAM_INCOMPLETE', 'ASSISTANT_STREAM_INTERRUPTED',
-  'ASSISTANT_CONNECTION_UNCONFIRMED', 'ASSISTANT_START_UNCONFIRMED', 'ASSISTANT_ADMISSION_UNCONFIRMED'])(
+  'ASSISTANT_CONNECTION_UNCONFIRMED', 'ASSISTANT_START_UNCONFIRMED', 'ASSISTANT_ADMISSION_UNCONFIRMED',
+  'ASSISTANT_WORKFLOW_INCOMPLETE', 'ASSISTANT_RESPONSE_TIMEOUT', 'ASSISTANT_STATUS_UNAVAILABLE'])(
   'reports %s as unconfirmed tracking, not a failed workflow', async code => {
     ;(postWithRetry as jest.Mock).mockResolvedValue({ success: false, retryable: false, error: { code } })
     const onUnconfirmed = jest.fn()
@@ -142,6 +143,17 @@ it.each(['ASSISTANT_STREAM_MISSING', 'ASSISTANT_STREAM_INCOMPLETE', 'ASSISTANT_S
     expect(markRobotInstanceErrorIfUnanswered).not.toHaveBeenCalled()
   },
 )
+
+it('keeps confirmed workflow failures visible even if completion was observed', async () => {
+  ;(postWithRetry as jest.Mock).mockResolvedValue({ success: false, status: 200, retryable: false,
+    error: { code: 'ASSISTANT_WORKFLOW_FAILED', message: 'Assistant execution failed.' } })
+  const onUnconfirmed = jest.fn()
+  await expect(sendAssistantMessage({ ...params, onUnconfirmed, isTurnCompleted: () => true })).resolves.toBe(false)
+  expect(onUnconfirmed).not.toHaveBeenCalled()
+  expect(params.toast).toHaveBeenCalledWith(expect.objectContaining({
+    description: 'Assistant execution failed.', variant: 'destructive',
+  }))
+})
 
 it('times out stalled context and never sends a late request', async () => {
   jest.useFakeTimers()

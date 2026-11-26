@@ -78,12 +78,16 @@ it("fits mobile rows to the drawer, not the growing shortcut section, and remeas
     jest.spyOn(footer, "getBoundingClientRect").mockImplementation(() => ({ height: footerHeight }) as DOMRect)
     jest.spyOn(screen.getByRole("banner"), "getBoundingClientRect").mockReturnValue({ height: 130 } as DOMRect)
     jest.spyOn(viewport, "getBoundingClientRect").mockReturnValue({ top: 130 } as DOMRect)
-    jest.spyOn(shortcuts, "getBoundingClientRect").mockReturnValue({ top: 240 } as DOMRect)
+    const shortcutRect = jest.spyOn(shortcuts, "getBoundingClientRect").mockReturnValue({ top: 240 } as DOMRect)
     expect(observe).toHaveBeenCalledWith(drawer)
     expect(observe).toHaveBeenCalledWith(footer)
     expect(observe).not.toHaveBeenCalledWith(viewport)
     act(() => resized())
     expect(screen.getByRole("status")).toHaveTextContent(/^3$/)
+    shortcutRect.mockReturnValue({ top: 152 } as DOMRect) // Two fewer fixed rows.
+    act(() => resized())
+    expect(screen.getByRole("status")).toHaveTextContent(/^5$/)
+    shortcutRect.mockReturnValue({ top: 240 } as DOMRect)
     drawerHeight = 820
     act(() => resized())
     expect(screen.getByRole("status")).toHaveTextContent(/^8$/)

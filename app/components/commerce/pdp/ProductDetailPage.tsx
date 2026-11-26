@@ -28,6 +28,7 @@ import { usePersistedCartPricing } from "../use-persisted-cart-pricing"
 import { isAccessOnlyItem } from "@/app/catalog/product-details"
 import { PdpExperience } from "./pdp-experience"
 import { CommerceShellHeader, shellClasses } from "../CommerceShellHeader"
+import { MakinariHeaderIsotype } from "../MakinariHeaderIsotype"
 import { useCommerceSignInHref } from "../use-commerce-sign-in-href"
 
 import { PDP_ADD_TO_CART_PRIMARY_AFTER } from "./pdp-purchase-cta"
@@ -121,8 +122,9 @@ export function ProductDetailPage({ item, site, backUrl, experience, catalogSize
             <Link href={backUrl} aria-label={t("common.back")} className={`${shellClasses.iconButton} shrink-0 md:mr-2`}>
               <ArrowLeft className="w-5 h-5" />
             </Link>
+            <MakinariHeaderIsotype className="ml-1 md:hidden" />
             {siteName && (
-              <div className="flex items-center gap-2 border-l border-black/10 dark:border-white/10 pl-3 ml-1 min-w-0">
+              <div className="hidden md:flex items-center gap-2 border-l border-black/10 dark:border-white/10 pl-3 ml-1 min-w-0">
                 {siteLogo ? (
                   <img src={siteLogo} alt="" className="w-6 h-6 object-contain shrink-0" />
                 ) : (

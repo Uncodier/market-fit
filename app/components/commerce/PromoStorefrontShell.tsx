@@ -5,6 +5,7 @@ import { ArrowLeft, User } from "@/app/components/ui/icons"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider"
 import { CommerceShellHeader, shellClasses } from "@/app/components/commerce/CommerceShellHeader"
+import { MakinariHeaderIsotype } from "@/app/components/commerce/MakinariHeaderIsotype"
 import { useCommerceSignInHref } from "@/app/components/commerce/use-commerce-sign-in-href"
 import { CartButton } from "@/app/components/commerce/CartButton"
 import { LocaleSelector } from "@/app/components/commerce/LocaleSelector"
@@ -54,24 +55,29 @@ export function PromoStorefrontShell({
               <ArrowLeft className="w-5 h-5" />
             </Link>
             {siteName ? (
-              <div className="flex items-center gap-2 border-l border-black/10 dark:border-white/10 pl-3 ml-1 min-w-0">
-                {siteLogo ? (
-                  <img src={siteLogo} alt="" className="w-6 h-6 object-contain shrink-0" />
-                ) : (
-                  <div className="w-6 h-6 bg-muted rounded-full shrink-0" />
-                )}
-                <span className="text-sm font-bold tracking-tight truncate min-w-0">
-                  {siteName}
-                </span>
-              </div>
+              <>
+                <MakinariHeaderIsotype className="ml-1 md:hidden" />
+                <div className="hidden md:flex items-center gap-2 border-l border-black/10 dark:border-white/10 pl-3 ml-1 min-w-0">
+                  {siteLogo ? (
+                    <img src={siteLogo} alt="" className="w-6 h-6 object-contain shrink-0" />
+                  ) : (
+                    <div className="w-6 h-6 bg-muted rounded-full shrink-0" />
+                  )}
+                  <span className="text-sm font-bold tracking-tight truncate min-w-0">
+                    {siteName}
+                  </span>
+                </div>
+              </>
             ) : surface === "marketplace" ? (
               <Link
                 href="/marketplace"
+                aria-label={t("marketplace.title")}
                 className="ml-1 text-sm font-black tracking-tight text-primary truncate"
               >
-                {t("marketplace.title")}
+                <MakinariHeaderIsotype alt="" />
+                <span className="hidden md:inline">{t("marketplace.title")}</span>
               </Link>
-            ) : null}
+            ) : <MakinariHeaderIsotype className="ml-1 md:hidden" />}
           </div>
         }
         actions={

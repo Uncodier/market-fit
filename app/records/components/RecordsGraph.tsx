@@ -3,7 +3,6 @@
 import { useScopedPreviewState } from "../hooks/useScopedPreviewState"
 import { buildPreviewRequests, mergePreviewRequests, fetchPreviewBatches } from "../lib/entity-preview-request"
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { useRouter } from "next/navigation"
 import { RecordsGraphCanvas } from "./records-graph-canvas"
 import { buildGraphData } from "./records-graph-model"
 import type { RecordsGraphApi } from "./records-graph-inner"
@@ -11,27 +10,36 @@ import { Slider } from "@/app/components/ui/slider"
 import { Button } from "@/app/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
 import { Loader, ZoomIn, ZoomOut, Maximize, Link, Users, Waypoints } from "@/app/components/ui/icons"
-import { getRecordsSimilarityEdges, resolveEntityPreviews, type EntityPreview } from "../actions"
+import { getRecordsSimilarityEdges, resolveEntityPreviews, type EntityPreview, type RecordItem } from "../actions"
 import { useSite } from "@/app/context/SiteContext"
 import { useTheme } from "@/app/context/ThemeContext"
 import { cn } from "@/lib/utils"
+import type { OpenRecordFromView } from "../lib/record-navigation"
+import type { SaveRecordProperty } from "../lib/record-properties"
+import { OpenRecordButton, RecordPropertiesButton } from "./RecordPropertyEditor"
 
 export function RecordsGraph({
   records,
+  onRecordClick,
+  onSaveProperty,
   toolsOffsetLeft = 92,
 }: {
-  records: any[]
+  records: RecordItem[]
+  onRecordClick: OpenRecordFromView
+  onSaveProperty?: SaveRecordProperty
   toolsOffsetLeft?: number
 }) {
   const { currentSite } = useSite()
   const { isDarkMode } = useTheme()
-  const router = useRouter()
   const graphApiRef = useRef<RecordsGraphApi | null>(null)
 
   const [similarityThreshold, setSimilarityThreshold] = useState(0.55)
   const [showRelations, setShowRelations] = useState(true)
   const [showSimilarity, setShowSimilarity] = useState(true)
   const [showEntities, setShowEntities] = useState(true)
+  const [selection, setSelection] = useState<{ siteId: string; id: string } | null>(null)
+  const selectedRecord = selection && selection.siteId === currentSite?.id
+    ? records.find(record => record.site_id === selection.siteId && record.id === selection.id) : undefined
   const [similarityEdges, setSimilarityEdges] = useScopedPreviewState<any[]>(currentSite?.id, [])
   const [resolvedRelations, setResolvedRelations] = useScopedPreviewState<Record<string, string>>(currentSite?.id, {})
   const [entityPreviews, setEntityPreviews] = useScopedPreviewState<Record<string, EntityPreview>>(currentSite?.id, {})
@@ -99,6 +107,7 @@ export function RecordsGraph({
   }, [records, similarityEdges, resolvedRelations, showRelations, showSimilarity, showEntities, similarityThreshold, entityPreviews])
 
   const linkCount = graphData.links.length
+  const openRecord = (id: string) => onRecordClick(id, graphData.nodes.filter(node => node.type === "record").map(node => node.id))
   const dotColor = isDarkMode ? "rgba(255, 255, 255, 0.07)" : "rgba(0, 0, 0, 0.07)"
 
   return (
@@ -120,9 +129,25 @@ export function RecordsGraph({
           graphData={graphData}
           onReady={handleReady}
           onNodeClick={(node) => {
-            if (node.type === "record") router.push(`/records/${node.id}`)
+            if (node.type === "record" && currentSite?.id) {
+              if (onSaveProperty) setSelection({ siteId: currentSite.id, id: node.id })
+              else openRecord(node.id)
+            }
           }}
         />
+      )}
+
+      {selectedRecord && onSaveProperty && (
+        <div key={selectedRecord.id} className="group/record absolute right-3 top-3 z-30 max-w-[calc(100%-1.5rem)] space-y-2 rounded-lg border bg-card p-3 shadow-md">
+          <div className="flex items-center gap-3">
+            <p className="min-w-0 flex-1 truncate text-sm font-medium">{selectedRecord.title}</p>
+            <Button variant="ghost" size="sm" className="h-7" onClick={() => setSelection(null)}>Close</Button>
+          </div>
+          <div className="flex items-center gap-2">
+            <OpenRecordButton title={selectedRecord.title} onOpen={() => openRecord(selectedRecord.id)} alwaysVisible />
+            <RecordPropertiesButton record={selectedRecord} onSave={onSaveProperty} includeMetadata />
+          </div>
+        </div>
       )}
 
       {graphData.nodes.length > 0 && linkCount === 0 && (

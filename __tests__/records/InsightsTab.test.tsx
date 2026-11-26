@@ -12,6 +12,9 @@ jest.mock("@/app/records/actions", () => ({
 }))
 
 describe("InsightsTab composition", () => {
+  beforeAll(() => {
+    global.ResizeObserver = jest.fn().mockImplementation(() => ({ observe: jest.fn(), disconnect: jest.fn() }))
+  })
   beforeEach(() => {
     jest.clearAllMocks()
     jest.mocked(publicPromptImageUrl).mockReturnValue("/api/images/prompt?preview=test")
@@ -57,6 +60,18 @@ describe("InsightsTab composition", () => {
     expect(screen.getByRole("img", { name: "Concept" })).toHaveAttribute("src", "/api/images/prompt?preview=test")
     expect(screen.getByText("Concepts")).toBeInTheDocument()
     expect(screen.getByText(new Date(insightRecord().created_at).toLocaleString())).toBeInTheDocument()
+  })
+
+  it("compares two saved reports without a relation and counts both in activity", async () => {
+    const record = insightRecord({ data: { ARR: 4000 } })
+    const older = insightRecord({ id: "older", created_at: "2026-01-01T12:00:00Z", data: { ARR: 3500 } })
+    jest.mocked(getRecords).mockResolvedValue({ records: [older, record], error: null })
+    render(<InsightsTab fields={[{ id: "arr", name: "ARR", type: "number" }]}
+      formData={record.data} record={record} />)
+    expect(await screen.findByText("+500 vs. previous observation")).toBeInTheDocument()
+    expect(screen.getByText("View 2 observations")).toBeInTheDocument()
+    for (const label of screen.getAllByText("Total Records")) expect(label.nextElementSibling).toHaveTextContent("2")
+    expect(getHistoricalRelatedRecords).not.toHaveBeenCalled()
   })
 
   it("passes resolved relation context through to the generated preview carousel", async () => {

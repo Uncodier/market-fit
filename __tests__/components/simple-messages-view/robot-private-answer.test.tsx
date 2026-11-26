@@ -21,6 +21,15 @@ function view(log: InstanceLog, id: string | null = owner, anonymous = false, lo
 }
 const frame = () => screen.queryByTitle('Private Ask answer')
 
+it('renders a linked Records answer inline for its owner without trusting the marker as authorization', () => {
+  const log = receipt()
+  log.message = log.message.replace('connector data', 'workspace data')
+  const { rerender } = render(view(log))
+  expect(frame()).toHaveAttribute('src', `/robots/private-answer/${action}/inline`)
+  rerender(view(log, 'other'))
+  expect(frame()).toBeNull()
+})
+
 it('does not navigate to the private route for another viewer, a loading session, or anonymous user', () => {
   const { rerender } = render(view(receipt(), null))
   for (const element of [view(receipt(), 'other'), view(receipt(), owner, true), view(receipt(), owner, false, true)]) {

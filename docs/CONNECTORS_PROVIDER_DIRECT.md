@@ -46,6 +46,23 @@ An allowed call is still subject to the provider’s permissions and fees. Priva
 
 In interactive Ask, the model receives the authorized, projected result, not just a receipt. A separate saved provider record is optional; open it while signed in as the requester, or visit `/connectors/results`. The link alone grants nothing. The report is bounded and may omit fields or be truncated. The local Robots and API changes render the private answer in its conversation and allow follow-up analysis with bounded prior tool data or a fresh call on the same authorized connection. Roll out `20261126010000_connector_ask_turn_context.sql` in the API repository before the matching workers. Old answers have no raw tool data to backfill. The latest 20 private reports per owner are available for at most one hour, subject to current authorization. Revoking or replacing the enrollment prevents reopening its direct receipts; re-enabling does not revive them. Do not paste their contents into a shared conversation. If dispatch or delivery is unconfirmed, reconcile in the original system before considering another action: a missing receipt does not mean nothing happened.
 
+### Native Records as report sources
+
+In a direct Ask conversation you own, paste links to specific Records in the
+message (up to eight different sources). Ask resolves native `/records/<uuid>`
+links as workspace references, not as web pages or connector receipts. The
+assistant receives the current structured fields and narrative, including zero
+values. A follow-up uses the same source IDs and checks access again. The
+private answer cites the Records and can be downloaded as Markdown; saving a
+separate provider record is not required. Source IDs are not an access grant.
+
+This is an explicit selection, not automatic discovery of every record in a
+collection. Older conversations that never supplied the links must supply them
+once. Apply the API migration `20261126020000_ask_linked_records.sql` after
+`20261123233000_workspace_screen_scope.sql` and `20261126010000_connector_ask_turn_context.sql`,
+then deploy the API, worker and web together. Verify denial after changing a user's Records access. Do not
+replicate source contents into shared instance logs to enable follow-ups.
+
 ## Operator prerequisites (not workspace settings)
 
 An independent deployment operator must verify the **downstream credential**, not just a Composio project or a `PRIVATE` account label. There is no attestation, evidence upload, secret-entry or per-tool version-registration control in this policy UI.

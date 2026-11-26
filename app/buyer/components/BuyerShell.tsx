@@ -8,6 +8,8 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { Sun, Moon, Globe, Monitor, ShoppingCart, User } from "@/app/components/ui/icons"
 import { AccountScreenLoading } from './AccountScreenLoading'
 import { CommerceShellHeader, shellClasses } from "@/app/components/commerce/CommerceShellHeader"
+import { MakinariHeaderIsotype } from "@/app/components/commerce/MakinariHeaderIsotype"
+import { MakinariIsotype } from "@/app/components/ui/makinari-isotype"
 import { CartButton } from "@/app/components/commerce/CartButton"
 import { TopBarPrimaryActionsSlot } from "@/app/components/navigation/topbar-primary-actions"
 import { AccountSearchActionsSlot, AccountSearchSlot } from "./AccountSearch"
@@ -104,17 +106,13 @@ export function BuyerShell({ children, requireAuth = true }: BuyerShellProps) {
             hideCenterOnMobile
             center={!isAuthLoading ? <AccountSearchSlot /> : undefined}
             brand={
-              <Link href={homeHref} className="shrink-0 flex items-center hover:opacity-80 transition-opacity">
+              <Link href={homeHref} aria-label="Makinari" className="shrink-0 flex items-center hover:opacity-80 transition-opacity">
                 <img
                   src="/images/combination_mark.png"
-                  alt="Market Fit Logo"
+                  alt=""
                   className="h-5 w-auto object-contain dark:brightness-0 dark:invert hidden lg:block"
                 />
-                <img
-                  src="/images/logo.png"
-                  alt="Market Fit Logo"
-                  className="h-6 w-6 object-contain dark:brightness-0 dark:invert block lg:hidden"
-                />
+                <MakinariHeaderIsotype alt="" className="block lg:hidden" />
               </Link>
             }
             actions={
@@ -257,11 +255,7 @@ export function BuyerShell({ children, requireAuth = true }: BuyerShellProps) {
         <footer className="w-full border-t border-border/50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 py-6 mt-auto">
           <div className="max-w-7xl mx-auto px-4 md:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="text-sm text-muted-foreground flex items-center gap-2">
-              <img
-                src="/images/logo.png"
-                alt="Market Fit"
-                className="h-4 w-4 object-contain dark:brightness-0 dark:invert grayscale opacity-50"
-              />
+              <MakinariIsotype alt="" height={16} className="opacity-50" />
               <span>
                 &copy; {new Date().getFullYear()} Makinari.{" "}
                 {t("buyer.layout.footer.allRightsReserved") || "All rights reserved."}

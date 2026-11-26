@@ -50,7 +50,7 @@ export function RecordMetrics({ fields, formData, record, relationsData, records
   const dateField = dates.find(field => `field:${field.id}` === selectedDate)
   const { points, omittedDates } = metricSeries(records, metric?.name ?? "", dateField?.name)
   const validPoints = points.filter(point => point.value !== null)
-  const canCompare = historyStatus === "ready" && !!relationName
+  const canCompare = historyStatus === "ready"
   const comparison = canCompare ? metricComparison(points, record?.id) : null
   const draftValue = metricNumber(formData[metric?.name])
   const savedValue = metricNumber(record?.data?.[metric?.name])
@@ -98,6 +98,7 @@ export function RecordMetrics({ fields, formData, record, relationsData, records
       {historyStatus === "error" && <Button type="button" data-permission="allow" variant="ghost" size="sm" onClick={onRetry}>Retry history</Button>}
       {hasUnsaved && <p className="mt-2 text-[11px] text-muted-foreground">Unsaved changes · history uses saved values.</p>}
     {canCompare && <div className="space-y-3">
+      {!relationName && <p className="text-xs text-muted-foreground">Comparing saved records in this collection.</p>}
       {new Set(validPoints.map(point => point.timestamp)).size >= 2 ? <div className="h-[200px] w-full min-w-0" role="img" aria-label={`${metric.label || metric.name} over time; exact values in the table below`}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={points} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>

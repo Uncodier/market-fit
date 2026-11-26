@@ -60,9 +60,7 @@ jest.mock("@/app/components/navigation/NavigationLink", () => {
 jest.mock("@/app/components/navigation/SiteSelector", () => ({ SiteSelector: () => <div data-testid="site-selector" /> }))
 jest.mock("@/app/components/navigation/ConfigurationSection", () => ({ ConfigurationSection: () => null }))
 jest.mock("@/app/components/navigation/NotificationBadge", () => ({ NotificationBadge: jest.fn(() => null) }))
-jest.mock("@/app/components/navigation/RobotsNavItems", () => ({
-  RobotsNavItems: () => <a href="/robots">AI Workspace</a>,
-}))
+jest.mock("@/app/components/navigation/RobotsBadge", () => ({ RobotsBadge: () => null }))
 jest.mock("@/app/components/navigation/DynamicShortcuts", () => ({ DynamicShortcuts: jest.fn(() => null) }))
 jest.mock("@/app/components/navigation/OnboardingProgressWidget", () => ({ OnboardingProgressWidget: jest.fn(() => null) }))
 jest.mock("@/app/components/navigation/StartupTrialWidget", () => ({ StartupTrialWidget: jest.fn(() => null) }))
@@ -144,6 +142,16 @@ describe("mobile sidebar viewport", () => {
     expect(OnboardingProgressWidget).toHaveBeenCalled(); expect(StartupTrialWidget).toHaveBeenCalled()
   })
 
+  it("keeps Content Creator and Workflows fixed only on desktop", () => {
+    const { rerender } = renderMobileSidebar()
+    expect(screen.getByRole("link", { name: /layout\.sidebar\.agents/ })).toBeInTheDocument()
+    expect(screen.queryByRole("link", { name: /layout\.sidebar\.(imprenta|workflows)/ })).not.toBeInTheDocument()
+
+    rerender(<Sidebar isCollapsed={false} onCollapse={jest.fn()} />)
+    expect(screen.getByRole("link", { name: /layout\.sidebar\.imprenta/ })).toHaveAttribute("href", "/robots?mode=imprenta")
+    expect(screen.getByRole("link", { name: /layout\.sidebar\.workflows/ })).toHaveAttribute("href", "/robots?mode=workflow")
+  })
+
   it("keeps the dynamic viewport height with the actual workspace layout classes", () => {
     expect(layoutSidebarClassName).toBeDefined()
     const { sidebar } = renderMobileSidebar()
@@ -157,7 +165,7 @@ describe("mobile sidebar viewport", () => {
 
     expect(sidebar).toHaveClass("overflow-y-auto", "overflow-x-hidden", "overscroll-y-contain")
     expect(sidebar).not.toHaveClass("overflow-hidden")
-    for (const name of ["AI Workspace", "layout.sidebar.notifications", "layout.sidebar.account"]) {
+    for (const name of ["layout.sidebar.agents", "layout.sidebar.notifications", "layout.sidebar.account"]) {
       const link = screen.getByRole("link", { name: new RegExp(name) })
       expect(link.closest(".overflow-y-auto")).toBe(sidebar)
     }

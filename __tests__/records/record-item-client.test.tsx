@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import RecordDetailPage from "@/app/records/[id]/record-item-client"
 import { getRecordById, updateRecord } from "@/app/records/actions"
+import { openRecordFromView } from "@/app/records/lib/record-navigation"
 import {
   getRecordDiagram,
   saveRecordDiagram,
@@ -14,10 +15,15 @@ const editor = {
   commands: { setContent: jest.fn() },
 }
 let mockEditorUpdate: ((event: { editor: { getHTML: () => string } }) => void) | undefined
+let mockSearchParams: URLSearchParams
 
 jest.mock("next/navigation", () => ({
   useParams: () => ({ id: "00000000-0000-4000-8000-000000000100" }),
   useRouter: () => router,
+  useSearchParams: () => mockSearchParams,
+}))
+jest.mock("@/app/context/SiteContext", () => ({
+  useOptionalSite: () => ({ currentSite: { id: "00000000-0000-4000-8000-000000000200" }, isLoading: false }),
 }))
 jest.mock("@/app/context/LocalizationContext", () => ({
   useLocalization: () => ({ t: (key: string) => key }),
@@ -121,6 +127,7 @@ jest.mock("@/app/records/[id]/components/record-diagram/RecordDiagramView", () =
 describe("record detail view switch", () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    mockSearchParams = new URLSearchParams()
     ;(getRecordById as jest.Mock).mockResolvedValue({
       record: {
         id: "00000000-0000-4000-8000-000000000100",
@@ -152,6 +159,24 @@ describe("record detail view switch", () => {
       revision: 1,
       changedNodeIds: [],
     })
+  })
+
+  it("keeps unsaved edits when sibling navigation is cancelled", async () => {
+    const currentId = "00000000-0000-4000-8000-000000000100"
+    const nextId = "00000000-0000-4000-8000-000000000102"
+    const currentHref = openRecordFromView("00000000-0000-4000-8000-000000000200", currentId, [currentId, nextId])
+    mockSearchParams = new URLSearchParams(currentHref.split("?")[1])
+    const confirm = jest.spyOn(window, "confirm").mockReturnValue(false)
+    try {
+      render(<><div id="record-breadcrumb-actions" /><RecordDetailPage /></>)
+      const next = await screen.findByRole("link", { name: "Next record" })
+      fireEvent.click(screen.getByRole("button", { name: "Edit document" }))
+      expect(fireEvent.click(next)).toBe(false)
+      expect(confirm).toHaveBeenCalledWith("Discard your unsaved changes?")
+      expect(screen.getByRole("button", { name: "Save changes" })).toBeEnabled()
+    } finally {
+      confirm.mockRestore()
+    }
   })
 
   it("mounts the insights panel only when requested", async () => {

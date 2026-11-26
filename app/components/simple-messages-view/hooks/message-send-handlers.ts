@@ -4,7 +4,7 @@ import { getSystemPromptForActivity } from '../utils'
 import { ImageParameters, VideoParameters, AudioParameters } from '../types'
 import { type SkillSelection } from '../components/SkillSelector'
 import { withTimeout } from '@/app/services/request-timeout'
-import { assistantAdmissionNotification, getAssistantAdmissionFailure, isAssistantResultUnconfirmed } from './assistant-admission-error'
+import { assistantAdmissionNotification, assistantUnconfirmedNotification, getAssistantAdmissionFailure, isAssistantResultUnconfirmed } from './assistant-admission-error'
 import {
   persistUserActionLog,
   markRobotInstanceErrorIfUnanswered,
@@ -35,6 +35,7 @@ export async function sendAssistantMessage(params: {
   toast: ToastFn
   onAccepted?: () => void
   onUnconfirmed?: () => void
+  isTurnCompleted?: () => boolean
   requestId?: string
 }): Promise<boolean> {
   const {
@@ -148,12 +149,16 @@ export async function sendAssistantMessage(params: {
       return false
     }
 
+    if (response.error?.code === 'ASSISTANT_PRIVATE_CONTEXT_UNAVAILABLE') {
+      if (!params.isTurnCompleted?.()) toast({ title: 'Assistant paused',
+        description: 'The assistant could not verify the private connection context. No tools were retried.' })
+      return false
+    }
+
     if (isAssistantResultUnconfirmed(response)) {
+      if (params.isTurnCompleted?.()) return true
       params.onUnconfirmed?.()
-      toast({
-        title: 'Assistant status unconfirmed',
-        description: 'The connection was interrupted, but the assistant may still be working. We will keep tracking this conversation. Do not resend the message.',
-      })
+      toast(assistantUnconfirmedNotification(response.error?.code))
       return false
     }
 

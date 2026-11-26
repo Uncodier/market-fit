@@ -17,6 +17,10 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { Checkbox } from "@/app/components/ui/checkbox"
 import { DynamicFieldBadges } from "./DynamicFieldBadges"
 import { publicPromptImageUrl } from "@/app/lib/image-utils"
+import type { OpenRecordFromView } from "../lib/record-navigation"
+import { OpenRecordButton, RecordPropertiesButton } from "./RecordPropertyEditor"
+import type { SaveRecordProperty } from "../lib/record-properties"
+import { recordStatusGroup, recordStatusGroups, recordStatusLabel } from "../lib/record-status"
 
 export { RecordsKanbanSkeleton } from "./RecordsKanbanSkeleton"
 
@@ -30,7 +34,8 @@ interface RecordsKanbanProps {
   records: RecordItem[]
   sortBy: "newest" | "oldest" | "updated_at" | "title_asc" | "title_desc"
   onUpdateRecordStatus: (recordId: string, newStatus: string) => Promise<void>
-  onRecordClick: (record: RecordItem) => void
+  onRecordClick: OpenRecordFromView
+  onSaveProperty?: SaveRecordProperty
   kanbanPagination: Record<string, KanbanPaginationState>
   onLoadMore: (status: string) => void
   totalCounts: Record<string, number>
@@ -40,18 +45,18 @@ interface RecordsKanbanProps {
   categories?: Array<{ id: string; name: string; icon?: string | null }>
 }
 
-// Define record statuses
-const getRecordStatuses = (t: (key: string) => string) => [
-  { id: "draft", name: t('status.draft') || "Draft", icon: <FileText className="h-4 w-4" /> },
-  { id: "published", name: t('status.published') || "Published", icon: <CheckCircle2 className="h-4 w-4" /> },
-  { id: "archived", name: t('status.archived') || "Archived", icon: <Ban className="h-4 w-4" /> }
-]
+function getRecordStatuses(records: RecordItem[], t: (key: string) => string) {
+  return recordStatusGroups(records).map(id => {
+    const Icon = id === "archived" ? Ban : id === "active" || id === "published" ? CheckCircle2 : FileText
+    return { id, name: recordStatusLabel(id, t), icon: <Icon className="h-4 w-4" /> }
+  })
+}
 
 export function RecordsKanban({ 
   records, 
   sortBy, 
   onUpdateRecordStatus, 
-  onRecordClick, 
+  onRecordClick, onSaveProperty,
   kanbanPagination, 
   onLoadMore, 
   totalCounts, 
@@ -63,12 +68,9 @@ export function RecordsKanban({
   const { currentSite } = useSite()
   const { t } = useLocalization()
   const [localRecords, setLocalRecords] = React.useState(records)
-
   React.useEffect(() => {
     setLocalRecords(records)
   }, [records])
-
-  const RECORD_STATUSES = getRecordStatuses(t)
 
   const sortRecords = React.useCallback((recordA: RecordItem, recordB: RecordItem) => {
     const createdA = new Date(recordA.created_at || 0).getTime()
@@ -88,7 +90,7 @@ export function RecordsKanban({
 
   const kanbanColumns = React.useMemo(() => {
     if (groupBy === "status") {
-      return RECORD_STATUSES
+      return getRecordStatuses(localRecords, t)
     } else if (groupBy === "category") {
       const usedCategoryIds = new Set(localRecords.map(r => r.category_id))
       return categories.filter(c => usedCategoryIds.has(c.id)).map(c => ({
@@ -133,8 +135,8 @@ export function RecordsKanban({
       })
       return Array.from(memberMap.values())
     }
-    return RECORD_STATUSES
-  }, [groupBy, localRecords, categories, RECORD_STATUSES, resolvedNames])
+    return getRecordStatuses(localRecords, t)
+  }, [groupBy, localRecords, categories, resolvedNames, t])
 
   useEffect(() => {
     let active = true
@@ -161,7 +163,7 @@ export function RecordsKanban({
   const recordsByStatus = kanbanColumns.reduce((acc, col) => {
     const statusRecords = localRecords
       .filter(record => {
-        if (groupBy === "status") return (record.status || 'draft') === col.id
+        if (groupBy === "status") return recordStatusGroup(record.status) === col.id
         if (groupBy === "category") return record.category_id === col.id
         if (groupBy === "date") {
           if (!record.created_at) return false
@@ -182,18 +184,18 @@ export function RecordsKanban({
       .sort(sortRecords)
     
     // Apply pagination: show up to 50 records per column initially, then load more
-    const pagination = kanbanPagination[col.id] || { page: 1, hasMore: false, isLoading: false }
+    const pagination = getPagination(col.id)
     const itemsPerPage = 50
     const maxItems = pagination.page * itemsPerPage
     
     acc[col.id] = statusRecords.slice(0, maxItems)
     return acc
-  }, {} as Record<string, RecordItem[]>)
+  }, Object.create(null) as Record<string, RecordItem[]>)
 
-  // Helper function to check if there are more records to load for a status
+  function getPagination(id: string) { return Object.hasOwn(kanbanPagination, id) ? kanbanPagination[id] : { page: 1, hasMore: false, isLoading: false } }
   const hasMoreRecords = (statusId: string) => {
     const allStatusRecords = localRecords.filter(record => {
-      if (groupBy === "status") return (record.status || 'draft') === statusId
+      if (groupBy === "status") return recordStatusGroup(record.status) === statusId
       if (groupBy === "category") return record.category_id === statusId
       if (groupBy === "date") {
         if (!record.created_at) return false
@@ -211,7 +213,7 @@ export function RecordsKanban({
       }
       return false
     })
-    const pagination = kanbanPagination[statusId] || { page: 1, hasMore: false, isLoading: false }
+    const pagination = getPagination(statusId)
     const itemsPerPage = 50
     const maxItems = pagination.page * itemsPerPage
     
@@ -220,7 +222,7 @@ export function RecordsKanban({
 
   const getGroupTotalCount = (groupId: string) => {
     return localRecords.filter(record => {
-      if (groupBy === "status") return (record.status || 'draft') === groupId
+      if (groupBy === "status") return recordStatusGroup(record.status) === groupId
       if (groupBy === "category") return record.category_id === groupId
       if (groupBy === "date") {
         if (!record.created_at) return false
@@ -377,6 +379,8 @@ export function RecordsKanban({
                           }
                         }
 
+                        const openRecord = () => onRecordClick(record.id, kanbanColumns.flatMap(column => recordsByStatus[column.id].map(item => item.id)))
+                        const categoryLabel = record.category?.name.trim() || t("records.uncategorized") || "Uncategorized"
                         return (
                         <Draggable key={record.id} draggableId={record.id} index={index}>
                           {(provided, snapshot) => (
@@ -387,11 +391,11 @@ export function RecordsKanban({
                             >
                               <Card
                                 className={cn(
-                                  "mb-2 cursor-pointer transition-shadow duration-200 hover:shadow-md relative select-none overflow-hidden",
+                                  "group/record mb-2 cursor-pointer transition-shadow duration-200 hover:shadow-md relative select-none overflow-hidden",
                                   snapshot.isDragging && "shadow-lg",
                                   selectedRecords.has(record.id) && "ring-2 ring-primary/40 bg-primary/5"
                                 )}
-                                onClick={() => onRecordClick(record)}
+                                onClick={openRecord}
                               >
                                 {coverUrl && (
                                   <div className="w-full h-28 bg-muted relative border-b border-border/10">
@@ -411,6 +415,8 @@ export function RecordsKanban({
                                       <div className="flex flex-col min-w-0 flex-1">
                                         <h3 className="text-sm font-medium line-clamp-1">{record.title}</h3>
                                       </div>
+                                      {onSaveProperty && <RecordPropertiesButton record={record} onSave={onSaveProperty} includeMetadata compact />}
+                                      <OpenRecordButton title={record.title} onOpen={openRecord} />
                                     </div>
                                   </div>
 
@@ -432,16 +438,11 @@ export function RecordsKanban({
 
                                   {/* Card footer: Category badge on left, time on right */}
                                   <div className="flex items-center justify-between gap-2 mt-2 ml-7">
-                                    <div className="flex items-center gap-2">
-                                      <Badge 
-                                        variant="outline" 
-                                        className="bg-primary/5 text-primary border-primary/20"
-                                      >
-                                        {record.category?.name || (t("records.uncategorized") || "Uncategorized")}
-                                      </Badge>
-                                    </div>
+                                    <Badge variant="outline" title={categoryLabel} className="min-w-0 max-w-full bg-primary/5 text-primary border-primary/20">
+                                      <span className="truncate">{categoryLabel}</span>
+                                    </Badge>
 
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex shrink-0 items-center gap-2 whitespace-nowrap">
                                       <div className="flex items-center text-[10px] text-muted-foreground">
                                         <Clock className="h-3 w-3 mr-1" />
                                         <span>
@@ -465,7 +466,7 @@ export function RecordsKanban({
                     {provided.placeholder}
                     
                     {/* Load More Button */}
-                    {hasMoreRecords(status.id) && kanbanPagination[status.id] && (
+                    {hasMoreRecords(status.id) && Object.hasOwn(kanbanPagination, status.id) && (
                       <div className="flex justify-center mt-2">
                         <Button
                           variant="outline"

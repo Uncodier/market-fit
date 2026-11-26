@@ -53,7 +53,10 @@ it("keeps the logo, back link and cart link in the location flow on detail pages
   jest.mocked(useSelfService).mockReturnValue({ ...state, context: { ...state.context,
     site: { ...state.context.site, logo_url: "/logo.png" } } } as unknown as ReturnType<typeof useSelfService>)
   render(<SelfServiceHeader backHref="/shop/branch" />)
-  expect(screen.getByRole("img", { name: "Example Shop" })).toHaveAttribute("src", "/logo.png")
+  const siteLogo = screen.getByRole("img", { name: "Example Shop" })
+  expect(siteLogo).toHaveAttribute("src", "/logo.png")
+  expect(siteLogo).toHaveClass("hidden", "md:block")
+  expect(siteLogo.closest("a")?.querySelector('img[src="/images/isotipo.svg"]')).toHaveClass("md:hidden")
   expect(screen.getByRole("link", { name: "Back to menu" })).toHaveAttribute("href", "/shop/branch")
   expect(screen.getByRole("link", { name: "Cart, 2 items" })).toHaveAttribute("href", "/shop/branch?cart=1")
 })
@@ -88,7 +91,7 @@ it("matches Shop and Marketplace's centered search geometry and action spacing",
   expect(actions).toContainElement(screen.getByRole("button", { name: "Start new order" }))
   expect(actions).toContainElement(screen.getByRole("button", { name: "Cart, 2 items" }))
   expect(actions).not.toContainElement(screen.getByRole("button", { name: "Search menu" }))
-  expect(screen.getByText("Example Shop")).toHaveClass("max-w-[150px]", "md:max-w-none")
+  expect(screen.getByText("Example Shop")).toHaveClass("hidden", "md:inline")
 })
 
 it("preserves optional QR identification and identity removal", () => {

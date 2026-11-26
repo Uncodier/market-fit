@@ -1,14 +1,11 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useMobileViewport } from "@/app/hooks/use-mobile-view"
 import { SIDEBAR_PINNED_NAV_KEYS } from "./shortcut-types"
 
 let visibleShortcutKeys: string[] = []
 const listeners = new Set<() => void>()
-
-function snapshot(): Set<string> {
-  return new Set([...SIDEBAR_PINNED_NAV_KEYS, ...visibleShortcutKeys])
-}
 
 /** Published by the sidebar with only the shortcuts currently on screen. */
 export function setVisibleSidebarShortcutKeys(keys: string[]) {
@@ -18,10 +15,11 @@ export function setVisibleSidebarShortcutKeys(keys: string[]) {
 
 /** Nav item keys currently visible in the sidebar (pinned + on-screen shortcuts). */
 export function useSidebarNavKeys(): Set<string> {
-  const [keys, setKeys] = useState<Set<string>>(snapshot)
+  const isMobile = useMobileViewport()
+  const [shortcutKeys, setShortcutKeys] = useState(visibleShortcutKeys)
 
   useEffect(() => {
-    const sync = () => setKeys(snapshot())
+    const sync = () => setShortcutKeys(visibleShortcutKeys)
     sync()
     listeners.add(sync)
     return () => {
@@ -29,5 +27,5 @@ export function useSidebarNavKeys(): Set<string> {
     }
   }, [])
 
-  return keys
+  return new Set(isMobile ? shortcutKeys : [...SIDEBAR_PINNED_NAV_KEYS, ...shortcutKeys])
 }

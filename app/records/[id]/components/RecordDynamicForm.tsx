@@ -5,6 +5,7 @@ import { DatePicker } from "@/app/components/ui/date-picker"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { RelationSelect } from "@/app/components/ui/relation-select"
 import { Button } from "@/app/components/ui/button"
+import { cn } from "@/lib/utils"
 import { 
   ImageIcon, 
   Type, 
@@ -25,6 +26,12 @@ import { RecordItem } from "../../actions"
 import { useRelationOptions } from "./use-relation-options"
 import { relationFieldTargetKey } from "../../lib/relation-target"
 import { recordFieldDate, recordFieldLabel, recordScalarFieldValue, serializeRecordFieldDate } from "../../lib/field-values"
+import styles from "./record-dynamic-form.module.css"
+
+const inlineControlClass = "w-full bg-transparent border-0 hover:bg-muted/50 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:bg-muted/30 shadow-none px-2 h-8 rounded-md"
+const inlinePickerClass = cn(inlineControlClass, "justify-start [&>div:first-child]:flex-initial")
+const fieldLabelClass = "flex min-w-0 items-start gap-2 px-2 pt-1.5 text-sm text-muted-foreground"
+const fieldIconClass = "mt-0.5 shrink-0 text-muted-foreground/60"
 
 interface RecordDynamicFormProps {
   fields: any[]
@@ -49,7 +56,6 @@ export function RecordDynamicForm({ fields, formData, relationsData, status, rec
   )
   
   const renderField = (field: any) => {
-    const commonInputClass = "bg-transparent border-0 hover:bg-muted/30 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:bg-transparent shadow-none px-2 h-8 rounded-md w-full"
     const value = recordScalarFieldValue(field.type, formData[field.name])
     
     switch (field.type) {
@@ -61,7 +67,7 @@ export function RecordDynamicForm({ fields, formData, relationsData, status, rec
               value={value || ""}
               onChange={(e) => onChange(field.name, e.target.value, "field")}
               placeholder="Empty"
-              className={commonInputClass}
+              className={inlineControlClass}
             />
             {field.aiPreview?.enabled && (
               <div className="flex flex-col gap-2 pt-1 px-2">
@@ -109,7 +115,7 @@ export function RecordDynamicForm({ fields, formData, relationsData, status, rec
             step="any"
             onChange={(e) => onChange(field.name, e.target.value ? Number(e.target.value) : null, "field")}
             placeholder="0"
-            className={commonInputClass}
+            className={cn(inlineControlClass, styles.numberInput, "tabular-nums")}
           />
         )
 
@@ -120,7 +126,7 @@ export function RecordDynamicForm({ fields, formData, relationsData, status, rec
             value={value || ""}
             onChange={(e) => onChange(field.name, e.target.value, "field")}
             placeholder="Empty"
-            className={commonInputClass}
+            className={inlineControlClass}
           />
         )
 
@@ -130,7 +136,7 @@ export function RecordDynamicForm({ fields, formData, relationsData, status, rec
             <DatePicker 
               date={recordFieldDate(value)}
               setDate={(date) => onChange(field.name, serializeRecordFieldDate(date), "field")}
-              className="bg-transparent border-0 hover:bg-muted/30 focus-visible:ring-1 focus-visible:ring-primary/30 shadow-none px-2 h-8 rounded-md w-full sm:w-auto min-w-[200px]"
+              className={inlinePickerClass}
               placeholder="Empty"
             />
           </div>
@@ -152,7 +158,7 @@ export function RecordDynamicForm({ fields, formData, relationsData, status, rec
               }}
               allowCreate={false}
               placeholder="Empty"
-              className="bg-transparent border-0 hover:bg-muted/30 focus-visible:ring-1 focus-visible:ring-primary/30 shadow-none px-2 h-8 rounded-md w-full"
+              className={inlineControlClass}
             />
           </div>
         )
@@ -163,7 +169,7 @@ export function RecordDynamicForm({ fields, formData, relationsData, status, rec
             value={value === true ? "true" : value === false ? "false" : "unset"}
             onValueChange={(value) => onChange(field.name, value === "unset" ? null : value === "true", "field")}
           >
-            <SelectTrigger aria-label={recordFieldLabel(field)} className={commonInputClass}>
+            <SelectTrigger aria-label={recordFieldLabel(field)} className={inlinePickerClass}>
               <SelectValue placeholder="Not set" />
             </SelectTrigger>
             <SelectContent>
@@ -200,7 +206,7 @@ export function RecordDynamicForm({ fields, formData, relationsData, status, rec
               }}
               allowCreate={false}
               placeholder="Empty"
-              className="bg-transparent border-0 hover:bg-muted/30 focus-visible:ring-1 focus-visible:ring-primary/30 shadow-none px-2 h-8 rounded-md w-full"
+              className={inlineControlClass}
             />
             {relationErrors[target] && <p role="alert" className="px-2 text-xs text-destructive">{relationErrors[target]}</p>}
           </div>
@@ -264,48 +270,45 @@ export function RecordDynamicForm({ fields, formData, relationsData, status, rec
   }
 
   return (
-    <div className="flex flex-col gap-0.5 pb-4 border-b border-border/30">
-      
-      {/* Metadata fields */}
-      <div className="group flex flex-col sm:flex-row sm:items-center py-1 -mx-2 rounded-lg transition-colors">
-        <div className="w-full sm:w-[200px] shrink-0 pt-1 sm:pt-0 px-2">
-          <div className="text-sm text-muted-foreground flex items-center gap-2">
-            <span className="text-muted-foreground/60"><Activity className="h-3.5 w-3.5" /></span>
-            Status
+    <div className={cn(styles.form, "border-b border-border/30 pb-4")}>
+      <div className={cn(styles.fields, "gap-y-0.5")}>
+        <div className={cn(styles.row, "py-1")}>
+          <div className={fieldLabelClass}>
+            <span aria-hidden="true" className={fieldIconClass}><Activity className="h-3.5 w-3.5" /></span>
+            <span>Status</span>
+          </div>
+          <div className="min-w-0">
+            <Select value={status} onValueChange={onStatusChange}>
+              <SelectTrigger aria-label="Record status" className={inlinePickerClass}>
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="archived">Archived</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
-        <div className="flex-1 min-w-0">
-          <Select value={status} onValueChange={onStatusChange}>
-            <SelectTrigger aria-label="Record status" className="bg-transparent border-0 hover:bg-muted/30 focus-visible:ring-1 focus-visible:ring-primary/30 shadow-none px-2 h-8 rounded-md w-full sm:w-auto min-w-[200px]">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="draft">Draft</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="archived">Archived</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-      
-      <div className="my-3 border-t border-border/20 w-full" />
 
-      {fields.map(field => {
-        const isFullWidth = field.type === "description" || field.type === "table";
-        return (
-          <div key={field.id} role="group" aria-label={recordFieldLabel(field)} className="group flex flex-col sm:flex-row sm:items-start py-1 -mx-2 rounded-lg transition-colors">
-            <div className="w-full sm:w-[200px] shrink-0 pt-1.5 px-2">
-              <div className="text-sm text-muted-foreground flex items-center gap-2">
-                <span className="text-muted-foreground/60">{getFieldIcon(field.type)}</span>
-                {recordFieldLabel(field)}{field.required ? " *" : ""}
+        <div className="my-3 border-t border-border/20" />
+
+        {fields.map(field => {
+          const label = recordFieldLabel(field)
+          const isFullWidth = field.type === "description" || field.type === "table"
+          return (
+            <div key={field.id} role="group" aria-label={label} className={cn(!isFullWidth && styles.row, "min-w-0 py-1")}>
+              <div className={fieldLabelClass}>
+                <span aria-hidden="true" className={fieldIconClass}>{getFieldIcon(field.type)}</span>
+                <span className="min-w-0 [overflow-wrap:anywhere]">
+                  {label}{field.required && <span aria-hidden="true">{"\u00a0*"}</span>}
+                </span>
               </div>
+              <div className="min-w-0">{renderField(field)}</div>
             </div>
-            <div className={`flex-1 min-w-0 ${isFullWidth ? "mt-1 sm:mt-0" : ""}`}>
-              {renderField(field)}
-            </div>
-          </div>
-        )
-      })}
+          )
+        })}
+      </div>
     </div>
   )
 }

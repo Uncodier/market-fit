@@ -51,6 +51,7 @@ export function Sidebar({
   const { user } = useAuth()
 
   const renderCollapsed = isMobileOpen ? false : isCollapsed
+  const renderMobile = isMobile || isMobileOpen
 
   const [forceShowSettingsChildren, setForceShowSettingsChildren] = useState(false)
   const prevPathSettingsRef = useRef(pathname)
@@ -234,10 +235,11 @@ export function Sidebar({
                 <Suspense fallback={<div className="min-h-[64px]" aria-hidden />}>
                   <RobotsNavItems
                     isCollapsed={renderCollapsed}
+                    isMobile={renderMobile}
                     onWorkspaceNavigation={() => setIsAppsLauncherOpen(false)}
                   />
-                  {(desktopVisible || isMobile || isMobileOpen) && (
-                    <DynamicShortcuts isCollapsed={renderCollapsed} isMobile={isMobile || isMobileOpen} />
+                  {(desktopVisible || renderMobile) && (
+                    <DynamicShortcuts isCollapsed={renderCollapsed} isMobile={renderMobile} />
                   )}
                 </Suspense>
               </div>

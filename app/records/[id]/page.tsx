@@ -1,6 +1,7 @@
 "use client"
 
 import dynamic from "next/dynamic"
+import { useParams } from "next/navigation"
 import { RecordDetailSkeleton } from "./components/RecordDetailSkeleton"
 
 const RecordDetailPage = dynamic(() => import("./record-item-client"), {
@@ -9,5 +10,6 @@ const RecordDetailPage = dynamic(() => import("./record-item-client"), {
 })
 
 export default function Page() {
-  return <RecordDetailPage />
+  const { id } = useParams<{ id: string }>()
+  return <RecordDetailPage key={id} />
 }

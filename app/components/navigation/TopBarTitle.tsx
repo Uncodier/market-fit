@@ -154,6 +154,7 @@ export function TopBarTitle({
   // Convert history items to breadcrumb format
   const fullPath = `${pathname}?${searchParams.toString()}`
   const isScreenRoot = !hasId(fullPath)
+  const showIconOnlyOnMobile = isScreenRoot && ['/robots', '/skills', '/context'].includes(pathname)
   const normalizedHistory = enforceInvariants(historyItems)
   const currentItem = normalizedHistory[normalizedHistory.length - 1]
   const breadcrumbItems = hasHistory && !isScreenRoot && currentItem && getScreenKey(currentItem.path) === getScreenKey(fullPath)
@@ -268,7 +269,9 @@ export function TopBarTitle({
           </ol>
         </nav>
       ) : (
-        <h1 className="text-2xl font-semibold text-foreground font-inter truncate">{isScreenRoot ? getDefaultTitle() : (customTitle?.path === pathname ? customTitle.title : null) || getDefaultTitle() || title}</h1>
+        <h1 className={cn("text-2xl font-semibold text-foreground font-inter truncate", showIconOnlyOnMobile && "max-md:sr-only")}>
+          {isScreenRoot ? getDefaultTitle() : (customTitle?.path === pathname ? customTitle.title : null) || getDefaultTitle() || title}
+        </h1>
       )}
 
       {afterTitle ? <div className="shrink-0">{afterTitle}</div> : null}

@@ -8,6 +8,7 @@ import { CommerceSearchInput } from "@/app/components/commerce/CommerceSearchInp
 import { CartButton } from "@/app/components/commerce/CartButton"
 import { COMMERCE_LOCALES } from "@/app/components/commerce/commerce-locales"
 import { CommerceShellHeader, shellClasses } from "@/app/components/commerce/CommerceShellHeader"
+import { MakinariHeaderIsotype } from "@/app/components/commerce/MakinariHeaderIsotype"
 import {
   MobileShellSearchExpanded,
   MobileShellSearchIconButton,
@@ -107,11 +108,7 @@ export function MarketplaceHeader({
             data-toolbar-font
             className="shrink-0 flex items-center hover:opacity-80 transition-opacity"
           >
-            <img
-              src="/images/logo.png"
-              alt="Makinari"
-              className="h-6 w-6 object-contain dark:brightness-0 dark:invert md:hidden"
-            />
+            <MakinariHeaderIsotype />
             <span className="hidden md:inline text-xl font-black tracking-tight text-primary">
               marketplace
             </span>

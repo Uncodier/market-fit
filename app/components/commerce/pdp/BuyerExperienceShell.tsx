@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { ArrowLeft, User } from "@/app/components/ui/icons"
 import { CommerceShellHeader } from "@/app/components/commerce/CommerceShellHeader"
+import { MakinariHeaderIsotype } from "../MakinariHeaderIsotype"
 import { useAuthContext as useAuth } from "@/app/components/auth/auth-provider"
 import { useLocalization } from "@/app/context/LocalizationContext"
 
@@ -79,10 +80,12 @@ export function BuyerExperienceShell({
         brand={
           <Link
             href={backUrl}
+            aria-label={resolvedBackLabel}
             className="flex items-center text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="w-5 h-5 mr-2" />
-            <span className="font-medium">{resolvedBackLabel}</span>
+            <MakinariHeaderIsotype alt="" />
+            <span className="hidden md:inline font-medium">{resolvedBackLabel}</span>
           </Link>
         }
         center={

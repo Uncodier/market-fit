@@ -143,6 +143,10 @@ it.each([true, false])('renders home search in the actual shell main bar (requir
     <AccountSearch value="" onChange={jest.fn()} placeholder="Search quotations" />
   </BuyerShell>)
   const header = document.querySelector('header')!
+  const brand = within(header).getByRole('link', { name: 'Makinari' })
+  expect(brand).toHaveAttribute('href', '/home')
+  expect(brand.querySelector('img[src="/images/isotipo.svg"]')).toHaveClass('lg:hidden')
+  expect(brand.querySelector('img[src="/images/combination_mark.png"]')).toHaveClass('hidden', 'lg:block')
   expect(within(header).getByRole('textbox', { name: 'Search quotations' })).toBeInTheDocument()
   expect(within(screen.getByRole('main')).queryByRole('textbox')).not.toBeInTheDocument()
   expect(header.querySelector('[data-account-search]')).toHaveClass('w-2/5', 'absolute', 'md:block')

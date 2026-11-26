@@ -1,4 +1,5 @@
 import React from 'react'
+import { TextDecoder } from 'node:util'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { SWRConfig } from 'swr'
 import { SimpleMessagesView } from '@/app/components/simple-messages-view'
@@ -109,14 +110,27 @@ it.each([
     expect(screen.getByTitle('Cancel')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Latest' })).not.toBeInTheDocument()
   }
-  await act(async () => { respond({
-    ok: outcome === 'confirmed', status: outcome === 'confirmed' ? 200 : 409,
-    headers: { get: () => 'application/json' },
-    text: async () => JSON.stringify(outcome === 'confirmed' ? { success: true } : {
-      success: false, execution_started: false,
-      error: { code: 'ASSISTANT_EXECUTION_BUSY', message: 'This assistant execution is already in progress' },
-    }),
-  } as unknown as Response) })
+  const originalTextDecoder = Object.getOwnPropertyDescriptor(globalThis, 'TextDecoder')
+  Object.defineProperty(globalThis, 'TextDecoder', { configurable: true, value: TextDecoder })
+  try {
+    await act(async () => { respond(outcome === 'confirmed' ? {
+      ok: true, status: 200, headers: { get: () => 'text/event-stream' },
+      body: { getReader: () => ({
+        read: async () => ({ value: Buffer.from('event: completed\ndata: {"success":true}\n\n'), done: false }),
+        cancel: async () => {}, releaseLock: () => {},
+      }) },
+    } as unknown as Response : {
+      ok: false, status: 409,
+      headers: { get: () => 'application/json' },
+      text: async () => JSON.stringify({
+        success: false, execution_started: false,
+        error: { code: 'ASSISTANT_EXECUTION_BUSY', message: 'This assistant execution is already in progress' },
+      }),
+    } as unknown as Response) })
+  } finally {
+    if (originalTextDecoder) Object.defineProperty(globalThis, 'TextDecoder', originalTextDecoder)
+    else Reflect.deleteProperty(globalThis, 'TextDecoder')
+  }
   if (outcome === 'confirmed') {
     expect(composer).toHaveValue('')
     expect(screen.getAllByText('Show my message now')).toHaveLength(1)

@@ -195,7 +195,9 @@ export function TopBar({
               helpText={helpText}
               helpWelcomeMessage={helpWelcomeMessage}
               helpTask={helpTask}
-              afterTitle={pathname === "/pos" ? <PosTopBarSync /> : null}
+              afterTitle={pathname === "/pos" ? <PosTopBarSync /> : /^\/records\/[^/]+$/.test(pathname) ? (
+                <div id="record-breadcrumb-actions" className="hidden md:block" />
+              ) : null}
               isCollapsed={isCollapsed}
               onCollapse={onCollapse}
               hideSidebarToggle={hideSidebarToggle}

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { ArrowLeft, QrCode, RotateCcw, User } from "@/app/components/ui/icons"
 import { CommerceShellHeader, shellClasses } from "@/app/components/commerce/CommerceShellHeader"
+import { MakinariHeaderIsotype } from "@/app/components/commerce/MakinariHeaderIsotype"
 import { CommerceSearchInput } from "@/app/components/commerce/CommerceSearchInput"
 import { CartButton } from "@/app/components/commerce/CartButton"
 import { MobileShellSearchExpanded, MobileShellSearchIconButton } from "@/app/components/commerce/MobileShellSearch"
@@ -34,8 +35,9 @@ export function SelfServiceHeader({ backHref, onOpenCart, searchQuery = "", onSe
       brand={<div className="flex min-w-0 items-center gap-2">
         {backHref && <Link href={backHref} className={shellClasses.iconButton} aria-label={t("shop.selfService.promotion.back")}><ArrowLeft className="h-4 w-4" /></Link>}
         <Link href={home} data-toolbar-font aria-label={context.site.name} className="flex min-w-0 items-center hover:opacity-80 transition-opacity">
-          {context.site.logo_url ? <img src={context.site.logo_url} alt={context.site.name} fetchPriority="high" decoding="async" className="w-8 h-8 min-w-8 rounded-full object-cover border border-border shadow-sm shrink-0" />
-            : <span className="text-xl font-black tracking-tight text-gray-900 dark:text-gray-100 truncate lowercase max-w-[150px] md:max-w-none">{context.site.name}</span>}
+          <MakinariHeaderIsotype alt="" />
+          {context.site.logo_url ? <img src={context.site.logo_url} alt={context.site.name} fetchPriority="high" decoding="async" className="hidden md:block w-8 h-8 min-w-8 rounded-full object-cover border border-border shadow-sm shrink-0" />
+            : <span className="hidden md:inline text-xl font-black tracking-tight text-gray-900 dark:text-gray-100 truncate lowercase">{context.site.name}</span>}
         </Link>
       </div>}
       hideCenterOnMobile

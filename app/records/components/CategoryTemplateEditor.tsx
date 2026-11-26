@@ -23,19 +23,20 @@ interface CategoryTemplateEditorProps {
   isOpen: boolean
   onClose: () => void
   category?: RecordCategory | null
+  initialFieldId?: string
   categories?: RecordCategory[]
   onSave: (data: any) => Promise<void>
   onDeleted?: () => void
 }
 
-export function CategoryTemplateEditor({ isOpen, onClose, category, categories = [], onSave, onDeleted }: CategoryTemplateEditorProps) {
+export function CategoryTemplateEditor({ isOpen, onClose, category, initialFieldId, categories = [], onSave, onDeleted }: CategoryTemplateEditorProps) {
   const [name, setName] = useState(category?.name || "")
   const [description, setDescription] = useState(category?.description || "")
   const [icon, setIcon] = useState(category?.icon || "")
   const [parentCategoryId, setParentCategoryId] = useState<string>(category?.parent_category_id || "none")
   const [fields, setFields] = useState<any[]>(category?.template_fields || [])
   const [isSaving, setIsSaving] = useState(false)
-  const [expandedFields, setExpandedFields] = useState<Set<string>>(new Set())
+  const [expandedFields, setExpandedFields] = useState(() => new Set(initialFieldId ? [initialFieldId] : []))
 
   const addField = () => {
     const newId = Math.random().toString(36).substr(2, 9)

@@ -1,19 +1,30 @@
-import { useState, useEffect, useCallback, useRef } from "react"
-import { getRecordCategories, getRecords, RecordCategory, RecordItem } from "../actions"
+import { useState, useEffect, useLayoutEffect, useCallback, useRef } from "react"
+import { getRecordCategories, getRecords, updateRecord, updateRecordCategory, RecordCategory, RecordItem } from "../actions"
+import type { SaveRecordProperty } from "../lib/record-properties"
+import type { ValidatedTemplateField } from "../lib/template-validation"
 import { toast } from "sonner"
 import { useOptionalSite } from "@/app/context/SiteContext"
 
 export function useRecordsData(siteId?: string) {
   const isSiteLoading = Boolean(useOptionalSite()?.isLoading)
   const requestIdRef = useRef(0)
+  const activeSite = useRef<string | undefined>(undefined)
   const [categories, setCategories] = useState<RecordCategory[]>([])
   const [records, setRecords] = useState<RecordItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [loadedSiteId, setLoadedSiteId] = useState<string | undefined>(undefined)
   const [error, setError] = useState<string | null>(null)
 
+  useLayoutEffect(() => {
+    activeSite.current = isSiteLoading ? undefined : siteId
+    return () => {
+      activeSite.current = undefined
+      requestIdRef.current += 1
+    }
+  }, [siteId, isSiteLoading])
+
   const fetchData = useCallback(async () => {
-    if (!siteId || isSiteLoading) return
+    if (!siteId || activeSite.current !== siteId) return
     const requestId = ++requestIdRef.current
     try {
       const [catsRes, recsRes] = await Promise.all([
@@ -41,12 +52,39 @@ export function useRecordsData(siteId?: string) {
     } finally {
       if (requestId === requestIdRef.current) setIsLoading(false)
     }
-  }, [siteId, isSiteLoading])
+  }, [siteId])
+
+  const saveRecordProperty: SaveRecordProperty = async (record, updates) => {
+    if (record.site_id !== activeSite.current) return { error: "The active site has changed." }
+    const result = await updateRecord(record.id, updates, record.updated_at)
+    if (record.site_id !== activeSite.current) return result
+    if (result.conflict) await fetchData()
+    if (result.record) {
+      const saved = result.record
+      setRecords(current => current.map(item =>
+        item.site_id === record.site_id && item.id === record.id && item.updated_at === record.updated_at
+          ? { ...item, ...saved, category: item.category }
+          : item,
+      ))
+    }
+    return result
+  }
+
+  const addTableProperty = async (category: RecordCategory, field: ValidatedTemplateField) => {
+    if (category.site_id !== activeSite.current) return { error: "The active site has changed." }
+    const result = await updateRecordCategory(category.id, {
+      template_fields: [...(category.template_fields ?? []), field],
+    }, category.updated_at)
+    if (category.site_id !== activeSite.current) return { error: "The active site has changed." }
+    if (result.category || result.conflict) await fetchData()
+    return category.site_id === activeSite.current ? result : { error: "The active site has changed." }
+  }
 
   useEffect(() => {
-    requestIdRef.current += 1
-    if (!isSiteLoading && siteId) void fetchData()
-    return () => { requestIdRef.current += 1 }
+    if (isSiteLoading || !siteId) return
+    let active = true
+    queueMicrotask(() => { if (active) void fetchData() })
+    return () => { active = false }
   }, [siteId, isSiteLoading, fetchData])
 
   return {
@@ -54,6 +92,8 @@ export function useRecordsData(siteId?: string) {
     records: siteId && loadedSiteId === siteId && !isSiteLoading ? records : [],
     isLoading: isSiteLoading || (!!siteId && (loadedSiteId !== siteId || isLoading)),
     error: loadedSiteId === siteId ? error : null,
-    refreshData: fetchData
+    refreshData: fetchData,
+    saveRecordProperty,
+    addTableProperty,
   }
 }

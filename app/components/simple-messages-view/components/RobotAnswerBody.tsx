@@ -12,7 +12,8 @@ export function privateAnswerId(log: InstanceLog) {
   const id = log.parent_log_id
   return log.log_type === 'agent_action' && log.details?.response_type === 'assistant_response' &&
     id && z.string().uuid().safeParse(id).success && log.details.user_log_id === id &&
-    log.message === `This answer uses private connector data. [Open your answer](/robots/private-answer/${id}).`
+    ['connector', 'workspace'].some(source =>
+      log.message === `This answer uses private ${source} data. [Open your answer](/robots/private-answer/${id}).`)
     ? id : null
 }
 

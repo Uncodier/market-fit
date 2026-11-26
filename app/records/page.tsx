@@ -14,6 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/app/components/ui/dialog"
 import { Loader } from "@/app/components/ui/icons"
 import { matchesRecordListFilter, recordListPage, type RecordDateRange } from "./lib/list-filter"
+import { openRecordFromView, type OpenRecordFromView } from "./lib/record-navigation"
+import { getTableRecordOrder, type RecordGrouping } from "./lib/table-record-order"
 import { useRecordsBulkActions } from "./hooks/useRecordsBulkActions"
 import { useRecordsData } from "./hooks/useRecordsData"
 import { RecordsToolbar } from "./components/RecordsToolbar"
@@ -23,7 +25,7 @@ import { RecordsBulkToolbar } from "./components/RecordsBulkToolbar"
 import { RecordsTrashDialog } from "./components/RecordsTrashDialog"
 
 // Import the new specific Record views
-import { RecordsTable, RecordsTableSkeleton } from "./components/RecordsTable"
+import { RECORDS_TABLE_PAGE_SIZES, RecordsTable, RecordsTableSkeleton } from "./components/RecordsTable"
 import { RecordsKanban, RecordsKanbanSkeleton } from "./components/RecordsKanban"
 import { RecordsCalendar, RecordsCalendarSkeleton } from "./components/RecordsCalendar"
 import { RecordsGraph } from "./components/RecordsGraph"
@@ -45,17 +47,17 @@ export default function RecordsPage() {
   const isMobile = useIsMobile()
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useAutoCollapseSidebar()
 
-  const { categories, records, isLoading, error: loadError, refreshData } = useRecordsData(currentSite?.id)
+  const { categories, records, isLoading, error: loadError, refreshData, saveRecordProperty, addTableProperty } = useRecordsData(currentSite?.id)
   
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
   const [selectedRelation, setSelectedRelation] = useState<{ fieldName: string, targetId: string } | null>(null)
   const [recordSearchQuery, setRecordSearchQuery] = useState("")
   const [viewType, setViewType] = useState<"table" | "kanban" | "calendar" | "graph">("table")
-  const [groupBy, setGroupBy] = useState<"status" | "category" | "date" | "team_member">("status")
+  const [groupBy, setGroupBy] = useState<RecordGrouping>("status")
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "title_asc" | "title_desc" | "updated_at">(defaultSort)
   const [dateRange, setDateRange] = useState<RecordDateRange>(null)
   const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage, setItemsPerPage] = useState(10)
+  const [itemsPerPage, setItemsPerPage] = useState<number>(RECORDS_TABLE_PAGE_SIZES[0])
   const { selectedRecords, setSelectedRecords, isBulkActionLoading, handleBulkDelete,
     handleBulkStatusChange, handleBulkCategoryChange, updateLoadedRecord } = useRecordsBulkActions(records, refreshData)
   const [isCategorySelectOpen, setIsCategorySelectOpen] = useState(false)
@@ -65,6 +67,7 @@ export default function RecordsPage() {
 
   const [isEditorOpen, setIsEditorOpen] = useState(false)
   const [editingCategory, setEditingCategory] = useState<RecordCategory | null>(null)
+  const [editingFieldId, setEditingFieldId] = useState<string>()
 
   // Layout calculations
   const sidebarLeft = isMobile ? '0px' : (isLayoutCollapsed ? '64px' : '256px')
@@ -100,14 +103,26 @@ export default function RecordsPage() {
     return 0
   })
   const visiblePage = recordListPage(currentPage, filteredRecords.length, itemsPerPage)
+  const activeCategory = categories.find(category => category.id === selectedCategory)
+  const viewTableCategory = (category: RecordCategory) => {
+    setSelectedCategory(category.id)
+    setSelectedRelation(null)
+    setCurrentPage(1)
+  }
   const hasFilters = selectedCategory !== "all" || !!selectedRelation || !!recordSearchQuery || !!dateRange
   const clearFilters = () => {
     setSelectedCategory("all"); setSelectedRelation(null); setRecordSearchQuery(""); setDateRange(null); setCurrentPage(1)
   }
 
   // Handlers
-  const handleEditTemplate = (category?: RecordCategory) => {
+  const handleOpenRecord: OpenRecordFromView = (recordId, orderedIds) => {
+    if (!currentSite?.id) return
+    router.push(openRecordFromView(currentSite.id, recordId, orderedIds))
+  }
+
+  const handleEditTemplate = (category?: RecordCategory, fieldId?: string) => {
     setEditingCategory(category || null)
+    setEditingFieldId(fieldId)
     setIsEditorOpen(true)
   }
 
@@ -252,7 +267,7 @@ export default function RecordsPage() {
                 <p>{loadError}</p>
                 <Button variant="outline" onClick={() => void refreshData()}>{t("common.retry") || "Retry"}</Button>
               </div>
-            ) : filteredRecords.length === 0 ? (
+            ) : filteredRecords.length === 0 && viewType !== "table" ? (
               <div className="flex-1 flex items-center justify-center">
                 <EmptyState 
                   icon={<ClipboardList className="h-8 w-8 text-muted-foreground" />}
@@ -270,13 +285,21 @@ export default function RecordsPage() {
               <div className={cn("min-h-full min-w-0 flex flex-col", viewType === "graph" ? "" : viewType === "kanban" ? "py-4 md:py-8 px-4" : "p-4 md:p-8")}>
                 {viewType === "table" ? (
                   <RecordsTable
+                    activeCategory={activeCategory}
+                    onSaveProperty={saveRecordProperty}
+                    onAddProperty={addTableProperty}
+                    onManageProperties={handleEditTemplate}
+                    onViewCategory={viewTableCategory}
+                    emptyAction={filteredRecords.length === 0 && activeCategory && !selectedRelation && !recordSearchQuery && !dateRange
+                      ? { label: "New record", run: () => handleCreateRecord(activeCategory.id) }
+                      : hasFilters ? { label: "Clear filters", run: clearFilters } : { label: "New record", run: () => handleCreateRecord() }}
                     records={filteredRecords.slice((visiblePage - 1) * itemsPerPage, visiblePage * itemsPerPage)}
                     currentPage={visiblePage}
                     itemsPerPage={itemsPerPage}
                     totalRecords={filteredRecords.length}
                     onPageChange={setCurrentPage}
                     onItemsPerPageChange={(val) => { setItemsPerPage(Number(val)); setCurrentPage(1); }}
-                    onRecordClick={(record) => router.push(`/records/${record.id}`)}
+                    onRecordClick={record => handleOpenRecord(record.id, getTableRecordOrder(filteredRecords, groupBy, itemsPerPage))}
                     categories={categories}
                     selectedRecords={selectedRecords}
                     onToggleRecordSelection={(id) => {
@@ -290,11 +313,14 @@ export default function RecordsPage() {
                 ) : viewType === "calendar" ? (
                   <RecordsCalendar
                     records={filteredRecords}
-                    onRecordClick={(record) => router.push(`/records/${record.id}`)}
+                    onRecordClick={handleOpenRecord}
+                    onSaveProperty={saveRecordProperty}
                   />
                 ) : viewType === "graph" ? (
                   <RecordsGraph
                     records={filteredRecords}
+                    onRecordClick={handleOpenRecord}
+                    onSaveProperty={saveRecordProperty}
                     toolsOffsetLeft={
                       isMobile
                         ? 16
@@ -304,6 +330,7 @@ export default function RecordsPage() {
                 ) : (
                   <RecordsKanban
                     records={filteredRecords}
+                    onSaveProperty={saveRecordProperty}
                     sortBy={sortBy}
                     onUpdateRecordStatus={async (recordId, newStatus) => {
                       // Only update status if grouping by status
@@ -318,7 +345,7 @@ export default function RecordsPage() {
                       }
                       // Note: team_member logic is handled inside RecordsKanban directly
                     }}
-                    onRecordClick={(record) => router.push(`/records/${record.id}`)}
+                    onRecordClick={handleOpenRecord}
                     kanbanPagination={{}}
                     onLoadMore={() => {}}
                     totalCounts={{}}
@@ -344,6 +371,7 @@ export default function RecordsPage() {
           isOpen={isEditorOpen}
           onClose={() => setIsEditorOpen(false)}
           category={editingCategory}
+          initialFieldId={editingFieldId}
           categories={categories}
           onSave={handleSaveCategory}
           onDeleted={() => {

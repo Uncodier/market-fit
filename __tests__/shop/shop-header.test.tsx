@@ -73,11 +73,14 @@ describe("ShopHeader sign-in", () => {
     expect(screen.getByTestId("cart")).toBeInTheDocument()
   })
 
-  it("renders the shop title in lowercase with the toolbar MuseoModerno font", () => {
+  it("uses the Makinari isotype on mobile and keeps the lowercase shop title on desktop", () => {
     render(<ShopHeader {...props} />)
     const title = screen.getByText("Example Shop")
-    expect(title).toHaveClass("lowercase")
-    expect(title.closest("[data-toolbar-font]")).toHaveAttribute("href", "/shop/example")
+    const brand = screen.getByRole("link", { name: "Example Shop" })
+    expect(title).toHaveClass("lowercase", "hidden", "md:inline")
+    expect(title.closest("[data-toolbar-font]")).toBe(brand)
+    expect(brand).toHaveAttribute("href", "/shop/example")
+    expect(brand.querySelector('img[src="/images/isotipo.svg"]')).toHaveClass("md:hidden", "brightness-0", "dark:brightness-100")
   })
 
   it("uses the primary button while preserving compact dimensions and navigation", () => {

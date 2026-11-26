@@ -1,6 +1,6 @@
 import { useScopedPreviewState } from "../../hooks/useScopedPreviewState"
 import { buildPreviewRequests, fieldPreviewKey, fetchPreviewBatches } from "../../lib/entity-preview-request"
-import { useEffect, useMemo } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { getRecords, type RecordItem } from "../../actions"
 import { useMetricHistory } from "./use-metric-history"
 import { isMetricNumber, metricDate, metricNumber, savedMetricRecords } from "./record-metrics"
@@ -24,11 +24,12 @@ export function useRecordInsights({ fields, formData, description, record, relat
   const fileFields = fields.filter(f => f.type === 'file' && formData[f.name])
 
   // History logic
-  const { history, historyStatus, primaryRelationName, primaryRelationId, setHistoryRelation, retryHistory } =
+  const { history, historyStatus: relationStatus, primaryRelationName, primaryRelationId, setHistoryRelation, retryHistory: retryRelation } =
     useMetricHistory({ fields, formData, record, relationsData })
-  const categoryScope = JSON.stringify([record?.site_id, record?.category_id])
+  const [categoryAttempt, setCategoryAttempt] = useState(0)
+  const categoryScope = JSON.stringify([record?.site_id, record?.category_id, categoryAttempt])
   const [categoryHistory, setCategoryHistory] = useScopedPreviewState<RecordItem[]>(categoryScope, [])
-  const [categoryStatus, setCategoryStatus] = useScopedPreviewState(categoryScope,
+  const [categoryStatus, setCategoryStatus] = useScopedPreviewState<typeof relationStatus>(categoryScope,
     record?.site_id && record.category_id ? "loading" : "idle")
 
   // Resolve the actual name of the related entity for UI context
@@ -78,9 +79,14 @@ export function useRecordInsights({ fields, formData, description, record, relat
     return () => { active = false }
   }, [record?.category_id, record?.site_id, setCategoryHistory, setCategoryStatus])
 
+  // Only relation-free templates use the whole collection; an empty subject is not a wildcard.
+  const collectionHistory = !!record?.id && !fields.some(field => field.type === "relation")
+  const historyStatus = collectionHistory ? categoryStatus : relationStatus
+  const retryHistory = collectionHistory ? () => setCategoryAttempt(attempt => attempt + 1) : retryRelation
+  const observations = collectionHistory ? categoryHistory : history
   const metricRecords = useMemo(() => savedMetricRecords(
-    history, record, primaryRelationName, primaryRelationId,
-  ), [history, record, primaryRelationName, primaryRelationId])
+    observations, record, primaryRelationName, primaryRelationId,
+  ), [observations, record, primaryRelationName, primaryRelationId])
 
   // Activity is based on saved timestamps, never the time the panel was opened.
   const chartData = useMemo<InsightChartPoint[]>(() => {

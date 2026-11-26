@@ -11,6 +11,7 @@ import {
   Share,
 } from "@/app/components/ui/icons"
 import { CommerceShellHeader, shellClasses } from "@/app/components/commerce/CommerceShellHeader"
+import { MakinariHeaderIsotype } from "@/app/components/commerce/MakinariHeaderIsotype"
 import { CatalogListingCardSkeleton } from "@/app/components/commerce/CatalogListingCardSkeleton"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import {
@@ -32,21 +33,22 @@ function ShopSkeletonHeader({
       <CommerceShellHeader
         hideCenterOnMobile
         brand={
-          logoUrl ? (
-            <span className="shrink-0 flex items-center">
+          <>
+            <MakinariHeaderIsotype alt="" />
+            {logoUrl ? (
               <img
                 src={logoUrl}
                 alt={siteName || ""}
-                className="w-8 h-8 min-w-8 rounded-full object-cover border border-border shadow-sm shrink-0"
+                className="hidden md:block w-8 h-8 min-w-8 rounded-full object-cover border border-border shadow-sm shrink-0"
               />
-            </span>
-          ) : siteName ? (
-            <span className="text-xl font-black tracking-tight text-gray-900 dark:text-gray-100 truncate max-w-[150px] md:max-w-none">
-              {siteName}
-            </span>
-          ) : (
-            <Skeleton className="w-8 h-8 min-w-8 rounded-full shrink-0" />
-          )
+            ) : siteName ? (
+              <span className="hidden md:inline text-xl font-black tracking-tight text-gray-900 dark:text-gray-100 truncate">
+                {siteName}
+              </span>
+            ) : (
+              <Skeleton className="hidden md:block w-8 h-8 min-w-8 rounded-full shrink-0" />
+            )}
+          </>
         }
         center={
           <div className="hidden md:block absolute left-1/2 top-1/2 z-[15] w-2/5 -translate-x-1/2 -translate-y-1/2">

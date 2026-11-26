@@ -441,11 +441,12 @@ the request. Context/session checks and stream waits are bounded, and secondary
 error logging cannot delay the user-visible failure.
 
 Missing, interrupted or incomplete assistant streams report an unconfirmed status,
-not a workflow failure. The composer retains its turn preview and Thinking state
-until the matching persisted user action settles; request IDs prevent another
-turn's completion from clearing it. The local five-minute timer does not settle
-an unconfirmed stream. A resend is blocked while status is still unconfirmed and
-no durable running action is available to route a new command through the queue.
+not a workflow failure. Background continuation also uses a neutral notice.
+Already-observed completion of the same request suppresses these notices, and
+late send notices are not shown in another conversation. The composer retains
+its turn preview and Thinking state until the matching persisted user action
+settles, not another turn or a local timer. While status is unconfirmed, a resend
+is blocked; different commands may still use the queue for a durable running action.
 
 Realtime log observation does not stop server-managed assistant actions. An
 `assistant_step` (even a final text chunk) is not a workflow terminal event: the

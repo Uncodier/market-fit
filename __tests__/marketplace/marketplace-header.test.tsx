@@ -105,6 +105,16 @@ describe("MarketplaceHeader sign-in", () => {
     expect(mockSignInClick).toHaveBeenCalledTimes(2)
   })
 
+  it("pairs the mobile Makinari isotype with the existing desktop wordmark", () => {
+    render(<MarketplaceHeader {...props} />)
+    const isotype = screen.getByRole("img", { name: "Makinari" })
+    expect(isotype).toHaveAttribute("src", "/images/isotipo.svg")
+    expect(isotype).toHaveStyle({ height: "24px", width: "auto" })
+    expect(isotype).toHaveClass("md:hidden")
+    expect(isotype.closest("a")).toHaveAttribute("href", "/marketplace")
+    expect(screen.getByText("marketplace")).toHaveClass("hidden", "md:inline")
+  })
+
   it("keeps the buyer avatar instead of sign-in buttons for signed-in users", () => {
     render(<MarketplaceHeader {...props} session={{ user: { user_metadata: {} } }} />)
 

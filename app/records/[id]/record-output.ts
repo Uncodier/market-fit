@@ -6,36 +6,42 @@ export type RecordOutputDocument = {
   title: string
   metadata: string[]
   description: string
-  fields: string[]
+  fields: { label: string; value: string }[]
   insights?: string[]
 }
 
 type Block = { tag: "h1" | "h2" | "p" | "li"; text: string }
 
-function* blocks(doc: RecordOutputDocument, format: RecordOutputFormat): Generator<Block> {
+function* blocks(doc: RecordOutputDocument): Generator<Block> {
   yield { tag: "h1", text: doc.title }
   for (const text of doc.metadata) yield { tag: "p", text }
   if (doc.description) {
     yield { tag: "h2", text: "Description" }
-    yield { tag: "p", text: format === "markdown" ? doc.description : removeMarkdown(doc.description, { stripListLeaders: false }) }
+    yield { tag: "p", text: removeMarkdown(doc.description, { stripListLeaders: false }) }
   }
-  for (const [heading, items] of [["Fields", doc.fields], ["Insights", doc.insights]] as const) {
+  const fields = doc.fields.map(({ label, value }) => `${label}: ${value}`)
+  for (const [heading, items] of [["Fields", fields], ["Insights", doc.insights]] as const) {
     if (!items?.length) continue
     yield { tag: "h2", text: heading }
     for (const text of items) yield { tag: "li", text }
   }
 }
 
+function markdownCell(text: string) {
+  // Entity-encode inline Markdown punctuation so field text cannot break table cells.
+  return text.replace(/[&<>|\\`*_~\[\]]/g, char => `&#${char.charCodeAt(0)};`)
+    .replace(/\r\n|[\r\n\u2028\u2029]/g, "<br>")
+}
+
 function markdown(doc: RecordOutputDocument) {
-  const prefix = { h1: "# ", h2: "## ", li: "- ", p: "" }
-  let output = ""
-  let lastTag: Block["tag"] | undefined
-  for (const { tag, text } of blocks(doc, "markdown")) {
-    if (lastTag) output += lastTag === "li" && tag === "li" ? "\n" : "\n\n"
-    output += prefix[tag] + text
-    lastTag = tag
+  const sections = [`# ${doc.title}`, ...doc.metadata]
+  if (doc.fields.length) {
+    const rows = doc.fields.map(({ label, value }) => `| **${markdownCell(label)}** | ${markdownCell(value)} |`)
+    sections.push("## Fields", ["| Field | Value |", "| --- | --- |", ...rows].join("\n"))
   }
-  return output + "\n"
+  if (doc.description) sections.push("## Description", doc.description)
+  if (doc.insights?.length) sections.push("## Insights", doc.insights.map(text => `- ${text}`).join("\n"))
+  return sections.join("\n\n") + "\n"
 }
 
 function printRecord(doc: RecordOutputDocument) {
@@ -48,7 +54,7 @@ function printRecord(doc: RecordOutputDocument) {
     p, li { white-space: pre-wrap; }`
   page.head.append(style)
   let list: HTMLUListElement | undefined
-  for (const { tag, text } of blocks(doc, "print")) {
+  for (const { tag, text } of blocks(doc)) {
     const node = page.createElement(tag)
     node.textContent = text
     if (tag === "li") {
@@ -73,7 +79,7 @@ async function pdfBlob(doc: RecordOutputDocument) {
   let page = pdf.addPage(PageSizes.A4)
   let y = page.getHeight() - margin
 
-  for (const { tag, text } of blocks(doc, "pdf")) {
+  for (const { tag, text } of blocks(doc)) {
     const size = tag === "h1" ? 22 : tag === "h2" ? 15 : 11
     const font = tag === "h1" || tag === "h2" ? bold : normal
     const width = page.getWidth() - 2 * margin

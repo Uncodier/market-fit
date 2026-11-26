@@ -10,7 +10,7 @@ import { isDemoSiteId } from "@/lib/demo-utils"
 import { Card, CardContent } from "@/app/components/ui/card"
 import { Button } from "@/app/components/ui/button"
 import { Skeleton } from "@/app/components/ui/skeleton"
-import Image from "next/image"
+import { MakinariIsotype } from "@/app/components/ui/makinari-isotype"
 import { toast } from "sonner"
 import { Loader } from "@/app/components/ui/icons"
 
@@ -181,14 +181,7 @@ function SelectSiteContent() {
       <div className="w-full max-w-2xl mx-auto">
         <div className="flex items-center justify-center mb-6">
           <div className="p-3 rounded-full bg-primary/10">
-            <Image 
-              src="/images/logo.png"
-              alt={t("account.projects.logoAlt")}
-              width={48}
-              height={48}
-              className="h-12 w-12 object-contain"
-              priority
-            />
+            <MakinariIsotype height={48} loading="eager" />
           </div>
         </div>
         

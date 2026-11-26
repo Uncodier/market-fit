@@ -3,7 +3,7 @@ import { AuthLandingClient } from '@/app/components/auth/AuthLandingClient'
 
 const getUser = jest.fn()
 const signOut = jest.fn()
-jest.mock('next/image', () => ({ __esModule: true, default: () => null }))
+jest.mock('next/image', () => jest.requireActual('next/image'))
 jest.mock('@/lib/supabase/client', () => ({
   createClient: () => ({ auth: { getUser, signOut } }),
 }))
@@ -39,6 +39,10 @@ describe('auth landing session recovery', () => {
     getUser.mockReturnValue(new Promise(() => {}))
     render(<AuthLandingClient />)
     expect(await screen.findByRole('form', { name: 'Sign in' })).toBeInTheDocument()
+    const mark = screen.getByRole('img', { name: 'Makinari' })
+    expect(mark).toHaveAttribute('src', '/images/isotipo.svg')
+    expect(mark).toHaveStyle({ height: '48px', width: 'auto' })
+    expect(mark).toHaveClass('brightness-0', 'dark:brightness-100')
     expect(signOut).not.toHaveBeenCalled()
   })
 

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { CommerceShellHeader, shellClasses } from '@/app/components/commerce/CommerceShellHeader'
+import { MakinariHeaderIsotype } from '@/app/components/commerce/MakinariHeaderIsotype'
 import { CommerceSearchInput } from '@/app/components/commerce/CommerceSearchInput'
 import { MobileShellSearchExpanded, MobileShellSearchIconButton } from '@/app/components/commerce/MobileShellSearch'
 import { useCommerceSignInHref } from '@/app/components/commerce/use-commerce-sign-in-href'
@@ -42,7 +43,7 @@ export function TenderHeader({ siteSlug, search = '', primaryActions }: Props) {
         <MobileShellSearchExpanded value={query} onChange={value => setQuery(value.slice(0, 200))} placeholder={t('procurement.portal.public.search')} open={mobileSearchOpen} onOpenChange={closeSearch} />
       </form> : undefined}
       brand={<Link href="/marketplace" data-toolbar-font aria-label={t('procurement.portal.public.brandLabel')} className="shrink-0 flex items-center hover:opacity-80 transition-opacity">
-        <Image src="/images/logo.png" alt="Makinari" width={24} height={24} className="h-6 w-6 object-contain dark:brightness-0 dark:invert md:hidden" />
+        <MakinariHeaderIsotype alt="" />
         <span className="hidden md:inline text-xl font-black tracking-tight text-primary lowercase">{t('procurement.portal.public.tenders')}</span>
       </Link>}
       center={<form action={base} role="search" className="hidden md:block absolute left-1/2 top-1/2 z-[15] w-2/5 -translate-x-1/2 -translate-y-1/2">

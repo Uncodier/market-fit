@@ -37,6 +37,30 @@ describe('Makinari isotipo', () => {
     expect(layout).toContain("url: '/favicon.ico?v=white-transparent-2'")
   })
 
+  it('keeps the legacy PNG URL with the current artwork for image previews', async () => {
+    const png = sharp(path.join(process.cwd(), 'public/images/logo.png'))
+    const metadata = await png.metadata()
+    expect(metadata).toMatchObject({ format: 'png', width: 1080, height: 1080 })
+
+    const artwork = await sharp(Buffer.from(read('public/images/isotipo.svg')))
+      .resize(792, 792, { fit: 'inside' }).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
+    const pixels = await png.ensureAlpha().raw().toBuffer()
+    expect([...pixels.subarray(4 * (540 * 1080 + 80), 4 * (540 * 1080 + 80) + 4)]).toEqual([23, 23, 23, 255])
+    const left = Math.round((1080 - artwork.info.width) / 2)
+    const top = Math.round((1080 - artwork.info.height) / 2)
+    let matched = 0
+    let visible = 0
+    for (let y = 0; y < artwork.info.height; y++) {
+      for (let x = 0; x < artwork.info.width; x++) {
+        if (artwork.data[4 * (y * artwork.info.width + x) + 3] !== 255) continue
+        const pixel = 4 * ((top + y) * 1080 + left + x)
+        visible++
+        if (pixels[pixel] === 255 && pixels[pixel + 1] === 255 && pixels[pixel + 2] === 255) matched++
+      }
+    }
+    expect(matched / visible).toBeGreaterThan(0.99)
+  })
+
   it('provides valid multi-size ICO and Apple PNG fallbacks', async () => {
     const ico = readFileSync(path.join(process.cwd(), 'public/favicon.ico'))
     expect(ico.readUInt16LE(2)).toBe(1)

@@ -17,7 +17,7 @@ export type AnswerParams = { params: Promise<{ id: string }> }
 function page(status: number, text: string, mode: Presentation, id?: string) {
   const inline = mode === 'inline'
   const target = inline ? ' target="_blank" rel="noopener noreferrer"' : ''
-  const answer = escape(text).replace(/\[([^\]\r\n]{1,100})\]\((\/connectors\/results\/([a-f0-9-]{36}))\)/g,
+  const answer = escape(text).replace(/\[([^\]\r\n]{1,100})\]\((\/(?:connectors\/results|records)\/([a-f0-9-]{36}))\)/g,
     (whole, label: string, path: string, reportId: string) => idSchema.safeParse(reportId).success
       ? `<a href="${path}"${target}>${label}</a>` : whole)
   const download = status === 200 ? `<p><a href="/robots/private-answer/${id}/download"${target}>Download report (.md)</a></p>` : ''

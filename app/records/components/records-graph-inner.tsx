@@ -308,6 +308,7 @@ export function RecordsGraphInner({ graphData, onNodeClick, onReady }: RecordsGr
               {hoverNode.summary}
             </p>
           ) : null}
+          {hoverNode.type === "record" && onNodeClick && <p className="mt-2 text-xs font-medium">Select record for actions</p>}
         </div>
       )}
     </div>

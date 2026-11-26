@@ -50,6 +50,14 @@ it('exports the complete authorized answer, not a provider record; revocation de
   expect(getUser).toHaveBeenCalledTimes(4)
 })
 
+it('makes native Record citations usable without linking to arbitrary sources', async () => {
+  const record = `/records/${randomUUID()}`
+  rpc.mockReturnValue(reply(`[Quarter](${record}) [Other](https://elsewhere.example${record}) [Changed](${record}?x=y)`))
+  const html = await (await read()).text()
+  expect(html).toContain(`<a href="${record}">Quarter</a>`)
+  expect(html).not.toMatch(/href="https|href="[^"\n]*\?x=/)
+})
+
 it('renders only the owner RPC response without executing markup or using a shared cache', async () => {
   const record = `/connectors/results/${randomUUID()}`
   rpc.mockReturnValue(reply(`Paid accounts: 12\n<script>not executable</script>\n[Saved table](${record})\n[external](https://example.test)`))

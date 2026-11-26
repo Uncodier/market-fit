@@ -63,6 +63,9 @@ interface RelationSelectProps {
   onSearchChange?: (query: string) => void
   /** Reports every manual text edit, including retyping the selected label. */
   onInputValueChange?: (query: string) => void
+  /** Keep focus on the input while interacting with portalled options. */
+  keepInputFocus?: boolean
+  openOnFocus?: boolean
 }
 
 export function RelationSelect({
@@ -86,12 +89,16 @@ export function RelationSelect({
   pinnedAction,
   onSearchChange,
   onInputValueChange,
+  keepInputFocus = false,
+  openOnFocus = false,
 }: RelationSelectProps) {
   const options = rawOptions || []
   const [open, setOpen] = React.useState(false)
   const [searchQuery, setSearchQuery] = React.useState("")
   const inputRef = React.useRef<HTMLInputElement>(null)
   const inputId = React.useId()
+  const listId = `${inputId}-options`
+  const [highlightedId, setHighlightedId] = React.useState<string | null>(null)
   if (disabled && open) setOpen(false)
 
   const selectedLabel = value?.label
@@ -104,6 +111,7 @@ export function RelationSelect({
     () => filterRelationSelectOptions(options, searchQuery, selectedLabel),
     [options, searchQuery, selectedLabel],
   )
+  const highlightedIndex = filteredOptions.findIndex(option => option.id === highlightedId)
 
   const exactMatch = React.useMemo(() => {
     return options.find(o => o?.label?.toLowerCase() === searchQuery.trim().toLowerCase())
@@ -142,6 +150,7 @@ export function RelationSelect({
     if (disabled) return
     const newValue = e.target.value
     setSearchQuery(newValue)
+    setHighlightedId(null)
     onInputValueChange?.(newValue)
     notifySearchChange(newValue)
     if (!open) setOpen(true)
@@ -168,11 +177,26 @@ export function RelationSelect({
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (disabled) return
+    if (disabled || e.nativeEvent.isComposing) return
+    if (openOnFocus && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+      e.preventDefault()
+      setOpen(true)
+      const indexes = filteredOptions.flatMap((option, index) => option.disabled ? [] : [index])
+      if (!indexes.length) return
+      const direction = e.key === "ArrowDown" ? 1 : -1
+      const current = indexes.indexOf(highlightedIndex)
+      const next = current === -1 ? (direction === 1 ? 0 : indexes.length - 1)
+        : (current + direction + indexes.length) % indexes.length
+      const index = indexes[next]
+      setHighlightedId(filteredOptions[index].id)
+      document.getElementById(`${listId}-${index}`)?.scrollIntoView?.({ block: "nearest" })
+      return
+    }
     if (e.key === "Enter") {
       e.preventDefault()
-      if (filteredOptions.length > 0) {
-        handleSelectExisting(filteredOptions[0])
+      const option = filteredOptions[highlightedIndex] ?? filteredOptions.find(option => !option.disabled)
+      if (option) {
+        handleSelectExisting(option)
       } else if (showCreate) {
         handleSelectCreate()
       }
@@ -224,12 +248,18 @@ export function RelationSelect({
               <>
                 <Input
                   id={inputId}
+                  role={openOnFocus ? "combobox" : undefined}
+                  aria-expanded={openOnFocus ? open : undefined}
+                  aria-controls={openOnFocus && open ? listId : undefined}
+                  aria-autocomplete={openOnFocus ? "list" : undefined}
+                  aria-activedescendant={openOnFocus && open && highlightedIndex >= 0 ? `${listId}-${highlightedIndex}` : undefined}
                   ref={inputRef}
                   value={isResolvingLabel ? "" : searchQuery}
                   onChange={handleInputChange}
                   onKeyDown={handleKeyDown}
                   placeholder={placeholder}
                   disabled={disabled}
+                  onFocus={openOnFocus ? () => { setOpen(true); inputRef.current?.select() } : undefined}
                   className={cn(
                     "w-full font-inter cursor-pointer",
                     endAction ? "pr-28" : "pr-9",
@@ -277,6 +307,8 @@ export function RelationSelect({
           className="p-1 w-[var(--radix-popover-trigger-width)] max-w-[calc(100vw-2rem)] max-h-[min(300px,var(--radix-popover-content-available-height))] font-inter overflow-auto"
           align="start"
           onOpenAutoFocus={(e) => e.preventDefault()}
+          onCloseAutoFocus={openOnFocus ? event => event.preventDefault() : undefined}
+          onMouseDown={keepInputFocus ? event => event.preventDefault() : undefined}
         >
           {pinnedAction && (
             <>
@@ -300,7 +332,7 @@ export function RelationSelect({
             </>
           )}
           {filteredOptions.length > 0 ? (
-            <div className="pb-1">
+            <div className="pb-1" id={openOnFocus ? listId : undefined} role={openOnFocus ? "listbox" : undefined} aria-label={openOnFocus ? label : undefined}>
               {filteredOptions.map((option, index) => {
                 const prevGroup = filteredOptions[index - 1]?.group
                 const showGroupHeader =
@@ -316,11 +348,15 @@ export function RelationSelect({
                       </>
                     )}
                     <div
+                      id={openOnFocus ? `${listId}-${index}` : undefined}
+                      role={openOnFocus ? "option" : undefined}
+                      aria-selected={openOnFocus ? value?.id === option.id : undefined}
                       data-relation-id={option.id}
                       aria-disabled={option.disabled || undefined}
                       className={cn(
                         "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm font-inter outline-none hover:bg-accent hover:text-accent-foreground transition-colors",
                         value?.mode === "existing" && value.id === option.id && "bg-accent text-accent-foreground",
+                        openOnFocus && highlightedId === option.id && "bg-accent text-accent-foreground",
                         option.disabled && "cursor-not-allowed opacity-60"
                       )}
                       onClick={() => handleSelectExisting(option)}
@@ -339,7 +375,7 @@ export function RelationSelect({
               })}
             </div>
           ) : showCreate && !pinnedAction ? null : (
-            <div className="py-6 text-center text-sm font-inter text-muted-foreground">{emptyMessage}</div>
+            <div id={openOnFocus ? listId : undefined} className="py-6 text-center text-sm font-inter text-muted-foreground">{emptyMessage}</div>
           )}
 
           {showCreate && (

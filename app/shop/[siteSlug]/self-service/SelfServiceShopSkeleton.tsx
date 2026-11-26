@@ -1,6 +1,7 @@
 "use client"
 
 import { CommerceShellHeader } from "@/app/components/commerce/CommerceShellHeader"
+import { MakinariHeaderIsotype } from "@/app/components/commerce/MakinariHeaderIsotype"
 import { CatalogListingCardSkeleton } from "@/app/components/commerce/CatalogListingCardSkeleton"
 import { Skeleton } from "@/app/components/ui/skeleton"
 import { useLocalization } from "@/app/context/LocalizationContext"
@@ -12,7 +13,7 @@ export function SelfServiceShopSkeleton() {
     <div aria-hidden="true">
       <div className="h-4 w-full shrink-0" />
       <CommerceShellHeader hideCenterOnMobile
-        brand={<Skeleton className="h-8 w-28 rounded-full" />}
+        brand={<><MakinariHeaderIsotype alt="" /><Skeleton className="hidden md:block h-8 w-28 rounded-full" /></>}
         center={<div className="absolute left-1/2 top-1/2 hidden w-2/5 -translate-x-1/2 -translate-y-1/2 md:block"><Skeleton className="h-9 w-full rounded-full" /></div>}
         actions={<div className="flex items-center gap-4">{Array.from({ length: 3 }, (_, index) => <Skeleton key={index} className="h-9 w-9 rounded-full" />)}</div>} />
       <div data-testid="self-service-skeleton-hero" className={shopHeroFrameClass}>

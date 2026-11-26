@@ -73,7 +73,7 @@ export function buildRecordOutput(draft: RecordOutputDraft, insights: RecordInsi
         ? (typeof relation === "string" ? insights.allRelationLabels[fieldPreviewKey(field, relation)] || relation : relation)
         : recordScalarFieldValue(field.type, draft.formData[field.name])
       const text = displayValue(value)
-      return text ? [`${recordFieldLabel(field)}: ${text}`] : []
+      return text ? [{ label: recordFieldLabel(field), value: text }] : []
     }),
     ...(includeInsights && { insights: insightLines(insights, draft.fields) }),
   }

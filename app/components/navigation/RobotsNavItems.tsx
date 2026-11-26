@@ -16,10 +16,11 @@ function resetBreadcrumbTrail() {
 
 interface RobotsNavItemsProps {
   isCollapsed: boolean
+  isMobile?: boolean
   onWorkspaceNavigation?: () => void
 }
 
-export function RobotsNavItems({ isCollapsed, onWorkspaceNavigation }: RobotsNavItemsProps) {
+export function RobotsNavItems({ isCollapsed, isMobile = false, onWorkspaceNavigation }: RobotsNavItemsProps) {
   const { t } = useLocalization()
   const { robotsViewMode, setRobotsViewMode } = useLayout()
   const pathname = usePathname()
@@ -52,8 +53,8 @@ export function RobotsNavItems({ isCollapsed, onWorkspaceNavigation }: RobotsNav
   const imprentaActive = isRobotsRoute && robotsViewMode === "imprenta"
   const workflowActive = isRobotsRoute && robotsViewMode === "workflow"
   const screenAccess = useOptionalScreenAccess()
-  const showContentCreator = !screenAccess || screenAccess.canAccessNavKey("contentCreator")
-  const showWorkflows = !screenAccess || screenAccess.canAccessNavKey("workflows")
+  const showContentCreator = !isMobile && (!screenAccess || screenAccess.canAccessNavKey("contentCreator"))
+  const showWorkflows = !isMobile && (!screenAccess || screenAccess.canAccessNavKey("workflows"))
 
   const activateAgentView = useCallback(() => {
     setRobotsViewMode("agent")

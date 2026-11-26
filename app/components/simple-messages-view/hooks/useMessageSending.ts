@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, type MutableRefObject } from 'react'
+import { useState, useRef, useEffect, useLayoutEffect, useCallback, type MutableRefObject } from 'react'
 import { useSite } from '@/app/context/SiteContext'
 import { useToast } from '@/app/components/ui/use-toast'
 import { type SelectedContextIds } from '@/app/services/context-service'
@@ -66,9 +66,13 @@ export const useMessageSending = ({
   const draftConnectorInstanceRef = useRef<{ scope: string; id: string } | null>(null)
   const { currentSite } = useSite()
   const { toast } = useToast()
-  const sendScope = `${currentSite?.id || ''}:${activeRobotInstance?.id || ''}`
-  const sendScopeRef = useRef(sendScope)
-  sendScopeRef.current = sendScope
+  const siteId = currentSite?.id
+  const sendScope = `${siteId || ''}:${activeRobotInstance?.id || ''}`
+  const sendScopeRef = useRef<string | null>(sendScope)
+  useLayoutEffect(() => {
+    sendScopeRef.current = sendScope
+    return () => { sendScopeRef.current = null }
+  }, [sendScope])
 
   const clearThinkingState = useCallback(() => {
     const currentInstanceId = activeRobotInstance?.id
@@ -124,13 +128,15 @@ export const useMessageSending = ({
   }, [activeRobotInstance?.id, clearThinkingState, selectedActivity])
 
   const handleAssistantMessage = useCallback(async (messageToSend: string, activity = selectedActivity, onAccepted?: () => void, requestId?: string) => {
-    if (!currentSite?.id) return
+    if (!siteId) return
+    const isCurrentSend = () => sendScopeRef.current === sendScope &&
+      (!requestId || activeRequestIdRef.current === requestId)
     let destination = activeRobotInstance
     let createdInstanceId: string | undefined
     if (connector?.id && !destination?.id) {
       const cached = draftConnectorInstanceRef.current
       const id = cached?.scope === sendScope ? cached.id : await createConnectorInstance?.()
-      if (sendScopeRef.current !== sendScope) return false
+      if (!isCurrentSend()) return false
       if (!isRobotConnectorId(id)) {
         toast({ title: 'Connector request not sent', description: 'Could not start the conversation. Try again.' })
         clearNewMakinaThinking()
@@ -145,7 +151,7 @@ export const useMessageSending = ({
     const success = await sendAssistantMessage({
       connectorIdHint: connector?.id,
       messageToSend,
-      siteId: currentSite.id,
+      siteId,
       selectedActivity: activity,
       selectedContext,
       skillSelection,
@@ -153,12 +159,20 @@ export const useMessageSending = ({
       imageParameters,
       videoParameters,
       audioParameters,
-      toast,
-      onAccepted: createdInstanceId ? () => { accepted = true; onAccepted?.() } : onAccepted,
+      toast: (notice) => { if (isCurrentSend()) toast(notice) },
+      isTurnCompleted: () => Boolean(requestId && destination?.id && logsRef?.current.some(log =>
+        log.instance_id === destination.id && log.site_id === siteId &&
+        log.log_type === 'user_action' && !log.details?.temp_message &&
+        log.details?.request_id === requestId && log.details?.status === 'completed',
+      )),
+      onAccepted: () => {
+        accepted = true
+        if (isCurrentSend()) onAccepted?.()
+      },
       onUnconfirmed: () => { unconfirmed = true },
       requestId,
     })
-    if (sendScopeRef.current !== sendScope) return success
+    if (!isCurrentSend()) return success
     if (unconfirmed) {
       // A lost HTTP stream is not workflow completion. Durable logs own recovery.
       unconfirmedDraftRef.current = { scope: sendScope, message: messageToSend, activity }
@@ -175,7 +189,7 @@ export const useMessageSending = ({
     }
     return unconfirmed ? null : success
   }, [
-    currentSite?.id,
+    siteId,
     selectedActivity,
     connector?.id,
     createConnectorInstance,
@@ -186,6 +200,7 @@ export const useMessageSending = ({
     imageParameters,
     videoParameters,
     audioParameters,
+    logsRef,
     toast,
     clearThinkingState,
     clearNewMakinaThinking,

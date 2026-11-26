@@ -19,8 +19,10 @@ jest.mock('@/app/context/LocalizationContext', () => ({
 it.each([undefined, 'buyer-site'])('uses the toolbar MuseoModerno font for the lowercase tender brand (%s)', siteSlug => {
   render(<TenderHeader siteSlug={siteSlug} />)
   const title = screen.getByText('Tenders')
-  expect(title).toHaveClass('lowercase')
-  expect(title.closest('[data-toolbar-font]')).toHaveAttribute('href', '/marketplace')
+  const brand = title.closest('[data-toolbar-font]')
+  expect(title).toHaveClass('lowercase', 'hidden', 'md:inline')
+  expect(brand).toHaveAttribute('href', '/marketplace')
+  expect(brand?.querySelector('img[src="/images/isotipo.svg"]')).toHaveClass('md:hidden')
   expect(screen.getByRole('search')).toHaveClass('w-2/5', 'absolute', 'hidden', 'md:block')
 })
 

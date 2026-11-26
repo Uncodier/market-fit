@@ -8,7 +8,7 @@ const doc: RecordOutputDocument = {
   title: "Plan / café",
   metadata: ["Owner: Jo"],
   description: "**Milestones**  \n\n```ts\n  const ready = true\n```",
-  fields: ["Status: Active", "Priority: High"],
+  fields: [{ label: "Status", value: "Active" }, { label: "Priority", value: "High" }],
   insights: ["On schedule"],
 }
 
@@ -46,7 +46,7 @@ function downloadedLink() {
   return click.mock.instances[0] as unknown as HTMLAnchorElement
 }
 
-it("downloads UTF-8 Markdown without reformatting the description or inventing missing sections", async () => {
+it("downloads UTF-8 Markdown with fields before the unchanged description", async () => {
   jest.useFakeTimers()
   await writeRecordOutput("markdown", { ...doc, insights: undefined })
   expect(downloadedLink().download).toBe("Plan - café.md")
@@ -55,20 +55,35 @@ it("downloads UTF-8 Markdown without reformatting the description or inventing m
   expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:record-test")
   jest.useRealTimers()
   expect(Buffer.from(await readDownload()).toString("utf8")).toBe(
-    `# Plan / café\n\nOwner: Jo\n\n## Description\n\n${doc.description}\n\n## Fields\n\n- Status: Active\n- Priority: High\n`,
+    `# Plan / café\n\nOwner: Jo\n\n## Fields\n\n| Field | Value |\n| --- | --- |\n| **Status** | Active |\n| **Priority** | High |\n\n## Description\n\n${doc.description}\n`,
   )
+})
+
+it("keeps delimiters, markup, and multiline values inside their Markdown table cells", async () => {
+  await writeRecordOutput("markdown", {
+    ...doc,
+    fields: [{ label: "Notes: Q3 | Q4", value: "0\r\nA | B\n<script>_text_ & more</script>" }],
+  })
+  const output = Buffer.from(await readDownload()).toString("utf8")
+  expect(output).toContain("| **Notes: Q3 &#124; Q4** | 0<br>A &#124; B<br>&#60;script&#62;&#95;text&#95; &#38; more&#60;/script&#62; |\n\n## Description")
+  expect(output).toContain("\n\n## Insights\n\n- On schedule\n")
+})
+
+it("omits the Fields section from Markdown when the record has no fields to export", async () => {
+  await writeRecordOutput("markdown", { ...doc, fields: [], description: "", insights: undefined })
+  expect(Buffer.from(await readDownload()).toString("utf8")).toBe("# Plan / café\n\nOwner: Jo\n")
 })
 
 it("prints only formatted record content, treating even markup in titles and fields as text", async () => {
   const payload = '</title><img src=x onerror="alert(1)"><script>oops()</script>'
-  await writeRecordOutput("print", { ...doc, title: payload, fields: [payload] })
+  await writeRecordOutput("print", { ...doc, title: payload, fields: [{ label: "Notes", value: payload }] })
   const html = jest.mocked(printHtml).mock.calls[0][0]
   const printed = new DOMParser().parseFromString(html, "text/html")
   expect(printed.title).toBe(payload)
   expect(printed.querySelector("h1")?.textContent).toBe(payload)
   expect(printed.querySelector("script, img, [onerror]")).toBeNull()
   expect(Array.from(printed.querySelectorAll("h2"), h => h.textContent)).toEqual(["Description", "Fields", "Insights"])
-  expect(Array.from(printed.querySelectorAll("li"), li => li.textContent)).toEqual([payload, "On schedule"])
+  expect(Array.from(printed.querySelectorAll("li"), li => li.textContent)).toEqual([`Notes: ${payload}`, "On schedule"])
   expect(printed.body.textContent).toContain(doc.metadata[0])
   expect(printed.body.textContent).toContain("Milestones")
   expect(printed.body.textContent).toContain("const ready = true")
@@ -88,7 +103,8 @@ it("downloads a readable multipage PDF, wrapping long tokens and handling non-Wi
   const lines = draw.mock.calls.map(([line]) => line)
   expect(lines.filter(line => /^W+$/.test(line)).join("")).toBe(longToken)
   expect(lines).toContain("Résumé [U+6771][U+4EAC] [U+1F30D]")
-  for (const text of [doc.title, ...doc.metadata, ...doc.fields, ...doc.insights!]) {
+  const fields = doc.fields.map(({ label, value }) => `${label}: ${value}`)
+  for (const text of [doc.title, ...doc.metadata, ...fields, ...doc.insights!]) {
     expect(lines.join("\n")).toContain(text)
   }
   for (const [line, opts] of draw.mock.calls) {

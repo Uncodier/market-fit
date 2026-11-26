@@ -34,6 +34,10 @@ import type {
   ResetPasswordValues,
 } from "./auth-form-schema"
 
+// Keep touch inputs at 16px so iOS Safari scrolls to focus without zooming.
+const authInputClassName = "h-12 border-0 text-[16px] md:text-[16px] neu-auth-input-light focus-visible:ring-0 dark:neu-auth-input"
+const authTextInputClassName = `${authInputClassName} md:[@media(pointer:fine)]:text-sm`
+
 type AuthFormContentProps = {
   authMode: AuthMode
   form: UseFormReturn<AuthFormValues>
@@ -139,7 +143,7 @@ export function AuthFormContent(props: AuthFormContentProps) {
                   <FormControl>
                     <InputWithIcon
                       leftIcon={<Mail className="h-4 w-4 text-muted-foreground" />}
-                      className="h-12 border-0 text-sm neu-auth-input-light focus-visible:ring-0 dark:neu-auth-input"
+                      className={authTextInputClassName}
                       placeholder={t("auth.emailPlaceholder") || "name@example.com"}
                       type="email"
                       {...field}
@@ -175,7 +179,7 @@ export function AuthFormContent(props: AuthFormContentProps) {
                     <FormControl>
                       <InputWithIcon
                         leftIcon={<User className="h-4 w-4 text-muted-foreground" />}
-                        className="h-12 border-0 text-sm neu-auth-input-light focus-visible:ring-0 dark:neu-auth-input"
+                        className={authTextInputClassName}
                         placeholder={t("auth.namePlaceholder") || "Your name"}
                         type="text"
                         {...field}
@@ -202,7 +206,7 @@ export function AuthFormContent(props: AuthFormContentProps) {
                     <FormControl>
                       <InputWithIcon
                         leftIcon={<Phone className="h-4 w-4 text-muted-foreground" />}
-                        className="h-12 border-0 text-sm neu-auth-input-light focus-visible:ring-0 dark:neu-auth-input"
+                        className={authTextInputClassName}
                         placeholder={
                           t("auth.phonePlaceholder") || "+1 (555) 000-0000"
                         }
@@ -239,7 +243,7 @@ export function AuthFormContent(props: AuthFormContentProps) {
                               <LoadingSkeleton size="sm" />
                             ) : null
                           }
-                          className="h-12 border-0 text-sm neu-auth-input-light focus-visible:ring-0 dark:neu-auth-input"
+                          className={authTextInputClassName}
                           placeholder={t("auth.enterCode") || "Enter code"}
                           type="text"
                           {...field}
@@ -269,7 +273,7 @@ export function AuthFormContent(props: AuthFormContentProps) {
                   <FormControl>
                     <InputWithIcon
                       leftIcon={<Mail className="h-4 w-4 text-muted-foreground" />}
-                      className="h-12 border-0 text-sm neu-auth-input-light focus-visible:ring-0 dark:neu-auth-input"
+                      className={authTextInputClassName}
                       placeholder={t("auth.emailPlaceholder") || "name@example.com"}
                       type="email"
                       {...field}
@@ -304,7 +308,7 @@ export function AuthFormContent(props: AuthFormContentProps) {
                         </button>
                       }
                       onRightIconClick={props.onTogglePassword}
-                      className="h-12 border-0 text-sm neu-auth-input-light focus-visible:ring-0 dark:neu-auth-input"
+                      className={authTextInputClassName}
                       type={showPassword ? "text" : "password"}
                       placeholder={
                         authMode === "sign_up"
@@ -334,7 +338,7 @@ export function AuthFormContent(props: AuthFormContentProps) {
                 <div className="space-y-3">
                   <InputWithIcon
                     leftIcon={<Shield className="h-4 w-4 text-muted-foreground" />}
-                    className="h-12 border-0 text-base neu-auth-input-light focus-visible:ring-0 dark:neu-auth-input"
+                    className={`${authInputClassName} md:[@media(pointer:fine)]:text-base`}
                     aria-label="Verification code"
                     placeholder="000000"
                     type="text"

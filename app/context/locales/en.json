@@ -7358,6 +7358,7 @@
   "records.table.category": "Category",
   "records.table.createdAt": "Created At",
   "records.table.noRecords": "No records found.",
+  "records.table.notes": "Notes",
   "records.table.of": "of",
   "records.table.records": "records",
   "records.table.status": "Status",

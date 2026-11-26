@@ -1,22 +1,31 @@
 "use client"
 
 import { useScopedPreviewState } from "../hooks/useScopedPreviewState"
-import { fetchPreviewBatches } from "../lib/entity-preview-request"
+import { buildPreviewRequests, fetchPreviewBatches, fieldPreviewKey } from "../lib/entity-preview-request"
 import { useSite } from "@/app/context/SiteContext"
 import React, { useMemo, useEffect } from "react"
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/app/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { Pagination } from "@/app/components/ui/pagination"
-import { EmptyCard } from "@/app/components/ui/empty-card"
-import { ClipboardList } from "@/app/components/ui/icons"
-import { RecordItem, resolveRelationsForSidebar } from "../actions"
+import { Button } from "@/app/components/ui/button"
+import { ChevronDown, ClipboardList } from "@/app/components/ui/icons"
+import { type RecordCategory, type RecordItem, resolveRelationsForSidebar } from "../actions"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 import { useLocalization } from "@/app/context/LocalizationContext"
-import { DocumentListHead, DocumentListRow, StatusDot, documentListShellClassName } from "@/app/components/documents/document-list"
+import { DocumentListHead, StatusDot, documentListShellClassName } from "@/app/components/documents/document-list"
 import { Checkbox } from "@/app/components/ui/checkbox"
 import { Skeleton } from "@/app/components/ui/skeleton"
-import { DynamicFieldBadges } from "./DynamicFieldBadges"
+import { groupTableRecords, type RecordGrouping } from "../lib/table-record-order"
+import { recordStatusGroup, recordStatusLabel } from "../lib/record-status"
+import { recordFieldLabel } from "../lib/field-values"
+import { descriptionProperty, statusProperty, titleProperty, type SaveRecordProperty } from "../lib/record-properties"
+import type { ValidatedTemplateField } from "../lib/template-validation"
+import { OpenRecordButton, RecordPropertyCell } from "./RecordPropertyEditor"
+import { RecordsTableProperties, type SaveTableProperty } from "./RecordsTableProperties"
+
+const NO_FIELDS: ValidatedTemplateField[] = []
+export const RECORDS_TABLE_PAGE_SIZES = [20, 50] as const
 
 interface RecordsTableProps {
   records: RecordItem[]
@@ -26,13 +35,17 @@ interface RecordsTableProps {
   onPageChange: (page: number) => void
   onItemsPerPageChange: (value: string) => void
   onRecordClick: (record: RecordItem) => void
-  categories: Array<{ id: string; name: string }>
+  onSaveProperty: SaveRecordProperty
+  activeCategory?: RecordCategory
+  categories: RecordCategory[]
+  onAddProperty: SaveTableProperty
+  onManageProperties: (category: RecordCategory, fieldId?: string) => void
+  onViewCategory: (category: RecordCategory) => void
+  emptyAction?: { label: string; run: () => void }
   selectedRecords: Set<string>
   onToggleRecordSelection: (recordId: string) => void
-  groupBy?: "status" | "category" | "date" | "team_member"
+  groupBy?: RecordGrouping
 }
-
-const STATUS_ORDER = ["draft", "published", "archived"] as const
 
 export function RecordsTable({
   records,
@@ -42,7 +55,13 @@ export function RecordsTable({
   onPageChange,
   onItemsPerPageChange,
   onRecordClick,
+  onSaveProperty,
+  activeCategory,
   categories,
+  onAddProperty,
+  onManageProperties,
+  onViewCategory,
+  emptyAction,
   selectedRecords,
   onToggleRecordSelection,
   groupBy = "status"
@@ -51,61 +70,27 @@ export function RecordsTable({
   const { t } = useLocalization()
   const totalPages = Math.ceil(totalRecords / itemsPerPage)
   const indexOfFirstItem = (currentPage - 1) * itemsPerPage
+  const fields: ValidatedTemplateField[] = activeCategory?.template_fields ?? NO_FIELDS
+  const hasPropertiesHeader = categories.length > 0 || Boolean(activeCategory)
+  const columnCount = 4 + fields.length + Number(!activeCategory) + Number(hasPropertiesHeader)
 
-  const { groupedRecords, groupKeys } = useMemo(() => {
-    const groups: Record<string, RecordItem[]> = {}
-    
-    if (groupBy === "status") {
-      STATUS_ORDER.forEach((status) => {
-        groups[status] = []
-      })
-    }
-
-    records.forEach((record) => {
-      let key = "unknown"
-      if (groupBy === "status") {
-        key = record.status && groups[record.status] ? record.status : "draft"
-      } else if (groupBy === "category") {
-        key = record.category_id || "uncategorized"
-      } else if (groupBy === "date") {
-        if (record.created_at) {
-          key = format(new Date(record.created_at), "yyyy-MM")
-        } else {
-          key = "unknown_date"
-        }
-      } else if (groupBy === "team_member") {
-        // Find the first relation that points to team_member (or site_users etc)
-        // Without full schema here, we might just look for any relation named "assignee" or "team_member" or similar
-        // Let's find any value in relations that is a UUID and hope we can resolve it, 
-        // or look up the category template fields to find which one is team_member.
-        // For simplicity, we just use "unassigned" as a fallback until we resolve names.
-        let memberId = "unassigned"
-        if (record.category?.template_fields) {
-          const teamMemberField = record.category.template_fields.find((f: any) => f.relationTarget === 'team_member')
-          if (teamMemberField && record.relations?.[teamMemberField.name]) {
-            memberId = record.relations[teamMemberField.name]
-          }
-        }
-        key = memberId
-      }
-
-      if (!groups[key]) groups[key] = []
-      groups[key].push(record)
-    })
-    
-    let keys = Object.keys(groups)
-    if (groupBy === "status") {
-      keys = STATUS_ORDER.slice()
-    } else if (groupBy === "date") {
-      keys = keys.sort((a, b) => b.localeCompare(a)) // sort descending
-    } else if (groupBy === "category" || groupBy === "team_member") {
-      keys = keys.sort()
-    }
-
-    return { groupedRecords: groups, groupKeys: keys }
-  }, [records, groupBy])
+  const { groupedRecords, groupKeys } = useMemo(() => groupTableRecords(records, groupBy), [records, groupBy])
 
   const [resolvedNames, setResolvedNames] = useScopedPreviewState<Record<string, string>>(currentSite?.id, {})
+  const [relationLabels, setRelationLabels] = useScopedPreviewState<Record<string, string>>(currentSite?.id, {})
+  const relationRequests = JSON.stringify(records.flatMap(record => record.site_id === currentSite?.id
+    ? buildPreviewRequests(fields, record.relations || {}) : []))
+
+  useEffect(() => {
+    let active = true
+    setRelationLabels({})
+    if (currentSite?.id && relationRequests !== "[]") {
+      fetchPreviewBatches(JSON.parse(relationRequests), currentSite.id, resolveRelationsForSidebar)
+        .then(labels => { if (active) setRelationLabels(labels) })
+        .catch(console.error)
+    }
+    return () => { active = false }
+  }, [currentSite?.id, relationRequests, setRelationLabels])
 
   useEffect(() => {
     let active = true
@@ -119,37 +104,52 @@ export function RecordsTable({
       }
     }
     return () => { active = false }
-  }, [currentSite?.id, groupBy, groupKeys])
+  }, [currentSite?.id, groupBy, groupKeys, setResolvedNames])
 
-  if (records.length === 0) {
-    return (
-      <EmptyCard
-        icon={<ClipboardList className="h-8 w-8 text-muted-foreground" />}
-        title={t("records.table.noRecords") || "No records found."}
-        description={t("records.empty.desc") || "There are no records to display at this time."}
-      />
-    )
-  }
+  const createdAtLabel = t("records.table.createdAt") || "Created At"
+  const notesProperty = { ...descriptionProperty, label: t("records.table.notes") || "Notes" }
 
   return (
     <div className={documentListShellClassName()}>
-      <Table className="min-w-[860px]">
+      <Table className="min-w-full" style={{ width: (activeCategory ? 832 : 992) + fields.length * 176 + (hasPropertiesHeader ? 48 : 0) }}>
         <TableHeader className="sticky top-0 z-10 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
           <TableRow className="hover:bg-transparent">
-            <DocumentListHead className="w-[40%] pl-4">{t("records.table.title") || "Title"}</DocumentListHead>
-            <DocumentListHead className="w-[20%]">{t("records.table.category") || "Category"}</DocumentListHead>
-            <DocumentListHead className="w-[20%]">{t("records.table.status") || "Status"}</DocumentListHead>
-            <DocumentListHead className="w-[20%] pr-4" align="right">{t("records.table.createdAt") || "Created At"}</DocumentListHead>
+            <DocumentListHead className="w-72 truncate pl-4">{t("records.table.title") || "Title"}</DocumentListHead>
+            <DocumentListHead className="w-60 truncate">{notesProperty.label}</DocumentListHead>
+            {!activeCategory && <DocumentListHead className="w-40 truncate">{t("records.table.category") || "Category"}</DocumentListHead>}
+            <DocumentListHead className="w-32 truncate">{t("records.table.status") || "Status"}</DocumentListHead>
+            <DocumentListHead className="w-44" align="right">
+              <span className="block truncate" title={createdAtLabel}>{createdAtLabel}</span>
+            </DocumentListHead>
+            {activeCategory && fields.map(field => <DocumentListHead key={field.id} className="w-44 border-l border-border/60 px-2">
+              <button type="button" className="group/column flex w-full items-center gap-1 rounded px-2 py-1.5 text-left uppercase hover:bg-muted"
+                title={`Manage property: ${recordFieldLabel(field)}`} onClick={() => onManageProperties(activeCategory, field.id)}>
+                <span className="min-w-0 flex-1 truncate">{recordFieldLabel(field)}</span>
+                <ChevronDown aria-hidden className="size-3 shrink-0 text-muted-foreground" />
+              </button>
+            </DocumentListHead>)}
+            {hasPropertiesHeader && <DocumentListHead className="sticky right-0 w-12 border-l border-border/60 bg-card px-2">
+              <RecordsTableProperties key={activeCategory?.id ?? currentSite?.id} {...{ activeCategory, categories }}
+                onAdd={onAddProperty} onManage={onManageProperties} onViewCategory={onViewCategory} />
+            </DocumentListHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
+          {records.length === 0 && <TableRow className="hover:bg-transparent">
+            <TableCell colSpan={columnCount} className="p-0">
+              <div className="sticky left-0 w-72 space-y-2 px-4 py-6 text-sm text-muted-foreground">
+                <p className="flex items-center gap-2"><ClipboardList className="size-4" /> {t("records.table.noRecords") || "No records found."}</p>
+                {emptyAction && <Button size="sm" variant="outline" onClick={emptyAction.run}>{emptyAction.label}</Button>}
+              </div>
+            </TableCell>
+          </TableRow>}
           {groupKeys.map((groupId) => {
             const statusItems = groupedRecords[groupId] || []
             if (statusItems.length === 0) return null
             
             let groupLabel = groupId
             if (groupBy === "status") {
-              groupLabel = t(`status.${groupId}`) || groupId.charAt(0).toUpperCase() + groupId.slice(1)
+              groupLabel = recordStatusLabel(groupId, t)
             } else if (groupBy === "category") {
               const cat = categories.find(c => c.id === groupId)
               groupLabel = cat ? cat.name : (t("records.uncategorized") || "Uncategorized")
@@ -168,7 +168,7 @@ export function RecordsTable({
             return (
               <React.Fragment key={groupId}>
                 <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={4} className="bg-muted/30 py-2.5">
+                  <TableCell colSpan={columnCount} className="bg-muted/30 py-2.5">
                     <div className="flex items-center gap-2">
                       {groupBy === "status" ? (
                         <StatusDot status={groupId} label={groupLabel} />
@@ -184,49 +184,52 @@ export function RecordsTable({
                 {statusItems.map((record) => {
                   const createdDate = record.created_at ? new Date(record.created_at) : null
                   const createdValid = createdDate && !isNaN(createdDate.getTime())
+                  const recordCategory = !activeCategory && categories.find(category => category.id === record.category_id)
 
                   return (
-                    <DocumentListRow
+                    <TableRow
                       key={record.id}
-                      onClick={() => onRecordClick(record)}
-                      accent="none"
-                      className={selectedRecords.has(record.id) ? "bg-primary/5" : undefined}
+                      className={cn("group/record border-border/50 hover:bg-muted/30", selectedRecords.has(record.id) && "bg-primary/5")}
                     >
-                      <TableCell className="py-3.5">
-                        <div className="flex min-w-0 items-center gap-3 pl-4">
+                      <TableCell className="px-2 py-1">
+                        <div className="flex min-w-0 items-center gap-2 pl-2 pr-2">
                           <Checkbox
+                            aria-label={`Select ${record.title}`}
                             checked={selectedRecords.has(record.id)}
                             onCheckedChange={() => onToggleRecordSelection(record.id)}
-                            onClick={(e) => e.stopPropagation()}
-                            className="mr-2"
                           />
-                          <div className="min-w-0 space-y-0.5">
-                            <p className="truncate text-sm font-medium leading-tight text-foreground" title={record.title}>
-                              {record.title}
-                            </p>
-                            {record.description ? (
-                              <p className="truncate text-[11px] leading-tight text-muted-foreground/80">{record.description}</p>
-                            ) : null}
-                            <div className="overflow-hidden">
-                              <DynamicFieldBadges record={record} limit={3} className="mt-1" />
-                            </div>
+                          <div className="min-w-0 flex-1">
+                            <RecordPropertyCell record={record} property={titleProperty} onSave={onSaveProperty} className="font-medium" />
                           </div>
+                          <OpenRecordButton title={record.title} onOpen={() => onRecordClick(record)} />
                         </div>
                       </TableCell>
-                      <TableCell className="py-3.5">
-                        <span className="text-sm font-medium text-muted-foreground">{record.category?.name || (t("records.uncategorized") || "Uncategorized")}</span>
+                      <TableCell className="px-2 py-1">
+                        <RecordPropertyCell record={record} property={notesProperty} onSave={onSaveProperty} className="text-muted-foreground" />
                       </TableCell>
-                      <TableCell className="py-3.5">
-                        <StatusDot status={record.status} label={record.status} />
+                      {!activeCategory && <TableCell className="truncate py-1 text-muted-foreground">
+                        {recordCategory ? <button type="button" className="max-w-full truncate rounded px-1 text-left hover:underline"
+                          title={`View ${recordCategory.name} properties`} onClick={() => onViewCategory(recordCategory)}>{recordCategory.name}</button>
+                          : record.category?.name || (t("records.uncategorized") || "Uncategorized")}
+                      </TableCell>}
+                      <TableCell className="px-2 py-1">
+                        <RecordPropertyCell record={record} property={statusProperty} onSave={onSaveProperty}>
+                          <StatusDot status={recordStatusGroup(record.status)} label={recordStatusLabel(recordStatusGroup(record.status), t)} />
+                        </RecordPropertyCell>
                       </TableCell>
-                      <TableCell className="py-3.5 text-right">
-                        <div className="flex flex-col items-end gap-0.5 pr-4">
-                          <span className="text-[15px] font-semibold tabular-nums tracking-tight whitespace-nowrap">
-                            {createdValid ? format(createdDate, "MMM d, yyyy") : "—"}
-                          </span>
-                        </div>
+                      <TableCell className="whitespace-nowrap py-1 text-right text-xs tabular-nums text-muted-foreground">
+                        {createdValid ? format(createdDate, "MMM d, yyyy") : "—"}
                       </TableCell>
-                    </DocumentListRow>
+                      {fields.map(field => {
+                        const id = record.relations?.[field.name]
+                        return <TableCell key={field.id} className="border-l border-border/50 px-2 py-1">
+                          <RecordPropertyCell record={record} property={{ key: "field", field, label: recordFieldLabel(field) }}
+                            relationLabel={field.type === "relation" && typeof id === "string" ? relationLabels[fieldPreviewKey(field, id)] : undefined}
+                            onSave={onSaveProperty} />
+                        </TableCell>
+                      })}
+                      {hasPropertiesHeader && <TableCell className="border-l border-border/50 p-0" />}
+                    </TableRow>
                   )
                 })}
               </React.Fragment>
@@ -234,7 +237,7 @@ export function RecordsTable({
           })}
         </TableBody>
       </Table>
-      <div className="flex items-center justify-between border-t border-border/60 px-4 py-3">
+      {records.length > 0 && <div className="flex items-center justify-between gap-4 px-4 py-3">
         <div className="flex items-center gap-3">
           <p className="text-xs text-muted-foreground">
             <span className="font-medium text-foreground">{Math.min(indexOfFirstItem + 1, totalRecords)}</span>
@@ -252,7 +255,7 @@ export function RecordsTable({
               <SelectValue placeholder={itemsPerPage.toString()} />
             </SelectTrigger>
             <SelectContent side="top">
-              {[5, 10, 20, 50].map((value) => (
+              {RECORDS_TABLE_PAGE_SIZES.map((value) => (
                 <SelectItem key={value} value={value.toString()}>
                   {value}
                 </SelectItem>
@@ -263,7 +266,7 @@ export function RecordsTable({
         {totalPages > 1 && (
           <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={onPageChange} />
         )}
-      </div>
+      </div>}
     </div>
   )
 }
@@ -274,9 +277,9 @@ export function RecordsTableSkeleton() {
       <Table>
         <TableHeader>
           <TableRow className="hover:bg-transparent">
-            {Array.from({ length: 4 }).map((_, index) => (
-              <DocumentListHead key={index} align={index === 3 ? "right" : "left"}>
-                <Skeleton className={cn("h-3 w-16", index === 3 && "ml-auto")} />
+            {Array.from({ length: 5 }).map((_, index) => (
+              <DocumentListHead key={index} align={index === 4 ? "right" : "left"}>
+                <Skeleton className={cn("h-3 w-16", index === 4 && "ml-auto")} />
               </DocumentListHead>
             ))}
           </TableRow>
@@ -287,11 +290,11 @@ export function RecordsTableSkeleton() {
               <TableCell className="py-3.5">
                 <div className="flex min-w-0 items-center gap-3 pl-4">
                   <Skeleton className="h-4 w-4 rounded" />
-                  <div className="min-w-0 space-y-1.5">
-                    <Skeleton className="h-4 w-36" />
-                    <Skeleton className="h-3 w-48" />
-                  </div>
+                  <Skeleton className="h-4 w-36" />
                 </div>
+              </TableCell>
+              <TableCell className="py-3.5">
+                <Skeleton className="h-3 w-32" />
               </TableCell>
               <TableCell className="py-3.5">
                 <Skeleton className="h-4 w-24" />

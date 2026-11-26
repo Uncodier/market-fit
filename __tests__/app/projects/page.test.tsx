@@ -29,6 +29,9 @@ beforeEach(() => {
 
 it('shows a placeholder only until displayable project rows become available', () => {
   const { container, rerender } = render(<ProjectsPage />)
+  const mark = screen.getByRole('img', { name: 'Makinari' })
+  expect(mark).toHaveAttribute('src', '/images/isotipo.svg')
+  expect(mark).toHaveStyle({ height: '48px', width: 'auto' })
   expect(container.querySelector('[aria-busy="true"]')).toBeInTheDocument()
   mockSite.sites = [project]
   rerender(<ProjectsPage />)
