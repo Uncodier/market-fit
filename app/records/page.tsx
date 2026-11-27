@@ -139,7 +139,7 @@ export default function RecordsPage() {
         if (result.error) throw new Error(result.error)
         toast.success(t("records.toast.templateCreated") || "Template created")
       }
-      refreshData()
+      await refreshData()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to save category")
       throw error

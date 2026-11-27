@@ -9,6 +9,8 @@ import {
   CreditCard,
   Moon,
   Share,
+  QrCode,
+  RotateCcw,
 } from "@/app/components/ui/icons"
 import { CommerceShellHeader, shellClasses } from "@/app/components/commerce/CommerceShellHeader"
 import { MakinariHeaderIsotype } from "@/app/components/commerce/MakinariHeaderIsotype"
@@ -22,9 +24,11 @@ import {
 function ShopSkeletonHeader({
   logoUrl,
   siteName,
+  selfService,
 }: {
   logoUrl: string | null
   siteName: string
+  selfService: boolean
 }) {
   const { t } = useLocalization()
   return (
@@ -74,7 +78,10 @@ function ShopSkeletonHeader({
               data-commerce-shell-actions-core
               className="flex items-center justify-end gap-4 min-w-0"
             >
-              <div className="hidden md:contents">
+              {selfService ? <>
+                <button type="button" className={shellClasses.iconButton} disabled aria-hidden><QrCode className="h-4 w-4" /></button>
+                <button type="button" className={shellClasses.iconButton} disabled aria-hidden><RotateCcw className="h-4 w-4" /></button>
+              </> : <div className="hidden md:contents">
                 <button
                   type="button"
                   className={`relative ${shellClasses.iconButton}`}
@@ -83,7 +90,7 @@ function ShopSkeletonHeader({
                 >
                   <Share className="h-4 w-4" />
                 </button>
-              </div>
+              </div>}
               <button
                 type="button"
                 className={`relative ${shellClasses.iconButton}`}
@@ -91,7 +98,7 @@ function ShopSkeletonHeader({
               >
                 <ShoppingCart className="h-4 w-4" />
               </button>
-              <button
+              {!selfService && <><button
                 type="button"
                 className={`md:hidden ${shellClasses.iconButton}`}
                 disabled
@@ -103,7 +110,7 @@ function ShopSkeletonHeader({
                 <Button asChild className="h-9 !min-w-0 px-[15px] py-[7px] font-bold">
                   <span>{t("shop.signIn") || "Sign In"}</span>
                 </Button>
-              </div>
+              </div></>}
             </div>
           </div>
         }
@@ -218,22 +225,28 @@ function ShopSkeletonHero({
 export function ShopHomeSkeleton({
   site,
   hasCategories,
+  selfService = false,
 }: {
   site?: ShopHomeSkeletonSite | null
   hasCategories?: boolean
+  selfService?: boolean
 }) {
   const layout = resolveShopHomeSkeletonLayout(site, hasCategories)
+  const { t } = useLocalization()
 
   return (
     <div
       data-testid="shop-home-skeleton"
+      role="status"
+      aria-busy="true"
+      aria-label={selfService ? t("shop.selfService.loading") : undefined}
       className="flex flex-col min-h-screen bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100"
     >
-      <ShopSkeletonHeader logoUrl={layout.logoUrl} siteName={layout.siteName} />
+      <ShopSkeletonHeader logoUrl={layout.logoUrl} siteName={layout.siteName} selfService={selfService} />
 
-      {layout.showHero ? (
+      {(layout.showHero || selfService) ? (
         <ShopSkeletonHero
-          showOrderBar={layout.showOrderBar}
+          showOrderBar={layout.showOrderBar && !selfService}
           showBadges={layout.showBadges}
           heroTitle={layout.heroTitle}
           heroSubtitle={layout.heroSubtitle}
@@ -251,6 +264,11 @@ export function ShopHomeSkeleton({
           </div>
         </div>
       ) : null}
+
+      {selfService && <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-3 px-4 pt-5 md:px-8">
+        <Skeleton className="h-5 w-48" />
+        <Skeleton className="h-10 w-48 rounded-full" />
+      </div>}
 
       {layout.showBadges && (
         <div
@@ -306,7 +324,7 @@ export function ShopHomeSkeleton({
           </div>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
+        <div data-testid="shop-skeleton-products" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
           {Array.from({ length: 8 }).map((_, i) => (
             <CatalogListingCardSkeleton key={i} />
           ))}

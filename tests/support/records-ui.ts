@@ -39,14 +39,15 @@ export async function reloadRecord(page: Page, title: string) {
   await assertWorkspace(page);
 }
 
-export async function chooseRelation(page: Page, label: string, name: string) {
+export async function chooseRelation(page: Page, label: string, name: string, display: 'text' | 'avatar' = 'text') {
   const input = page.getByRole('textbox', { name: label, exact: true });
   await input.fill(name);
   // RelationSelect exposes IDs on its portalled option divs, not native options.
   const option = page.locator('[data-relation-id]').filter({ has: page.getByText(name, { exact: true }) });
   await expect(option).toHaveCount(1);
   await option.click();
-  await expect(input).toHaveValue(name);
+  if (display === 'avatar') await expect(input).toHaveValue('');
+  else await expect(input).toHaveValue(name);
 }
 
 /** Negative picker assertions wait for the actual filtered Data API read, not a transient empty list. */

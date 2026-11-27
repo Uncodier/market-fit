@@ -7,6 +7,7 @@ import { recordPropertyUpdate } from "@/app/records/lib/record-properties"
 import { resolveRelationsForSidebar, type RecordCategory, type RecordItem } from "@/app/records/actions"
 
 jest.mock("@/app/context/SiteContext", () => ({ useSite: () => ({ currentSite: { id: "site" } }) }))
+jest.mock("@/app/hooks/use-user-data", () => ({ useUserData: () => ({ userData: {} }) }))
 jest.mock("@/app/context/LocalizationContext", () => ({ useLocalization: () => ({ t: () => "" }) }))
 jest.mock("@/app/records/actions", () => ({ resolveRelationsForSidebar: jest.fn() }))
 jest.mock("@/app/records/hooks/useRelationOptions", () => ({
@@ -49,14 +50,17 @@ beforeEach(() => {
   jest.mocked(resolveRelationsForSidebar).mockResolvedValue({ "team_member:owner-id": "Alex" })
 })
 
-it("shows category fields in order, resolves relation labels, and edits a cell without opening the record", async () => {
+it("shows category fields in order, renders member avatars, and edits a cell without opening the record", async () => {
   const { onOpen, onSave } = renderTable(category)
   expect(screen.getAllByRole("columnheader").map(header => header.textContent)).toEqual([
     "Title", "Notes", "Status", "Created At", "Amount", "Paid", "Owner", "Priority", "",
   ])
   expect(screen.getByText("0")).toBeInTheDocument()
   expect(screen.getByText("No")).toBeInTheDocument()
-  expect(await screen.findByText("Alex")).toBeInTheDocument()
+  const avatar = await screen.findByRole("img", { name: "Alex" })
+  expect(avatar).toHaveTextContent("A")
+  expect(avatar.closest("button")).toHaveAttribute("title", "Alex")
+  expect(screen.queryByText("Alex")).not.toBeInTheDocument()
   act(() => screen.getByRole("button", { name: "Edit Amount for Order A" }).focus())
   const input = screen.getByRole("spinbutton", { name: "Amount" })
   expect(input).toHaveFocus()
@@ -126,12 +130,12 @@ it.each([undefined, category])("puts notes in their own editable cell", async ac
   fireEvent.change(screen.getByRole("textbox", { name: "Notes" }), { target: { value: "First line\nSecond line" } })
   act(() => screen.getByRole("button", { name: "Open record: Order A" }).focus())
   await waitFor(() => expect(onSave).toHaveBeenCalledWith(record, { description: "First line\nSecond line" }))
-  if (activeCategory) await screen.findByText("Alex")
+  if (activeCategory) await screen.findByRole("img", { name: "Alex" })
 })
 
 it("opens the relation menu on focus and saves as soon as an option is picked", async () => {
   const { onSave } = renderTable(category)
-  await screen.findByText("Alex")
+  await screen.findByRole("img", { name: "Alex" })
   act(() => screen.getByRole("button", { name: "Edit Owner for Order A" }).focus())
   const input = screen.getByRole("combobox", { name: "Owner" })
   expect(input).toHaveFocus()
@@ -144,7 +148,7 @@ it("opens the relation menu on focus and saves as soon as an option is picked", 
 
 it("lets the user choose a select option with the keyboard and saves immediately", async () => {
   const { onSave } = renderTable(category)
-  await screen.findByText("Alex")
+  await screen.findByRole("img", { name: "Alex" })
   act(() => screen.getByRole("button", { name: "Edit Priority for Order A" }).focus())
   const input = screen.getByRole("combobox", { name: "Priority" })
   expect(screen.getByRole("listbox", { name: "Priority" })).toBeInTheDocument()
@@ -153,6 +157,18 @@ it("lets the user choose a select option with the keyboard and saves immediately
   fireEvent.keyDown(input, { key: "Enter" })
   await waitFor(() => expect(onSave).toHaveBeenCalledWith(record, { data: { amount: 0, paid: false, priority: "High" } }))
   expect(screen.queryByRole("listbox", { name: "Priority" })).not.toBeInTheDocument()
+})
+
+it("uses the saved template's new order for headers and cells even when the row has the old template", async () => {
+  const reordered = { ...category, template_fields: [...category.template_fields].reverse() }
+  renderTable(reordered)
+  expect(screen.getAllByRole("columnheader").map(header => header.textContent)).toEqual([
+    "Title", "Notes", "Status", "Created At", "Priority", "Owner", "Paid", "Amount", "",
+  ])
+  const row = screen.getByRole("button", { name: "Edit Title for Order A" }).closest("tr")!
+  expect(within(row).getAllByRole("cell").slice(4, 8).map(cell => within(cell).getByRole("button").getAttribute("aria-label")))
+    .toEqual(["Edit Priority for Order A", "Edit Owner for Order A", "Edit Paid for Order A", "Edit Amount for Order A"])
+  await screen.findByRole("img", { name: "Alex" })
 })
 
 it("adds a typed property from the header of an empty category", async () => {

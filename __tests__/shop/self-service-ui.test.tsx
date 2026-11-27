@@ -11,6 +11,7 @@ import { useSelfService } from "@/app/shop/[siteSlug]/self-service/SelfServicePr
 import { useRouter } from "next/navigation"
 import { Html5Qrcode } from "html5-qrcode"
 import { getSelfServiceModifierOptions } from "@/app/commerce/self-service-modifier-options-actions"
+import type { ModifierGroupWithItems } from "@/app/catalog/modifier-types"
 import { shopItem } from "./catalog-fixture"
 import { LocalizationProvider } from "@/app/context/LocalizationContext"
 
@@ -21,6 +22,7 @@ jest.mock("@testing-library/react", () => {
 
 jest.mock("@/app/shop/[siteSlug]/self-service/SelfServiceProvider", () => ({ useSelfService: jest.fn() }))
 jest.mock("@/app/shop/[siteSlug]/self-service/SelfServiceHeader", () => ({ SelfServiceHeader: () => <header>Self-service</header> }))
+jest.mock("@/app/shop/[siteSlug]/ShopSiteFooter", () => ({ ShopSiteFooter: () => null }))
 jest.mock("@/app/context/DisplayCurrencyContext", () => ({ useDisplayCurrency: () => ({ formatPrice: (price: number) => `$${price}` }) }))
 jest.mock("@/app/components/commerce/PromptImage", () => ({ PromptImage: () => null }))
 jest.mock("@/app/components/commerce/pdp/PdpItemDescription", () => ({ PdpItemDescription: () => null }))
@@ -178,10 +180,12 @@ it("uses the authoritative free order total for payment messaging", async () => 
 })
 
 it("keeps PDP variant/modifier selection and checkout in the location route without login", async () => {
+  jest.mocked(getSelfServiceModifierOptions).mockResolvedValue({ data: [{ id: "milk" }] as ModifierGroupWithItems[] })
   const item = { ...product, _shop: { hasVariants: true, sellable: false, children: [{ ...product, id: "small", is_marketplace_listed: false, metadata: { option_values: { size: "small" } } }] },
     metadata: { pickup_location_ids: ["branch"], variant_axes: [{ id: "size", kind: "custom" as const, values: [{ id: "small", label: "Small" }] }] } }
   const { container } = render(<SelfServiceProductDetail item={item} modifierGroups={[]} />)
   expect(container.firstElementChild).toHaveClass("bg-background", "text-foreground")
+  expect(screen.getByRole("heading", { level: 1, name: item.name })).toBeVisible()
   const decrease = screen.getByRole("button", { name: "Decrease quantity" })
   expect(decrease).toBeDisabled()
   fireEvent.click(screen.getByRole("button", { name: "Increase quantity" }))
@@ -196,6 +200,20 @@ it("keeps PDP variant/modifier selection and checkout in the location route with
     [{ groupId: "milk", catalogItemId: "oat", name: "Oat", cartQty: 1, cartPrice: 2 }])
   expect(push).toHaveBeenCalledWith("/shop/branch?cart=1")
   expect(screen.queryByText(/sign in/i)).not.toBeInTheDocument()
+})
+
+it("uses the shared photo gallery without changing the kiosk order when previewing images", () => {
+  const item = { ...product, image_url: "https://example.com/coffee.jpg", metadata: {
+    gallery: ["https://example.com/menu.jpg"],
+  } }
+  render(<SelfServiceProductDetail item={item} modifierGroups={[]} />)
+  const thumbnails = screen.getAllByRole("button", { name: /go to slide/i })
+  expect(thumbnails).toHaveLength(2)
+  expect(thumbnails[0]).toHaveAttribute("aria-pressed", "true")
+  fireEvent.click(thumbnails[1])
+  expect(thumbnails[1]).toHaveAttribute("aria-pressed", "true")
+  expect(addItem).not.toHaveBeenCalled()
+  expect(push).not.toHaveBeenCalled()
 })
 
 it("disables the host and explains when required options cannot be supplied", () => {

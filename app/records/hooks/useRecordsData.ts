@@ -1,6 +1,7 @@
 import { useState, useEffect, useLayoutEffect, useCallback, useRef } from "react"
-import { getRecordCategories, getRecords, updateRecord, updateRecordCategory, RecordCategory, RecordItem } from "../actions"
+import { getRecordCategories, getRecords, updateRecordCategory, RecordCategory, RecordItem } from "../actions"
 import type { SaveRecordProperty } from "../lib/record-properties"
+import { saveRecordDocument } from "../lib/record-document-save"
 import type { ValidatedTemplateField } from "../lib/template-validation"
 import { toast } from "sonner"
 import { useOptionalSite } from "@/app/context/SiteContext"
@@ -56,18 +57,20 @@ export function useRecordsData(siteId?: string) {
 
   const saveRecordProperty: SaveRecordProperty = async (record, updates) => {
     if (record.site_id !== activeSite.current) return { error: "The active site has changed." }
-    const result = await updateRecord(record.id, updates, record.updated_at)
-    if (record.site_id !== activeSite.current) return result
-    if (result.conflict) await fetchData()
-    if (result.record) {
-      const saved = result.record
-      setRecords(current => current.map(item =>
-        item.site_id === record.site_id && item.id === record.id && item.updated_at === record.updated_at
-          ? { ...item, ...saved, category: item.category }
-          : item,
-      ))
+    const result = await saveRecordDocument(record, updates)
+    if (record.site_id !== activeSite.current) return { error: "The active site has changed." }
+    if ("error" in result) {
+      if (result.conflict) await fetchData()
+      return record.site_id === activeSite.current ? result : { error: "The active site has changed." }
     }
-    return result
+    const saved = result.record
+    setRecords(current => current.map(item =>
+      item.site_id === record.site_id && item.id === record.id
+        && (item.updated_at === record.updated_at || item.updated_at === result.previousVersion)
+        ? saved
+        : item,
+    ))
+    return {}
   }
 
   const addTableProperty = async (category: RecordCategory, field: ValidatedTemplateField) => {

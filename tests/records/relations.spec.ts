@@ -70,12 +70,13 @@ test('sales-order preview uses sale_orders and member link persists user_id rath
   ]);
   const record = await createRecordUI(page, records, category);
   await chooseRelation(page, 'Order', targets.order.order_number);
-  await chooseRelation(page, 'Assignee', targets.member.name);
+  await chooseRelation(page, 'Assignee', targets.member.name, 'avatar');
   await saveRecord(page, records, record.id, { relations: { order: targets.order.id, assignee: targets.member.user_id } });
   expect((await records.read('records', record.id)).relations.assignee).not.toBe(targets.member.id);
   await reloadRecord(page, record.title);
   await expect(page.getByRole('textbox', { name: 'Order', exact: true })).toHaveValue(targets.order.order_number);
-  await expect(page.getByRole('textbox', { name: 'Assignee', exact: true })).toHaveValue(targets.member.name);
+  await expect(page.getByRole('img', { name: targets.member.name, exact: true })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'Assignee', exact: true })).toHaveValue('');
   await page.getByRole('radio', { name: 'Relations', exact: true }).click();
   const panel = page.getByText('Explicit Relations', { exact: true }).locator('..');
   await expect(panel.getByText(targets.order.order_number, { exact: true })).toBeVisible();

@@ -22,6 +22,7 @@ jest.mock("@/app/records/[id]/components/use-relation-options", () => ({
   useRelationOptions: (...args: unknown[]) => mockRelationOptions(...args as []),
 }))
 jest.mock("@/app/context/SiteContext", () => ({ useSite: () => ({ currentSite: { id: "site-a" } }) }))
+jest.mock("@/app/hooks/use-user-data", () => ({ useUserData: () => ({ userData: {} }) }))
 jest.mock("@/app/records/[id]/components/AIFieldPreview", () => ({ AIFieldPreview: () => null }))
 jest.mock("@/app/records/[id]/components/TableWidget", () => ({ TableWidget: () => null }))
 jest.mock("@/app/components/ui/emoji-picker", () => ({ EmojiPicker: () => null }))

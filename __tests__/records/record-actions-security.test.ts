@@ -134,7 +134,7 @@ describe("record action authorization", () => {
     expect(query.update).not.toHaveBeenCalled()
   })
 
-  it.each(["stale tab", "late concurrent write", "concurrent template edit"])("rejects a %s without overwriting the newer version", async (scenario) => {
+  it.each(["stale tab", "late concurrent write", "concurrent template edit", "transient lock"])("classifies a %s without overwriting the newer version", async (scenario) => {
     const version = "2026-11-10T00:00:00.123456Z"
     const query: any = {
       select: jest.fn(() => query), eq: jest.fn(() => query), is: jest.fn(() => query),
@@ -143,7 +143,8 @@ describe("record action authorization", () => {
         .mockResolvedValueOnce({ data: { site_id: siteId, category_id: categoryId, data: {}, relations: {}, status: "draft",
           updated_at: scenario === "stale tab" ? "2026-11-10T00:00:00.123457Z" : version }, error: null })
         .mockResolvedValueOnce({ data: { template_fields: [] }, error: null })
-        .mockResolvedValueOnce({ data: null, error: scenario === "concurrent template edit" ? { code: "40001" } : null }),
+        .mockResolvedValueOnce({ data: null, error: scenario === "concurrent template edit" ? { code: "40001" }
+          : scenario === "transient lock" ? { code: "55P03" } : null }),
     }
     const rpc = jest.fn(() => query)
     jest.mocked(createClient).mockResolvedValue({
@@ -151,7 +152,8 @@ describe("record action authorization", () => {
       from: jest.fn(() => query),
       rpc,
     } as never)
-    expect(await updateRecord(recordId, { title: "Stale title" }, version)).toMatchObject({ conflict: true })
+    expect(await updateRecord(recordId, { title: "Stale title" }, version))
+      .toMatchObject(scenario === "transient lock" ? { retryable: true } : { conflict: true })
     if (scenario === "stale tab") expect(rpc).not.toHaveBeenCalled()
     else expect(rpc).toHaveBeenCalledWith("save_record_at_template", expect.objectContaining({ p_updated_at: version }))
   })

@@ -314,8 +314,27 @@ describe("record detail view switch", () => {
     await waitFor(() => expect(updateRecord).toHaveBeenLastCalledWith(expect.any(String),
       expect.objectContaining({ title: "Newer title" }), "2026-01-01T00:00:01.123456Z"))
   })
-  it("preserves a stale draft and disables repeated saving after a record conflict", async () => {
-    jest.mocked(updateRecord).mockResolvedValue({ error: "Reload before saving", conflict: true })
+  it("recovers on the same click and displays other saved changes", async () => {
+    const opened = await getRecordById("")
+    jest.mocked(getRecordById).mockResolvedValueOnce(opened).mockResolvedValueOnce({ ...opened, record: {
+      ...opened.record!, title: "Another tab’s title", updated_at: "2026-01-01T00:00:01Z",
+    } })
+    jest.mocked(updateRecord).mockResolvedValueOnce({ error: "Version changed", conflict: true })
+    render(<RecordDetailPage />)
+    fireEvent.click(await screen.findByRole("button", { name: "Edit reporting date" }))
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }))
+    expect(await screen.findByText("Document draft: Another tab’s title")).toBeInTheDocument()
+    expect(screen.getByText("Saved reporting date: 2025-12-31")).toBeInTheDocument()
+    expect(screen.getByRole("status")).toHaveTextContent("saved")
+    expect(updateRecord).toHaveBeenCalledTimes(2)
+  })
+
+  it("preserves a conflicting draft and blocks saves from both the button and shortcut", async () => {
+    const opened = await getRecordById("")
+    jest.mocked(getRecordById).mockResolvedValueOnce(opened).mockResolvedValueOnce({ ...opened, record: {
+      ...opened.record!, title: "Another tab’s title", updated_at: "2026-01-01T00:00:01Z",
+    } })
+    jest.mocked(updateRecord).mockResolvedValueOnce({ error: "Version changed", conflict: true })
     render(<RecordDetailPage />)
     await screen.findByText("Document draft: Original title")
     fireEvent.click(screen.getByRole("button", { name: "Edit document" }))
@@ -324,6 +343,7 @@ describe("record detail view switch", () => {
     fireEvent.click(screen.getByRole("button", { name: "Edit document" }))
     expect(screen.getByText("Document draft: Newer title")).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled()
+    fireEvent(window, new Event("records:save"))
     expect(updateRecord).toHaveBeenCalledTimes(1)
   })
 })

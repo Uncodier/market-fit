@@ -2,23 +2,29 @@
 
 import { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Button } from "@/app/components/ui/button"
-import { PromptImage } from "@/app/components/commerce/PromptImage"
 import { QuantityStepper } from "@/app/components/commerce/QuantityStepper"
+import { PdpCtaButton } from "@/app/components/commerce/pdp/PdpCtaButton"
+import { PdpMobileBuyBar } from "@/app/components/commerce/pdp/PdpMobileBuyBar"
+import { PdpItemDescription } from "@/app/components/commerce/pdp/PdpItemDescription"
+import { PdpModifierSkeleton } from "@/app/components/commerce/pdp/PdpPageSkeleton"
+import { PdpProductFrame } from "@/app/components/commerce/pdp/PdpProductFrame"
+import { PdpProductGallery } from "@/app/components/commerce/pdp/PdpProductGallery"
+import { PdpProductSummary } from "@/app/components/commerce/pdp/PdpProductSummary"
 import { VariantPicker } from "@/app/components/commerce/pdp/VariantPicker"
 import { ModifierPickerPanel, isModifierSelectionValid } from "@/app/components/commerce/ModifierPickerPanel"
-import { PdpItemDescription } from "@/app/components/commerce/pdp/PdpItemDescription"
 import { modifiersUnitTotal } from "@/app/commerce/cart-modifiers"
 import { isSelfServiceItem } from "@/app/commerce/self-service-options"
 import { isItemCompatibleWithFulfillment } from "@/app/commerce/delivery-options"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useDisplayCurrency } from "@/app/context/DisplayCurrencyContext"
-import { resolveItemImage } from "@/app/lib/image-utils"
+import { buildPdpGalleryEntries, resolveItemImage } from "@/app/lib/image-utils"
+import { usePromptImageDelivery } from "@/app/components/commerce/PublicImageDelivery"
 import type { CatalogItem } from "@/app/types"
 import type { ModifierGroupWithItems } from "@/app/catalog/modifier-types"
 import { SelfServiceHeader } from "./SelfServiceHeader"
 import { useSelfService } from "./SelfServiceProvider"
 import { useSelfServiceModifiers } from "./useSelfServiceModifiers"
+import { ShopSiteFooter } from "../ShopSiteFooter"
 
 const modifierErrorKeys: Record<string, string> = {
   "Invalid product option request.": "shop.selfService.product.invalidRequest",
@@ -43,10 +49,11 @@ export function SelfServiceProductDetail({ item, modifierGroups, modifierError, 
   const { context, addItem, fulfillment } = useSelfService()
   const { t } = useLocalization()
   const { formatPrice } = useDisplayCurrency()
+  const delivery = usePromptImageDelivery()
   const router = useRouter()
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({})
   const [quantity, setQuantity] = useState(1)
-  const [error, setError] = useState("")
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null)
   const axes = item.metadata?.variant_axes || []
   const children = useMemo<CatalogItem[]>(() => (item._shop?.children || []).map((child) => ({
     ...child,
@@ -69,32 +76,45 @@ export function SelfServiceProductDetail({ item, modifierGroups, modifierError, 
   const currency = active.currency || context.site.settings?.currency || "USD"
   const unit = Number(active.target_sale_price || 0) + modifiersUnitTotal(modifiers)
   const home = `/shop/${context.location.id}`
+  const gallery = useMemo(() => buildPdpGalleryEntries({ parent: item, children, size: "full", delivery }), [item, children, delivery])
+  const variantImageIndex = resolved && resolved.id !== item.id ? gallery.findIndex((entry) => entry.catalogItemId === resolved.id) : -1
+  const selectedIndex = previewIndex ?? Math.max(0, variantImageIndex)
 
-  return <div className="min-h-screen bg-background text-foreground">
+  return <div className="flex min-h-screen flex-col bg-background text-foreground">
     <SelfServiceHeader backHref={home} />
-    <main className="mx-auto grid max-w-6xl gap-8 px-4 py-8 md:grid-cols-2 md:px-8">
-      <div className="overflow-hidden rounded-2xl bg-muted">
-        <PromptImage src={resolveItemImage(active, "full")} alt={active.name} className="aspect-square w-full object-cover" />
-      </div>
-      <div className="space-y-6">
-        <div><h2 className="text-3xl font-bold">{item.name}</h2><p className="mt-3 text-2xl font-semibold">{formatPrice(unit, currency)}</p></div>
-        <PdpItemDescription description={item.description} variant="section" showShort />
-        <VariantPicker axes={axes} selectedOptions={selectedOptions} onOptionSelect={(axis, value) => setSelectedOptions((previous) => ({ ...previous, [axis]: value }))}
-          childrenItems={children} isItemAvailable={available} currency={currency} />
-        {!modifierState.ready ? <p role="status">{t("shop.selfService.product.loading")}</p> : modifierState.error ? <p role="alert">{translateModifierMessage(modifierState.error, t)}</p>
+    <main className="flex-1 pb-24 lg:pb-0">
+      <PdpProductFrame gallery={<PdpProductGallery itemName={item.name} entries={gallery} selectedIndex={selectedIndex}
+        mainSrc={gallery[selectedIndex]?.url || resolveItemImage(active, "full", delivery)} onThumbClick={setPreviewIndex} />}
+        below={<PdpItemDescription description={item.description} variant="section" className="mt-12 max-w-3xl" />}>
+        <PdpProductSummary name={item.name} description={item.description} price={unit} currency={currency}
+          chips={[item._shop?.categoryName ? { label: item._shop.categoryName } : null]} />
+        {axes.length > 0 && <VariantPicker axes={axes} selectedOptions={selectedOptions} onOptionSelect={(axis, value) => {
+          setPreviewIndex(null)
+          setSelectedOptions((previous) => ({ ...previous, [axis]: value }))
+        }} childrenItems={children} isItemAvailable={available} currency={currency} presentation="pdp"
+          fallbackImageUrl={gallery[0]?.url} />}
+        {!modifierState.ready ? <div role="status" aria-label={t("shop.selfService.product.loading")}><PdpModifierSkeleton /></div>
+          : modifierState.error ? <p role="alert">{translateModifierMessage(modifierState.error, t)}</p>
           : modifierState.unavailableReason ? <p role="alert">{translateModifierMessage(modifierState.unavailableReason, t)}</p>
-          : <ModifierPickerPanel key={modifierState.key} groups={modifierState.groups} value={modifiers} onChange={setModifiers} currency={currency} />}
-        <QuantityStepper label={t("shop.selfService.product.quantity")} quantity={quantity}
-          min={1} canIncrease={quantity < 1000} onChange={setQuantity} />
+          : modifierState.groups.length > 0 && <div className="mb-8 sm:mb-10">
+            <h2 className="mb-4 text-lg font-bold">{t("pos.modifiers.title")}</h2>
+            <ModifierPickerPanel key={modifierState.key} groups={modifierState.groups} value={modifiers} onChange={setModifiers} currency={currency} />
+          </div>}
         {!resolved && <p className="text-sm text-muted-foreground">{t("shop.selfService.product.chooseOptions")}</p>}
         {resolved && !available(resolved) && <p role="alert">{t("shop.selfService.product.unavailable")}</p>}
-        {error && <p role="alert" className="text-red-600">{t(error)}</p>}
-        <Button type="button" size="lg" className="w-full" disabled={!canAdd} onClick={() => {
-          if (!resolved || !canAdd) { setError("shop.selfService.product.requiredOptions"); return }
-          addItem(resolved, quantity, modifiers)
-          router.push(`${home}?cart=1`)
-        }}>{t("shop.selfService.product.add", { price: formatPrice(unit * quantity, currency) })}</Button>
-      </div>
+        <PdpMobileBuyBar fullWidthCta className="lg:static lg:mt-4 lg:block lg:rounded-3xl lg:border lg:bg-card lg:p-8">
+          <div className="flex items-center gap-3">
+            <QuantityStepper compact label={t("shop.selfService.product.quantity")} quantity={quantity}
+              min={1} canIncrease={quantity < 1000} onChange={setQuantity} />
+            <PdpCtaButton className="min-w-0 flex-1 whitespace-normal" disabled={!canAdd} onClick={() => {
+              if (!resolved || !canAdd) return
+              addItem(resolved, quantity, modifiers)
+              router.push(`${home}?cart=1`)
+            }}>{t("shop.selfService.product.add", { price: formatPrice(unit * quantity, currency) })}</PdpCtaButton>
+          </div>
+        </PdpMobileBuyBar>
+      </PdpProductFrame>
     </main>
+    <div className="pb-24 lg:pb-0"><ShopSiteFooter siteName={context.site.name} /></div>
   </div>
 }

@@ -357,6 +357,7 @@ export async function updateRecord(
       .maybeSingle()
     
     if (error?.code === "40001") return { error: "The field template changed or is unavailable. Reload before saving again.", conflict: true }
+    if (error?.code === "55P03") return { error: "Another Records change is in progress. Try saving again.", retryable: true }
     if (error) throw error
     if (!record) return { error: "This record changed elsewhere. Reload before saving again.", conflict: true }
     revalidatePath("/records")

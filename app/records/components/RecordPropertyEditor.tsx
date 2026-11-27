@@ -156,9 +156,7 @@ export function RecordPropertyCell({ record, property, onSave, relationLabel, cl
 
   function begin() {
     if (suppressFocus.current || session.current || saving) return
-    const retry = failure?.retry
-    const draft = retry && retry.record.updated_at === record.updated_at
-      ? retry : { record, value: readRecordProperty(record, property) }
+    const draft = failure?.retry ?? { record, value: readRecordProperty(record, property) }
     session.current = draft
     setFailure(undefined)
     setValue(draft.value)

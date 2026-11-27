@@ -29,3 +29,11 @@ it("does not restore an inactive employee when searching by their name", async (
   act(() => result.current.handleSearchChange("team_member", "active@example.test"))
   await waitFor(() => expect(result.current.relationOptions.team_member).toHaveLength(1))
 })
+
+it("retains the selected active member's label while browsing other names", async () => {
+  const { result } = renderHook(() => useRelationOptions(fields, "site-one", ["active-user"]))
+  await waitFor(() => expect(result.current.relationOptions.team_member).toHaveLength(1))
+  act(() => result.current.handleSearchChange("team_member", "someone else"))
+  await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2))
+  expect(result.current.relationOptions.team_member).toEqual([expect.objectContaining({ id: "active-user" })])
+})

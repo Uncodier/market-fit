@@ -13,12 +13,12 @@ jest.mock("@/app/context/PermissionContext", () => ({ useOptionalPermissions: ()
 const category: RecordCategory = {
   id: "category", site_id: "site", name: "A very long category label that exceeds the sidebar width",
   description: null, icon: null, created_at: "2026-01-01", updated_at: "2026-01-01",
-  template_fields: [{ name: "Members", type: "relation", relationTarget: "team_member" }],
+  template_fields: [{ id: "sales-field", name: "sales_man", label: "Sales representative", type: "relation", relationTarget: "team_member" }],
 }
 const records: RecordItem[] = [{
   id: "record", site_id: "site", category_id: category.id, title: "Record",
   description: null, status: "draft", created_at: "2026-01-01", updated_at: "2026-01-01",
-  data: {}, relations: { Members: "member" },
+  data: {}, relations: { sales_man: "member" },
 }]
 
 it("uses a subtle heading with the create action at the far right and a fixed footer", () => {
@@ -56,12 +56,13 @@ it("constrains the scroll content and pills while retaining full labels and sele
   const onSelectCategory = jest.fn()
   const { container } = render(<RecordsSidebar
     categories={[category]} records={records} selectedCategory={category.id}
-    selectedRelation={{ fieldName: "Members", targetId: "member" }}
+    selectedRelation={{ fieldName: "sales_man", targetId: "member" }}
     onSelectCategory={onSelectCategory} isCollapsed={false}
   />)
 
   const label = await screen.findByText(name)
-  for (const text of [label, screen.getByText(category.name), screen.getByText("Members")]) {
+  expect(screen.queryByText("sales_man")).not.toBeInTheDocument()
+  for (const text of [label, screen.getByText(category.name), screen.getByText("Sales representative")]) {
     expect(text).toHaveClass("min-w-0", "truncate", "flex-1")
     expect(text.closest("button")).toHaveClass("w-full", "min-w-0", "max-w-full", "rounded-full")
     expect(text.closest("button")).toHaveAttribute("title", text.textContent)
@@ -69,5 +70,32 @@ it("constrains the scroll content and pills while retaining full labels and sele
   const viewport = container.querySelector("[data-radix-scroll-area-viewport]")
   expect(viewport?.parentElement).toHaveClass("[&_[data-radix-scroll-area-viewport]>div]:!block")
   fireEvent.click(label)
-  expect(onSelectCategory).toHaveBeenCalledWith(category.id, { fieldName: "Members", targetId: "member" })
+  expect(onSelectCategory).toHaveBeenCalledWith(category.id, { fieldName: "sales_man", targetId: "member" })
+})
+
+it("keeps both disclosures operable without selecting a row and supports fields without labels", async () => {
+  jest.mocked(resolveRelationsForSidebar).mockResolvedValue({ "team_member:member": "Team Member" })
+  const onSelectCategory = jest.fn()
+  const unlabeled = { ...category, template_fields: [{ ...category.template_fields[0], label: undefined }] }
+  render(<RecordsSidebar
+    categories={[unlabeled]} records={records} selectedCategory="all" selectedRelation={null}
+    onSelectCategory={onSelectCategory} isCollapsed={false}
+  />)
+
+  const collectionToggle = screen.getByRole("button", { name: `Toggle relations for ${category.name}`, expanded: false })
+  expect(collectionToggle).toHaveClass("[@media(hover:hover)]:opacity-0", "group-hover:opacity-100", "focus-visible:opacity-100")
+  fireEvent.click(collectionToggle)
+  expect(collectionToggle).toHaveAttribute("aria-expanded", "true")
+
+  const relationToggle = await screen.findByRole("button", { name: "sales_man", expanded: false })
+  expect(relationToggle.lastElementChild).toHaveClass(
+    "[@media(hover:hover)]:opacity-0", "group-hover:opacity-100", "group-focus-visible:opacity-100",
+  )
+  fireEvent.click(relationToggle)
+  expect(relationToggle).toHaveAttribute("aria-expanded", "true")
+  expect(screen.getByRole("button", { name: "Team Member" })).toBeInTheDocument()
+  fireEvent.click(collectionToggle)
+  expect(collectionToggle).toHaveAttribute("aria-expanded", "false")
+  expect(relationToggle).not.toBeInTheDocument()
+  expect(onSelectCategory).not.toHaveBeenCalled()
 })

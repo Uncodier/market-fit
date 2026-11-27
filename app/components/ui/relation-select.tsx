@@ -51,6 +51,8 @@ interface RelationSelectProps {
   loadingLabel?: string
   label?: string
   icon?: React.ReactNode
+  /** Optional visual representation of the committed selection when not browsing. */
+  selectedAdornment?: React.ReactNode
   /** Renders inside the input on the right (before clear/chevron). */
   endAction?: React.ReactNode
   createLabel?: (query: string) => string
@@ -84,6 +86,7 @@ export function RelationSelect({
   loadingLabel = "Loading selection",
   label,
   icon,
+  selectedAdornment,
   endAction,
   createLabel = (q) => `Use "${q}"`,
   pinnedAction,
@@ -102,6 +105,7 @@ export function RelationSelect({
   if (disabled && open) setOpen(false)
 
   const selectedLabel = value?.label
+  const collapsedAdornment = !open && value && selectedAdornment
   const isBrowseQuery = !shouldFilterRelationSelectOptions(
     searchQuery,
     selectedLabel,
@@ -178,6 +182,12 @@ export function RelationSelect({
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (disabled || e.nativeEvent.isComposing) return
+    if (collapsedAdornment && (e.key === "Enter" || e.key === "ArrowDown")) {
+      e.preventDefault()
+      setOpen(true)
+      requestAnimationFrame(() => inputRef.current?.select())
+      return
+    }
     if (openOnFocus && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
       e.preventDefault()
       setOpen(true)
@@ -252,12 +262,13 @@ export function RelationSelect({
                   aria-expanded={openOnFocus ? open : undefined}
                   aria-controls={openOnFocus && open ? listId : undefined}
                   aria-autocomplete={openOnFocus ? "list" : undefined}
+                  aria-description={collapsedAdornment ? selectedLabel : undefined}
                   aria-activedescendant={openOnFocus && open && highlightedIndex >= 0 ? `${listId}-${highlightedIndex}` : undefined}
                   ref={inputRef}
-                  value={isResolvingLabel ? "" : searchQuery}
+                  value={isResolvingLabel || collapsedAdornment ? "" : searchQuery}
                   onChange={handleInputChange}
                   onKeyDown={handleKeyDown}
-                  placeholder={placeholder}
+                  placeholder={collapsedAdornment ? undefined : placeholder}
                   disabled={disabled}
                   onFocus={openOnFocus ? () => { setOpen(true); inputRef.current?.select() } : undefined}
                   className={cn(
@@ -272,9 +283,9 @@ export function RelationSelect({
                     inputRef.current?.select()
                   }}
                 />
-                {icon && (
+                {(collapsedAdornment || icon) && (
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center pointer-events-none text-muted-foreground">
-                    {icon}
+                    {collapsedAdornment || icon}
                   </span>
                 )}
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">

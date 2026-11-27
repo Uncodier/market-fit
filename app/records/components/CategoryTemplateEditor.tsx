@@ -245,6 +245,7 @@ export function CategoryTemplateEditor({ isOpen, onClose, category, initialField
                               size="icon"
                               className="h-8 w-8"
                               disabled={index === 0}
+                              aria-label={`Move ${recordFieldLabel(field) || "field"} up`}
                               onClick={() => moveField(index, 'up')}
                             >
                               <ArrowUp className="h-4 w-4" />
@@ -254,6 +255,7 @@ export function CategoryTemplateEditor({ isOpen, onClose, category, initialField
                               size="icon"
                               className="h-8 w-8"
                               disabled={index === fields.length - 1}
+                              aria-label={`Move ${recordFieldLabel(field) || "field"} down`}
                               onClick={() => moveField(index, 'down')}
                             >
                               <ArrowDown className="h-4 w-4" />

@@ -6,6 +6,7 @@ import { buildGraphData } from "@/app/records/components/records-graph-model"
 import { buildPreviewRequests, mergePreviewRequests } from "@/app/records/lib/entity-preview-request"
 
 jest.mock("@/app/records/actions", () => ({ resolveRelationsForSidebar: jest.fn() }))
+jest.mock("@/app/hooks/use-user-data", () => ({ useUserData: () => ({ userData: {} }) }))
 const site = "11111111-1111-4111-8111-111111111111"
 const otherSite = "22222222-2222-4222-8222-222222222222"
 const id = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"

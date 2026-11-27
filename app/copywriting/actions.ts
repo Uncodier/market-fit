@@ -7,7 +7,7 @@ import { lookupCurrentUserSiteRole } from "@/lib/auth/site-role-lookup"
 import { readWorkspaceScreenScope } from "@/lib/permissions/workspace-screen-scope"
 import { createClient } from "@/lib/supabase/server"
 import { copyFieldsSchema, type CopyFields, type CopywritingItem } from "./copywriting-model"
-import { copyTemplateSchema, WHATSAPP_TEMPLATE_TAG, type CopyTemplateDraft } from "./template-model"
+import { copyTemplateSchema, WHATSAPP_TEMPLATE_TAG, whatsappTemplateSourceTag, type CopyTemplateDraft } from "./template-model"
 import { userCanOnSite } from "@/lib/permissions/site-access"
 import { canAccessUnscopedSite } from "@/lib/permissions/location-boundary"
 
@@ -66,14 +66,15 @@ export async function createCopyTemplate(siteId: string, copyId: string, input: 
   const draft = copyTemplateSchema.parse(input)
   const { supabase, actorId, scope, role, canWrite } = await authorize(siteId)
   if (!canWrite || (draft.kind === "newsletter" && isScreenBlocked(role, scope.blockedScreens, "content")) ||
-      !await canAccessUnscopedSite(supabase, siteId) || !await userCanOnSite(supabase, siteId, "insert")) {
-    throw new Error("Template creation denied")
+      !await canAccessUnscopedSite(supabase, siteId)) {
+    throw new Error("Template write denied")
   }
   const { data: source, error: sourceError } = await supabase.from("copywriting").select("id, target_audience, use_case, notes, tags")
     .eq("site_id", siteId).eq("id", copyId).maybeSingle()
   if (sourceError || !source) throw new Error("Source copy unavailable")
 
   if (draft.kind === "newsletter") {
+    if (!await userCanOnSite(supabase, siteId, "insert")) throw new Error("Template creation denied")
     const { data, error } = await supabase.from("content").insert({
       site_id: siteId, user_id: actorId, author_id: actorId, title: draft.title, text: draft.body,
       type: "newsletter", status: "draft", metadata: { source_copywriting_id: source.id },
@@ -83,12 +84,30 @@ export async function createCopyTemplate(siteId: string, copyId: string, input: 
     return { id: data.id }
   }
 
-  const { data, error } = await supabase.from("copywriting").insert({
-    site_id: siteId, user_id: actorId, title: draft.title, content: draft.body, copy_type: "other", status: "draft",
-    target_audience: source.target_audience, use_case: source.use_case, notes: source.notes,
-    tags: [...new Set([...(source.tags ?? []), WHATSAPP_TEMPLATE_TAG])],
-  }).select(projection).single()
-  if (error || !data) throw new Error("Failed to create WhatsApp draft")
+  const isTemplate = source.tags?.includes(WHATSAPP_TEMPLATE_TAG)
+  const linkedTags = [WHATSAPP_TEMPLATE_TAG, whatsappTemplateSourceTag(source.id)]
+  let targetId = isTemplate ? source.id : undefined
+  if (!targetId) {
+    const { data: linked, error } = await supabase.from("copywriting").select("id")
+      .eq("site_id", siteId).contains("tags", linkedTags).maybeSingle()
+    if (error) throw new Error("Linked WhatsApp draft unavailable")
+    targetId = linked?.id
+  }
+  if (!await userCanOnSite(supabase, siteId, targetId ? "update" : "insert")) {
+    throw new Error("Template write denied")
+  }
+
+  const table = supabase.from("copywriting")
+  const query = targetId
+    ? table.update({ title: draft.title, content: draft.body, updated_at: new Date().toISOString() })
+      .eq("site_id", siteId).eq("id", targetId).contains("tags", isTemplate ? [WHATSAPP_TEMPLATE_TAG] : linkedTags)
+    : table.insert({
+      site_id: siteId, user_id: actorId, title: draft.title, content: draft.body, copy_type: "other", status: "draft",
+      target_audience: source.target_audience, use_case: source.use_case, notes: source.notes,
+      tags: [...new Set([...(source.tags ?? []), ...linkedTags])],
+    })
+  const { data, error } = await query.select(projection).single()
+  if (error || !data) throw new Error("Failed to save WhatsApp draft")
   revalidatePath("/copywriting")
   return { id: data.id, item: data }
 }

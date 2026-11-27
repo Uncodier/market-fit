@@ -41,10 +41,8 @@ export default async function ShopItemPage({ params }: { params: Promise<{ siteS
   if (!siteSlug || !itemId) {
     return <ShopSlugNotFound slug={siteSlug} />
   }
-  const context = await getShopRouteContext(siteSlug)
-
   return (
-    <Suspense fallback={context?.selfService ? <div className="p-8" role="status">Loading product…</div> : <PdpPageSkeleton />}>
+    <Suspense fallback={<PdpPageSkeleton />}>
       <ShopItemContent siteSlug={siteSlug} itemId={itemId} />
     </Suspense>
   )
@@ -56,9 +54,11 @@ async function ShopItemContent({ siteSlug, itemId }: { siteSlug: string; itemId:
     const item = await getPdpCatalogItem(itemId, { requireStorefront: true, publicOnly: true })
     const { location, fulfillmentOptions } = context.selfService
     if (!item || item.site_id !== context.site.id || !isSelfServiceItem(item, fulfillmentOptions, location.id)) notFound()
-    const [branchItem] = await enrichSelfServiceInventory(context.site.id, location.id, [item])
     const fulfillment = fulfillmentOptions[0]
-    const modifiers = await loadSelfServiceModifierOptions({ locationId: location.id, hostId: item.id, fulfillment })
+    const [[branchItem], modifiers] = await Promise.all([
+      enrichSelfServiceInventory(context.site.id, location.id, [item]),
+      loadSelfServiceModifierOptions({ locationId: location.id, hostId: item.id, fulfillment }),
+    ])
     return <>
       <SiteLocaleBootstrap locale={context.site.settings?.default_locale} />
       <SelfServiceProductDetail item={branchItem} modifierGroups={modifiers.data} modifierError={modifiers.error}

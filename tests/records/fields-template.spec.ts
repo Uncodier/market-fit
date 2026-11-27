@@ -1,6 +1,21 @@
 import { format } from 'date-fns';
 import { test, expect } from '../support/records-fixtures';
-import { chooseRelation, createNumberCategoryUI, createRecordUI, editCategory, reloadRecord, saveRecord } from '../support/records-ui';
+import { chooseRelation, createNumberCategoryUI, createRecordUI, editCategory, recordsList, reloadRecord, saveRecord } from '../support/records-ui';
+
+test('table columns follow the saved category order after fields are moved', async ({ page, records }) => {
+  const category = await records.category([
+    { id: 'z', name: 'zebra', label: 'Zebra field', type: 'text' },
+    { id: 'a', name: 'apple', label: 'Apple field', type: 'number' },
+  ]);
+  const dialog = await editCategory(page, category);
+  await dialog.getByRole('button', { name: 'Move Zebra field down', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Save Template', exact: true }).click();
+  await expect(dialog).toBeHidden();
+  expect((await records.read('record_categories', category.id)).template_fields.map((field: { id: string }) => field.id)).toEqual(['a', 'z']);
+  await recordsList(page);
+  await page.getByRole('button', { name: category.name, exact: true }).click();
+  await expect(page.getByRole('columnheader').filter({ hasText: /Apple field|Zebra field/ })).toHaveText(['Apple field', 'Zebra field']);
+});
 
 test('UI scalar values persist zero, local date, explicit false, unset and configured enum', async ({ page, records }) => {
   const category = await records.category([

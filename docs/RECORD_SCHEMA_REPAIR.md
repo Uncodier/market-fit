@@ -131,9 +131,13 @@ Previously, saving a regenerated summary and embedding also advanced
 loaded by the editor without changing its title, fields, relations, or status.
 The forward migration `20261123174000_records_document_modified_at.sql` keeps
 the editor's version stable for derived-only writes. Real document and
-lifecycle changes still advance the version. Save continues to compare the
-exact loaded timestamp and reject stale writes; no automatic retry or new
-database grants are introduced.
+lifecycle changes still advance the version. Each write still compares the
+exact loaded timestamp. The detail editor and inline property editors reread and retry a stale save
+only when a three-way comparison can preserve both documents: different
+scalar fields, data keys, and relation keys can be combined; concurrent edits
+to the same value or a changed template do not overwrite the stored value. There
+are at most three write attempts per save, including retries for transient
+database lock contention. Diagram writes still use their own revision guard.
 
 `__tests__/records/record-document-version-postgres.test.ts` reproduces the
 false conflict and verifies the first conditional write after indexing, using

@@ -6,6 +6,7 @@ import { LocalizationProvider } from "@/app/context/LocalizationContext"
 import { TopBarPrimaryActionsSlot } from "@/app/components/navigation/topbar-primary-actions"
 import { useIsMobile } from "@/app/hooks/use-mobile-view"
 import type { CopywritingItem } from "@/app/copywriting/copywriting-model"
+import { whatsappTemplateSourceTag } from "@/app/copywriting/template-model"
 
 jest.mock("@/app/context/SiteContext", () => ({ useSite: () => ({ currentSite: { id: "site-a" } }) }))
 jest.mock("@/app/context/LayoutContext", () => ({ useLayout: () => ({ isLayoutCollapsed: false }) }))
@@ -111,33 +112,80 @@ it("opens the editor directly from the table action, not the read-only detail", 
   expect(screen.getByLabelText("Título")).toHaveValue(email.title)
 })
 
+it("creates and updates a linked WhatsApp draft from the main editor without losing unsaved changes", async () => {
+  const draft = { ...email, id: "draft", title: "Agency WhatsApp", content: "Hello {{name}}",
+    tags: ["whatsapp-template", whatsappTemplateSourceTag(email.id)] }
+  jest.mocked(createCopyTemplate).mockResolvedValueOnce({ id: draft.id, item: draft })
+    .mockResolvedValueOnce({ id: draft.id, item: { ...draft, content: "Hi {{1}}" } })
+  renderPage()
+  fireEvent.click(await screen.findByRole("button", { name: `Editar texto: ${email.title}` }))
+  fireEvent.change(screen.getByLabelText("Contenido"), { target: { value: "Hello {{name}}" } })
+  fireEvent.click(screen.getByRole("button", { name: "Crear plantilla de WhatsApp" }))
+  expect(screen.getByLabelText("Contenido")).toHaveValue("Hello {{name}}")
+  fireEvent.change(screen.getByLabelText("Nombre de la plantilla"), { target: { value: draft.title } })
+  fireEvent.click(screen.getByRole("button", { name: "Guardar borrador" }))
+  expect(await screen.findByText("Borrador guardado.")).toBeInTheDocument()
+  fireEvent.click(screen.getByRole("button", { name: "Volver" }))
+  expect(screen.getByRole("dialog", { name: "Editar texto" })).toBeInTheDocument()
+  expect(screen.getByLabelText("Contenido")).toHaveValue("Hello {{name}}")
+  fireEvent.click(screen.getByRole("button", { name: "Actualizar plantilla de WhatsApp" }))
+  expect(screen.getByLabelText("Nombre de la plantilla")).toHaveValue(draft.title)
+  fireEvent.change(screen.getByLabelText("Contenido"), { target: { value: "Hi {{1}}" } })
+  fireEvent.click(screen.getByRole("button", { name: "Actualizar borrador" }))
+  expect(await screen.findByText("Borrador guardado.")).toBeInTheDocument()
+  expect(createCopyTemplate).toHaveBeenLastCalledWith("site-a", email.id, { kind: "whatsapp", title: draft.title, body: "Hi {{1}}" })
+  fireEvent.click(screen.getByRole("button", { name: "Volver" }))
+  fireEvent.click(screen.getByRole("button", { name: "Probar plantilla" }))
+  expect(screen.getByRole("radio", { name: "WhatsApp" })).toBeChecked()
+  expect(screen.getByRole("region", { name: "Vista previa" })).toHaveTextContent("[TEST] Hi {{1}}")
+  fireEvent.click(screen.getByRole("radio", { name: "Correo electrónico" }))
+  expect(screen.getByRole("region", { name: "Vista previa" })).toHaveTextContent("Hello {{name}}")
+  expect(screen.queryByLabelText("{{1}}")).not.toBeInTheDocument()
+  expect(saveCopywriting).not.toHaveBeenCalled()
+  expect(sendTeamMemberIntervention).not.toHaveBeenCalled()
+})
+
 it.each([
-  ["newsletter", "Plantilla de boletín", "QA · preview@example.test"],
-  ["whatsapp", "Plantilla de WhatsApp", "QA · +14155550101"],
-] as const)("saves and tests the %s template independently from the original", async (kind, title, contact) => {
+  ["newsletter", "Correo electrónico", "QA · preview@example.test", "Offer for Ana"],
+  ["whatsapp", "WhatsApp", "QA · +14155550101", "WhatsApp"],
+] as const)("previews and tests %s with substituted variables from the main editor", async (kind, channel, contact, title) => {
   const lead = { id: "00000000-0000-4000-8000-000000000006", label: contact }
   jest.mocked(findCopyTestRecipients).mockResolvedValue([lead])
-  jest.mocked(createCopyTemplate).mockResolvedValue({ id: "draft" })
   jest.mocked(sendTeamMemberIntervention).mockResolvedValue({ success: true, conversation_id: "conversation" })
   renderPage()
-  fireEvent.click(await screen.findByRole("button", { name: email.title }))
-  fireEvent.click(screen.getByRole("button", { name: title }))
-  const dialog = screen.getByRole("dialog", { name: title })
-  expect(within(dialog).getByLabelText("Contenido")).toHaveValue(email.content)
-  expect(within(dialog).getByRole("button", { name: "Enviar prueba" })).toBeDisabled()
-  fireEvent.click(within(dialog).getByRole("button", { name: "Guardar borrador" }))
-  expect(await within(dialog).findByText("Borrador guardado.")).toBeInTheDocument()
-  expect(createCopyTemplate).toHaveBeenCalledWith("site-a", email.id, expect.objectContaining({ kind, body: email.content }))
-  expect(sendTeamMemberIntervention).not.toHaveBeenCalled()
+  fireEvent.click(await screen.findByRole("button", { name: `Editar texto: ${email.title}` }))
+  fireEvent.change(screen.getByLabelText("Título"), { target: { value: "Offer for {{name}}" } })
+  fireEvent.change(screen.getByLabelText("Contenido"), { target: { value: "Hi {{name}}, your code is {{1}}." } })
+  fireEvent.click(screen.getByRole("button", { name: "Probar plantilla" }))
+  const dialog = screen.getByRole("dialog", { name: "Probar plantilla" })
+  fireEvent.click(within(dialog).getByRole("radio", { name: channel }))
   const picker = within(dialog).getByPlaceholderText("Busca contactos existentes")
   fireEvent.change(picker, { target: { value: "QA" } })
   fireEvent.click(await screen.findByText(contact))
-  fireEvent.click(within(dialog).getByRole("button", { name: "Enviar prueba" }))
+  const send = within(dialog).getByRole("button", { name: "Enviar prueba" })
+  expect(send).toBeDisabled()
+  fireEvent.change(within(dialog).getByLabelText("{{name}}"), { target: { value: "Ana" } })
+  fireEvent.change(within(dialog).getByLabelText("{{1}}"), { target: { value: "123" } })
+  expect(within(dialog).getByRole("region", { name: "Vista previa" })).toHaveTextContent("Hi Ana, your code is 123.")
+  fireEvent.click(send)
   expect(await screen.findByRole("link", { name: "Abrir conversación" })).toHaveAttribute("href", "/chat?conversationId=conversation")
   expect(sendTeamMemberIntervention).toHaveBeenCalledTimes(1)
   expect(sendTeamMemberIntervention).toHaveBeenCalledWith(undefined, "", undefined, undefined, {
-    site_id: "site-a", copy_test: { copy_id: email.id, lead_id: lead.id, draft: expect.objectContaining({ kind, body: email.content }) },
+    site_id: "site-a", copy_test: { copy_id: email.id, lead_id: lead.id, draft: { kind, title, body: "Hi Ana, your code is 123." } },
   })
+  expect(findCopyTestRecipients).toHaveBeenCalledWith("site-a", "QA", kind)
+  expect(createCopyTemplate).not.toHaveBeenCalled()
+  expect(saveCopywriting).not.toHaveBeenCalled()
+})
+
+it("keeps the newsletter draft action available on the detail modal", async () => {
+  jest.mocked(createCopyTemplate).mockResolvedValue({ id: "newsletter-draft" })
+  renderPage()
+  fireEvent.click(await screen.findByRole("button", { name: email.title }))
+  fireEvent.click(screen.getByRole("button", { name: "Plantilla de boletín" }))
+  fireEvent.click(screen.getByRole("button", { name: "Guardar borrador" }))
+  expect(await screen.findByRole("link", { name: "Abrir borrador del boletín" })).toHaveAttribute("href", "/content/newsletter-draft")
+  expect(sendTeamMemberIntervention).not.toHaveBeenCalled()
 })
 
 it("places creation in the topbar and shows the saved row in detail", async () => {

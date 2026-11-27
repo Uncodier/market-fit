@@ -60,3 +60,19 @@ test('marks a listbox option as selected only for a matching existing value', ()
   view.rerender(<RelationSelect {...props} value={{ mode: 'existing', ...options[0] }} />)
   expect(screen.getByRole('option', { name: 'Approved supplier', selected: true })).toBeInTheDocument()
 })
+
+test('renders an avatar instead of selected text until the member picker is opened', () => {
+  const onValueChange = jest.fn()
+  const member = { id: 'one', label: 'Alex Member' }
+  render(<RelationSelect label="Assignee" options={[member, { id: 'two', label: 'Jordan Member' }]}
+    value={{ mode: 'existing', ...member }} onValueChange={onValueChange} allowCreate={false}
+    selectedAdornment={<span role="img" aria-label={member.label}>AM</span>} />)
+  const input = screen.getByRole('textbox', { name: 'Assignee' })
+  expect(input).toHaveValue('')
+  expect(screen.getByRole('img', { name: member.label })).toBeVisible()
+  fireEvent.keyDown(input, { key: 'Enter' })
+  expect(onValueChange).not.toHaveBeenCalled()
+  fireEvent.change(input, { target: { value: 'Jordan' } })
+  fireEvent.click(screen.getByText('Jordan Member'))
+  expect(onValueChange).toHaveBeenCalledWith({ mode: 'existing', id: 'two', label: 'Jordan Member' })
+})

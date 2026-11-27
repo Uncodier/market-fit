@@ -18,14 +18,13 @@ import { useSite } from "@/app/context/SiteContext"
 import { useIsMobile } from "@/app/hooks/use-mobile-view"
 import { getCopywriting, saveCopywriting } from "./actions"
 import { CopywritingDialog } from "./CopywritingDialog"
-import { CopyTemplateDialog } from "./CopyTemplateDialog"
 import { CopywritingResults } from "./CopywritingResults"
 import { COPY_TABS, type CopyFields, type CopyTab, type CopywritingItem } from "./copywriting-model"
-import type { CopyTemplateKind } from "./template-model"
+import { WHATSAPP_TEMPLATE_TAG, whatsappTemplateSourceTag } from "./template-model"
 
 const PAGE_SIZE = 12
 type ListState = { status: "loading" | "error" } | { status: "ready"; items: CopywritingItem[]; canWrite: boolean }
-type DialogState = { mode: "create" } | { mode: "view" | "edit"; id: string } | { mode: "template"; id: string; kind: CopyTemplateKind }
+type DialogState = { mode: "create" } | { mode: "view" | "edit"; id: string }
 
 export default function CopywritingPage() {
   const { currentSite } = useSite()
@@ -68,6 +67,8 @@ function CopywritingWorkspace({ siteId }: { siteId: string }) {
   const totalPages = Math.ceil(results.length / PAGE_SIZE)
   const currentPage = Math.min(page, Math.max(1, totalPages))
   const selected = dialog && dialog.mode !== "create" ? items.find(item => item.id === dialog.id) : undefined
+  const whatsappDraft = selected && (selected.tags?.includes(WHATSAPP_TEMPLATE_TAG) ? selected : items.find(item =>
+    item.tags?.includes(WHATSAPP_TEMPLATE_TAG) && item.tags.includes(whatsappTemplateSourceTag(selected.id))))
   const filterTabs = COPY_TABS.map(type => ({
     value: type,
     label: <span className="inline-flex items-center gap-1.5">
@@ -163,16 +164,11 @@ function CopywritingWorkspace({ siteId }: { siteId: string }) {
         </TabsContent>
       </Tabs>
 
-      {dialog?.mode === "template" && selected ? <CopyTemplateDialog
-        siteId={siteId} item={selected} kind={dialog.kind}
-        onBack={() => setDialog({ mode: "view", id: selected.id })}
-        onSaved={item => {
-          setState(previous => previous.status === "ready" ? { ...previous, items: [item, ...previous.items] } : previous)
-          setTab("all"); setSearch(""); setPage(1)
-        }}
-      /> : dialog && (dialog.mode === "create" || selected) && <CopywritingDialog
+      {dialog && (dialog.mode === "create" || selected) && <CopywritingDialog
         key={`${selected?.id ?? "new"}:${dialog.mode}`}
+        siteId={siteId}
         item={selected}
+        whatsappDraft={whatsappDraft}
         tab={tab}
         editing={dialog.mode !== "view"}
         canWrite={canWrite}
@@ -183,7 +179,10 @@ function CopywritingWorkspace({ siteId }: { siteId: string }) {
           if (!document.querySelector('[role="dialog"]')) returnFocus?.focus()
         }}
         onSave={save}
-        onTemplate={kind => { if (selected) setDialog({ mode: "template", kind, id: selected.id }) }}
+        onTemplateSaved={saved => setState(previous => previous.status === "ready" ? {
+          ...previous, items: previous.items.some(item => item.id === saved.id)
+            ? previous.items.map(item => item.id === saved.id ? saved : item) : [saved, ...previous.items],
+        } : previous)}
       />}
     </>
   )

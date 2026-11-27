@@ -1,5 +1,6 @@
 import { useScopedPreviewState } from "../hooks/useScopedPreviewState"
 import { buildPreviewRequests, mergePreviewRequests, fieldPreviewKey, fetchPreviewBatches } from "../lib/entity-preview-request"
+import { recordFieldLabel } from "../lib/field-values"
 import { useState, useEffect } from "react"
 import { RecordCategory, RecordItem, resolveRelationsForSidebar } from "../actions"
 import { Button } from "@/app/components/ui/button"
@@ -72,7 +73,7 @@ function CategoryItem({
   // Find unique target IDs used in records for this category
   const categoryRecords = records.filter(r => r.category_id === category.id)
   
-  const relationsTree: Record<string, { fieldName: string, target: string, entityIds: Set<string> }> = {}
+  const relationsTree: Record<string, { fieldName: string, label: string, target: string, entityIds: Set<string> }> = {}
   
   relationFields.forEach((field: any) => {
     const ids = new Set<string>()
@@ -84,6 +85,7 @@ function CategoryItem({
     if (ids.size > 0) {
       relationsTree[field.id] = {
         fieldName: field.name,
+        label: recordFieldLabel(field),
         target: field.relationTarget || 'lead',
         entityIds: ids
       }
@@ -120,7 +122,7 @@ function CategoryItem({
       <div className="group relative flex items-center mb-[2px]">
         <Button
           variant={isSelected ? "secondary" : "ghost"}
-          className="w-full min-w-0 max-w-full justify-start relative pr-10 pl-2"
+          className={`peer w-full min-w-0 max-w-full justify-start relative pl-2 ${hasSubfolders ? "pr-[52px]" : "pr-10"}`}
           title={category.name}
           style={{
             height: '31.5px',
@@ -142,19 +144,20 @@ function CategoryItem({
             return <Folder className="mr-[6.5px] h-3.5 w-3.5 text-muted-foreground shrink-0" />
           })()}
           <span className="min-w-0 truncate flex-1 text-left">{category.name}</span>
-          
-          {hasSubfolders && (
-            <div 
-              className="flex items-center justify-center cursor-pointer hover:bg-muted/50 rounded-md h-5 w-5 shrink-0 ml-1"
-              onClick={(e) => {
-                e.stopPropagation()
-                setIsExpanded(!isExpanded)
-              }}
-            >
-              {isExpanded ? <ChevronDown className="h-3 w-3 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 text-muted-foreground" />}
-            </div>
-          )}
         </Button>
+        {hasSubfolders && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="absolute right-8 h-5 w-5 rounded-md text-muted-foreground [@media(hover:hover)]:opacity-0 group-hover:opacity-100 peer-focus-visible:opacity-100 focus-visible:opacity-100"
+            aria-label={`Toggle relations for ${category.name}`}
+            aria-expanded={isExpanded}
+            onClick={() => setIsExpanded(expanded => !expanded)}
+          >
+            {isExpanded ? <ChevronDown aria-hidden className="h-3 w-3" /> : <ChevronRight aria-hidden className="h-3 w-3" />}
+          </Button>
+        )}
         <Button
           variant="ghost"
           size="icon"
@@ -183,11 +186,12 @@ function CategoryItem({
 
               return (
                 <div key={tree.fieldName}>
-                  <div className="group flex items-center mb-[2px]">
+                  <div className="flex items-center mb-[2px]">
                     <Button
                       variant="ghost"
-                      className="w-full min-w-0 max-w-full justify-start pl-2 pr-2 relative"
-                      title={tree.fieldName}
+                      className="group w-full min-w-0 max-w-full justify-start pl-2 pr-2 relative"
+                      title={tree.label}
+                      aria-expanded={isRelExpanded}
                       style={{
                         height: '31.5px',
                         fontSize: '11.3px'
@@ -195,16 +199,10 @@ function CategoryItem({
                       onClick={(e) => toggleRelation(tree.fieldName, e)}
                     >
                       <Folder className="mr-[6.5px] h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                      <span className="min-w-0 truncate flex-1 text-left">{tree.fieldName}</span>
-                      <div 
-                        className="flex items-center justify-center cursor-pointer hover:bg-muted/50 rounded-md h-5 w-5 shrink-0 ml-1"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleRelation(tree.fieldName, e);
-                        }}
-                      >
-                        {isRelExpanded ? <ChevronDown className="h-3 w-3 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 text-muted-foreground" />}
-                      </div>
+                      <span className="min-w-0 truncate flex-1 text-left">{tree.label}</span>
+                      <span className="ml-1 flex h-5 w-5 shrink-0 items-center justify-center text-muted-foreground [@media(hover:hover)]:opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100" aria-hidden="true">
+                        {isRelExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                      </span>
                     </Button>
                   </div>
 

@@ -102,9 +102,9 @@ export function RecordToolbar({
         <span
           className="mr-2 text-xs font-medium text-destructive"
           role="status"
-          title={saveStatus === "conflict" ? "Reload this record before saving again." : undefined}
+          title={saveStatus === "conflict" ? "This record changed elsewhere. Reloading discards unsaved edits." : undefined}
         >
-          {saveStatus === "conflict" ? "Save conflict" : "Save failed"}
+          {saveStatus === "conflict" ? "Some changes weren’t saved" : "Save failed"}
         </span>
       )}
       {saveStatus === "conflict" && (

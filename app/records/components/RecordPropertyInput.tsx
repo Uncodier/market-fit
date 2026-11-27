@@ -8,6 +8,8 @@ import { relationFieldTargetKey } from "../lib/relation-target"
 import { recordFieldDate, serializeRecordFieldDate } from "../lib/field-values"
 import type { ValidatedTemplateField } from "../lib/template-validation"
 import type { RecordProperty } from "../lib/record-properties"
+import { useUserData } from "@/app/hooks/use-user-data"
+import { RecordMemberAvatar } from "./RecordMemberAvatar"
 
 interface InputProps {
   property: RecordProperty
@@ -25,6 +27,8 @@ function RelationInput({ field, value, label, siteId, onChange, inline }: {
   const { relationOptions, relationErrors, handleSearchChange } = useRelationOptions([field], siteId, value ? [value] : [])
   const options = relationOptions[target] || []
   const selectedLabel = options.find(option => option.id === value)?.label
+  const isMember = target === "team_member"
+  const { userData } = useUserData(isMember && selectedLabel ? [value] : [], siteId)
   const selected = useMemo(() => value ? { mode: "existing" as const, id: value, label: selectedLabel || "Linked record" } : null,
     [value, selectedLabel])
   return (
@@ -35,6 +39,7 @@ function RelationInput({ field, value, label, siteId, onChange, inline }: {
         openOnFocus={inline}
         className={inline ? "h-8" : undefined}
         value={selected}
+        selectedAdornment={isMember && value ? <RecordMemberAvatar name={selectedLabel} src={userData[value]?.avatar_url} /> : undefined}
         options={options}
         onValueChange={choice => { if (!choice || choice.mode === "existing") onChange(choice?.id ?? null) }}
         onSearchChange={query => handleSearchChange(target, query)}

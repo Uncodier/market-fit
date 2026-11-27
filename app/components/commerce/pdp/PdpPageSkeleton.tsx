@@ -5,6 +5,7 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { ArrowLeft, ShoppingCart, User } from "@/app/components/ui/icons"
 import { CommerceShellHeader, shellClasses } from "@/app/components/commerce/CommerceShellHeader"
 import { MakinariHeaderIsotype } from "../MakinariHeaderIsotype"
+import { PdpProductFrame } from "./PdpProductFrame"
 
 export function PdpModifierSkeleton({ rows = 3 }: { rows?: number }) {
   return (
@@ -35,7 +36,7 @@ export function PdpModifierSkeleton({ rows = 3 }: { rows?: number }) {
 export function PdpPageSkeleton() {
   const { t } = useLocalization()
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col" aria-busy="true" data-testid="pdp-page-skeleton">
       <div className="h-4 w-full shrink-0" />
       <CommerceShellHeader
         brand={
@@ -76,37 +77,35 @@ export function PdpPageSkeleton() {
       />
 
       <main className="flex-1 pb-24 lg:pb-0">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-16 pb-32 lg:pb-16">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-12 lg:gap-20">
-            <div>
+        <PdpProductFrame
+          gallery={
+            <>
               <Skeleton className="w-full aspect-[4/5] rounded-[2rem]" />
-              <div className="flex gap-3 sm:gap-4 mt-4">
+              <div className="flex gap-3 sm:gap-4 mt-4 overflow-hidden">
                 {[1, 2, 3, 4].map((i) => (
                   <Skeleton key={i} className="aspect-square w-20 sm:w-24 rounded-2xl shrink-0" />
                 ))}
               </div>
-            </div>
-
-            <div className="flex flex-col py-0 sm:py-4 lg:py-8">
-              <div className="mb-8 sm:mb-10">
-                <Skeleton className="h-8 w-24 rounded-full mb-4 sm:mb-6" />
-                <Skeleton className="h-12 sm:h-16 w-3/4 mb-4 sm:mb-6" />
-                <Skeleton className="h-10 sm:h-12 w-40 mb-4 sm:mb-6" />
-                <div className="space-y-2 mt-4 sm:mt-6">
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-5/6" />
-                </div>
-              </div>
-
-              <PdpModifierSkeleton rows={4} />
-
-              <div className="hidden lg:block space-y-3">
-                <Skeleton className="w-full h-14 rounded-xl" />
-                <Skeleton className="w-full h-14 rounded-xl" />
-              </div>
+            </>
+          }
+        >
+          <div className="mb-8 sm:mb-10">
+            <Skeleton className="h-8 w-24 rounded-full mb-4 sm:mb-6" />
+            <Skeleton className="h-12 sm:h-16 w-3/4 mb-4 sm:mb-6" />
+            <Skeleton className="h-10 sm:h-12 w-40 mb-4 sm:mb-6" />
+            <div className="space-y-2 mt-4 sm:mt-6">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-5/6" />
             </div>
           </div>
-        </div>
+
+          <PdpModifierSkeleton rows={4} />
+
+          <div className="hidden lg:block space-y-3">
+            <Skeleton className="w-full h-14 rounded-xl" />
+            <Skeleton className="w-full h-14 rounded-xl" />
+          </div>
+        </PdpProductFrame>
       </main>
 
       <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-background/80 backdrop-blur-xl border-t p-4">

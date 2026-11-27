@@ -13,7 +13,7 @@ import { toast } from "sonner"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { markdownToHTML } from "@/app/content/utils"
-import { deleteRecord, getRecordById, updateRecord, type RecordItem } from "../actions"
+import { deleteRecord, getRecordById, type RecordItem } from "../actions"
 import {
   areRecordDiagramDraftsEqual,
   emptyRecordDiagram,
@@ -38,6 +38,7 @@ import {
 import { RecordDiagramEditControls } from "./components/record-diagram/RecordDiagramEditControls"
 import { RecordNodeMarkdownControls } from "./components/record-diagram/RecordNodeMarkdownControls"
 import { htmlToMarkdown } from "./record-markdown"
+import { rebasePendingDocumentEdits, recordDocumentDraft, saveRecordDocument, type RecordDocumentDraft } from "../lib/record-document-save"
 import "@/app/content/styles/editor.css"
 
 const emptyFields: InsightField[] = []
@@ -49,14 +50,13 @@ export default function RecordDetailPage() {
   const id = Array.isArray(params?.id) ? params.id[0] : params?.id
 
   const [record, setRecord] = useState<RecordItem | null>(null)
-  const [title, setTitle] = useState("")
-  const [description, setDescription] = useState("")
-  const [status, setStatus] = useState("draft")
-  const [formData, setFormData] = useState<Record<string, any>>({})
-  const [relationsData, setRelationsData] = useState<Record<string, any>>({})
+  const [draft, setDraft] = useState(() => recordDocumentDraft())
+  const { title, description, status, data: formData, relations: relationsData } = draft
+  const draftRef = React.useRef(draft)
   const [diagram, setDiagram] = useState<RecordDiagramDraft>(emptyRecordDiagram)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const savingRef = React.useRef(false)
   const [saveFailure, setSaveFailure] = useState<"error" | "conflict" | null>(null)
   const [documentDirty, setDocumentDirty] = useState(false)
   const [diagramDirty, setDiagramDirty] = useState(false)
@@ -100,11 +100,17 @@ export default function RecordDetailPage() {
     setDiagramDirty(!areRecordDiagramDraftsEqual(next, savedDiagramRef.current))
   }, [])
 
-  const markDocumentDirty = useCallback(() => {
-    documentVersionRef.current += 1
+  const replaceDraft = useCallback((next: RecordDocumentDraft) => {
+    draftRef.current = next
+    setDraft(next)
+  }, [])
+
+  const editDocument = useCallback((patch: Partial<RecordDocumentDraft>) => {
+    replaceDraft({ ...draftRef.current, ...patch })
+    documentVersionRef.current++
     setSaveFailure((current) => current === "conflict" ? current : null)
     setDocumentDirty(true)
-  }, [])
+  }, [replaceDraft])
   const markDiagramDirty = useCallback(() => {
     diagramVersionRef.current += 1
     setSaveFailure((current) => current === "conflict" ? current : null)
@@ -112,9 +118,8 @@ export default function RecordDetailPage() {
   }, [])
 
   const handleEditorUpdate = useCallback(({ editor: currentEditor }: { editor: Editor }) => {
-    setDescription(htmlToMarkdown(currentEditor.getHTML()))
-    markDocumentDirty()
-  }, [markDocumentDirty])
+    editDocument({ description: htmlToMarkdown(currentEditor.getHTML()) })
+  }, [editDocument])
 
   const editor = useEditor({
     extensions: [
@@ -164,12 +169,9 @@ export default function RecordDetailPage() {
 
     const nextRecord = recordResult.record
     activeRecordIdRef.current = nextRecord.id
+    hydratedRecordIdRef.current = null
     setRecord(nextRecord)
-    setTitle(nextRecord.title || "")
-    setDescription(nextRecord.description || "")
-    setStatus(nextRecord.status || "draft")
-    setFormData(nextRecord.data || {})
-    setRelationsData(nextRecord.relations || {})
+    replaceDraft(recordDocumentDraft(nextRecord))
     const nextDiagram = diagramResult.diagram || emptyRecordDiagram()
     setDiagram(nextDiagram)
     savedDiagramRef.current = nextDiagram
@@ -181,7 +183,7 @@ export default function RecordDetailPage() {
     setDocumentDirty(false)
     setDiagramDirty(false)
     setIsLoading(false)
-  }, [router])
+  }, [replaceDraft, router])
 
   useEffect(() => {
     if (id) void loadRecord(id)
@@ -207,7 +209,7 @@ export default function RecordDetailPage() {
   }, [debouncedTitle, isLoading, t])
 
   const handleSave = useCallback(async () => {
-    if (!record || isSaving || (!documentDirty && !diagramDirty)) return
+    if (!record || savingRef.current || saveFailure === "conflict" || (!documentDirty && !diagramDirty)) return
     const diagramAtSave = { ...diagram, viewport: latestViewportRef.current }
     if (diagramDirty) {
       const validation = recordDiagramDraftSchema.safeParse(diagramAtSave)
@@ -217,34 +219,35 @@ export default function RecordDetailPage() {
       }
     }
     const recordIdAtSave = record.id
+    const draftAtSave = draftRef.current
     const documentVersionAtSave = documentVersionRef.current
     const diagramVersionAtSave = diagramVersionRef.current
     let failure: "error" | "conflict" = "error"
     setSaveFailure(null)
+    savingRef.current = true
     setIsSaving(true)
 
-    const promise = (async () => {
+    try {
       if (documentDirty) {
-        const result = await updateRecord(record.id, {
-          title,
-          description,
-          status,
-          data: formData,
-          relations: relationsData,
-        }, record.updated_at)
-        if (result.error) {
+        const result = await saveRecordDocument(record, draftAtSave)
+        if ("error" in result) {
           if (result.conflict) failure = "conflict"
           throw new Error(result.error)
         }
-        if (result.record && activeRecordIdRef.current === recordIdAtSave) {
-          // Refresh the saved snapshot without replacing any newer edits in the form.
-          setRecord(current => current ? { ...current, ...result.record, category: current.category } : current)
-        }
-        if (
-          activeRecordIdRef.current === recordIdAtSave
-          && documentVersionRef.current === documentVersionAtSave
-        ) {
-          setDocumentDirty(false)
+        if (activeRecordIdRef.current === recordIdAtSave) {
+          const current = draftRef.current
+          // Edits made after clicking Save remain local; untouched fields follow the saved snapshot.
+          const { merged, conflict } = rebasePendingDocumentEdits(record, draftAtSave, current, result.record)
+          setRecord(result.record)
+          replaceDraft(merged)
+          if (merged.description !== current.description) {
+            editor?.commands.setContent(markdownToHTML(merged.description), { emitUpdate: false })
+          }
+          setDocumentDirty(documentVersionRef.current !== documentVersionAtSave)
+          if (conflict) {
+            failure = "conflict"
+            throw new Error("The record changed while saving.")
+          }
         }
       }
 
@@ -269,31 +272,21 @@ export default function RecordDetailPage() {
         }
       }
 
-    })()
-
-    toast.promise(promise, {
-      loading: t("common.saving") || "Saving...",
-      success: t("common.saved") || "Record saved",
-      error: (error) => error instanceof Error ? error.message : "Failed to save record",
-    })
-    try {
-      await promise
-    } catch {
+      toast.success(t("common.saved") || "Record saved")
+    } catch (error) {
       setSaveFailure(failure)
-      // The toast above presents the actionable error to the user.
+      if (failure === "error") toast.error(error instanceof Error ? error.message : "Failed to save record")
     } finally {
+      savingRef.current = false
       setIsSaving(false)
     }
   }, [
     record,
-    isSaving,
+    saveFailure,
     documentDirty,
     diagramDirty,
-    title,
-    description,
-    status,
-    formData,
-    relationsData,
+    editor,
+    replaceDraft,
     diagram,
     t,
   ])
@@ -441,22 +434,12 @@ export default function RecordDetailPage() {
                 status={status}
                 formData={formData}
                 relationsData={relationsData}
-                onTitleChange={(value) => {
-                  setTitle(value)
-                  markDocumentDirty()
-                }}
+                onTitleChange={(value) => editDocument({ title: value })}
                 onFieldChange={(field, value, type) => {
-                  if (type === "field") {
-                    setFormData((current) => ({ ...current, [field]: value }))
-                  } else {
-                    setRelationsData((current) => ({ ...current, [field]: value }))
-                  }
-                  markDocumentDirty()
+                  const key = type === "field" ? "data" : "relations"
+                  editDocument({ [key]: { ...draftRef.current[key], [field]: value } })
                 }}
-                onStatusChange={(value) => {
-                  setStatus(value)
-                  markDocumentDirty()
-                }}
+                onStatusChange={(value) => editDocument({ status: value })}
               />
             </div>
             <div className={activeView === "nodes" ? "h-full" : "hidden"}>

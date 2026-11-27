@@ -4,6 +4,7 @@ import { RecordsKanban } from "@/app/records/components/RecordsKanban"
 import { groupTableRecords } from "@/app/records/lib/table-record-order"
 
 jest.mock("@/app/records/actions", () => ({ resolveRelationsForSidebar: jest.fn() }))
+jest.mock("@/app/hooks/use-user-data", () => ({ useUserData: () => ({ userData: {} }) }))
 jest.mock("@/app/context/SiteContext", () => ({ useSite: () => ({ currentSite: { id: "site" } }) }))
 jest.mock("@/app/context/LocalizationContext", () => ({
   useLocalization: () => ({ t: (key: string) => key === "status.active" ? "Activo" : key }),

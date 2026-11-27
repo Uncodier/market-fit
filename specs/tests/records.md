@@ -131,7 +131,9 @@ an arbitrary first row or a privileged client. Supplied targets are never edited
 | DB positive admission | Direct public Data API insert/update | Same-site/category link admitted, active membership user ID admitted, exact JSON re-read |
 | DB negative admission | Direct public Data API update/insert | Wrong category, foreign, nonexistent, membership-row and undeclared links return `23514`; prior JSON/timestamp unchanged; rejected insert absent |
 | Recoverable collection Trash | UI confirmation/delete/restore | Cancel does not change data; active subtree disappears; one-batch restoration restores collection/descendants but not earlier standalone trash; individual restore then succeeds |
-| Stale editor conflict | Two authenticated browser tabs | Second tab cannot overwrite saved title/version, retains its draft, disables save and reloads the latest persisted value |
+| Stale editor recovery | Two authenticated browser tabs | Second tab saves an edit to a different field without a warning and displays both persisted changes |
+| Inline stale-row recovery | Detail and list in separate authenticated tabs | The first inline status edit on a new row saves and displays a title changed after the list loaded |
+| Stale editor conflict | Two authenticated browser tabs | Second tab cannot overwrite a different edit to the same title, retains its draft, disables save and can reload the latest persisted value |
 | Cancel individual Record deletion | Populated detail → Delete Record → Cancel → list → same detail → reload | Exact UUID remains accessible; title and zero-valued field remain rendered; complete user-scoped row (including timestamp/data/status) equals the pre-cancel snapshot both immediately and after navigation/reload |
 
 DB tests are deliberately in `db-admission.spec.ts`: they do **not** prove browser

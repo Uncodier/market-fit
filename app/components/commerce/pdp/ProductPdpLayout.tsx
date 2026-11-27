@@ -14,12 +14,13 @@ import { useState, useMemo, useEffect } from "react"
 import { PdpCtaButton } from "./PdpCtaButton"
 import { PdpPurchaseCtas } from "./PdpPurchaseCtas"
 import { afterAddToCartHref } from "./pdp-purchase-cta"
-import { PdpPriceBlock } from "./PdpPriceBlock"
 import { PdpMobileBuyBar } from "./PdpMobileBuyBar"
 import { PdpMetricChips } from "./PdpMetricChips"
 import { PdpItemDescription } from "./PdpItemDescription"
 import { PdpProductDetails } from "./PdpProductDetails"
 import { PdpProductGallery } from "./PdpProductGallery"
+import { PdpProductFrame } from "./PdpProductFrame"
+import { PdpProductSummary } from "./PdpProductSummary"
 import { PdpModifierSkeleton } from "./PdpPageSkeleton"
 import { PdpInventoryStatus } from "./PdpInventoryStatus"
 import { hasPdpProductDetails } from "./pdp-item-description"
@@ -43,8 +44,11 @@ import {
 } from "./DynamicQuotePdpPanel"
 import { isDynamicPricedItem } from "@/app/catalog/dynamic-pricing"
 import { getDynamicPricingConfig } from "@/app/catalog/dynamic-pricing"
+import type { PdpExperience } from "./pdp-experience"
 
-export function ProductPdpLayout({ item, backUrl, experience: _experience, catalogSize = 0 }: { item: CatalogItem & { _shop?: any }, backUrl: string, experience?: any, catalogSize?: number }) {
+const noVariants: CatalogItem[] = []
+
+export function ProductPdpLayout({ item, backUrl, experience: _experience, catalogSize = 0 }: { item: CatalogItem, backUrl: string, experience?: PdpExperience, catalogSize?: number }) {
   const { t } = useLocalization()
   const router = useRouter()
   const pathname = usePathname()
@@ -54,7 +58,7 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience, catal
   const metadata = item.metadata || {}
   const axes = metadata.variant_axes || []
   const hasVariants = axes.length > 0
-  const children = item._shop?.children || []
+  const children = item._shop?.children || noVariants
   
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({})
   
@@ -341,108 +345,12 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience, catal
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-16">
-      {/* Sticky gallery only while the options column scrolls; details sit below. */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-12 lg:gap-20">
-        <div>
-          <div className="lg:sticky lg:top-28">
-            <PdpProductGallery
-              itemName={item.name}
-              mainSrc={mainGallerySrc}
-              entries={galleryEntries}
-              selectedIndex={safeImageIdx}
-              onThumbClick={handleGalleryThumbClick}
-            />
-          </div>
-        </div>
-
-        <div className="flex flex-col py-0 sm:py-4 lg:py-8">
-          <div className="mb-8 sm:mb-10">
-            <PdpMetricChips
-              className="mb-4 sm:mb-6"
-              chips={[
-                item.category_id ? { label: item._shop?.categoryName || "Product" } : null,
-                brand ? { imageUrl: brand.image_url, label: brand.name } : null,
-                collection ? { imageUrl: collection.image_url, label: collection.name } : null,
-              ]}
-            />
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight mb-4 sm:mb-6 leading-tight">
-              {item.name}
-            </h1>
-
-            <div>
-              <PdpPriceBlock price={displayPrice} currency={currency} />
-            </div>
-
-            <PdpItemDescription
-              description={item.description}
-              variant="inline"
-              className="mt-4 sm:mt-6"
-            />
-          </div>
-
-          {hasVariants && (
-            <VariantPicker
-              axes={axes}
-              selectedOptions={selectedOptions}
-              onOptionSelect={handleOptionSelect}
-              childrenItems={children}
-              presentation="pdp"
-              currency={currency}
-              fallbackImageUrl={item.image_url || galleryEntries[0]?.url || null}
-              imageContext={imageContext}
-            />
-          )}
-
-          {!modifiersReady ? (
-            <PdpModifierSkeleton />
-          ) : modifierGroups.length > 0 ? (
-            <div className="mb-8 sm:mb-10">
-              <h3 className="text-lg font-bold mb-4">
-                {t("pos.modifiers.title") || "Add extras"}
-              </h3>
-              <ModifierPickerPanel
-                groups={modifierGroups}
-                value={selectedModifiers}
-                onChange={setSelectedModifiers}
-                imageContext={imageContext}
-                currency={currency}
-              />
-            </div>
-          ) : null}
-
-          <div className="hidden lg:block p-8 bg-card border border-border/50 rounded-3xl shadow-2xl shadow-black/5 relative overflow-hidden">
-            <PdpInventoryStatus item={activeItem} />
-            <div className="space-y-3">
-              {isDropIn ? (
-                <PdpCtaButton onClick={handleBook} disabled={!isSellable}>
-                  {disabledCtaLabel || t("booking.selectTime") || "Select a Time"}
-                </PdpCtaButton>
-              ) : (
-                <PdpPurchaseCtas
-                  catalogSize={catalogSize}
-                  disabled={!isSellable}
-                  disabledLabel={disabledCtaLabel}
-                  onAdd={handleAdd}
-                  onBuyNow={handleBuyNow}
-                  buyNowLabel={t("pdp.buyNow") || "Buy Now"}
-                  presentation="stack"
-                />
-              )}
-            </div>
-            <div className="mt-4 flex items-center justify-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-widest">
-              <span>{t("pdp.secureCheckout") || "Secure Checkout"}</span>
-              <span>•</span>
-              <span>{t("pdp.fastShipping") || "Fast Shipping"}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {(showDetailsBelow || (_experience?.kind === "subscription" && _experience.subscription)) && (
+    <PdpProductFrame
+      gallery={<PdpProductGallery itemName={item.name} mainSrc={mainGallerySrc} entries={galleryEntries}
+        selectedIndex={safeImageIdx} onThumbClick={handleGalleryThumbClick} />}
+      below={(showDetailsBelow || (_experience?.kind === "subscription" && _experience.subscription)) && (
         <div className="mt-12 sm:mt-16 lg:mt-20 max-w-3xl">
           {showDetailsBelow && detailsBelow}
-
           {_experience?.kind === "subscription" && _experience.subscription && (
             <div className="pt-8 mt-8 border-t">
               <SubscriptionManagePanel subscription={_experience.subscription} />
@@ -450,6 +358,70 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience, catal
           )}
         </div>
       )}
+    >
+      <PdpProductSummary name={item.name} description={item.description} price={displayPrice} currency={currency}
+        chips={[
+          item.category_id ? { label: item._shop?.categoryName || "Product" } : null,
+          brand ? { imageUrl: brand.image_url, label: brand.name } : null,
+          collection ? { imageUrl: collection.image_url, label: collection.name } : null,
+        ]}
+      />
+
+      {hasVariants && (
+        <VariantPicker
+          axes={axes}
+          selectedOptions={selectedOptions}
+          onOptionSelect={handleOptionSelect}
+          childrenItems={children}
+          presentation="pdp"
+          currency={currency}
+          fallbackImageUrl={item.image_url || galleryEntries[0]?.url || null}
+          imageContext={imageContext}
+        />
+      )}
+
+      {!modifiersReady ? (
+        <PdpModifierSkeleton />
+      ) : modifierGroups.length > 0 ? (
+        <div className="mb-8 sm:mb-10">
+          <h3 className="text-lg font-bold mb-4">
+            {t("pos.modifiers.title") || "Add extras"}
+          </h3>
+          <ModifierPickerPanel
+            groups={modifierGroups}
+            value={selectedModifiers}
+            onChange={setSelectedModifiers}
+            imageContext={imageContext}
+            currency={currency}
+          />
+        </div>
+      ) : null}
+
+      <div className="hidden lg:block p-8 bg-card border border-border/50 rounded-3xl shadow-2xl shadow-black/5 relative overflow-hidden">
+        <PdpInventoryStatus item={activeItem} />
+        <div className="space-y-3">
+          {isDropIn ? (
+            <PdpCtaButton onClick={handleBook} disabled={!isSellable}>
+              {disabledCtaLabel || t("booking.selectTime") || "Select a Time"}
+            </PdpCtaButton>
+          ) : (
+            <PdpPurchaseCtas
+              catalogSize={catalogSize}
+              disabled={!isSellable}
+              disabledLabel={disabledCtaLabel}
+              onAdd={handleAdd}
+              onBuyNow={handleBuyNow}
+              buyNowLabel={t("pdp.buyNow") || "Buy Now"}
+              presentation="stack"
+            />
+          )}
+        </div>
+        <div className="mt-4 flex items-center justify-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-widest">
+          <span>{t("pdp.secureCheckout") || "Secure Checkout"}</span>
+          <span>•</span>
+          <span>{t("pdp.fastShipping") || "Fast Shipping"}</span>
+        </div>
+      </div>
 
       <PdpMobileBuyBar price={displayPrice} fullWidthCta={true}>
         {isDropIn ? (
@@ -468,6 +440,6 @@ export function ProductPdpLayout({ item, backUrl, experience: _experience, catal
           />
         )}
       </PdpMobileBuyBar>
-    </div>
+    </PdpProductFrame>
   )
 }

@@ -47,7 +47,8 @@ export function useRelationOptions(fields: RelationFieldTarget[], siteId: string
         const members = assignableSiteMembers(await siteMembersService.getMembers(siteId))
         save(members.map(member => ({ id: member.user_id, label: member.name || member.email,
           searchText: `${member.name || ""} ${member.email}`,
-        })).filter(option => !queryText || option.searchText.toLowerCase().includes(queryText.toLowerCase())))
+        })).filter(option => !queryText || activeSelected.current.includes(option.id)
+          || option.searchText.toLowerCase().includes(queryText.toLowerCase())))
       } else {
         const supabase = createClient()
         const companies = target === "company" ? await getSiteCompanyIds(supabase, siteId) : null

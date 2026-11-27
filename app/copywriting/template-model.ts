@@ -3,6 +3,19 @@ import { z } from "zod"
 export const copyTemplateKind = z.enum(["newsletter", "whatsapp"])
 export type CopyTemplateKind = z.infer<typeof copyTemplateKind>
 export const WHATSAPP_TEMPLATE_TAG = "whatsapp-template"
+export const whatsappTemplateSourceTag = (copyId: string) => `whatsapp-template-source:${copyId}`
+
+const placeholder = /\{\{[ \t]*([\w.-]+)[ \t]*\}\}/g
+export const hasTemplateMarkers = (text: string) => /\{\{|\}\}/.test(text)
+
+export function copyTemplateVariables(...texts: string[]) {
+  return [...new Set(texts.flatMap(text => Array.from(text.matchAll(placeholder), match => match[1])))]
+}
+
+export function renderCopyTemplate(text: string, values: Record<string, string>) {
+  return text.replace(placeholder, (token, key: string) =>
+    Object.prototype.hasOwnProperty.call(values, key) ? values[key].trim() || token : token)
+}
 
 export const copyTemplateSchema = z.object({
   kind: copyTemplateKind,
@@ -16,5 +29,5 @@ export const copyTestSchema = z.object({
   copy_id: z.string().uuid(),
   lead_id: z.string().uuid(),
   draft: copyTemplateSchema,
-}).strict().refine(value => !/\{\{|\}\}/.test(`${value.draft.title}\n${value.draft.body}`) &&
+}).strict().refine(value => !hasTemplateMarkers(`${value.draft.title}\n${value.draft.body}`) &&
   (value.draft.kind !== "whatsapp" || value.draft.body.length <= 1017))

@@ -5,7 +5,7 @@ import { selfServiceMessages } from "@/app/context/locales/self-service"
 import { selfServiceHeaderMessages } from "@/app/context/locales/self-service/header"
 import { SelfServiceHeader } from "@/app/shop/[siteSlug]/self-service/SelfServiceHeader"
 import { SelfServiceHero } from "@/app/shop/[siteSlug]/self-service/SelfServiceHero"
-import { SelfServiceShopSkeleton } from "@/app/shop/[siteSlug]/self-service/SelfServiceShopSkeleton"
+import { ShopHomeSkeleton } from "@/app/shop/[siteSlug]/ShopHomeSkeleton"
 import { useSelfService } from "@/app/shop/[siteSlug]/self-service/SelfServiceProvider"
 
 jest.mock("@/app/shop/[siteSlug]/self-service/SelfServiceProvider", () => ({ useSelfService: jest.fn() }))
@@ -40,7 +40,7 @@ it("switches header, offers and loading labels without resetting the order or ch
     <SelfServiceHeader onSearchChange={jest.fn()} />
     <SelfServiceHero site={{ id: "site", name: "Coffee Shop" }} locationId="branch" searchQuery=""
       promos={[{ id: "offer", name: "Coffee deal", discount_type: "percent", discount_value: 10, catalog_item_ids: [], category_ids: [] }]} />
-    <SelfServiceShopSkeleton />
+    <ShopHomeSkeleton selfService />
   </LocalizationProvider>)
   expect(screen.getByRole("region", { name: "Featured banners" })).toBeInTheDocument()
   fireEvent.click(screen.getByRole("button", { name: "Español" }))

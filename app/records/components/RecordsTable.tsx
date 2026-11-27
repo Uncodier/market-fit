@@ -23,6 +23,8 @@ import { descriptionProperty, statusProperty, titleProperty, type SaveRecordProp
 import type { ValidatedTemplateField } from "../lib/template-validation"
 import { OpenRecordButton, RecordPropertyCell } from "./RecordPropertyEditor"
 import { RecordsTableProperties, type SaveTableProperty } from "./RecordsTableProperties"
+import { useUserData } from "@/app/hooks/use-user-data"
+import { RecordMemberAvatar } from "./RecordMemberAvatar"
 
 const NO_FIELDS: ValidatedTemplateField[] = []
 export const RECORDS_TABLE_PAGE_SIZES = [20, 50] as const
@@ -70,6 +72,7 @@ export function RecordsTable({
   const { t } = useLocalization()
   const totalPages = Math.ceil(totalRecords / itemsPerPage)
   const indexOfFirstItem = (currentPage - 1) * itemsPerPage
+  // Headers and cells share the saved template order, not the order of row values.
   const fields: ValidatedTemplateField[] = activeCategory?.template_fields ?? NO_FIELDS
   const hasPropertiesHeader = categories.length > 0 || Boolean(activeCategory)
   const columnCount = 4 + fields.length + Number(!activeCategory) + Number(hasPropertiesHeader)
@@ -80,6 +83,9 @@ export function RecordsTable({
   const [relationLabels, setRelationLabels] = useScopedPreviewState<Record<string, string>>(currentSite?.id, {})
   const relationRequests = JSON.stringify(records.flatMap(record => record.site_id === currentSite?.id
     ? buildPreviewRequests(fields, record.relations || {}) : []))
+  const { userData } = useUserData(Object.keys(relationLabels)
+    .filter(key => key.startsWith("team_member:"))
+    .map(key => key.slice("team_member:".length)))
 
   useEffect(() => {
     let active = true
@@ -224,10 +230,15 @@ export function RecordsTable({
                       </TableCell>
                       {fields.map(field => {
                         const id = record.relations?.[field.name]
+                        const label = field.type === "relation" && typeof id === "string"
+                          ? relationLabels[fieldPreviewKey(field, id)] : undefined
+                        const member = field.type === "relation" && field.relationTarget === "team_member"
+                          && typeof id === "string" && id.trim() && record.site_id === currentSite?.id
                         return <TableCell key={field.id} className="border-l border-border/50 px-2 py-1">
                           <RecordPropertyCell record={record} property={{ key: "field", field, label: recordFieldLabel(field) }}
-                            relationLabel={field.type === "relation" && typeof id === "string" ? relationLabels[fieldPreviewKey(field, id)] : undefined}
-                            onSave={onSaveProperty} />
+                            relationLabel={label} onSave={onSaveProperty}>
+                            {member ? <RecordMemberAvatar name={label} src={label ? userData[id]?.avatar_url : undefined} /> : undefined}
+                          </RecordPropertyCell>
                         </TableCell>
                       })}
                       {hasPropertiesHeader && <TableCell className="border-l border-border/50 p-0" />}

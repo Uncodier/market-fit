@@ -33,6 +33,11 @@ manually. External storefront hero links fall back to browsing the menu. Offer
 actions retain their location-specific flow rather than applying to the normal
 Shop cart. Starting a new order also clears the menu search.
 
+Shop and self-service share the menu grid and loading shell. Product details
+in Shop, Marketplace and self-service share the product frame, gallery, price,
+description and loading skeleton. The kiosk keeps its location cart, QR
+identity and location-specific purchase controls in that shared frame.
+
 The menu reuses Shop products, variants, modifiers, promotions, and category
 navigation. Only active, publicly listed physical products compatible with the
 selected fulfillment and location can be ordered. Recurring products,

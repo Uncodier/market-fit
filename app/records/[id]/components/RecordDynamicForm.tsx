@@ -25,6 +25,8 @@ import { TableWidget } from "./TableWidget"
 import { useSite } from "@/app/context/SiteContext"
 import { RecordItem } from "../../actions"
 import { useRelationOptions } from "./use-relation-options"
+import { useUserData } from "@/app/hooks/use-user-data"
+import { RecordMemberAvatar } from "../../components/RecordMemberAvatar"
 import { relationFieldTargetKey } from "../../lib/relation-target"
 import { recordFieldDate, recordFieldLabel, recordScalarFieldValue, serializeRecordFieldDate } from "../../lib/field-values"
 import styles from "./record-dynamic-form.module.css"
@@ -55,6 +57,11 @@ export function RecordDynamicForm({ fields, formData, relationsData, status, rec
     record.site_id === currentSite?.id ? record.site_id : undefined,
     selectedRelationIds,
   )
+  const visibleMembers = new Set(relationOptions.team_member?.map(option => option.id))
+  const { userData } = useUserData(record.site_id === currentSite?.id
+    ? fields.filter(field => field.type === "relation" && field.relationTarget === "team_member")
+      .map(field => relationsData[field.name]).filter(id => visibleMembers.has(id))
+    : [])
   
   const renderField = (field: any) => {
     const value = recordScalarFieldValue(field.type, formData[field.name])
@@ -198,7 +205,10 @@ export function RecordDynamicForm({ fields, formData, relationsData, status, rec
             <RelationSelect
               label={recordFieldLabel(field)}
               options={options}
-              value={selectedId ? { mode: "existing", id: selectedId, label: selectedOption?.label || selectedId } : null}
+              value={selectedId ? { mode: "existing", id: selectedId,
+                label: selectedOption?.label || (target === "team_member" ? "Team member" : selectedId) } : null}
+              selectedAdornment={target === "team_member" && selectedId
+                ? <RecordMemberAvatar name={selectedOption?.label} src={userData[selectedId]?.avatar_url} /> : undefined}
               onSearchChange={(q) => handleSearchChange(target, q)}
               onValueChange={(val) => {
                 if (!val) {

@@ -5,6 +5,8 @@ import { RecordItem, resolveRelationsForSidebar } from "../actions"
 import { MapPin, ImageIcon, LinkIcon } from "@/app/components/ui/icons"
 import { cn } from "@/lib/utils"
 import { publicPromptImageUrl } from "@/app/lib/image-utils"
+import { useUserData } from "@/app/hooks/use-user-data"
+import { RecordMemberAvatar } from "./RecordMemberAvatar"
 
 interface DynamicFieldBadgesProps {
   record: RecordItem
@@ -19,6 +21,9 @@ const NO_IGNORED_FIELDS: string[] = []
 export function DynamicFieldBadges({ record, className, limit = 5, ignoreFields = NO_IGNORED_FIELDS }: DynamicFieldBadgesProps) {
   const [resolvedRelations, setResolvedRelations] = useScopedPreviewState<Record<string, string>>(record.site_id, {})
   const [isResolving, setIsResolving] = useState(false)
+  const { userData } = useUserData(Object.keys(resolvedRelations)
+    .filter(key => key.startsWith("team_member:"))
+    .map(key => key.slice("team_member:".length)), record.site_id)
 
   const templateFields = record.category?.template_fields ?? NO_TEMPLATE_FIELDS
   
@@ -54,6 +59,10 @@ export function DynamicFieldBadges({ record, className, limit = 5, ignoreFields 
         const type = field.type
         const value = record.data?.[field.name]
         const relationId = record.relations?.[field.name]
+        if (type === "relation" && field.relationTarget === "team_member" && typeof relationId === "string" && relationId.trim()) {
+          const label = resolvedRelations[fieldPreviewKey(field, relationId)]
+          return <RecordMemberAvatar key={field.id} name={label} src={label ? userData[relationId]?.avatar_url : undefined} />
+        }
 
         let icon = null
         let text = null
