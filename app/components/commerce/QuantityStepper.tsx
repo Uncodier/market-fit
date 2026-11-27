@@ -26,12 +26,12 @@ export function QuantityStepper({ label, quantity, onChange, min, canIncrease, c
     <div role="group" aria-label={label} className={cn("flex shrink-0 items-center", compact ? "gap-2" : "gap-4")}>
       <Button type="button" variant="outline" size="icon" className={buttonClass}
         aria-label={t("commerce.cart.decreaseQuantity")} disabled={quantity <= min} onClick={() => onChange(quantity - 1)}>
-        <Minus className={iconClass} aria-hidden="true" />
+        <Minus className={iconClass} aria-hidden />
       </Button>
       <span aria-live="polite" className={cn("tabular-nums", compact && "min-w-[1.25rem] text-center text-sm font-medium")}>{quantity}</span>
       <Button type="button" variant="outline" size="icon" className={buttonClass}
         aria-label={t("commerce.cart.increaseQuantity")} disabled={!canIncrease} onClick={() => onChange(quantity + 1)}>
-        <Plus className={iconClass} aria-hidden="true" />
+        <Plus className={iconClass} aria-hidden />
       </Button>
     </div>
   )
