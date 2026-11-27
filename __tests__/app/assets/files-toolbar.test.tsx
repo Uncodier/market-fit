@@ -51,8 +51,10 @@ it.each([["es", "Archivos", "Subir archivo"], ["en", "Files", "Upload File"]] as
 )
 
 it("uses the file terminology in the upload button and dialog", () => {
-  render(<UploadAssetDialog />)
+  const onUploadAsset = jest.fn().mockResolvedValue(undefined)
+  render(<UploadAssetDialog onUploadAsset={onUploadAsset} />)
   fireEvent.click(screen.getByRole("button", { name: "Subir archivo" }))
   expect(screen.getByRole("dialog", { name: "Subir un archivo nuevo" })).toBeVisible()
   expect(screen.getByRole("button", { name: "Subir archivo" })).toBeDisabled()
+  expect(onUploadAsset).not.toHaveBeenCalled()
 })
