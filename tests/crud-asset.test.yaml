@@ -13,9 +13,9 @@ statements:
     js: await require(process.cwd() + '/tests/support/mutation-fixtures').bindBrowserFixture(page);
   - description: Wait for the real collection data before creation
     js: await require(process.cwd() + '/tests/support/mutation-collections').prepareCollection(page, testContext, 'asset');
-  - intent: Click New asset in the top bar
+  - intent: Click Upload File in the top bar
     action: click
-    locator: "getByRole('button', { name: 'New asset' })"
+    locator: "getByRole('button', { name: /^(Upload File|Subir archivo)$/i })"
   - intent: Fill the asset name
     action: fill
     locator: getByLabel('Name')
@@ -26,7 +26,7 @@ statements:
     paths: fixtures/e2e-asset.svg
   - intent: Submit the asset upload form
     action: click
-    locator: "getByRole('button', { name: 'Upload Asset' })"
+    locator: "getByRole('dialog').getByRole('button', { name: /^(Upload File|Subir archivo)$/i })"
   - js: await expect(page.getByText(testContext.get('collectionName')).first()).toBeVisible()
     description: The created asset name is visible
   - description: Reload and prove the created run-owned entity persists, saving its ID when exposed

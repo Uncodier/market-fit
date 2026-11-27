@@ -4,6 +4,7 @@ import { createDemoMockClient } from '@/lib/demo-data/mock-client'
 import { getDemoSiteId } from '@/lib/demo-utils'
 import { wrapSupabaseClient } from '@/lib/permissions/mutation-guard'
 import { notifyPermissionDenied } from '@/lib/permissions/notify'
+import { localRealtimeOptions } from './realtime-diagnostics'
 
 // Singleton client for the entire application
 let supabaseClient: ReturnType<typeof createBrowserClient> | null = null
@@ -122,6 +123,7 @@ export function createClient() {
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
         {
           realtime: {
+            ...localRealtimeOptions(() => supabaseClient),
             params: {
               eventsPerSecond: 10
             },

@@ -20,7 +20,9 @@ export function getRetryChannelBlockReason(
     ?? (metadata?.voice_mode === 'agent_call' ? 'voice' : undefined)
   const current = normalizedChannel(conversationChannel)
   const reason = (channel: string | undefined) =>
-    channel && Object.hasOwn(blockReasons, channel) ? blockReasons[channel] : undefined
+    (channel && Object.hasOwn(blockReasons, channel) ? blockReasons[channel] : undefined)
+    ?? (channel === 'whatsapp' && (metadata?.requested_response_format ?? metadata?.response_format) === 'audio'
+      ? blockReasons.whatsappAudio : undefined)
 
   // The retry endpoint resolves the persisted conversation channel at send time.
   // Do not offer a retry if either the saved or the effective route is blocked.

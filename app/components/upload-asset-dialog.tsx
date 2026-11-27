@@ -25,6 +25,7 @@ import { Badge } from "@/app/components/ui/badge"
 import { useDropzone } from "react-dropzone"
 import { cn } from "@/lib/utils"
 import { useSite } from "@/app/context/SiteContext"
+import { useLocalization } from "@/app/context/LocalizationContext"
 import { useSearchParams } from "next/navigation"
 import { createAsset, uploadAssetFile, attachAssetToContent } from "@/app/assets/actions"
 import { useToast } from "@/app/components/ui/use-toast"
@@ -96,6 +97,7 @@ interface UploadAssetDialogProps {
 }
 
 export function UploadAssetDialog({ onUploadAsset, contentId, onSuccess, open: controlledOpen, onOpenChange, noTrigger }: UploadAssetDialogProps) {
+  const { t } = useLocalization()
   const [internalOpen, setInternalOpen] = useState(false)
   const isOpen = controlledOpen !== undefined ? controlledOpen : internalOpen
   const applyOpen = useCallback((open: boolean) => {
@@ -287,17 +289,17 @@ export function UploadAssetDialog({ onUploadAsset, contentId, onSuccess, open: c
     }}>
       {!noTrigger && (
         <DialogTrigger asChild>
-          <Button className="flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
+          <Button aria-label={t('assets.upload.action')} className="flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
             <UploadCloud className="h-4 w-4" />
-            Upload Asset
+            {t('assets.upload.action')}
           </Button>
         </DialogTrigger>
       )}
       <DialogContent className="sm:max-w-[550px]">
         <DialogHeader>
-          <DialogTitle>Upload New Asset</DialogTitle>
+          <DialogTitle>{t('assets.upload.title')}</DialogTitle>
           <DialogDescription>
-            Upload a file to your asset library. You can add tags to organize your assets.
+            {t('assets.upload.description')}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-6 py-4">
@@ -472,7 +474,7 @@ export function UploadAssetDialog({ onUploadAsset, contentId, onSuccess, open: c
             disabled={isSubmitting || !file || !name}
             className={isSubmitting ? "opacity-70 cursor-not-allowed" : ""}
           >
-            {isSubmitting ? "Uploading..." : "Upload Asset"}
+            {t(isSubmitting ? 'assets.upload.pending' : 'assets.upload.action')}
           </Button>
         </DialogFooter>
       </DialogContent>

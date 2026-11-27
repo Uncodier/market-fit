@@ -1,6 +1,6 @@
 import React from 'react'
 import { Skeleton } from '@/app/components/ui/skeleton'
-import { stickyHeaderBorderClassName } from '@/app/components/ui/sticky-header-styles'
+import { ConversationListSkeleton } from '@/app/components/chat/conversation-list-skeleton'
 
 export default function ChatLoading() {
   return (
@@ -8,55 +8,7 @@ export default function ChatLoading() {
       <span className="sr-only">Loading conversations</span>
       {/* Sidebar skeleton */}
       <div aria-hidden="true" className="h-full transition-all duration-300 ease-in-out z-[55] bg-background flex-shrink-0 border-r dark:border-white/5 border-black/5 absolute md:relative left-0 hidden md:block md:w-[319px] md:min-w-[319px]" style={{ overflow: 'hidden' }}>
-        <div className="flex flex-col h-full w-full bg-transparent overflow-hidden">
-          {/* Top bar with search input skeleton */}
-          <div className={`flex items-center justify-center h-[71px] max-h-[71px] min-h-[71px] transition-colors duration-300 flex-shrink-0 bg-background w-full ${stickyHeaderBorderClassName}`}>
-            <div className="relative w-full px-4 flex items-center justify-center min-w-0">
-              <Skeleton className="h-10 w-full rounded-lg" />
-            </div>
-          </div>
-          
-          <div className="flex-1 min-h-0 overflow-hidden">
-            <div className="h-full overflow-auto flex flex-col pt-0">
-              <div className="w-full min-w-0 flex flex-col flex-1">
-                {/* Channel filter skeleton */}
-                <div className="px-4 py-3 border-b dark:border-white/5 border-black/5 flex justify-center flex-shrink-0 h-[56px] max-h-[56px] min-h-[56px] overflow-hidden md:sticky md:top-0 md:z-[20] bg-background">
-                  <div className="h-8 w-full max-w-[240px] bg-muted/30 rounded-full flex items-center p-0.5 justify-between px-1">
-                    {Array.from({ length: 7 }).map((_, i) => (
-                      <Skeleton key={i} className="h-7 w-7 rounded-full" />
-                    ))}
-                  </div>
-                </div>
-                
-                {/* Conversations skeleton */}
-                <div className="pb-[200px]">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <div key={i} className="w-full text-left py-3 px-4 rounded-none border-b dark:border-white/5 border-black/5" style={{ boxSizing: 'border-box' }}>
-                      <div className="flex items-center justify-between mb-1 gap-2">
-                        <div className="flex items-center gap-2 min-w-0 flex-1">
-                          <Skeleton className="h-4 w-[60%]" />
-                          <Skeleton className="h-4 w-16 rounded-full" />
-                        </div>
-                      </div>
-                      <div className="mt-1">
-                        <Skeleton className="h-3 w-[85%]" />
-                      </div>
-                      <div className="flex justify-between items-center mt-2">
-                        <div className="flex items-center gap-1">
-                          <Skeleton className="h-3 w-3 rounded-full" />
-                          <Skeleton className="h-3 w-20" />
-                          <Skeleton className="h-3 w-1" />
-                          <Skeleton className="h-3 w-24" />
-                        </div>
-                        <Skeleton className="h-3 w-10" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <ConversationListSkeleton label="Loading conversations" withControls />
       </div>
       
       {/* Main chat content skeleton */}

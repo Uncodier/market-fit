@@ -79,7 +79,7 @@ export function TopBarTitle({
       'experiments': t('layout.sidebar.experiments') || 'Experiments',
       'requirements': t('layout.nav.requirements.title') || t('layout.sidebar.requirements') || 'Requirements',
       'leads': t('layout.sidebar.leads') || 'Leads',
-      'assets': t('layout.sidebar.assets') || 'Assets',
+      'assets': t('layout.sidebar.assets') || 'Files',
       'content': t('layout.sidebar.content') || 'Content',
       'settings': t('layout.sidebar.settings') || 'Settings',
       'profile': t('layout.sidebar.profile') || 'Profile',

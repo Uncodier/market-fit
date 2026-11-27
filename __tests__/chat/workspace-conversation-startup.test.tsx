@@ -47,7 +47,10 @@ it('uses silent conversation placeholders while access is pending', async () => 
   mockSite.error = new Error('Selector unavailable'); mockSite.isLoading = false
   mockReadScope.mockReturnValue(new Promise(() => {}))
   const { container } = render(tree()); await act(async () => {})
-  expect(screen.getByRole('status')).toHaveAttribute('aria-busy', 'true')
+  const skeleton = screen.getByRole('status', { name: 'chat.list.loading' })
+  expect(skeleton).toHaveAttribute('aria-busy', 'true')
+  expect(skeleton.querySelector('[class~="h-[71px]"]')).toBeInTheDocument()
+  expect(skeleton.querySelector('[class~="h-[56px]"]')).toBeInTheDocument()
   expect(container.textContent).toBe(''); expect(container.querySelector('.animate-pulse')).not.toBeNull()
   expect(mockConversations).not.toHaveBeenCalled()
 })

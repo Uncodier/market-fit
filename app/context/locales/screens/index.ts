@@ -17,6 +17,7 @@ import contentEn from './content-en.json';
 import contentEs from './content-es.json';
 import detailsEn from './details-en.json';
 import detailsEs from './details-es.json';
+import filesEn from './files-en.json';
 import operationsEn from './operations-en.json';
 import operationsEs from './operations-es.json';
 import operationsFr from './operations-fr.json';
@@ -42,7 +43,7 @@ import previewJa from './workspace-preview-ja.json';
 export const screenMessages: Record<SupportedLocale, Record<string, string>> = {
   en: {
     ...missingEn, ...systemEn, ...accountEn, ...authFlowsEn, ...commercePagesEn,
-    ...contentEn, ...detailsEn, ...operationsEn, ...publicEn, ...procurementSharedEn, ...dealsEn, ...previewEn,
+    ...contentEn, ...detailsEn, ...operationsEn, ...publicEn, ...procurementSharedEn, ...dealsEn, ...previewEn, ...filesEn,
   },
   es: {
     ...missingEs, ...systemEs, ...accountEs, ...authFlowsEs, ...commercePagesEs,

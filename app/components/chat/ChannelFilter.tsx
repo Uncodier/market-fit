@@ -6,6 +6,7 @@ import * as Icons from "@/app/components/ui/icons"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/ui/avatar"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip"
+import { conversationFilterHeaderClassName } from "./conversation-list-layout"
 
 type FilterType = 'all' | 'outbound' | 'inbound' | 'replied' | 'tasks' | 'assigned' | 'qualified'
 
@@ -67,9 +68,8 @@ export const ChannelFilter = memo(function ChannelFilter({
   return (
     <div 
       className={cn(
-    "px-4 py-3 border-b dark:border-white/5 border-black/5 flex justify-center flex-shrink-0 h-[56px] max-h-[56px] min-h-[56px] overflow-hidden",
-    "md:sticky md:top-0 md:z-[20]",
-    "bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80",
+        conversationFilterHeaderClassName,
+        "bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80",
         className
       )}
       style={{ WebkitBackdropFilter: 'blur(10px)' }}

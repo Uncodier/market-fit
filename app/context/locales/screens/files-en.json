@@ -1,0 +1,19 @@
+{
+  "layout.sidebar.assets": "Files",
+  "layout.sidebar.purchasesLibrary": "Files",
+  "layout.nav.assets.title": "Files",
+  "assets.tabs.all": "All Files",
+  "assets.tabs.compatible": "Compatible Files",
+  "assets.searchPlaceholder": "Search files...",
+  "assets.toast.deleted": "File deleted successfully",
+  "assets.toast.deleteFailed": "Error deleting file",
+  "assets.empty.title": "No files found",
+  "assets.empty.desc": "Upload your first file to get started with your media library.",
+  "assets.delete.title": "Delete File",
+  "assets.delete.description": "This action cannot be undone. This will permanently delete the file from your media library.",
+  "assets.filters": "Filters",
+  "assets.upload.action": "Upload File",
+  "assets.upload.title": "Upload New File",
+  "assets.upload.description": "Upload a file to your media library. You can add tags to organize your files.",
+  "assets.upload.pending": "Uploading..."
+}

@@ -116,7 +116,9 @@ export const ChatInput = memo(function ChatInput({
     return channelBlockReasons
   }, [isDirect, channelBlockReasons, voiceBlock?.code, voiceReason])
   const channelUnavailable = isDirect && !availableChannels.includes(selectedChannel)
-  const sendBlockReason = pickerReasons?.[selectedChannel] ?? (channelUnavailable ? 'chat.input.channelUnavailable' : isVoice ? voiceReason : undefined)
+  const sendBlockReason = pickerReasons?.[selectedChannel]
+    ?? (selectedChannel === 'whatsapp' && responseFormat === 'audio' ? pickerReasons?.whatsappAudio : undefined)
+    ?? (channelUnavailable ? 'chat.input.channelUnavailable' : isVoice ? voiceReason : undefined)
   const sendLabel = commentReplySelection ? t('chat.input.replyPublicly') : isVoice ? t('chat.input.startCall') : t('chat.input.send')
   const sendingBlocked = Boolean(sendBlockReason) || isUpdatingChannel || isLoading || !isConversationReady ||
     Boolean(commentReplySelection && !commentReplySelection.target)

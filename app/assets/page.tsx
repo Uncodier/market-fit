@@ -187,91 +187,6 @@ function AssetsContent() {
     )
   }
 
-  // Si el sitio está cargando, mostramos el skeleton
-  if (isSiteLoading || (isLoading && !error)) {
-    return (
-      <div className="flex-1 min-w-0 w-full p-0 min-h-[calc(100dvh-var(--topbar-height,64px))] flex flex-col">
-        <Tabs defaultValue="all" className="flex-1 flex flex-col w-full h-full min-h-0">
-          <StickyHeader>
-            <div className="w-full pt-0">
-              <div className="flex items-center gap-8">
-                <div className="flex items-center gap-8">
-                  <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-none md:rounded-full flex flex-wrap md:flex-nowrap md:flex-row w-full md:max-w-full overflow-y-visible md:overflow-x-auto justify-start items-center gap-2 md:gap-0">
-                    <TabsTrigger value="all" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5" title={t('assets.tabs.all')}>
-                      <LayoutGrid size={13} className="shrink-0 md:!hidden" />
-                      <span className="tab-label">{t('assets.tabs.all')}</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="images" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5" title={t('assets.tabs.images')}>
-                      <Image size={13} className="shrink-0 md:!hidden" />
-                      <span className="tab-label">{t('assets.tabs.images')}</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="videos" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5" title={t('assets.tabs.videos')}>
-                      <FileVideo size={13} className="shrink-0 md:!hidden" />
-                      <span className="tab-label">{t('assets.tabs.videos')}</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="documents" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5" title={t('assets.tabs.documents')}>
-                      <FileText size={13} className="shrink-0 md:!hidden" />
-                      <span className="tab-label">{t('assets.tabs.documents')}</span>
-                    </TabsTrigger>
-                  </TabsList>
-                  <SearchInput   
-                    data-command-k-input
-                    placeholder={t('assets.searchPlaceholder')} 
-                     
-                    value={searchTerm}
-                    onChange={(e) => handleSearch(e.target.value)}  className="w-full h-10 md:h-9"  containerClassName="w-full" />
-                </div>
-                <div className="ml-auto flex items-center gap-4">
-                  {agentId && (
-                    <div className="text-sm text-muted-foreground">
-                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                        Agent Mode: {agentId}
-                      </Badge>
-                    </div>
-                  )}
-                  <AssetViewSelector currentView={viewType} onViewChange={setViewType} />
-                </div>
-              </div>
-            </div>
-          </StickyHeader>
-          
-          <div className="p-8 space-y-4 bg-muted/30 flex-1">
-              <>
-                <TabsContent value="all" className="mt-0 space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {Array.from({ length: 8 }).map((_, index) => (
-                      <AssetCardSkeleton key={index} />
-                    ))}
-                  </div>
-                </TabsContent>
-                <TabsContent value="images" className="mt-0 space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {Array.from({ length: 4 }).map((_, index) => (
-                      <AssetCardSkeleton key={index} />
-                    ))}
-                  </div>
-                </TabsContent>
-                <TabsContent value="videos" className="mt-0 space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {Array.from({ length: 4 }).map((_, index) => (
-                      <AssetCardSkeleton key={index} />
-                    ))}
-                  </div>
-                </TabsContent>
-                <TabsContent value="documents" className="mt-0 space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {Array.from({ length: 4 }).map((_, index) => (
-                      <AssetCardSkeleton key={index} />
-                    ))}
-                  </div>
-                </TabsContent>
-              </>
-          </div>
-        </Tabs>
-      </div>
-    )
-  }
-
   if (error) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
@@ -292,20 +207,20 @@ function AssetsContent() {
     <div className="flex-1 min-w-0 w-full p-0 min-h-[calc(100dvh-var(--topbar-height,64px))] flex flex-col">
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "all" | "images" | "videos" | "documents")} className="flex-1 flex flex-col w-full h-full min-h-0">
         <StickyHeader>
-          <div className="w-full pt-0">
+          <div className="flex w-full min-w-0 items-center gap-4 py-3">
             <MobileFiltersDrawer triggerText={t('common.search') || "Search"}>
-              <FilterContainer>
+              <FilterContainer className="md:flex-wrap">
                 <FilterSection mobileOnly>
                   <SearchInput  data-command-k-input placeholder={t('assets.searchPlaceholder')} value={searchTerm} onChange={(e) => handleSearch(e.target.value)} alwaysExpanded={true}    className="w-full h-10 md:h-9"  containerClassName="w-full" />
                 </FilterSection>
 
                 {searchTerm && <FilterSeparator className="max-md:hidden" />}
 
-                <FilterSection title={t('catalog.kind.label') === 'catalog.kind.label' ? 'Categoría' : t('catalog.kind.label')} className={cn(searchTerm && "max-md:hidden")}>
+                <FilterSection title={t('catalog.kind.label')} className={cn("min-w-0 max-w-full", searchTerm && "max-md:hidden")}>
                   <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-none md:rounded-full flex flex-wrap md:flex-nowrap md:flex-row w-full md:max-w-full overflow-y-visible md:overflow-x-auto justify-start items-center gap-2 md:gap-0">
-                    <TabsTrigger value="all" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5" title={agentId ? (t('assets.tabs.compatible') || 'Compatible Assets') : t('assets.tabs.all')}>
+                    <TabsTrigger value="all" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5" title={agentId ? t('assets.tabs.compatible') : t('assets.tabs.all')}>
                       <LayoutGrid size={13} className="shrink-0 md:!hidden" />
-                      <span className="tab-label">{agentId ? (t('assets.tabs.compatible') || 'Compatible Assets') : t('assets.tabs.all')}</span>
+                      <span className="tab-label">{agentId ? t('assets.tabs.compatible') : t('assets.tabs.all')}</span>
                     </TabsTrigger>
                     <TabsTrigger value="images" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5" title={t('assets.tabs.images')}>
                       <Image size={13} className="shrink-0 md:!hidden" />
@@ -322,21 +237,21 @@ function AssetsContent() {
                   </TabsList>
                 </FilterSection>
                     
-                    <FilterSection className={cn("flex flex-col md:flex-row items-stretch md:items-center gap-2", searchTerm && "max-md:hidden")}>
+                <FilterSection className={cn("flex flex-col md:flex-row items-stretch md:items-center gap-2", searchTerm && "max-md:hidden")}>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="secondary" size="sm" className="w-full md:w-auto md:w-9 h-10 md:h-9 gap-2 rounded-md md:rounded-full px-4 justify-between md:justify-center">
+                      <Button variant="secondary" size="sm" aria-label={t('assets.filters')} className="w-full md:w-9 h-10 md:h-9 gap-2 rounded-md md:rounded-full px-4 md:px-0 justify-between md:justify-center">
                         <div className="flex items-center gap-2">
                           <Filter className="h-4 w-4" />
-                          <span className="font-normal md:hidden">Filters</span>
+                          <span className="font-normal md:hidden">{t('assets.filters')}</span>
                         </div>
-                        <ChevronDown className="h-3 w-3 opacity-50 md:hidden" />
+                        <ChevronDown className="h-3 w-3 opacity-50 md:!hidden" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-44">
                       <DropdownMenuItem className="cursor-pointer" onClick={() => setActiveTab("all")}>
                         <Check className={cn("mr-2 h-4 w-4", activeTab === "all" ? "opacity-100" : "opacity-0")} />
-                        {agentId ? (t('assets.tabs.compatible') || 'Compatible Assets') : t('assets.tabs.all')}
+                        {agentId ? t('assets.tabs.compatible') : t('assets.tabs.all')}
                       </DropdownMenuItem>
                       <DropdownMenuItem className="cursor-pointer" onClick={() => setActiveTab("images")}>
                         <Check className={cn("mr-2 h-4 w-4", activeTab === "images" ? "opacity-100" : "opacity-0")} />
@@ -384,31 +299,41 @@ function AssetsContent() {
               </FilterContainer>
             </MobileFiltersDrawer>
             
-            <div className="ml-auto flex flex-wrap justify-end items-center gap-4 shrink-0 mt-2 md:mt-0">
+            <div className="ml-auto flex min-w-0 items-center justify-end gap-4">
               {agentId && (
-                <div className="text-sm text-muted-foreground">
-                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                <div className="min-w-0 max-w-[25vw] text-sm text-muted-foreground lg:max-w-56">
+                  <Badge variant="outline" className="max-w-full truncate bg-blue-50 text-blue-700 border-blue-200" title={`Agent Mode: ${agentId}`}>
                     Agent Mode: {agentId}
                   </Badge>
                 </div>
               )}
-              <AssetViewSelector currentView={viewType} onViewChange={setViewType} />
+              <div className="shrink-0">
+                <AssetViewSelector currentView={viewType} onViewChange={setViewType} />
+              </div>
             </div>
           </div>
         </StickyHeader>
         
         <div className="p-8 space-y-4 bg-muted/30 flex-1">
-            {(["all", "images", "videos", "documents"] as const).map((tab) => (
-              <AssetsTabBody
-                key={tab}
-                tab={tab}
-                assets={filteredAssets}
-                viewType={viewType}
-                agentId={agentId || undefined}
-                onDelete={handleDeleteAsset}
-                onAttach={handleAttach}
-                onDetach={handleDetach} />
-            ))}
+          {isLoading ? (
+            <TabsContent value={activeTab} className="mt-0">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {Array.from({ length: activeTab === "all" ? 8 : 4 }, (_, index) => (
+                  <AssetCardSkeleton key={index} />
+                ))}
+              </div>
+            </TabsContent>
+          ) : (["all", "images", "videos", "documents"] as const).map((tab) => (
+            <AssetsTabBody
+              key={tab}
+              tab={tab}
+              assets={filteredAssets}
+              viewType={viewType}
+              agentId={agentId || undefined}
+              onDelete={handleDeleteAsset}
+              onAttach={handleAttach}
+              onDetach={handleDetach} />
+          ))}
         </div>
       </Tabs>
     </div>

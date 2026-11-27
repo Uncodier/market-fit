@@ -21,6 +21,7 @@ import { STATUS_STYLES, LEAD_STATUSES } from "@/app/leads/types"
 import { coerceDate } from "@/app/utils/coerce-date"
 import { AutomationPausedBadge } from "./AutomationPausedBadge"
 import { useLocalization } from "@/app/context/LocalizationContext"
+import { conversationRowLayout } from "./conversation-list-layout"
 
 interface ConversationItemProps {
   readOnly?: boolean
@@ -124,14 +125,14 @@ export function ConversationItem({
   return (
     <div
       className={cn(
-        "w-full text-left py-3 px-4 rounded-none transition-colors border-b dark:border-white/5 border-black/5",
+        conversationRowLayout.root,
+        "rounded-none transition-colors",
         !readOnly && "hover:bg-accent/20 group",
         isSelected && isDarkMode 
           ? "bg-primary/15" 
           : isSelected && "bg-primary/10"
       )}
       style={{ 
-        boxSizing: 'border-box',
         position: 'relative',
         cursor: readOnly ? 'default' : 'pointer'
       }}
@@ -146,33 +147,31 @@ export function ConversationItem({
           display: 'block'
         }}
       >
-        <div className="flex items-center justify-between mb-1 gap-2">
-          <div className="flex items-center gap-2 min-w-0 flex-1">
-            {conversation.status === 'pending' && (
-              <div className={cn(
-                "flex-shrink-0 w-2 h-2 rounded-full",
-                conversation.hasAcceptedMessage ? "bg-green-500" : "bg-yellow-500"
-              )} />
-            )}
-            <span className={cn(
-              "font-medium text-sm truncate",
-              isSelected && "text-primary"
-            )}>
-              {conversation.title || "Untitled Conversation"}
-            </span>
-            {!!reviewCount && <Badge variant="outline" className="shrink-0 text-xs">{t("connectors.reviewCount", { count: reviewCount })}</Badge>}
-            {conversation.leadStatus === 'qualified' && (
-              <Badge 
-                variant="outline" 
-                className={cn(
-                  "text-[10px] px-1.5 py-0 h-4 flex-shrink-0",
-                  STATUS_STYLES[conversation.leadStatus] || "bg-indigo-500/10 text-indigo-600 border-indigo-500/20"
-                )}
-              >
-                {LEAD_STATUSES.some(s => s.id === conversation.leadStatus) ? t(`chat.leadStatus.${conversation.leadStatus}`) : conversation.leadStatus}
-              </Badge>
-            )}
-          </div>
+        <div className={conversationRowLayout.title}>
+          {conversation.status === 'pending' && (
+            <div className={cn(
+              "flex-shrink-0 w-2 h-2 rounded-full",
+              conversation.hasAcceptedMessage ? "bg-green-500" : "bg-yellow-500"
+            )} />
+          )}
+          <span className={cn(
+            "font-medium text-sm truncate",
+            isSelected && "text-primary"
+          )}>
+            {conversation.title || "Untitled Conversation"}
+          </span>
+          {!!reviewCount && <Badge variant="outline" className="shrink-0 text-xs">{t("connectors.reviewCount", { count: reviewCount })}</Badge>}
+          {conversation.leadStatus === 'qualified' && (
+            <Badge
+              variant="outline"
+              className={cn(
+                "text-[10px] px-1.5 py-0 h-4 flex-shrink-0",
+                STATUS_STYLES[conversation.leadStatus] || "bg-indigo-500/10 text-indigo-600 border-indigo-500/20"
+              )}
+            >
+              {LEAD_STATUSES.some(s => s.id === conversation.leadStatus) ? t(`chat.leadStatus.${conversation.leadStatus}`) : conversation.leadStatus}
+            </Badge>
+          )}
         </div>
         {conversation.subtitle && (
           <div className="text-xs text-muted-foreground truncate mb-1" title={conversation.subtitle}>
@@ -181,14 +180,16 @@ export function ConversationItem({
         )}
         <AutomationPausedBadge until={conversation.automationPausedUntil} />
         <div className={cn(
+          conversationRowLayout.preview,
           "text-xs truncate",
           isSelected ? "text-muted-foreground" : "text-muted-foreground/80"
         )}>
           {conversation.lastMessage || getDefaultMessage(conversation.title || "")}
         </div>
-        <div className="flex justify-between items-center mt-0.5 gap-2">
+        <div className={conversationRowLayout.metadata}>
           <div className={cn(
-            "text-[11px] flex items-center gap-1 truncate min-w-0 flex-1",
+            conversationRowLayout.details,
+            "text-[11px] truncate",
             isSelected ? "text-primary/70" : "text-muted-foreground/70"
           )}>
             {getChannelIcon(conversation.channel, !conversation.leadName && !conversation.participantName && !!conversation.agentId)}

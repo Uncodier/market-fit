@@ -3,7 +3,7 @@ import { chatChannelBlockReasons, recipientBlockKey } from '@/lib/chat/recipient
 const phone = '+14155550100'
 const lead = { id: 'lead', phone: '4155550100', email: 'person@example.test' }
 const inbound = (from: string) => ({ role: 'user', metadata: { source: 'zavu_inbound_message', channel: 'whatsapp',
-  connection_id: 'connection', zavu_sender_id: 'sender', zavu_from: from } })
+  connection_id: 'connection', zavu_sender_id: 'sender', zavu_from: from, origin_message_id: 'provider-message' } })
 const site = { settings: { channels: { connections: ['whatsapp','sms','voice','email','telegram'].map(type => ({ type, status: 'connected' })) } } }
 
 it('blocks a local-only phone on each phone channel without disabling a valid alternative', () => {
@@ -30,6 +30,16 @@ it('recognizes a signed Twilio turn but not a mismatched SID', () => {
   expect(recipientBlockKey('whatsapp', { messages: [{ role: 'user', metadata }] })).toBeUndefined()
   expect(recipientBlockKey('whatsapp', { messages: [{ role: 'user', metadata: { ...metadata, origin_message_id: 'other' } }] })).toBeTruthy()
 })
+it.each([inbound(phone), { role: 'user', metadata: { source: 'whatsapp', status: 'received',
+  whatsapp_phone: phone, whatsapp_message_id: 'SM' + '1'.repeat(32) } }])(
+  'defers a stale lead phone to the API for WhatsApp text only', turn => {
+    const ctx = { conversationChannel: 'whatsapp', lead: { ...lead, phone: '+14155550109' }, messages: [turn] }
+    const reasons = chatChannelBlockReasons(site, ctx)
+    expect(reasons.whatsapp).toBeUndefined()
+    expect(reasons.whatsappAudio).toBe('chat.recipient.conflict')
+    expect(chatChannelBlockReasons(site, { ...ctx, visitorPhone: '+14155550108' }).whatsapp).toBe('chat.recipient.conflict')
+    expect(chatChannelBlockReasons(site, { ...ctx, conversationChannel: 'email' }).whatsapp).toBe('chat.recipient.conflict')
+  })
 it('checks the actual recipient shape for each other channel', () => {
   for (const email of [undefined, '', 'bad@', 'a b@example.test', 'no-email@example.com']) expect(recipientBlockKey('email', { lead: { email } })).toBe('chat.recipient.email')
   expect(recipientBlockKey('voice', { lead: { ...lead, phone, do_not_call: true } })).toBe('chat.input.doNotCall')

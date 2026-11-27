@@ -22,12 +22,17 @@ const providerPhone = (v: unknown) => typeof v === 'string' && /^(?:whatsapp:)?\
   ? `+${v.replace(/^whatsapp:/, '').replace(/^\+/, '')}` : undefined
 
 /** UI preflight only. The API remains authoritative and revalidates the saved row on send. */
-function whatsAppBlock(ctx: RecipientContext) {
-  const contacts = [ctx.lead?.phone, ctx.visitorPhone, record(ctx.conversationData).whatsapp_phone].filter(v => v != null && v !== '')
+function whatsAppBlock(ctx: RecipientContext, allowLeadRepair = true) {
+  const contacts = [ctx.visitorPhone, record(ctx.conversationData).whatsapp_phone]
+  const turns = (ctx.messages ?? []).filter(({ role }) => role === 'user' || role === 'visitor')
+  const latest = turns.at(-1)
   const verified = new Set<string>()
-  for (const { role, metadata } of ctx.messages ?? []) {
-    if (role !== 'user' && role !== 'visitor') continue
+  let latestCanBeVerified = false
+  for (const turn of turns) {
+    const { metadata } = turn
     const d = metadata ?? {}, twilio = record(d.twilio_whatsapp_inbound)
+    const legacyHint = d.source === 'whatsapp' && d.status === 'received' && d.origin_message_id == null
+      && present(d.whatsapp_message_id) && /^SM[0-9a-f]{32}$/i.test(d.whatsapp_message_id) && providerPhone(d.whatsapp_phone)
     let from: string | undefined
     if (d.source === 'zavu_inbound_message' && d.channel === 'whatsapp' && present(d.connection_id) && present(d.zavu_sender_id)) {
       from = providerPhone(d.zavu_from)
@@ -37,9 +42,19 @@ function whatsAppBlock(ctx: RecipientContext) {
       from = providerPhone(twilio.from)
     }
     if (from) verified.add(from)
+    if (turn === latest) {
+      latestCanBeVerified = Boolean(legacyHint || (from && d.source === 'zavu_inbound_message' && present(d.origin_message_id)))
+    }
+    // Legacy numbers can corroborate or contradict a reply, but are not proof.
+    contacts.push(d.whatsapp_phone, d.from_number, d.from)
   }
-  const recipient = verified.values().next().value ?? contacts.map(explicit).find(Boolean)
-  if (verified.size > 1 || (recipient && contacts.some(v => providerPhone(typeof v === 'string' ? v.replace(/[ ().-]/g, '') : v) !== recipient))) {
+  const deferLead = allowLeadRepair && normalizeChannel(ctx.conversationChannel) === 'whatsapp' && !!ctx.lead?.id && latestCanBeVerified
+  const legacyCandidate = deferLead ? providerPhone(latest?.metadata?.whatsapp_phone) : undefined
+  const recipient = verified.values().next().value ?? legacyCandidate
+    ?? [ctx.lead?.phone, ctx.visitorPhone, record(ctx.conversationData).whatsapp_phone].map(explicit).find(Boolean)
+  if (!deferLead) contacts.push(ctx.lead?.phone)
+  if (verified.size > 1 || (recipient && contacts.some(v => v != null && v !== ''
+    && providerPhone(typeof v === 'string' ? v.replace(/[ ().-]/g, '') : v) !== recipient))) {
     return 'chat.recipient.conflict'
   }
   return recipient ? undefined : 'chat.recipient.whatsappPhone'
@@ -85,6 +100,10 @@ export function chatChannelBlockReasons(site: SiteChannelSource | null | undefin
     if (channel === 'web') continue
     const reason = enabled.includes(channel) ? recipientBlockKey(channel, ctx) : 'chat.input.channelUnavailable'
     if (reason) reasons[channel] = reason
+  }
+  if (!reasons.whatsapp) {
+    const strict = whatsAppBlock(ctx, false)
+    if (strict) reasons.whatsappAudio = strict
   }
   return reasons
 }

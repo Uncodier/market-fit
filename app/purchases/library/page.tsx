@@ -12,7 +12,7 @@ export default function PurchasesLibraryPage() {
 
   useEffect(() => {
     const event = new CustomEvent('breadcrumb:update', {
-      detail: { title: t('layout.sidebar.purchasesLibrary') || 'Assets' }
+      detail: { title: t('layout.sidebar.purchasesLibrary') || 'Files' }
     });
     window.dispatchEvent(event);
   }, [t]);

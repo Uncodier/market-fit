@@ -75,6 +75,23 @@ it('keeps the same search header divider during route loading', () => {
   expect(header).toHaveClass('border-b', 'border-black/5', 'dark:border-white/5')
 })
 
+it('keeps standard row spacing when the list transitions from loading to loaded', async () => {
+  read.mockResolvedValueOnce({ ...first, items: [row('Standard conversation')] })
+  mount()
+  const skeleton = screen.getByRole('status', { name: 'Loading conversations' })
+  const spacings = ['box-border w-full py-3 px-4 border-b', 'min-h-5 mb-1', 'min-h-4', 'min-h-4 mt-0.5 gap-2 leading-4']
+  const placeholder = skeleton.querySelector('.box-border')!
+  expect(placeholder).toHaveClass(spacings[0])
+  Array.from(placeholder.children).forEach((slot, index) => expect(slot).toHaveClass(spacings[index + 1]))
+  expect(skeleton.querySelector('[class~="h-[71px]"], [class~="h-[56px]"]')).toBeNull()
+
+  await flush()
+  const loaded = screen.getByText('Standard conversation').closest('.box-border')!
+  expect(loaded).toHaveClass(spacings[0])
+  Array.from(loaded.firstElementChild!.children).forEach((slot, index) => expect(slot).toHaveClass(spacings[index + 1]))
+  expect(screen.queryByRole('status', { name: 'Loading conversations' })).not.toBeInTheDocument()
+})
+
 it.each(['Refreshed conversation', 'Loaded conversation'])('only auto-opens the confirmed first page: %s', async title => {
   const cache = await priorVisit()
   let finish!: (page: ConversationPage) => void

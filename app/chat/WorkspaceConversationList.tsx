@@ -72,7 +72,7 @@ export function WorkspaceConversationList(props: Props) {
     </ConversationListReadScope.Provider>
   }
 
-  if (auth.isLoading) return <ConversationListSkeleton label={t('chat.list.loading')} />
+  if (auth.isLoading) return <ConversationListSkeleton label={t('chat.list.loading')} withControls />
   if (!actor || (matches && (access?.screenScopeStatus === 'denied' || (access?.screenScopeStatus === 'ready' && !proven) ||
     (access?.isReady && !access.canAccessNavKey('chat'))))) return <Notice message={t('chat.workspace.denied')} />
   const failedCheck = matches && access?.screenScopeStatus === 'unavailable'
@@ -87,5 +87,5 @@ export function WorkspaceConversationList(props: Props) {
   if (!target && !site.isLoading) return <Notice message={t('noSiteSelected')}>
     <Link href="/projects" prefetch={false} className="underline">{t('chat.workspace.choose')}</Link>
   </Notice>
-  return <ConversationListSkeleton label={t('chat.list.loading')} />
+  return <ConversationListSkeleton label={t('chat.list.loading')} withControls />
 }

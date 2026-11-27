@@ -42,15 +42,21 @@ In a direct chat, configured channels with an unusable recipient stay visible bu
 
 These are UI checks, not delivery guarantees. The provider API still verifies the authoritative saved recipient and connection before dispatch. A historical recipient error does not block retry once the current contact is valid; a provider-owned delivery receipt still does.
 
-For manual WhatsApp text replies on legacy Twilio threads, the API can correct
-the linked lead's phone before dispatch. It first matches the saved inbound turn
-against Twilio's own record on an eligible workspace account and business number.
-The historical SID and phone alone are not proof. Other conflicting addresses
+For manual WhatsApp text replies, the API can correct the linked lead's phone
+before dispatch. Zavu requires a signed inbound webhook receipt bound to the
+workspace, connection, sender, channel, message and phone. Legacy Twilio turns
+are checked against the provider record on an eligible workspace account and
+business number. Historical metadata alone is not proof. Other conflicting addresses
 still block the send. The update preserves lead edits newer than the inbound turn,
 checks the previous lead version and phone,
 preserves opt-outs, and does not transfer a prior voice consent grant to a new
 number. Existing delivery receipts are not replayed, and the WhatsApp window
 still follows the verified provider timestamp.
+
+Deploy the API migration for `has_signed_zavu_inbound_binding` before the API
+and web changes. The repair runs on the routed WhatsApp text worker only; audio
+keeps strict recipient checks. Zavu records without a bound receipt do not
+authorize a CRM update.
 
 The composer waits for the site-scoped conversation lookup, not the optional
 visitor phone lookup. If the conversation lookup fails, the reply area offers a

@@ -64,6 +64,8 @@ it('uses saved channel evidence, never error prose or a stale conflict as a perm
   expect(getRetryChannelBlockReason({ ...conflict, channel: 'email' }, null, blocked)).toBeUndefined()
   expect(getRetryChannelBlockReason({ error_message: 'WHATSAPP_RECIPIENT_UNVERIFIED' }, 'email', blocked)).toBeUndefined()
   expect(getRetryChannelBlockReason(conflict, 'whatsapp', {})).toBeUndefined()
+  expect(getRetryChannelBlockReason({ ...conflict, response_format: 'text' }, 'whatsapp', { whatsappAudio: reason })).toBeUndefined()
+  expect(getRetryChannelBlockReason({ ...conflict, requested_response_format: 'audio' }, 'whatsapp', { whatsappAudio: reason })).toBe(reason)
   expect(getRetryChannelBlockReason({ channel: 'call' }, null, { voice: reason })).toBe(reason)
 })
 

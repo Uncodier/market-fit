@@ -9,8 +9,8 @@ const routes: Record<Kind, string> = {
   asset: '/assets', calendar: '/settings?tab=calendar', printer: '/settings?tab=printers',
   secret: '/settings?tab=secrets', team: '/settings?tab=team',
 }
-const readyButtons: Record<Kind, string> = {
-  asset: 'New asset', calendar: 'Add Calendar', printer: 'Add printer',
+const readyButtons: Record<Kind, string | RegExp> = {
+  asset: /^(Upload File|Subir archivo)$/i, calendar: 'Add Calendar', printer: 'Add printer',
   secret: 'Add Secret', team: 'Invite New Member to Team',
 }
 

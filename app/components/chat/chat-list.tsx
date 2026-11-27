@@ -5,7 +5,7 @@ import { Button } from "@/app/components/ui/button"
 import { MessageSquare, Check, X } from "@/app/components/ui/icons"
 import { cn } from "@/lib/utils"
 import { SearchInput } from "@/app/components/ui/search-input"
-import { stickyHeaderBorderClassName } from "@/app/components/ui/sticky-header-styles"
+import { conversationSearchContentClassName, conversationSearchHeaderClassName } from "./conversation-list-layout"
 import { useTheme } from "@/app/context/ThemeContext"
 import { useAuthContext } from "@/app/components/auth/auth-provider"
 import { ConversationListItem } from "@/app/types/chat"
@@ -134,12 +134,12 @@ export function ChatList({
     <div className={cn("flex flex-col h-full w-full bg-transparent", className)} style={{ overflow: 'hidden' }}>
       {/* Top bar with search input - adaptable to dark mode */}
       <div className={cn(
-        "flex items-center justify-center h-[71px] max-h-[71px] min-h-[71px] transition-colors duration-300 flex-shrink-0 overflow-hidden",
-        stickyHeaderBorderClassName,
+        conversationSearchHeaderClassName,
+        "transition-colors duration-300",
         "bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/80",
-        "w-full z-[40]"
+        "z-[40]"
       )} style={{ WebkitBackdropFilter: 'blur(10px)' }}>
-        <div className="relative w-full px-4 flex items-center justify-center min-w-0 transition-all duration-300">
+        <div className={cn(conversationSearchContentClassName, "transition-all duration-300")}>
           <SearchInput
             placeholder={t('chat.list.search')}
             value={searchQuery}

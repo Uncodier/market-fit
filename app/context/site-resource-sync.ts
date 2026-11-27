@@ -4,6 +4,7 @@ import { useEffect, type Dispatch, type SetStateAction } from "react"
 import { createClient } from "@/lib/supabase/client"
 import type { Site, SiteSettings } from "./site-types"
 import { readOnboardingProgress } from "@/app/lib/onboarding-completion"
+import { recordResourceSignal } from "@/lib/supabase/realtime-diagnostics"
 
 const EVENT = "siteResourcesUpdated"
 const BROADCAST = "site-resource-sync"
@@ -23,6 +24,7 @@ export function useSiteResourceSync(siteId: string | undefined, actorId: string 
     let revision = 0
     const refresh = async () => {
       const currentRevision = ++revision
+      recordResourceSignal('readsStarted')
       const { data, error } = await database.from("settings").select("channels,social_media,onboarding")
         .eq("site_id", siteId).abortSignal(controller.signal).maybeSingle()
       if (controller.signal.aborted || error || !data || currentRevision !== revision) return
@@ -37,17 +39,20 @@ export function useSiteResourceSync(siteId: string | undefined, actorId: string 
     }
     const onEvent = (event: Event) => {
       if ((event as CustomEvent<{ siteId: string }>).detail?.siteId !== siteId) return
+      recordResourceSignal('local')
       broadcast?.postMessage({ siteId })
       void refresh().catch(() => undefined)
     }
     const onBroadcast = (event: MessageEvent) => {
-      if (event.data?.siteId === siteId) void refresh().catch(() => undefined)
+      if (event.data?.siteId !== siteId) return
+      recordResourceSignal('broadcast')
+      void refresh().catch(() => undefined)
     }
     window.addEventListener(EVENT, onEvent)
     broadcast?.addEventListener("message", onBroadcast)
     const subscription = database.channel(`site-resources-${siteId}`).on("postgres_changes", {
       event: "UPDATE", schema: "public", table: "settings", filter: `site_id=eq.${siteId}`,
-    }, () => { void refresh().catch(() => undefined) }).subscribe()
+    }, () => { recordResourceSignal('realtime'); void refresh().catch(() => undefined) }).subscribe()
     return () => {
       controller.abort()
       window.removeEventListener(EVENT, onEvent)

@@ -56,6 +56,28 @@ No database migration is introduced or applied.
 
 ## Offline validation and rollout
 
+### Local concurrency and connection diagnostics
+
+`npm test -- --runInBand --runTestsByPath __tests__/pos/checkout-concurrency-postgres.test.ts`
+exercises the non-atomic existing-order Send writer using a disposable PostgreSQL
+cluster and separate commits. With PostgreSQL binaries available, the test
+characterizes a partial write after cancellation; passing is evidence of the
+remaining defect, not an atomicity guarantee. It does not contact a payment provider.
+
+For a local development baseline, use a disposable workspace. In each tab's
+DevTools run `sessionStorage.setItem('mf:realtime-diagnostics', '1')`, reload,
+and call `window.mfRealtimeSnapshot()` after the workspace loads. Record one
+snapshot per tab before and after the same settings change. Sum `connectedSockets`
+across tabs for the instantaneous connected count of the shared Supabase browser
+clients. `channels` counts registered channels, not independent sockets. Compare
+`socketAttempts` and `socketOpens` deltas after disconnect/reconnect; attempts
+include first connections and intentional reopenings, not just outage retries.
+Compare `siteResources.readsStarted` with `local`, `broadcast`, and `realtime`
+signal deltas. These are read starts in the site-resource mirror only, not total
+database queries or unique database changes. Counters reset on reload. Remove
+the session key and reload to disable. No identifiers, payloads, remote telemetry,
+background polling, production quota or cross-device totals are collected.
+
 ```bash
 npm test -- --runInBand __tests__/orders/use-orders-data.test.tsx __tests__/orders/location-cache-boundary.test.ts __tests__/orders/date-filter-page.test.tsx __tests__/pos/checkout-status-preservation.test.ts __tests__/pos/checkout-atomic-records.test.ts __tests__/commerce/self-service-lifecycle.test.ts
 ```
