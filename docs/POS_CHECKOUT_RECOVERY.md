@@ -10,6 +10,12 @@ redeem the coupon again. The balance includes new lines, current tax and shippin
 and deducts prior payments. Changing the original lines, their configuration or
 prices, the customer, or the recorded fulfillment context is not an additive edit.
 
+This flow requires `20261128010000_pos_recorded_shop_promo_commit.sql` on the
+database. The previous commit function rejects an ordinary (non-self-service)
+Shop sale that keeps its source, even when the application verified the coupon.
+The migration changes the commit guard, not existing orders or attempts. After
+rollout, check the original attempt's payment status before any new collection.
+
 ### Device-stamped automatic resend
 
 New checkout queue rows retain `posOperationIdentity` (version 1, a browser-profile

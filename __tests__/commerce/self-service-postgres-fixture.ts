@@ -6,7 +6,7 @@ export const claimId = uuid(204)
 export const marked = JSON.stringify([{ metadata: { self_service: true, self_service_location_id: registerIds.location } }])
 export const selfServiceMigrations = [
   '20261022220000_self_service_payment_guards.sql', '20261022220001_self_service_atomic_release.sql',
-  '20261022220002_self_service_pos_cash_source.sql',
+  '20261022220002_self_service_pos_cash_source.sql', '20261128010000_pos_recorded_shop_promo_commit.sql',
 ]
 
 export function installSelfServiceFixture(db: (sql: string) => string) {

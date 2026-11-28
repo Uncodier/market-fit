@@ -186,6 +186,28 @@ suite('self-service payment guards and atomic release in disposable PostgreSQL 1
     pg.db(service(release)); expect(stock()).toBe('15')
   })
 
+  it('commits a previously discounted Shop order with extra lines and records its receipt exactly once', () => {
+    pg.call(openSql())
+    const normal = uuid(400), promo = uuid(401), sale = registerIds.secondSale
+    pg.db(`UPDATE public.sales SET source='shop',amount=80,amount_due=80,payments='[]',
+      stripe_checkout_session_id='cs_old' WHERE id='${sale}';
+      INSERT INTO public.sale_orders(id,site_id,sale_id,origin_location_id,subtotal,total,promotion_id,discount_total)
+      VALUES('${normal}','${ids.site}','${sale}','${registerIds.location}',100,80,'${promo}',20);`)
+    pg.db(service(`SELECT public.pos_checkout_claim('${ids.site}','promo','${ids.owner}','${normal}','fingerprint','${claimId}');
+      SELECT public.pos_checkout_transition('${ids.site}','promo','${claimId}','writes_started',NULL,NULL,NULL);`))
+    const order = pg.db(`SELECT to_jsonb(o) FROM public.sale_orders o WHERE id='${normal}'`)
+    const commit = (discount: number) => `SELECT public.pos_checkout_commit_order('${ids.site}','promo','${claimId}','${normal}',
+      '${JSON.stringify({source:'shop',amount:120,amount_due:0,status:'completed',payments:[payment({amount:120,tendered:120,change:0})]})}',
+      '{"subtotal":140,"total":120,"discount_total":${discount},"items":[{"quantity":1},{"quantity":1}]}',
+      '{"amount":80,"amount_due":80,"payments":[]}','${order}')`
+    expect(() => pg.db(service(commit(30)))).toThrow('Invalid checkout financial state')
+    const result = JSON.parse(pg.db(service(commit(20))))
+    expect(result.sale).toMatchObject({source:'shop',amount_due:0,stripe_checkout_session_id:null})
+    expect(result.order).toMatchObject({total:120,discount_total:20,promotion_id:promo})
+    expect(() => pg.db(service(commit(20)))).toThrow('changed before commit')
+    expect(pg.db('SELECT count(*) FROM public.pos_register_receipts')).toBe('1')
+  })
+
   it('denies retaining Shop source for an unmarked order and retains existing normal POS behavior', () => {
     const normal = uuid(400)
     pg.db(`INSERT INTO public.sale_orders(id,site_id,sale_id,origin_location_id)
