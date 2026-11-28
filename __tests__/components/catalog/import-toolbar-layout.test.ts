@@ -12,5 +12,8 @@ it("keeps a single import icon in the action slot, separate from sort and view",
   expect(actions).not.toContain("<span>Import</span>")
   expect(controlsAndFilters).toContain("<SortDropdown")
   expect(controlsAndFilters).toContain("<ViewSelector")
-  expect(controlsAndFilters).not.toContain("setIsImportOpen")
+  expect(actions).toContain("mobileActions={null}")
+  const drawer = controlsAndFilters.split("<FilterContainer>")[1]
+  expect(drawer).toContain("<FilterSection mobileOnly>")
+  expect(drawer).toContain("setIsImportOpen(true)")
 })

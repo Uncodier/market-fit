@@ -1,5 +1,5 @@
 import React from "react";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import useSWR from "swr";
 import CatalogPage from "@/app/catalog/page";
 import { listCatalogItems } from "@/app/catalog/actions";
@@ -77,19 +77,40 @@ function currentParams(): CatalogListParams {
   return calls[calls.length - 1][0] as CatalogListParams;
 }
 
-it.each([false, true])("places search before sorting and view in the right zone (mobile: %s)", mobile => {
-  mockMobile = mobile;
+it("puts search in the desktop view zone before sort and view", () => {
   render(<CatalogPage />);
 
   const tabs = screen.getByRole("tablist", { name: "Catalog filters" }).closest("[data-toolbar-zone='tabs']")!;
   const tools = screen.getByRole("button", { name: "Import" }).closest("[data-toolbar-zone='tools']")!;
   const search = screen.getByRole("button", { name: "Search in catalog..." }).closest("[data-toolbar-search]")!;
-  const view = search.closest("[data-toolbar-zone='view']")!;
+  const view = tools.nextElementSibling!;
   expect(tabs.nextElementSibling).toBe(tools);
-  expect(tools.nextElementSibling).toBe(view);
+  expect(view).toHaveAttribute("data-toolbar-zone", "view");
   expect(view.firstElementChild).toBe(search);
   expect(view).toContainElement(screen.getByRole("combobox", { name: "Sort" }));
   expect(view).toContainElement(screen.getByRole("button", { name: "Kanban" }));
+});
+
+it("restores the compact mobile header and puts search, category tabs and import in the panel", () => {
+  mockMobile = true;
+  render(<CatalogPage />);
+
+  const header = within(screen.getByRole("banner"));
+  expect(header.queryByPlaceholderText("Search in catalog...")).not.toBeInTheDocument();
+  expect(header.queryByRole("tablist", { name: "Catalog filters" })).not.toBeInTheDocument();
+  expect(header.queryByRole("button", { name: "Import" })).not.toBeInTheDocument();
+  expect(header.getByRole("combobox", { name: "Sort" })).toBeInTheDocument();
+  expect(header.getByRole("button", { name: "Kanban" })).toBeInTheDocument();
+
+  fireEvent.click(header.getByRole("button", { name: "Search" }));
+  const panel = within(screen.getByRole("dialog", { name: "Search" }));
+  expect(panel.getByPlaceholderText("Search in catalog...")).toBeVisible();
+  expect(panel.getByRole("tablist", { name: "Catalog filters" })).toBeInTheDocument();
+  const importAction = panel.getByRole("button", { name: "Import" });
+  expect(importAction).toHaveTextContent("Import");
+  expect(importAction).toHaveClass("w-full");
+  fireEvent.click(importAction);
+  expect(screen.getByText("Import for site")).toBeInTheDocument();
 });
 
 beforeEach(() => {

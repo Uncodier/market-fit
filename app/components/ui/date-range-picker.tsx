@@ -7,6 +7,7 @@ import { DatePicker } from "@/app/components/ui/date-picker"
 import { CalendarIcon } from "@/app/components/ui/icons"
 import { ToolbarIconButton } from "@/app/components/ui/toolbar-icon-button"
 import { useLocalization } from "@/app/context/LocalizationContext"
+import { useIsMobile } from "@/app/hooks/use-mobile-view"
 import { getDateFnsLocale } from "@/app/lib/date-fns-locale"
 import { formatDateRange, getDateRangeError } from "./date-picker-range"
 import type { DateRangeSelection } from "@/lib/dates/date-range-presets"
@@ -27,6 +28,7 @@ export function CalendarDateRangePicker({
   className, onRangeChange, initialStartDate, initialEndDate, rangePreset, maxRangeDays, disabled = false, iconOnly = false,
 }: DateRangePickerProps) {
   const { t, locale } = useLocalization()
+  const isMobile = useIsMobile()
   const dateLocale = getDateFnsLocale(locale)
   const hasInitialRange = initialStartDate !== undefined || initialEndDate !== undefined
   const initialError = hasInitialRange ? getDateRangeError(initialStartDate, initialEndDate) : null
@@ -75,7 +77,7 @@ export function CalendarDateRangePicker({
         setDate={() => {}} setEndDate={() => {}}
         className="w-full" mode="range" onRangeSelect={handleRangeSelect}
         rangeDisplay={rangeDisplay} maxRangeDays={maxRangeDays} disabled={disabled}
-        trigger={iconOnly ? (
+        trigger={iconOnly && !isMobile ? (
           <ToolbarIconButton label={label} tooltipLabel={rangeDisplay} variant="secondary" disabled={disabled}
             className={cn("md:h-9 md:w-9", range.start && range.end && "ring-1 ring-inset ring-primary")}>
             <CalendarIcon className="h-4 w-4" aria-hidden />

@@ -238,6 +238,7 @@ export default function CatalogPage() {
         <div className="w-full pt-0">
           <div className="flex items-center justify-between gap-4 md:gap-6 w-full">
               <MobileFiltersDrawer triggerText={t('common.search') || "Search"}
+                mobileActions={null}
                 actions={<ToolbarIconButton label={t("layout.topbar.import") || "Import"}
                   onClick={() => setIsImportOpen(true)} disabled={!currentSite?.id}>
                   <Upload className="h-4 w-4" aria-hidden />
@@ -276,6 +277,13 @@ export default function CatalogPage() {
                     <form onSubmit={handleSearch} className="w-full md:w-auto">
                       <SearchInput  placeholder={t('catalog.search') || "Search in catalog..."} value={searchQuery} onChange={handleSearchChange}    className="w-full"  containerClassName="w-64" />
                     </form>
+                  </FilterSection>
+                  <FilterSection mobileOnly>
+                    <Button variant="ghost" size="sm" className="flex h-11 w-full items-center justify-start gap-2 rounded-md"
+                      onClick={() => setIsImportOpen(true)} disabled={!currentSite?.id}>
+                      <Upload className="h-4 w-4" aria-hidden />
+                      <span>{t("layout.topbar.import") || "Import"}</span>
+                    </Button>
                   </FilterSection>
                 </FilterContainer>
               </MobileFiltersDrawer>

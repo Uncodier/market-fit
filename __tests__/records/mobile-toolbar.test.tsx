@@ -60,6 +60,7 @@ describe("Records mobile toolbar", () => {
     const consoleError = jest.spyOn(console, "error")
     try {
       render(<RecordsToolbar {...toolbarProps()} />)
+      if (mobile) fireEvent.click(screen.getByRole("button", { name: "Search" }))
 
       const input = screen.getByPlaceholderText("Search records...")
       expect(input).not.toHaveAttribute("collapsedSizeClassName")
@@ -83,15 +84,12 @@ describe("Records mobile toolbar", () => {
     }
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
 
-    const searchButton = screen.getByRole("button", { name: "Search records..." })
-    expect(searchButton.closest("[data-toolbar-search]")).toBeInTheDocument()
-    fireEvent.click(searchButton)
-    const search = screen.getByPlaceholderText("Search records...")
+    expect(screen.queryByPlaceholderText("Search records...")).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: "Search" }))
+    const panel = screen.getByRole("dialog", { name: "Search" })
+    const search = within(panel).getByPlaceholderText("Search records...")
     fireEvent.change(search, { target: { value: "Proposal" } })
     expect(props.onSearchChange).toHaveBeenCalledWith("Proposal")
-    fireEvent.click(screen.getByRole("button", { name: "Filters" }))
-    const panel = screen.getByRole("dialog", { name: "Filters" })
-    expect(within(panel).queryByPlaceholderText("Search records...")).not.toBeInTheDocument()
     expect(within(panel).getByRole("combobox", { name: "Group by" })).toBeInTheDocument()
 
     fireEvent.click(within(panel).getByText("Choose dates"))
@@ -100,10 +98,13 @@ describe("Records mobile toolbar", () => {
     fireEvent.click(within(panel).getByRole("button", { name: "Clear date range" }))
     expect(props.onDateChange).toHaveBeenLastCalledWith(null)
 
-    fireEvent.keyDown(within(panel).getByRole("button", { name: "Sort by" }), { key: "Enter" })
+    const sortTrigger = within(panel).getByRole("button", { name: "Sort by" })
+    expect(sortTrigger).toHaveTextContent("Newest")
+    expect(sortTrigger).toHaveClass("w-full")
+    fireEvent.keyDown(sortTrigger, { key: "Enter" })
     fireEvent.click(await screen.findByRole("menuitem", { name: "Oldest" }))
     expect(props.onSortChange).toHaveBeenCalledWith("oldest")
-    expect(screen.getByRole("dialog", { name: "Filters" })).toBeInTheDocument()
+    expect(screen.getByRole("dialog", { name: "Search" })).toBeInTheDocument()
 
     expect(within(panel).queryByRole("radio", { name: "Toggle graph view" })).not.toBeInTheDocument()
   })

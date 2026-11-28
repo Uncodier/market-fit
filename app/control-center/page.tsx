@@ -153,7 +153,7 @@ export default function ControlCenterPage() {
               )
             }
             mobileSearch={selectedTasks.size === 0 && <SearchInput placeholder={t('controlCenter.search')}
-              value={searchQuery} onChange={event => setSearchQuery(event.target.value)} />}
+              value={searchQuery} onChange={event => setSearchQuery(event.target.value)} alwaysExpanded containerClassName="w-full" />}
             rightContent={
               <div className="flex flex-wrap md:flex-nowrap items-center gap-2">
                 <ToolbarFilterButton label={t("controlCenter.filter.title")} count={getTotalActiveFilters()} onClick={() => setIsFilterModalOpen(true)} />

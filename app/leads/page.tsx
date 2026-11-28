@@ -86,6 +86,7 @@ export default function LeadsPage() {
             ) : (
               <div className="flex w-full min-w-0 items-center justify-between gap-2 md:flex-wrap md:py-2">
                 <MobileFiltersDrawer triggerText={t('common.search') || "Search"}
+                  mobileActions={null}
                   actions={<LeadsTransferActions segments={segments} onImportLeads={handleImportLeads} onExportLeads={handleExportLeads} />}
                   controls={<LeadsToolbar sortBy={sortBy} onSortChange={handleSortChange} currentView={viewType} onViewChange={setViewType} />}
                 >
@@ -160,6 +161,9 @@ export default function LeadsPage() {
                         onChange={handleSearchChange}
                         className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
                       />
+                    </FilterSection>
+                    <FilterSection mobileOnly>
+                      <LeadsTransferActions mobile segments={segments} onImportLeads={handleImportLeads} onExportLeads={handleExportLeads} />
                     </FilterSection>
                   </FilterContainer>
                 </MobileFiltersDrawer>

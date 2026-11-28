@@ -211,6 +211,7 @@ function AssetsContent() {
         <StickyHeader>
           <div className="flex w-full min-w-0 items-center gap-4 py-3">
             <MobileFiltersDrawer triggerText={t('common.search') || "Search"}
+              mobileControls={null}
               controls={<SortDropdown sortBy={sortBy} setSortBy={setSortBy} title={t("sortBy") || "Sort by"}
                     options={[{ value: "newest", label: "Newest" }, { value: "oldest", label: "Oldest" }]} />}
             >
@@ -271,6 +272,10 @@ function AssetsContent() {
 
                 </FilterSection>
 
+                <FilterSection mobileOnly className={cn(searchTerm && "max-md:hidden")}>
+                  <SortDropdown sortBy={sortBy} setSortBy={setSortBy} title={t("sortBy") || "Sort by"}
+                    options={[{ value: "newest", label: "Newest" }, { value: "oldest", label: "Oldest" }]} />
+                </FilterSection>
                 <FilterSection zone="search" desktopOnly>
                   <SearchInput  data-command-k-input placeholder={t('assets.searchPlaceholder')} value={searchTerm} onChange={(e) => handleSearch(e.target.value)}    className="w-full"  containerClassName="w-64" />
                 </FilterSection>

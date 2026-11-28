@@ -42,7 +42,7 @@ export function DashboardFilters({
   return (
     <StickyHeader>
       <div className="mx-auto w-full max-w-[1536px] min-w-0 py-2">
-        <MobileFiltersDrawer triggerText={t("common.filters") || "Filters"} actions={<ReportExportButton />} tabs={
+        <MobileFiltersDrawer triggerText={t("common.filters") || "Filters"} actions={<ReportExportButton />} mobileActionsBeforeDrawer tabs={
             <TabsList aria-label={`${REPORTS[report].title} sections`} className="justify-start bg-muted/50">
               {REPORTS[report].sections.map((section) => (
                 <TabsTrigger key={section.id} value={section.id}>{section.label}</TabsTrigger>

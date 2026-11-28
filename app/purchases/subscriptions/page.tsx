@@ -83,6 +83,7 @@ export default function PurchasesSubscriptionsPage() {
       <StickyHeader>
         <div className="w-full pt-0 flex items-center justify-between">
           <MobileFiltersDrawer triggerText={t("common.search") || "Search"}
+            mobileControls={null}
             controls={<SortDropdown sortBy={sort} setSortBy={changeSort} />}
           >
             <FilterContainer>
@@ -100,6 +101,7 @@ export default function PurchasesSubscriptionsPage() {
                   </TabsList>
                 </Tabs>
               </FilterSection>
+              <FilterSection mobileOnly><SortDropdown sortBy={sort} setSortBy={changeSort} /></FilterSection>
               <FilterSection zone="search" desktopOnly>
                 <SearchInput placeholder={t("subscriptions.search") || "Search subscriptions..."} value={search} onChange={(event) => changeSearch(event.target.value)} className="w-full" containerClassName="w-64" />
               </FilterSection>

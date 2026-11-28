@@ -82,7 +82,7 @@ export default function AccountsReceivablePage() {
         <div className="w-full pt-0 flex items-center justify-between">
           <div className="flex items-center justify-between gap-2 w-full">
             <MobileFiltersDrawer triggerText={t("common.search")}
-              controls={<SortDropdown sortBy={sortBy} setSortBy={setSortBy} />}
+              mobileControls={null} controls={<SortDropdown sortBy={sortBy} setSortBy={setSortBy} />}
             >
               <FilterContainer>
                 <FilterSection zone="search" mobileOnly>

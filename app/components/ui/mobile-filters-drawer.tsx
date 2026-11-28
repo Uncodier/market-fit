@@ -1,8 +1,8 @@
 "use client"
 
 import React, { useState, Children, Fragment, createContext, useContext, isValidElement, cloneElement } from "react"
-import { Filter, MoreVertical } from "@/app/components/ui/icons"
-import { ToolbarIconButton } from "@/app/components/ui/toolbar-icon-button"
+import { MoreVertical } from "@/app/components/ui/icons"
+import { Button } from "@/app/components/ui/button"
 import {
   Sheet,
   SheetContent,
@@ -22,16 +22,6 @@ type FilterContainerProps = { children: React.ReactNode; className?: string; act
 
 function isFilterSection(section: React.ReactNode): section is React.ReactElement<FilterSectionProps> {
   return isValidElement<FilterSectionProps>(section) && section.type === FilterSection
-}
-
-function isToolbarSearch(section: React.ReactNode): section is React.ReactElement<FilterSectionProps> {
-  return isFilterSection(section) && section.props.zone === "search" && !section.props.mobileOnly
-}
-
-function getDrawerSections(sections: React.ReactNode[]) {
-  const hasSearch = sections.some(isToolbarSearch)
-  return sections.filter(section => !isFilterSection(section) || (!section.props.desktopOnly &&
-    (section.props.zone !== "tabs" || section.props.mobileOnly) && !(hasSearch && section.props.zone === "search")))
 }
 
 export function FilterContainer({ children, className, actions, controls, tabs }: FilterContainerProps) {
@@ -57,7 +47,7 @@ export function FilterContainer({ children, className, actions, controls, tabs }
     )
   }
 
-  const drawerSections = getDrawerSections(sections)
+  const drawerSections = sections.filter(section => !isFilterSection(section) || !section.props.desktopOnly)
   return (
     <div className={cn("flex w-full min-w-0 flex-col items-stretch gap-6", className)}>
       {drawerSections.map((child, index) => {
@@ -118,9 +108,12 @@ interface MobileFiltersDrawerProps {
   actions?: React.ReactNode
   controls?: React.ReactNode
   tabs?: React.ReactNode
+  mobileActions?: React.ReactNode
+  mobileControls?: React.ReactNode
+  mobileActionsBeforeDrawer?: boolean
 }
 
-export function MobileFiltersDrawer({ children, triggerText, results, alwaysModal = false, layout = "default", actions, controls, tabs }: MobileFiltersDrawerProps) {
+export function MobileFiltersDrawer({ children, triggerText, results, alwaysModal = false, layout = "default", actions, controls, tabs, mobileActions = actions, mobileControls = controls, mobileActionsBeforeDrawer = false }: MobileFiltersDrawerProps) {
   const { t } = useLocalization()
   const [open, setOpen] = useState(false)
   const isMobile = useIsMobile()
@@ -134,17 +127,13 @@ export function MobileFiltersDrawer({ children, triggerText, results, alwaysModa
     )
   }
 
-  const sections = !alwaysModal && container ? Children.toArray(container.props.children) : []
-  const search = sections.find(isToolbarSearch)
-  const mobileTabs = sections.filter(section => isFilterSection(section) && section.props.zone === "tabs" && !section.props.mobileOnly && !section.props.desktopOnly)
-  const label = search && (!triggerText || triggerText === t("common.search")) ? t("common.filters") : triggerText || t("common.search") || "Search & Filters"
-  const triggerLabel = label && label !== "common.filters" ? label : "Filters"
+  const triggerLabel = triggerText || t("common.search") || "Search & Filters"
   const drawer = (
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild>
-          <ToolbarIconButton label={triggerLabel} variant={alwaysModal ? "ghost" : "secondary"}>
-            {alwaysModal ? <MoreVertical className="h-4 w-4" aria-hidden /> : <Filter className="h-4 w-4" aria-hidden />}
-          </ToolbarIconButton>
+          <Button variant="ghost" size="icon" className="shrink-0 h-8 w-8 rounded-full" aria-label={triggerLabel}>
+            <MoreVertical className="h-4 w-4" aria-hidden />
+          </Button>
         </SheetTrigger>
         <SheetContent side="right" aria-describedby={undefined} className="w-[85vw] sm:max-w-md p-0 flex flex-col bg-background">
           <SheetHeader className="px-4 py-4 border-b">
@@ -168,9 +157,17 @@ export function MobileFiltersDrawer({ children, triggerText, results, alwaysModa
         </SheetContent>
       </Sheet>
   )
-  const showDrawer = !container || alwaysModal || results || getDrawerSections(sections).some(section => !isValidElement(section) || section.type !== FilterSeparator)
-  return search || actions || controls || tabs || mobileTabs.length > 0
-    ? <ListToolbar search={search?.props.children} tabs={(tabs || mobileTabs.length > 0) && <>{tabs}{mobileTabs}</>}
-        actions={actions} controls={(showDrawer || controls) && <>{showDrawer && drawer}{controls}</>} />
-    : <div className="flex shrink-0">{drawer}</div>
+  if (!tabs && !mobileActions && !mobileControls) return <div className="flex shrink-0">{drawer}</div>
+
+  return (
+    <div className="flex w-full min-w-0 flex-wrap items-center justify-between gap-2">
+      {tabs && <div className="min-w-0 max-w-full overflow-x-auto">{tabs}</div>}
+      {mobileActionsBeforeDrawer ? (
+        <div className="ml-auto flex shrink-0 items-center gap-2">{mobileActions}{drawer}{mobileControls}</div>
+      ) : <div className="flex shrink-0">{drawer}</div>}
+      {!mobileActionsBeforeDrawer && (mobileActions || mobileControls) && (
+        <div className="ml-auto flex items-center gap-2">{mobileActions}{mobileControls}</div>
+      )}
+    </div>
+  )
 }

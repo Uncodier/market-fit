@@ -29,7 +29,7 @@ export function TaskPageHeader({
         <div className="flex min-w-0 w-full items-center justify-between gap-2">
           <MobileFiltersDrawer layout="compact" controls={viewContent}>
             <FilterContainer>
-              {mobileSearch && <FilterSection zone="search" desktopOnly>{mobileSearch}</FilterSection>}
+              {mobileSearch && <FilterSection mobileOnly>{mobileSearch}</FilterSection>}
               <FilterSection title={t("common.search") || "Search"}>
                 {leftContent}
               </FilterSection>

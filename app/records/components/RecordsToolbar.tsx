@@ -39,10 +39,10 @@ export function RecordsToolbar(props: RecordsToolbarProps) {
   const localizedSortLabel = t("content.sortBy")
   const sortLabel = localizedSortLabel === "content.sortBy" ? "Sort by" : localizedSortLabel
 
-  const search = (
+  const search = (mobile = false) => (
     <SearchInput placeholder={t("records.search") || "Search records..."} value={props.searchQuery}
       onChange={event => props.onSearchChange(event.target.value)}
-      containerClassName="w-40 max-w-full sm:w-64"
+      alwaysExpanded={mobile} containerClassName={mobile ? "w-full" : "w-64 max-w-full"}
       className="w-full h-10 md:h-9 bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20" />
   )
   const groupBy = (
@@ -68,7 +68,8 @@ export function RecordsToolbar(props: RecordsToolbarProps) {
   return (
     <MobileFiltersDrawer controls={views}>
       <FilterContainer>
-        <FilterSection zone="search" desktopOnly>{search}</FilterSection>
+        <FilterSection mobileOnly title={t("common.search") || "Search"}>{search(true)}</FilterSection>
+        <FilterSection zone="search" desktopOnly>{search()}</FilterSection>
         <FilterSection title={groupLabel}>{groupBy}</FilterSection>
         <FilterSection title={t("common.dateRange") || "Date range"}>{dates}</FilterSection>
         <FilterSection title={sortLabel}>{sort}</FilterSection>

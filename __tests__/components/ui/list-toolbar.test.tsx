@@ -8,7 +8,7 @@ import { useIsMobile } from "@/app/hooks/use-mobile-view"
 jest.mock("@/app/hooks/use-mobile-view", () => ({ useIsMobile: jest.fn() }))
 jest.mock("@/app/context/LocalizationContext", () => ({ useLocalization: () => ({ t: () => "Filters" }) }))
 
-it.each([false, true])("keeps toolbar zones in keyboard order (mobile: %s)", mobile => {
+it.each([false, true])("uses desktop toolbar zones or the original mobile panel (mobile: %s)", mobile => {
   jest.mocked(useIsMobile).mockReturnValue(mobile)
   const onExport = jest.fn()
   render(<MobileFiltersDrawer actions={<ToolbarIconButton label="Export" onClick={onExport}><Download /></ToolbarIconButton>}
@@ -17,8 +17,20 @@ it.each([false, true])("keeps toolbar zones in keyboard order (mobile: %s)", mob
       <FilterSection title="Status"><button>Status</button></FilterSection>
       <FilterSection zone="tabs"><button>All items</button></FilterSection>
       <FilterSection zone="search" desktopOnly><SearchInput placeholder="Search items" /></FilterSection>
+      <FilterSection zone="search" mobileOnly><SearchInput placeholder="Search items" alwaysExpanded /></FilterSection>
     </FilterContainer>
   </MobileFiltersDrawer>)
+  if (mobile) {
+    expect(screen.queryByPlaceholderText("Search items")).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "All items" })).not.toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Views" })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }))
+    const drawer = within(screen.getByRole("dialog", { name: "Filters" }))
+    expect(drawer.getByRole("button", { name: "Status" })).toBeInTheDocument()
+    expect(drawer.getByRole("button", { name: "All items" })).toBeInTheDocument()
+    expect(drawer.getByPlaceholderText("Search items")).toBeVisible()
+    return
+  }
   const search = screen.getByRole("button", { name: "Search items" }).closest("[data-toolbar-search]")!
   const tabs = screen.getByRole("button", { name: "All items" }).closest("[data-toolbar-zone='tabs']")!
   const exportButton = screen.getByRole("button", { name: "Export" })
@@ -33,17 +45,7 @@ it.each([false, true])("keeps toolbar zones in keyboard order (mobile: %s)", mob
   fireEvent.click(exportButton)
   expect(onExport).toHaveBeenCalledTimes(1)
 
-  if (mobile) {
-    const filters = screen.getByRole("button", { name: "Filters" })
-    expect(search.compareDocumentPosition(filters) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    fireEvent.click(filters)
-    const drawer = within(screen.getByRole("dialog", { name: "Filters" }))
-    expect(drawer.getByRole("button", { name: "Status" })).toBeInTheDocument()
-    expect(drawer.queryByRole("button", { name: "All items" })).not.toBeInTheDocument()
-    expect(drawer.queryByPlaceholderText("Search items")).not.toBeInTheDocument()
-  } else {
-    const status = screen.getByRole("button", { name: "Status" })
-    expect(view).toContainElement(status)
-    expect(search.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-  }
+  const status = screen.getByRole("button", { name: "Status" })
+  expect(view).toContainElement(status)
+  expect(search.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 })

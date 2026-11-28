@@ -1,7 +1,7 @@
 import type { ReactNode } from "react"
 import { cn } from "@/lib/utils"
 
-/** Sticky list toolbar: tabs on the left, tools in the middle, and view controls on the right. */
+/** Desktop list layout. Mobile drawers render their own compact header. */
 export function ListToolbar({ search, tabs, actions, controls, className }: {
   search?: ReactNode
   tabs?: ReactNode
