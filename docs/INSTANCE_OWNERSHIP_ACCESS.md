@@ -63,6 +63,22 @@ Initial/site/actor permission confirmation reports loading, preventing automatic
 instance creation against an unconfirmed empty list. Explicit server `select:
 false` is respected even when the role-derived capability parser allows reads.
 
+**Realtime list freshness.** Postgres Changes does not replay rows missed while
+disconnected. Each successful join (including an SDK rejoin on the same channel)
+requests a full RLS-scoped list. If a join overlaps a read, one new snapshot
+starts after that read settles. Waking a visible, online tab also schedules a
+one-second fallback read in case its channel never joins.
+
+Row events outside a reconciliation read patch the list without fetching. Events
+that overlap the read are not replayed over its snapshot: they set one flag,
+which schedules one repair one second after settlement. Further events do not
+postpone the timer. Thus even a continuous stream causes at most one concurrent
+reconciliation read, with a full second between event-driven repairs; once a
+read finishes without overlap, no further repair is scheduled. Joins bypass
+that cooldown because they indicate a possible gap. Hiding, going offline,
+leaving the route, switching identity or permission generation, and unmounting
+retire the channel, its timers and its pending follow-up work.
+
 ## Verification and rollout
 
 ```bash

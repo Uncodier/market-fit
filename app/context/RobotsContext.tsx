@@ -12,6 +12,7 @@ import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/
 
 // Supabase reuses topics while an asynchronous unsubscribe is still pending.
 let channelGeneration = 0
+const RECONCILE_COOLDOWN_MS = 1000
 
 function shouldLoadRobots(pathname: string | null): boolean {
   if (!pathname) return false
@@ -289,10 +290,13 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
     let status = 'CLOSED'
     let paused = false
     let resumeTimer: ReturnType<typeof setTimeout> | undefined
+    let repairTimer: ReturnType<typeof setTimeout> | undefined
 
     const disconnect = () => {
       ++generation
       clearTimeout(resumeTimer)
+      clearTimeout(repairTimer)
+      repairTimer = undefined
       if (!channel) return
       const retired = channel
       channel = null
@@ -311,20 +315,31 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
       const currentGeneration = generation
       status = 'SUBSCRIBING'
       let reading = false
-      let dirty = false
+      let joinedDuringRead = false
+      let changedDuringRead = false
       const reconcile = async () => {
-        dirty = true
-        if (reading) return
+        if (currentGeneration !== generation) return
+        clearTimeout(repairTimer)
+        repairTimer = undefined
+        if (reading) { joinedDuringRead = true; return }
         reading = true
+        changedDuringRead = false
         try {
-          do {
-            dirty = false
-            await mutate()
-          } while (dirty && currentGeneration === generation)
+          await mutate()
         } catch {
           console.warn('[RobotsContext] Failed to refresh robot list')
         } finally {
           reading = false
+          if (currentGeneration === generation) {
+            // A join needs a snapshot started after it, even without row events.
+            if (joinedDuringRead) {
+              joinedDuringRead = false
+              void reconcile()
+            } else if (changedDuringRead) {
+              // One trailing snapshot per cooldown, even if the stream never goes quiet.
+              repairTimer = setTimeout(() => void reconcile(), RECONCILE_COOLDOWN_MS)
+            }
+          }
         }
       }
       // Keep the visibility refresh even if the socket cannot join (or is a demo client).
@@ -336,7 +351,7 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
         }, (payload: RealtimePostgresChangesPayload<Robot>) => {
           if (currentGeneration !== generation) return
           // A cache patch during reconciliation could discard the missed-event snapshot.
-          if (reading) { dirty = true; return }
+          if (reading) { changedDuringRead = true; return }
           mutate((current) => {
             const robots = current || []
             if (payload.eventType === 'DELETE') {

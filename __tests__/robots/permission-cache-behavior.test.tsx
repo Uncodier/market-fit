@@ -108,6 +108,10 @@ async function visibility(state: 'hidden' | 'visible') {
   await act(async () => { document.dispatchEvent(new Event('visibilitychange')) }); await settle()
 }
 
+async function advance(ms: number) {
+  await act(async () => { jest.advanceTimersByTime(ms) }); await settle()
+}
+
 it('retires the hidden channel and reconciles missed rows after joining, including SDK rejoins', async () => {
   const view = mount(); await settle()
   expect(mockTopics).toHaveLength(1)
@@ -136,6 +140,7 @@ it('retires the hidden channel and reconciles missed rows after joining, includi
     mockListeners[1]({ eventType: 'UPDATE', new: row('during-read') })
     pending.resolve(result('missed-while-hidden'))
   }); await settle()
+  await advance(1000)
   expect(mockRobots).toHaveBeenCalledTimes(reads + 1)
   expect(screen.getByTestId('robots')).toHaveTextContent('caught-up')
   mockRobots.mockResolvedValue(result('after-transport-gap'))
@@ -147,6 +152,83 @@ it('retires the hidden channel and reconciles missed rows after joining, includi
   expect(mockRemoveChannel).toHaveBeenCalledTimes(2)
   await visibility('visible'); expect(mockTopics).toHaveLength(2)
 })
+
+it('bounds full reads across sustained row changes and converges to the authoritative list', async () => {
+  mount(); await settle()
+  let snapshot = deferred<ReturnType<typeof result>>()
+  mockRobots.mockReturnValueOnce(snapshot.promise)
+  act(() => mockStatuses[0]('SUBSCRIBED')); await settle()
+  for (let round = 0; round < 4; round++) {
+    const reads = 2 + round // initial list, join, then one repair per cooldown
+    await act(async () => {
+      for (let i = 0; i < 80; i++) {
+        mockListeners[0]({ eventType: 'INSERT', new: row('overlapping') })
+        mockListeners[0]({ eventType: 'DELETE', old: { id: 'server-only' } })
+      }
+      snapshot.resolve(result('server-only'))
+    }); await settle()
+    expect(screen.getByTestId('robots')).toHaveTextContent('"all":["server-only"]')
+    await advance(999)
+    act(() => mockListeners[0]({ eventType: 'INSERT', new: row('live') })); await settle()
+    expect(screen.getByTestId('robots')).toHaveTextContent('"all":["live","server-only"]')
+    expect(mockRobots).toHaveBeenCalledTimes(reads)
+    snapshot = deferred<ReturnType<typeof result>>()
+    mockRobots.mockReturnValueOnce(snapshot.promise)
+    await advance(1)
+    expect(mockRobots).toHaveBeenCalledTimes(reads + 1)
+  }
+  await act(async () => { snapshot.resolve(result('final')) }); await settle()
+  await advance(5000)
+  expect(screen.getByTestId('robots')).toHaveTextContent('"all":["final"]')
+  expect(mockRobots).toHaveBeenCalledTimes(6)
+})
+
+it('takes a post-join snapshot when the SDK rejoins during an older read', async () => {
+  mount(); await settle()
+  const pending = deferred<ReturnType<typeof result>>()
+  mockRobots.mockReturnValueOnce(pending.promise).mockResolvedValue(result('post-join'))
+  act(() => mockStatuses[0]('SUBSCRIBED')); await settle()
+  act(() => {
+    mockListeners[0]({ eventType: 'INSERT', new: row('before-gap') })
+    mockStatuses[0]('CLOSED'); mockStatuses[0]('SUBSCRIBED')
+  })
+  expect(mockRobots).toHaveBeenCalledTimes(2)
+  await act(async () => { pending.resolve(result('before-gap')) }); await settle()
+  expect(screen.getByTestId('robots')).toHaveTextContent('"all":["post-join"]')
+  await advance(2000); expect(mockRobots).toHaveBeenCalledTimes(3)
+})
+
+it.each(['hidden', 'actor', 'site', 'permission', 'route', 'unmount'])(
+  'retires a scheduled repair and ignores late callbacks on %s', async reason => {
+    const view = mount(); await settle()
+    const pending = deferred<ReturnType<typeof result>>()
+    mockRobots.mockReturnValueOnce(pending.promise)
+    act(() => mockStatuses[0]('SUBSCRIBED')); await settle()
+    await act(async () => {
+      mockListeners[0]({ eventType: 'INSERT', new: row('overlap') })
+      pending.resolve(result('previous'))
+    }); await settle()
+    expect(mockRobots).toHaveBeenCalledTimes(2)
+    mockRobots.mockResolvedValue(result('new-generation'))
+    if (reason === 'hidden') await visibility('hidden')
+    if (reason === 'unmount') view.unmount()
+    if (reason === 'actor') { mockActor = 'actor-b'; view.change() }
+    if (reason === 'site') { mockSite = 'site-b'; view.change() }
+    if (reason === 'permission') { mockRestricted = true; await focus() }
+    if (reason === 'route') { mockPath = '/orders'; view.change() }
+    await settle()
+    const newGeneration = ['actor', 'site', 'permission'].includes(reason)
+    act(() => {
+      mockListeners[0]({ eventType: 'INSERT', new: row('retired') })
+      mockStatuses[0]('SUBSCRIBED')
+    })
+    await advance(2000)
+    expect(mockRobots).toHaveBeenCalledTimes(newGeneration ? 3 : 2)
+    if (newGeneration) expect(screen.getByTestId('robots')).toHaveTextContent('"all":["new-generation"]')
+    if (reason === 'route') expectEmpty()
+    if (reason === 'hidden') expect(screen.getByTestId('robots')).toHaveTextContent('"all":["previous"]')
+  },
+)
 
 it('recovers on wake even when the join stalls, then reconciles again after the join', async () => {
   mount(); await settle()
@@ -180,6 +262,37 @@ it('resumes only the current authorized route, site and actor after switching wh
   act(() => mockListeners[0]({ eventType: 'INSERT', new: row('old-scope') }))
   await settle(); expect(screen.getByTestId('robots')).toHaveTextContent('authorized-b')
   expect(screen.getByTestId('robots')).not.toHaveTextContent('old-scope')
+})
+
+it('ignores an in-flight repair that settles after hiding and switching accounts', async () => {
+  const view = mount(); await settle()
+  const first = deferred<ReturnType<typeof result>>()
+  const repair = deferred<ReturnType<typeof result>>()
+  mockRobots.mockReturnValueOnce(first.promise).mockReturnValueOnce(repair.promise)
+  act(() => mockStatuses[0]('SUBSCRIBED')); await settle()
+  await act(async () => {
+    mockListeners[0]({ eventType: 'UPDATE', new: row('previous') })
+    first.resolve(result('previous'))
+  }); await advance(1000)
+  expect(mockRobots).toHaveBeenCalledTimes(3)
+  // Both kinds of pending work must die with the channel.
+  act(() => {
+    mockListeners[0]({ eventType: 'INSERT', new: row('stale-event') })
+    mockStatuses[0]('SUBSCRIBED')
+  })
+  await visibility('hidden')
+  mockActor = 'actor-b'; view.change(); await settle(); expectEmpty()
+  const proof = deferred<{ data: { user: { id: string } }; error: null }>()
+  mockGetUser.mockReturnValueOnce(proof.promise)
+  await visibility('visible')
+  expect(mockTopics).toHaveLength(1)
+  expect(mockRobots).toHaveBeenCalledTimes(3)
+  mockRobots.mockResolvedValue(result('authorized-b'))
+  await act(async () => { proof.resolve({ data: { user: { id: mockActor } }, error: null }) }); await settle()
+  await act(async () => { repair.resolve(result('late-actor-a')) }); await advance(2000)
+  expect(mockTopics).toHaveLength(2)
+  expect(mockRobots).toHaveBeenCalledTimes(4)
+  expect(screen.getByTestId('robots')).toHaveTextContent('"all":["authorized-b"]')
 })
 
 it('retires same-actor data on restriction changes and never reuses a toggled-back cache', async () => {
