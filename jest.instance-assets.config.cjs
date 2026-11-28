@@ -2,6 +2,7 @@
 module.exports = {
   ...require('./jest.robot-runner.config.cjs'),
   testMatch: [
+    '<rootDir>/__tests__/robots/batch-asset-counts-postgres.test.ts',
     '<rootDir>/__tests__/components/robots/instance-browser-pagination.test.tsx',
     '<rootDir>/__tests__/components/ui/mobile-primary-buttons.test.tsx',
     '<rootDir>/__tests__/components/robots/instance-browser-data.test.tsx',

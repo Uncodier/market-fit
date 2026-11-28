@@ -15,7 +15,7 @@ describe("robot list identity-bound cache contract", () => {
   })
 
   it("binds realtime channels and resubscription dependencies to the actor", () => {
-    expect(source).toContain('.channel(`robots_context_${siteId}_${userId}`)')
+    expect(source).toContain('.channel(`robots_context_${siteId}_${userId}_${++channelGeneration}`)')
     expect(source).toMatch(/\[siteId,\s*isSiteContextReady,\s*userId,\s*permissionRevision,/)
   })
 })

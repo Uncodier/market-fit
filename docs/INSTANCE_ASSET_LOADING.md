@@ -7,6 +7,14 @@ The bounded invoker RPC and instance/date/image indexes remain unchanged by the
 follow-up frontend repair. Canonical application evidence is in the sibling
 `makinari-db-scheme/supabase/validation/20261111_instance_asset_summaries.md`.
 
+**SQL optimization verified on Makinari:** `20261128034000_batch_instance_asset_counts.sql`
+groups asset counts once per requested batch of visible instances. It retains
+the two ordered index-supported lookups (three recent assets and the latest
+image), invoker RLS, and the 100-ID cap. Hidden instances return no row; a
+visible instance without visible assets returns `0`, `[]`, and `NULL`.
+The frontend SQL matches the migration recorded in Makinari, and the grouped
+function was verified in the database. Production latency was not measured.
+
 ## Runtime contract
 
 - Asset summaries use sequential batches of at most 100 instance IDs; stable,
@@ -33,14 +41,18 @@ follow-up frontend repair. Canonical application evidence is in the sibling
 
 ## Verification
 
-The offline `jest.instance-assets.config.cjs` suite has 49 passing tests, including
+The offline `jest.instance-assets.config.cjs` suite covers
 same-user auth confirmation, different-user cancellation, 394-ID batching, cache
 progress, stale site replies, scheduled refresh, retained counts during refresh,
 unknown-vs-zero filtering, query failure and existing creation/model regressions.
 Pagination retains the selected page for equivalent ID lists, resets when list
 membership/order changes, and clamps changed page sizes without state-setting
 effects. Mobile button CSS regressions retain all mobile-scope and style checks.
-No live credentials or network are needed by the suite.
+No live credentials or network are needed by the suite. Run the SQL regressions
+with the UI suite using `REQUIRE_REAL_POSTGRES=1 npm test -- --config jest.instance-assets.config.cjs --runInBand`.
+Set `SECURITY_TEST_PG_BIN` if PostgreSQL binaries are not in the fixture's default
+location. The socket-only fixture compares pre/post RPC payloads under RLS and
+checks that the grouped count executes once for 100 distinct visible instances.
 
 Targeted lint is clean for the loaders, model, modal, table, pagination and tests.
 The table uses next/image with fixed avatar dimensions and unoptimized loading

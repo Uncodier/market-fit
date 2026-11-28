@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useRef, useMemo } from "react"
+import { createContext, useContext, useEffect, useLayoutEffect, useState, ReactNode, useCallback, useRef, useMemo } from "react"
 import useSWR from 'swr'
 import { usePathname } from "next/navigation"
 import { useSite } from "@/app/context/SiteContext"
@@ -9,6 +9,9 @@ import { useRobotsPermissionRevision } from "@/app/hooks/use-robots-permission-r
 import { createClient } from "@/lib/supabase/client"
 import { sortRobotInstances } from "@/lib/navigation/robots-instance"
 import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js'
+
+// Supabase reuses topics while an asynchronous unsubscribe is still pending.
+let channelGeneration = 0
 
 function shouldLoadRobots(pathname: string | null): boolean {
   if (!pathname) return false
@@ -126,10 +129,8 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
   const [refreshCount, setRefreshCount] = useState(0)
   // Kept for API compatibility; Realtime always mutates (never gated).
   const [, setAutoRefreshEnabled] = useState(true)
-  const robotsSubscriptionRef = useRef<RealtimeChannel | null>(null)
-  const retireRealtimeRef = useRef<(() => void) | null>(null)
-  const robotsSubscriptionStatusRef = useRef<string>('INIT')
-  const isResubscribingRef = useRef(false)
+  const syncRealtimeRef = useRef<(() => void) | null>(null)
+  const ensureRealtimeHealthy = useCallback(() => syncRealtimeRef.current?.(), [])
   const enrichingRef = useRef(false)
   
   const isSiteContextReady = Boolean(siteId)
@@ -279,42 +280,63 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
     }
   }, [mutate, isSiteContextReady])
 
-  const teardownRealtimeSubscription = useCallback(() => {
-    retireRealtimeRef.current?.()
-    retireRealtimeRef.current = null
-    if (robotsSubscriptionRef.current) {
-      try {
-        const supabase = createClient()
-        supabase.removeChannel(robotsSubscriptionRef.current)
-      } catch (e) {
-        console.warn('[RobotsContext] Failed to unsubscribe from realtime channel:', e)
-      } finally {
-        robotsSubscriptionRef.current = null
-        robotsSubscriptionStatusRef.current = 'CLOSED'
-      }
-    }
-  }, [])
-
-  const setupRealtimeSubscription = useCallback(() => {
-    if (!siteId || !isSiteContextReady || !userId || permissionRevision === null) return
-
+  // Retire callbacks in the same commit that switches the bound SWR key.
+  useLayoutEffect(() => {
+    if (!loadRobots || !siteId || !isSiteContextReady || !userId || permissionRevision === null) return
     const supabase = createClient()
-    teardownRealtimeSubscription()
+    let channel: RealtimeChannel | null = null
+    let generation = 0
+    let status = 'CLOSED'
+    let paused = false
+    let resumeTimer: ReturnType<typeof setTimeout> | undefined
 
-    let disposed = false
-    retireRealtimeRef.current = () => { disposed = true }
-    const channel = supabase
-      .channel(`robots_context_${siteId}_${userId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'remote_instances',
-          filter: `site_id=eq.${siteId}`
-        },
-        (payload: RealtimePostgresChangesPayload<Robot>) => {
-          if (disposed) return
+    const disconnect = () => {
+      ++generation
+      clearTimeout(resumeTimer)
+      if (!channel) return
+      const retired = channel
+      channel = null
+      void Promise.resolve(supabase.removeChannel(retired)).catch(() => {
+        console.warn('[RobotsContext] Failed to remove retired channel')
+      })
+    }
+    const sync = () => {
+      if (document.visibilityState !== 'visible' || navigator.onLine === false) {
+        paused = true
+        disconnect()
+        return
+      }
+      if (channel && !['CLOSED', 'CHANNEL_ERROR', 'TIMED_OUT'].includes(status)) return
+      disconnect()
+      const currentGeneration = generation
+      status = 'SUBSCRIBING'
+      let reading = false
+      let dirty = false
+      const reconcile = async () => {
+        dirty = true
+        if (reading) return
+        reading = true
+        try {
+          do {
+            dirty = false
+            await mutate()
+          } while (dirty && currentGeneration === generation)
+        } catch {
+          console.warn('[RobotsContext] Failed to refresh robot list')
+        } finally {
+          reading = false
+        }
+      }
+      // Keep the visibility refresh even if the socket cannot join (or is a demo client).
+      if (paused) resumeTimer = setTimeout(() => void reconcile(), 1000)
+      paused = false
+      channel = supabase.channel(`robots_context_${siteId}_${userId}_${++channelGeneration}`)
+        .on('postgres_changes', {
+          event: '*', schema: 'public', table: 'remote_instances', filter: `site_id=eq.${siteId}`,
+        }, (payload: RealtimePostgresChangesPayload<Robot>) => {
+          if (currentGeneration !== generation) return
+          // A cache patch during reconciliation could discard the missed-event snapshot.
+          if (reading) { dirty = true; return }
           mutate((current) => {
             const robots = current || []
             if (payload.eventType === 'DELETE') {
@@ -332,71 +354,32 @@ export function RobotsProvider({ children }: RobotsProviderProps) {
                 : robot
             )
           }, false)
-        }
-      )
-      .subscribe((status: string, err?: Error) => {
-        robotsSubscriptionStatusRef.current = status
-        if (status === 'CHANNEL_ERROR') {
-          console.warn('🔄 [RobotsContext] Temporary subscription error (auto-reconnecting...)', err || '')
-        } else if (status === 'TIMED_OUT') {
-          console.warn('🔄 [RobotsContext] Subscription timed out (auto-reconnecting...)')
-        }
-      })
-
-    robotsSubscriptionRef.current = channel
-    return () => { disposed = true }
-  }, [siteId, isSiteContextReady, userId, permissionRevision, teardownRealtimeSubscription, mutate])
-
-  const ensureRealtimeHealthy = useCallback(() => {
-    if (!currentSite?.id || !isSiteContextReady) return
-
-    const status = robotsSubscriptionStatusRef.current
-    const hasChannel = Boolean(robotsSubscriptionRef.current)
-    const shouldResubscribe =
-      !hasChannel ||
-      status === 'CHANNEL_ERROR' ||
-      status === 'TIMED_OUT' ||
-      status === 'CLOSED'
-
-    if (!shouldResubscribe) return
-    if (isResubscribingRef.current) return
-
-    isResubscribingRef.current = true
-    try {
-      setupRealtimeSubscription()
-    } finally {
-      isResubscribingRef.current = false
-    }
-  }, [currentSite?.id, isSiteContextReady, setupRealtimeSubscription])
-
-  useEffect(() => {
-    if (!loadRobots || !currentSite?.id || !isSiteContextReady) return
-    const dispose = setupRealtimeSubscription()
-    return () => {
-      dispose?.()
-      teardownRealtimeSubscription()
-    }
-  }, [loadRobots, currentSite?.id, isSiteContextReady, setupRealtimeSubscription, teardownRealtimeSubscription])
-
-  useEffect(() => {
-    let debounceTimer: NodeJS.Timeout;
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') {
-        clearTimeout(debounceTimer)
-        debounceTimer = setTimeout(() => {
-          if (currentSite?.id && isSiteContextReady) {
-            ensureRealtimeHealthy()
-            mutate()
+        })
+        .subscribe((nextStatus: string, err?: Error) => {
+          if (currentGeneration !== generation) return
+          status = nextStatus
+          // Postgres Changes does not replay events missed before a join or rejoin.
+          if (status === 'SUBSCRIBED') {
+            clearTimeout(resumeTimer)
+            void reconcile()
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            console.warn('[RobotsContext] Temporary subscription failure:', status, err || '')
           }
-        }, 1000)
-      }
+        })
     }
-    document.addEventListener('visibilitychange', handleVisibility)
+    syncRealtimeRef.current = sync
+    document.addEventListener('visibilitychange', sync)
+    window.addEventListener('online', sync)
+    window.addEventListener('offline', sync)
+    sync()
     return () => {
-      document.removeEventListener('visibilitychange', handleVisibility)
-      clearTimeout(debounceTimer)
+      syncRealtimeRef.current = null
+      document.removeEventListener('visibilitychange', sync)
+      window.removeEventListener('online', sync)
+      window.removeEventListener('offline', sync)
+      disconnect()
     }
-  }, [currentSite?.id, isSiteContextReady, mutate, ensureRealtimeHealthy])
+  }, [siteId, isSiteContextReady, userId, permissionRevision, loadRobots, mutate])
 
   const value: RobotsContextValue = {
     robotsByActivity,
