@@ -10,7 +10,11 @@ import { cn } from "@/lib/utils";
 import { steps } from "./constants/tour-constants";
 import type { User } from "@supabase/supabase-js";
 
-export function GuidedTour() {
+interface GuidedTourProps {
+  onSidebarRevealChange?: (revealed: boolean) => void;
+}
+
+export function GuidedTour({ onSidebarRevealChange }: GuidedTourProps = {}) {
   const { user } = useAuth();
   
   // Como isVisible se maneja desde adentro, siempre pasamos el layout shell si estamos logueados o navegando
@@ -19,12 +23,12 @@ export function GuidedTour() {
   
   return (
     <Suspense fallback={null}>
-      <GuidedTourContent user={user} />
+      <GuidedTourContent user={user} onSidebarRevealChange={onSidebarRevealChange} />
     </Suspense>
   );
 }
 
-function GuidedTourContent({ user }: { user: User | null }) {
+function GuidedTourContent({ user, onSidebarRevealChange }: GuidedTourProps & { user: User | null }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -283,18 +287,24 @@ function GuidedTourContent({ user }: { user: User | null }) {
   useEffect(() => {
     if (!isVisible) return;
 
-    const handleResize = () => updateTargetRect();
+    const handleResize = () => {
+      const selector = steps[currentStepIndexRef.current]?.selector;
+      onSidebarRevealChange?.(Boolean(selector && document.querySelector(selector)?.closest("#workspace-sidebar")));
+      updateTargetRect();
+    };
+    handleResize();
     window.addEventListener("resize", handleResize);
     window.addEventListener("scroll", handleResize, true);
 
-    const interval = setInterval(() => updateTargetRect(), 200);
+    const interval = setInterval(handleResize, 200);
 
     return () => {
       window.removeEventListener("resize", handleResize);
       window.removeEventListener("scroll", handleResize, true);
       clearInterval(interval);
+      onSidebarRevealChange?.(false);
     };
-  }, [isVisible, updateTargetRect]);
+  }, [isVisible, currentStepIndex, onSidebarRevealChange, updateTargetRect]);
 
   // 3. Render
   if (!mounted) {

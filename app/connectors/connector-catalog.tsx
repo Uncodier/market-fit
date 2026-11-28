@@ -70,12 +70,6 @@ export function CatalogContent({ siteId }: { siteId: string }) {
           {showDomains && (isMobile ? <ConnectorDomainsSheet {...domainProps} /> :
             <SidebarToggle className="hidden md:flex" isCollapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
               ariaLabelShow={t("connectors.showDomains")} ariaLabelHide={t("connectors.hideDomains")} />)}
-          <Tabs value={filters.tab} onValueChange={tab => update({ tab: tab === "connected" ? "connected" : "all" })}>
-            <TabsList className="h-8 rounded-full bg-muted/30 p-0.5">
-              <TabsTrigger value="all" className="rounded-full px-4 text-xs">{t("connectors.all")}</TabsTrigger>
-              <TabsTrigger value="connected" className="rounded-full px-4 text-xs">{t("connectors.connected")}</TabsTrigger>
-            </TabsList>
-          </Tabs>
           <form role="search" aria-label={t("connectors.search")} className="min-w-0" onSubmit={event => { event.preventDefault(); update({ q: search.trim().slice(0, 200) }) }}>
             <SearchInput aria-label={t("connectors.search")} placeholder={t("connectors.search")} maxLength={200} value={search}
               containerClassName="w-64 max-w-full"
@@ -84,6 +78,12 @@ export function CatalogContent({ siteId }: { siteId: string }) {
                 if (!event.target.value) update({ q: "" })
               }} />
           </form>
+          <Tabs value={filters.tab} onValueChange={tab => update({ tab: tab === "connected" ? "connected" : "all" })}>
+            <TabsList className="h-8 rounded-full bg-muted/30 p-0.5">
+              <TabsTrigger value="all" className="rounded-full px-4 text-xs">{t("connectors.all")}</TabsTrigger>
+              <TabsTrigger value="connected" className="rounded-full px-4 text-xs">{t("connectors.connected")}</TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
       </StickyHeader>
       <div className={`${connectorCatalogueBodyClassName} space-y-6`}>

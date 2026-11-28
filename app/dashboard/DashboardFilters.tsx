@@ -42,21 +42,16 @@ export function DashboardFilters({
   return (
     <StickyHeader>
       <div className="mx-auto w-full max-w-[1536px] min-w-0 py-2">
-        <div className="flex w-full min-w-0 flex-wrap items-center justify-between gap-3">
-          <div className="min-w-0 max-w-full flex-1 overflow-x-auto">
+        <MobileFiltersDrawer triggerText={t("common.filters") || "Filters"} actions={<ReportExportButton />} tabs={
             <TabsList aria-label={`${REPORTS[report].title} sections`} className="justify-start bg-muted/50">
               {REPORTS[report].sections.map((section) => (
                 <TabsTrigger key={section.id} value={section.id}>{section.label}</TabsTrigger>
               ))}
             </TabsList>
-          </div>
-          <div className="ml-auto flex shrink-0 items-center justify-end gap-2">
-          <ReportExportButton />
-          <MobileFiltersDrawer triggerText={t("common.filters") || "Filters"}>
+        }>
             <FilterContainer className="md:justify-end">
               {report !== "social" && report !== "traffic" && <FilterSection>
                 <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2">
-                  <span className="text-sm text-muted-foreground">{t("dashboard.filters.segment") || "Segment:"}</span>
                   <ReportFilterSelect label="Segment" all={t("dashboard.filters.allSegments") || "All segments"}
                     value={selectedSegment} onChange={onSegmentChange} options={segments} loading={isLoadingSegments}
                     request={onRequestSegments} retry={retrySegments} disabled={segmentsDisabled} />
@@ -65,6 +60,7 @@ export function DashboardFilters({
               <FilterSection>
                 <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2">
                   <CalendarDateRangePicker
+                    iconOnly
                     onRangeChange={onDateRangeChange}
                     maxRangeDays={maxRangeDays}
                     disabled={dateOptionsLoading}
@@ -76,9 +72,7 @@ export function DashboardFilters({
                 </div>
               </FilterSection>
             </FilterContainer>
-          </MobileFiltersDrawer>
-          </div>
-        </div>
+        </MobileFiltersDrawer>
       </div>
     </StickyHeader>
   )

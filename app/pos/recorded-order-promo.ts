@@ -27,11 +27,15 @@ export function posPromoOrderContext(params: {
     tracksOrigin ? params.originLocationId || null : null]);
 }
 
-export function posPromoCartFingerprint(cart: PosCartItem[], context: string): string {
-  return JSON.stringify([context, cart.filter((line) => line.cartQty > 0).map((line) => [
+function promoCartLines(cart: PosCartItem[]) {
+  return cart.filter((line) => line.cartQty > 0).map((line) => [
     line.id, line.lineKey, line.currency, line.cartQty, line.cartPrice,
     line.modifiers?.map((child) => [child.catalogItemId, child.groupId, child.cartQty, child.cartPrice]),
-  ])]);
+  ] as const);
+}
+
+export function posPromoCartFingerprint(cart: PosCartItem[], context: string): string {
+  return JSON.stringify([context, promoCartLines(cart)]);
 }
 
 /** Upgrade only the saved baseline, never accept the current edited cart as one. */
@@ -55,11 +59,33 @@ export function normalizePosPromoFingerprint(fingerprint: string, expectedOrderV
   } catch { return fingerprint; }
 }
 
+/** Additional units are full price; every original line and its configuration must survive. */
+export function matchesRecordedPromoCart(cart: PosCartItem[], context: string, saved: string | null, allowAdditions: boolean): boolean {
+  const currentLines = promoCartLines(cart);
+  if (JSON.stringify([context, currentLines]) === saved) return true;
+  if (!saved || !allowAdditions) return false;
+  try {
+    const [originalContext, lines] = JSON.parse(saved);
+    if (context !== originalContext || !Array.isArray(lines) || !lines.length) return false;
+    const byKey = new Map(currentLines.map(line => [line[1], line]));
+    if (byKey.size !== currentLines.length) return false;
+    return lines.every(line => {
+      if (!Array.isArray(line) || line.length !== 6) return false;
+      const [id, key, currency, qty, price, modifiers] = line;
+      const next = byKey.get(key);
+      byKey.delete(key);
+      return next && next[0] === id && next[2] === currency && next[3] >= qty &&
+        next[4] === price && JSON.stringify(next[5] ?? null) === JSON.stringify(modifiers);
+    });
+  } catch { return false; }
+}
+
 /** Restore a recorded discount, not a new redemption against the POS catalog. */
 export function recordedPosOrderPromo(order: {
   promotion_id?: string | null;
   discount_total?: number | string | null;
   subtotal?: number | string | null;
+  sales?: { source?: string | null } | null;
   promotions?: { name?: string | null; code?: string | null; image_url?: string | null } | null;
 }): LocalPromoMatch | null {
   const discount = Number(order.discount_total);
@@ -69,6 +95,7 @@ export function recordedPosOrderPromo(order: {
   const code = order.promotions?.code?.trim() || null;
   return {
     promotionId: order.promotion_id,
+    ...(order.sales?.source === "shop" ? { recordedShopOrder: true } : {}),
     promotionName: order.promotions?.name || code || "Order promotion",
     code,
     discount,

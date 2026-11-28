@@ -12,7 +12,7 @@ import {
   getReportExportSnapshot,
   getServerReportExportSnapshot,
 } from "@/app/dashboard/export/report-export-store";
-import { Button } from "../ui/button";
+import { ToolbarIconButton } from "../ui/toolbar-icon-button";
 import { Download } from "../ui/icons";
 import { isKnownDemoSite } from "@/lib/demo-data";
 
@@ -55,17 +55,13 @@ export function ReportExportButton() {
   if (pathname !== "/costs" && reportParam === "onboarding") return null;
 
   return (
-    <Button
-      variant="ghost"
-      size="sm"
-      className="flex items-center gap-1"
+    <ToolbarIconButton
       onClick={handleExport}
       disabled={!canExport}
-      aria-label="Export current section (CSV)"
-      title="Export current section (CSV)"
+      label="Export current section (CSV)"
+      tooltipLabel={`${t("layout.topbar.export") || "Export"} (CSV)`}
     >
-      <Download className="h-4 w-4 shrink-0" />
-      <span className="hidden sm:inline">{t("layout.topbar.export") || "Export"}</span>
-    </Button>
+      <Download className="h-4 w-4 shrink-0" aria-hidden />
+    </ToolbarIconButton>
   );
 }

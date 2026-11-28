@@ -119,12 +119,25 @@ it("requires recorded coupon changes in Orders rather than submitting a differen
   expect(result.current.promoDiscount).toBe(20);
 });
 
-it.each(["quantity", "price", "buyer", "new-customer", "fulfillment"])("blocks payment after changing the recorded promotion's %s context", async (change) => {
+it("adds items and units to a Shop order without discounting the additions", async () => {
+  const tea = { ...item, id: "tea", name: "Tea", target_sale_price: 15 };
+  const { result } = await ready({ ...args, catalogItems: [item, tea] });
+  await act(async () => { await result.current.handleOrderSelect(order.id); });
+  act(() => result.current.addItemToCart(tea));
+  act(() => result.current.setItemQty("line", 2));
+  expect(result.current.validateInventory()).toBe(true);
+  expect(result.current.promoDiscount).toBe(20);
+  expect(result.current.total).toBe(199);
+  expect(result.current.existingPaymentTotal).toBe(10);
+  act(() => result.current.setCart(result.current.cart.filter(row => row.id === "tea")));
+  expect(result.current.validateInventory()).toBe(false);
+});
+
+it.each(["price", "buyer", "new-customer", "fulfillment"])("blocks payment after changing the recorded promotion's %s context", async (change) => {
   const { result } = await ready();
   await act(async () => { await result.current.handleOrderSelect(order.id); });
   expect(result.current.validateInventory()).toBe(true);
   act(() => {
-    if (change === "quantity") result.current.setItemQty("line", 2);
     if (change === "price") result.current.setItemPrice("line", 50);
     if (change === "buyer") result.current.setBuyerUserId("other");
     if (change === "new-customer") result.current.setLeadValue({ mode: "create", label: "New customer" });
@@ -213,7 +226,7 @@ it.each([false, true])("upgrades an older saved customer-label fingerprint witho
       line.modifiers?.map((child) => [child.catalogItemId, child.groupId, child.cartQty, child.cartPrice])])]);
   jest.mocked(loadCartSession).mockResolvedValue({ ...session, recordedPromoFingerprint: oldFingerprint,
     leadValue: { mode: "existing", id: "lead", label: "Ada · ada@example.test" },
-    cart: session.cart.map((line) => ({ ...line, cartQty: edited ? 2 : 1 })),
+    cart: session.cart.map((line) => ({ ...line, cartPrice: edited ? 50 : 100 })),
   } as never);
   const restored = await ready();
   expect(restored.result.current.validateInventory()).toBe(!edited);

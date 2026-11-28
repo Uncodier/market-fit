@@ -70,9 +70,9 @@ function ExperimentIndex({ siteId, waiting }: { siteId?: string; waiting: boolea
   return <div className="flex-1 p-0">
     <Tabs defaultValue="all" className="h-full">
       <StickyHeader><div className="flex w-full items-center gap-8">
-        <TabsList>{statuses.map(status => <TabsTrigger key={status} value={status} className={triggerClass}>{tabs[status]}</TabsTrigger>)}</TabsList>
         <SearchInput placeholder="Search experiments..." type="text" value={search} onChange={event => setSearch(event.target.value)}
           disabled={!siteId && !waiting} className="w-full h-10 md:h-9" containerClassName="w-full" />
+        <TabsList>{statuses.map(status => <TabsTrigger key={status} value={status} className={triggerClass}>{tabs[status]}</TabsTrigger>)}</TabsList>
       </div></StickyHeader>
       <div className="p-8 space-y-4"><div className="px-8">
         {waiting || (siteId && !failed && !rows) ? <div aria-label="Loading experiments" aria-busy="true" className="space-y-4">

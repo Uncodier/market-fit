@@ -118,15 +118,10 @@ export function RecordsTable({
   return (
     <div className={documentListShellClassName()}>
       <Table className="min-w-full" style={{ width: (activeCategory ? 832 : 992) + fields.length * 176 + (hasPropertiesHeader ? 48 : 0) }}>
-        <TableHeader className="sticky top-0 z-10 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
+        <TableHeader className="sticky top-0 z-10 bg-card">
           <TableRow className="hover:bg-transparent">
             <DocumentListHead className="w-72 truncate pl-4">{t("records.table.title") || "Title"}</DocumentListHead>
-            <DocumentListHead className="w-60 truncate">{notesProperty.label}</DocumentListHead>
             {!activeCategory && <DocumentListHead className="w-40 truncate">{t("records.table.category") || "Category"}</DocumentListHead>}
-            <DocumentListHead className="w-32 truncate">{t("records.table.status") || "Status"}</DocumentListHead>
-            <DocumentListHead className="w-44" align="right">
-              <span className="block truncate" title={createdAtLabel}>{createdAtLabel}</span>
-            </DocumentListHead>
             {activeCategory && fields.map(field => <DocumentListHead key={field.id} className="w-44 border-l border-border/60 px-2">
               <button type="button" className="group/column flex w-full items-center gap-1 rounded px-2 py-1.5 text-left uppercase hover:bg-muted"
                 title={`Manage property: ${recordFieldLabel(field)}`} onClick={() => onManageProperties(activeCategory, field.id)}>
@@ -134,6 +129,11 @@ export function RecordsTable({
                 <ChevronDown aria-hidden className="size-3 shrink-0 text-muted-foreground" />
               </button>
             </DocumentListHead>)}
+            <DocumentListHead className="w-60 truncate">{notesProperty.label}</DocumentListHead>
+            <DocumentListHead className="w-32 truncate">{t("records.table.status") || "Status"}</DocumentListHead>
+            <DocumentListHead className="w-44" align="right">
+              <span className="block truncate" title={createdAtLabel}>{createdAtLabel}</span>
+            </DocumentListHead>
             {hasPropertiesHeader && <DocumentListHead className="sticky right-0 w-12 border-l border-border/60 bg-card px-2">
               <RecordsTableProperties key={activeCategory?.id ?? currentSite?.id} {...{ activeCategory, categories }}
                 onAdd={onAddProperty} onManage={onManageProperties} onViewCategory={onViewCategory} />
@@ -174,7 +174,7 @@ export function RecordsTable({
             return (
               <React.Fragment key={groupId}>
                 <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={columnCount} className="bg-muted/30 py-2.5">
+                  <TableCell colSpan={columnCount} className="bg-card py-2.5">
                     <div className="flex items-center gap-2">
                       {groupBy === "status" ? (
                         <StatusDot status={groupId} label={groupLabel} />
@@ -211,23 +211,12 @@ export function RecordsTable({
                           <OpenRecordButton title={record.title} onOpen={() => onRecordClick(record)} />
                         </div>
                       </TableCell>
-                      <TableCell className="px-2 py-1">
-                        <RecordPropertyCell record={record} property={notesProperty} onSave={onSaveProperty} className="text-muted-foreground" />
-                      </TableCell>
                       {!activeCategory && <TableCell className="px-3 py-1 text-muted-foreground">
                         {recordCategory ? <button type="button" className="flex w-full items-center rounded px-1 text-left hover:underline"
                           title={`View ${categoryLabel} properties`} onClick={() => onViewCategory(recordCategory)}>
                           <span className="min-w-0 flex-1 truncate">{categoryLabel}</span>
                         </button> : <span className="block truncate px-1" title={categoryLabel}>{categoryLabel}</span>}
                       </TableCell>}
-                      <TableCell className="px-2 py-1">
-                        <RecordPropertyCell record={record} property={statusProperty} onSave={onSaveProperty}>
-                          <StatusDot status={recordStatusGroup(record.status)} label={recordStatusLabel(recordStatusGroup(record.status), t)} />
-                        </RecordPropertyCell>
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap py-1 text-right text-xs tabular-nums text-muted-foreground">
-                        {createdValid ? format(createdDate, "MMM d, yyyy") : "—"}
-                      </TableCell>
                       {fields.map(field => {
                         const id = record.relations?.[field.name]
                         const label = field.type === "relation" && typeof id === "string"
@@ -241,6 +230,17 @@ export function RecordsTable({
                           </RecordPropertyCell>
                         </TableCell>
                       })}
+                      <TableCell className="px-2 py-1">
+                        <RecordPropertyCell record={record} property={notesProperty} onSave={onSaveProperty} className="text-muted-foreground" />
+                      </TableCell>
+                      <TableCell className="px-2 py-1">
+                        <RecordPropertyCell record={record} property={statusProperty} onSave={onSaveProperty}>
+                          <StatusDot status={recordStatusGroup(record.status)} label={recordStatusLabel(recordStatusGroup(record.status), t)} />
+                        </RecordPropertyCell>
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap py-1 text-right text-xs tabular-nums text-muted-foreground">
+                        {createdValid ? format(createdDate, "MMM d, yyyy") : "—"}
+                      </TableCell>
                       {hasPropertiesHeader && <TableCell className="border-l border-border/50 p-0" />}
                     </TableRow>
                   )

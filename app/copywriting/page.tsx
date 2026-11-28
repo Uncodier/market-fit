@@ -107,18 +107,6 @@ function CopywritingWorkspace({ siteId }: { siteId: string }) {
       <Tabs value={tab} onValueChange={changeTab} className="min-w-0">
         <StickyHeader className="!sticky top-[var(--topbar-height,64px)]">
           <div className="flex w-full min-w-0 flex-wrap items-center gap-2 py-3 lg:flex-nowrap">
-            <div className="min-w-0 basis-full lg:basis-auto" style={{ width: tabsWidth ? Math.ceil(tabsWidth) : undefined }}>
-              <ResponsiveTabsList
-                tabs={filterTabs}
-                activeTab={tab}
-                onTabChange={changeTab}
-                onPreferredWidthChange={setTabsWidth}
-                aria-label={text("type")}
-                overflowLabel={text("moreTypes")}
-                className="h-auto rounded-full p-0.5"
-                triggerClassName="px-1 py-1 text-xs"
-              />
-            </div>
             <div className="flex min-w-0 flex-1 items-center lg:flex-none">
               <SearchInput
                 type="search"
@@ -131,6 +119,18 @@ function CopywritingWorkspace({ siteId }: { siteId: string }) {
                 className="h-10 w-full md:h-9 [&::-webkit-search-cancel-button]:hidden"
                 expandedHeightClassName="h-10 md:h-9"
                 containerClassName="min-w-0 flex-1 lg:w-64 lg:flex-none"
+              />
+            </div>
+            <div className="min-w-0 basis-full lg:basis-auto" style={{ width: tabsWidth ? Math.ceil(tabsWidth) : undefined }}>
+              <ResponsiveTabsList
+                tabs={filterTabs}
+                activeTab={tab}
+                onTabChange={changeTab}
+                onPreferredWidthChange={setTabsWidth}
+                aria-label={text("type")}
+                overflowLabel={text("moreTypes")}
+                className="h-auto rounded-full p-0.5"
+                triggerClassName="px-1 py-1 text-xs"
               />
             </div>
             <div className="ml-auto shrink-0">

@@ -6,17 +6,15 @@ import { Button } from "@/app/components/ui/button"
 import { Badge } from "@/app/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import {
-  Filter,
-  ChevronDown,
   XCircle,
   Clock,
   LayoutGrid,
-  ListOrdered,
   CheckCircle2,
   Ban,
 } from "@/app/components/ui/icons"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { MobileFiltersDrawer, FilterContainer, FilterSection, FilterSeparator } from "@/app/components/ui/mobile-filters-drawer"
+import { ToolbarFilterButton } from "@/app/components/ui/toolbar-filter-button"
 import { SearchInput } from "@/app/components/ui/search-input"
 import { FilterModal } from "@/app/components/ui/filter-modal"
 import { ViewSelector } from "@/app/components/view-selector"
@@ -24,12 +22,7 @@ import { useMobileView } from "@/app/hooks/use-mobile-view"
 import { navigateToRequirement } from "@/lib/navigation/navigation-helpers"
 import { safeReload } from "@/app/utils/safe-reload"
 import { useLocalization } from "@/app/context/LocalizationContext"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/app/components/ui/dropdown-menu"
+import { SortDropdown } from "@/app/components/ui/sort-dropdown"
 import { KanbanView } from "./kanban-view"
 import { RequirementsTable, RequirementsTableSkeleton } from "./RequirementsTable"
 import { useRequirementsList } from "./use-requirements-list"
@@ -148,15 +141,38 @@ export default function RequirementsPage() {
         <StickyHeader>
           <div className="w-full pt-0">
               <div className="flex w-full items-center justify-between gap-4">
-              <MobileFiltersDrawer triggerText={t('common.search') || "Search"}>
+              <MobileFiltersDrawer triggerText={t('common.search') || "Search"}
+                controls={<>
+                  {activeFilterCount > 0 ? (
+                    <Button data-toolbar-icon-actions variant="ghost" size="sm" onClick={handleClearFilters} className="relative hidden md:flex"
+                      aria-label={`${t("requirements.clearFilters") || "Clear"} (${activeFilterCount})`}
+                      adornment={<Badge variant="outline" className="pointer-events-none absolute -right-1 -top-1 rounded-full px-1.5 py-0 text-[10px]">{activeFilterCount}</Badge>}>
+                      <XCircle className="h-4 w-4" />
+                      <span className="ml-2">{t("requirements.clearFilters") || "Clear"}</span>
+                    </Button>
+                  ) : null}
+                  <SortDropdown sortBy={list.sortBy} setSortBy={list.setSortBy} title={t("requirements.sortBy") || "Sort by"}
+                    options={[
+                      { value: "priority", label: t("requirements.sort.priority") || "Priority" },
+                      { value: "newest", label: t("requirements.sort.newest") || "Newest" },
+                      { value: "budget", label: t("requirements.sort.budget") || "Budget" },
+                    ]}
+                  />
+
+                  <ViewSelector currentView={viewMode} onViewChange={setViewMode} />
+                </>}
+              >
                 <FilterContainer>
-                  <FilterSection mobileOnly>
+                  <FilterSection>
+                    <ToolbarFilterButton label={t("common.filters") || "Filters"} count={activeFilterCount} onClick={() => setIsFilterModalOpen(true)} />
+                  </FilterSection>
+                  <FilterSection zone="search" mobileOnly>
                     <SearchInput  placeholder={t("requirements.search") || "Search requirements..."} value={list.searchQuery} onSearch={list.setSearchQuery} ref={searchInputRef} alwaysExpanded={true}    className="w-full h-10 md:h-9"  containerClassName="w-full" />
                   </FilterSection>
 
                   
 
-                  <FilterSection title={t('common.status') || 'Status'}>
+                  <FilterSection zone="tabs" title={t('common.status') || 'Status'}>
                     <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-none md:rounded-full flex flex-wrap md:flex-nowrap md:flex-row w-full md:max-w-full overflow-y-visible md:overflow-x-auto justify-start items-center gap-2 md:gap-0">
                       <TabsTrigger value="all" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5" title={t("requirements.tabs.all") || "All Requirements"}>
                         <LayoutGrid size={13} className="shrink-0 md:!hidden" />
@@ -177,53 +193,12 @@ export default function RequirementsPage() {
                     </TabsList>
                   </FilterSection>
 
-                  <FilterSection desktopOnly className="flex-row items-center gap-2 md:gap-2">
+                  <FilterSection zone="search" desktopOnly className="flex-row items-center gap-2 md:gap-2">
                     <SearchInput  placeholder={t("requirements.search") || "Search requirements..."} value={list.searchQuery} onSearch={list.setSearchQuery} ref={searchInputRef}    className="w-full border-border bg-background focus:border-muted-foreground/20 focus:ring-muted-foreground/20"  containerClassName="w-64" />
-                    <Button variant="secondary" size="icon" className="h-9 w-9 rounded-full flex-shrink-0" onClick={() => setIsFilterModalOpen(true)}>
-                      <Filter className="h-4 w-4" />
-                    </Button>
                   </FilterSection>
                 </FilterContainer>
               </MobileFiltersDrawer>
               
-              <div className="flex items-center gap-2 md:gap-4 flex-shrink-0">
-                {activeFilterCount > 0 ? (
-                  <Button data-toolbar-icon-actions variant="ghost" size="sm" onClick={handleClearFilters} className="relative hidden md:flex"
-                    aria-label={`${t("requirements.clearFilters") || "Clear"} (${activeFilterCount})`}
-                    adornment={<Badge variant="outline" className="pointer-events-none absolute -right-1 -top-1 rounded-full px-1.5 py-0 text-[10px]">{activeFilterCount}</Badge>}>
-                    <XCircle className="h-4 w-4" />
-                    <span className="ml-2">{t("requirements.clearFilters") || "Clear"}</span>
-                  </Button>
-                ) : null}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="secondary" size="sm" className="h-9 gap-2 rounded-full px-4" title={t("requirements.sortBy") || "Sort by"}>
-                      <ListOrdered className="h-4 w-4" />
-                      <span className="hidden font-normal lg:inline">
-                        {list.sortBy === "priority"
-                          ? (t("requirements.sort.priority") || "Priority")
-                          : list.sortBy === "newest"
-                            ? (t("requirements.sort.newest") || "Newest")
-                            : (t("requirements.sort.budget") || "Budget")}
-                      </span>
-                      <ChevronDown className="h-3 w-3 opacity-50" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-40">
-                    <DropdownMenuItem onClick={() => list.setSortBy("priority")} className="cursor-pointer">
-                      {t("requirements.sort.priority") || "Priority"}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => list.setSortBy("newest")} className="cursor-pointer">
-                      {t("requirements.sort.newest") || "Newest"}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => list.setSortBy("budget")} className="cursor-pointer">
-                      {t("requirements.sort.budget") || "Budget"}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                
-                <ViewSelector currentView={viewMode} onViewChange={setViewMode} />
-              </div>
             </div>
             </div>
         </StickyHeader>

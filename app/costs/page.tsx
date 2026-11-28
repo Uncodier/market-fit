@@ -8,7 +8,6 @@ import { CostReports } from "@/app/components/dashboard/cost-reports"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { CalendarDateRangePicker } from "@/app/components/ui/date-range-picker"
 import { ReportExportButton } from "@/app/components/navigation/ReportExportButton"
-import { useIsMobile } from "@/app/hooks/use-mobile-view"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useFinanceWorkspace } from "@/app/finance/use-finance-workspace"
 import { useReportFilter } from "@/app/dashboard/use-report-filter"
@@ -21,7 +20,6 @@ import { ReportExportScope } from "@/app/dashboard/export/ReportExportScope"
 import { format, isValid, subMonths, startOfDay, endOfDay } from "date-fns"
 
 function CostsPageContent() {
-  const isMobile = useIsMobile()
   const searchParams = useSearchParams()
   const section = getReportSection("costs", searchParams.get("section"))
   const selectedSection = REPORTS.costs.sections.find(item => item.id === section)!
@@ -57,14 +55,11 @@ function CostsPageContent() {
     <Tabs value={section} onValueChange={handleSectionChange} className="flex-1 min-w-0 w-full p-0 min-h-[calc(100dvh-var(--topbar-height,64px))] flex flex-col">
       <StickyHeader>
         <div className="mx-auto w-full max-w-[1536px] min-w-0 py-2">
-          <div className="flex w-full min-w-0 flex-wrap items-center justify-between gap-3">
-            <div className="min-w-0 max-w-full flex-1 overflow-x-auto">
+          <MobileFiltersDrawer key={workspace.key} triggerText={t('common.filters') || "Filters"} actions={<ReportExportButton />} tabs={
               <TabsList aria-label="Costs sections" className="justify-start bg-muted/50">
                 {REPORTS.costs.sections.map(item => <TabsTrigger key={item.id} value={item.id}>{item.label}</TabsTrigger>)}
               </TabsList>
-            </div>
-            <div className="ml-auto flex shrink-0 items-center justify-end gap-2">
-            <MobileFiltersDrawer key={workspace.key} triggerText={t('common.filters') || "Filters"}>
+          }>
               <FilterContainer className="md:justify-end">
                 <FilterSection title={t("dashboard.filters.campaign") || "Campaign"}>
                   <ReportFilterSelect label="Campaign" all={t("dashboard.filters.allCampaigns") || "All campaigns"} {...campaigns} />
@@ -76,8 +71,8 @@ function CostsPageContent() {
                     
                 <FilterSection title={t('common.dateRange') || 'Date Range'}>
                   <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2">
-                    {!isMobile && <ReportExportButton />}
                     <CalendarDateRangePicker
+                      iconOnly
                       onRangeChange={handleDateRangeChange}
                       initialStartDate={dateRange.startDate}
                       initialEndDate={dateRange.endDate}
@@ -86,10 +81,7 @@ function CostsPageContent() {
                   </div>
                 </FilterSection>
               </FilterContainer>
-            </MobileFiltersDrawer>
-            {isMobile && <ReportExportButton />}
-            </div>
-          </div>
+          </MobileFiltersDrawer>
         </div>
       </StickyHeader>
 

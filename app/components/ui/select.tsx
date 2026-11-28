@@ -6,6 +6,7 @@ import { ChevronDown } from "@/app/components/ui/icons"
 
 import { cn } from "@/lib/utils"
 import { floatingLayerZClassName } from "@/app/components/ui/overlay-styles"
+import { ToolbarIconButton } from "./toolbar-icon-button"
 
 const Select = SelectPrimitive.Root
 
@@ -61,6 +62,21 @@ const SelectTrigger = React.forwardRef<
   </SelectPrimitive.Trigger>
 ))
 SelectTrigger.displayName = SelectPrimitive.Trigger.displayName
+
+function SelectIconTrigger({ label, tooltipLabel, disabled, children }: {
+  label: string
+  tooltipLabel?: string
+  disabled?: boolean
+  children: React.ReactNode
+}) {
+  return (
+    <SelectPrimitive.Trigger asChild disabled={disabled}>
+      <ToolbarIconButton variant="secondary" className="md:h-9 md:w-9" label={label} tooltipLabel={tooltipLabel}>
+        {children}
+      </ToolbarIconButton>
+    </SelectPrimitive.Trigger>
+  )
+}
 
 const SelectContent = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Content>,
@@ -143,6 +159,7 @@ export {
   SelectGroup,
   SelectValue,
   SelectTrigger,
+  SelectIconTrigger,
   SelectContent,
   SelectLabel,
   SelectItem,

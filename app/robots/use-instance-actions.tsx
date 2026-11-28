@@ -1,4 +1,5 @@
 import { useEffect, useCallback } from "react"
+import { useLayout } from "@/app/context/LayoutContext"
 
 import { createClient } from "@/lib/supabase/client"
 
@@ -7,7 +8,8 @@ import { shouldIgnoreInstanceTabChange, sortRobotInstances } from "@/lib/navigat
 import type { useInstanceCreation } from "./use-instance-creation"
 
 export function useInstanceActions(input: ReturnType<typeof useInstanceCreation>) {
-  const { lastTabSelectionTimeRef, selectedInstanceId, selectedInstanceParam, tabInstances, isLoadingRobots, setLocalSelectedInstanceId, searchParams, router, getInstanceById, maxVisibleTabs, currentSite, refreshRobots, toast, allInstances, setPendingInstanceId, setShouldAutoConvertTab, tabsContainerRef, setMaxVisibleTabs, isLayoutCollapsed, setContainerWidth } = input
+  const { lastTabSelectionTimeRef, selectedInstanceId, selectedInstanceParam, tabInstances, isLoadingRobots, setLocalSelectedInstanceId, searchParams, router, getInstanceById, maxVisibleTabs, currentSite, refreshRobots, toast, allInstances, setPendingInstanceId, setShouldAutoConvertTab, tabsContainerRef, setMaxVisibleTabs, setContainerWidth } = input
+  const { sidebarWidth } = useLayout()
 
   // Function to handle instance tab change
   const handleTabChange = (newInstance: string) => {
@@ -252,7 +254,6 @@ export function useInstanceActions(input: ReturnType<typeof useInstanceCreation>
     }
     
     // Calculate sidebar width based on collapsed state
-    const sidebarWidth = isLayoutCollapsed ? 64 : 256 // w-16 = 64px, w-64 = 256px
     
     // Calculate available width: window width minus sidebar, margins (px-4 = 16px, px-8 = 32px)
     // Mobile: px-4 (16px * 2 = 32px)
@@ -288,7 +289,7 @@ export function useInstanceActions(input: ReturnType<typeof useInstanceCreation>
     // Only update if value changed to prevent render loops
     setMaxVisibleTabs(prev => prev !== finalMaxTabs ? finalMaxTabs : prev)
     setContainerWidth(prev => prev !== windowWidth ? windowWidth : prev)
-  }, [isLayoutCollapsed, tabsContainerRef, setMaxVisibleTabs, setContainerWidth])
+  }, [sidebarWidth, tabsContainerRef, setMaxVisibleTabs, setContainerWidth])
 
   // Use ResizeObserver to track container width changes
   useEffect(() => {
@@ -326,6 +327,6 @@ export function useInstanceActions(input: ReturnType<typeof useInstanceCreation>
         resizeObserver.disconnect();
       }
     };
-  }, [calculateMaxVisibleTabs, tabInstances.length, isLayoutCollapsed, selectedInstanceId, tabsContainerRef]);
+  }, [calculateMaxVisibleTabs, tabInstances.length, selectedInstanceId, tabsContainerRef]);
   return { ...input, handleTabChange, handleTabChangeFromOverflow, handleArchiveInstance, handleOpenFromBrowser, handleNewInstanceCreated, calculateMaxVisibleTabs }
 }

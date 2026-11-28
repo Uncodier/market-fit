@@ -10,6 +10,8 @@ import { Skeleton } from "@/app/components/ui/skeleton"
 import { SIDEBAR_ROW_HEIGHT } from "@/app/components/navigation/sidebar-metrics"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { getCategoryIconComponent, isEmojiIcon } from "./category-icon"
+import { RecordMemberFilter } from "./RecordMemberFilter"
+import { useUserData } from "@/app/hooks/use-user-data"
 
 interface RecordsSidebarProps {
   categories: RecordCategory[]
@@ -58,36 +60,38 @@ function CategoryItem({
   const { t } = useLocalization()
   const [isExpanded, setIsExpanded] = useState(selectedCategory === category.id)
   const [expandedRelations, setExpandedRelations] = useState<Record<string, boolean>>(() => {
-    // Si hay una relación seleccionada para esta categoría, la expandimos por defecto
+    // Reveal the current filter when opening the category browser.
     if (selectedCategory === category.id && selectedRelation) {
       return { [selectedRelation.fieldName]: true }
     }
     return {}
   })
   const [resolvedNames, setResolvedNames] = useScopedPreviewState<Record<string, string>>(category.site_id, {})
+  const { userData } = useUserData(Object.keys(resolvedNames).filter(key => key.startsWith("team_member:"))
+    .map(key => key.slice("team_member:".length)), category.site_id)
   const [isLoading, setIsLoading] = useState(false)
 
   // Find relation fields in this category
   const relationFields = (category.template_fields || []).filter((f: any) => f.type === 'relation')
 
   // Find unique target IDs used in records for this category
-  const categoryRecords = records.filter(r => r.category_id === category.id)
+  const categoryRecords = records.filter(r => r.site_id === category.site_id && r.category_id === category.id)
   
-  const relationsTree: Record<string, { fieldName: string, label: string, target: string, entityIds: Set<string> }> = {}
+  const relationsTree: Record<string, { fieldName: string, label: string, target: string, counts: Map<string, number> }> = {}
   
   relationFields.forEach((field: any) => {
-    const ids = new Set<string>()
+    const counts = new Map<string, number>()
     categoryRecords.forEach(r => {
       const targetId = r.relations?.[field.name]
-      if (targetId) ids.add(targetId)
+      if (typeof targetId === "string" && targetId.trim()) counts.set(targetId, (counts.get(targetId) ?? 0) + 1)
     })
     
-    if (ids.size > 0) {
+    if (counts.size > 0) {
       relationsTree[field.id] = {
         fieldName: field.name,
         label: recordFieldLabel(field),
         target: field.relationTarget || 'lead',
-        entityIds: ids
+        counts
       }
     }
   })
@@ -99,20 +103,20 @@ function CategoryItem({
     const fetchNames = async () => {
       const entitiesToResolve = categoryRecords.flatMap(record =>
         buildPreviewRequests(relationFields, record.relations || {}))
-      if (entitiesToResolve.length > 0 && category.site_id) {
-        setIsLoading(true)
+      if (!entitiesToResolve.length || !category.site_id) return
+      setIsLoading(true)
+      try {
         const names = await fetchPreviewBatches(mergePreviewRequests(entitiesToResolve), category.site_id, resolveRelationsForSidebar)
-        if (active) { setResolvedNames(names); setIsLoading(false) }
+        if (active) setResolvedNames(names)
+      } catch {
+        if (active) setResolvedNames({})
+      } finally {
+        if (active) setIsLoading(false)
       }
     }
     if (isExpanded) void fetchNames()
     return () => { active = false }
   }, [isExpanded, records, category])
-
-  const toggleRelation = (fieldName: string, e: React.MouseEvent) => {
-    e.stopPropagation()
-    setExpandedRelations(prev => ({ ...prev, [fieldName]: !prev[fieldName] }))
-  }
 
   const hasSubfolders = Object.keys(relationsTree).length > 0
   const isSelected = selectedCategory === category.id && !selectedRelation
@@ -182,7 +186,7 @@ function CategoryItem({
             </div>
           ) : (
             Object.values(relationsTree).map(tree => {
-              const isRelExpanded = expandedRelations[tree.fieldName] || false
+              const isRelExpanded = expandedRelations[tree.fieldName] ?? (tree.target === "team_member" && selectedCategory === category.id)
 
               return (
                 <div key={tree.fieldName}>
@@ -196,9 +200,11 @@ function CategoryItem({
                         height: '31.5px',
                         fontSize: '11.3px'
                       }}
-                      onClick={(e) => toggleRelation(tree.fieldName, e)}
+                      onClick={() => setExpandedRelations(prev => ({ ...prev, [tree.fieldName]: !isRelExpanded }))}
                     >
-                      <Folder className="mr-[6.5px] h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      <span aria-hidden className="mr-[6.5px] text-muted-foreground shrink-0">
+                        {tree.target === "team_member" ? getIcon(tree.target) : <Folder className="size-3.5" />}
+                      </span>
                       <span className="min-w-0 truncate flex-1 text-left">{tree.label}</span>
                       <span className="ml-1 flex h-5 w-5 shrink-0 items-center justify-center text-muted-foreground [@media(hover:hover)]:opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100" aria-hidden="true">
                         {isRelExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
@@ -206,9 +212,15 @@ function CategoryItem({
                     </Button>
                   </div>
 
-                  {isRelExpanded && (
+                  {isRelExpanded && (tree.target === "team_member" ? (
+                    <RecordMemberFilter fieldLabel={tree.label} options={[...tree.counts].map(([id, count]) => {
+                      const name = resolvedNames[`team_member:${id}`]
+                      return { id, count, name, avatar: name ? userData[id]?.avatar_url : undefined }
+                    })} selectedId={selectedCategory === category.id && selectedRelation?.fieldName === tree.fieldName ? selectedRelation.targetId : undefined}
+                    onSelect={id => onSelectCategory(category.id, id ? { fieldName: tree.fieldName, targetId: id } : null)} />
+                  ) : (
                     <div className="pl-4">
-                      {Array.from(tree.entityIds).map(entityId => {
+                      {Array.from(tree.counts.keys()).map(entityId => {
                         const isEntitySelected = selectedCategory === category.id && 
                                                  selectedRelation?.fieldName === tree.fieldName && 
                                                  selectedRelation?.targetId === entityId
@@ -235,7 +247,7 @@ function CategoryItem({
                         )
                       })}
                     </div>
-                  )}
+                  ))}
                 </div>
               )
             })
@@ -262,7 +274,7 @@ export function RecordsSidebar({
   if (isCollapsed) return null
 
   return (
-    <div className="h-full min-h-0 w-full min-w-0 flex flex-col bg-background border-r border-border">
+    <div className="h-full min-h-0 w-full min-w-0 flex flex-col bg-card border-r border-border">
       <div className="flex shrink-0 items-center gap-2 px-4 pb-2 pt-4">
         <h2 className="min-w-0 flex-1 truncate text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
           {t("applications.collections") || "Collections"}

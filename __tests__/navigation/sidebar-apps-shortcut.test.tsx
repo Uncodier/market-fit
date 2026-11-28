@@ -70,7 +70,7 @@ describe("sidebar Apps shortcut", () => {
     )
     jest.mocked(useLayout).mockReturnValue({
       robotsViewMode: "workflow", setRobotsViewMode: jest.fn(),
-      isLayoutCollapsed: false, setIsLayoutCollapsed: jest.fn(),
+      isLayoutCollapsed: false, sidebarMode: "expanded", sidebarWidth: 256, cycleSidebarMode: jest.fn(),
     })
   })
 
@@ -170,7 +170,7 @@ describe("sidebar Apps shortcut", () => {
     const setRobotsViewMode = jest.fn()
     jest.mocked(useLayout).mockReturnValue({
       robotsViewMode: mode, setRobotsViewMode,
-      isLayoutCollapsed: false, setIsLayoutCollapsed: jest.fn(),
+      isLayoutCollapsed: false, sidebarMode: "expanded", sidebarWidth: 256, cycleSidebarMode: jest.fn(),
     })
     jest.mocked(useSearchParams).mockReturnValue(
       new URLSearchParams(mode === "agent" ? "" : `mode=${mode}`) as ReturnType<typeof useSearchParams>,

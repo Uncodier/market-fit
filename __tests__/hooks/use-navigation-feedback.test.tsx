@@ -50,6 +50,19 @@ describe("navigation progress and opt-in recovery", () => {
     hook.unmount()
   })
 
+  it.each(["/pos", "/pos/check-in"])("warns about slow navigation without offering reload from %s", (pathname) => {
+    window.location.pathname = pathname
+    jest.mocked(usePathname).mockReturnValue(pathname)
+    const hook = renderHook(useNavigationFeedback)
+    act(() => { startNavigationWatchdog("/leads"); jest.advanceTimersByTime(NAVIGATION_SLOW_MS) })
+    expect(toast.warning).toHaveBeenCalledWith("Navigation is taking longer than expected", expect.objectContaining({
+      action: undefined,
+      description: expect.stringContaining("unavailable while POS is open"),
+    }))
+    expect(window.location.reload).not.toHaveBeenCalled()
+    hook.unmount()
+  })
+
   it("cleans up timers and notifications on unmount", () => {
     const hook = renderHook(useNavigationFeedback)
     act(() => { startNavigationWatchdog("/leads"); jest.advanceTimersByTime(500) })

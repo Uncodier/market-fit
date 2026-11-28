@@ -9,14 +9,16 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/
 import { recordFieldLabel } from "../lib/field-values"
 import { validateTemplateFields, type ValidatedTemplateField } from "../lib/template-validation"
 import type { RecordCategory } from "../actions"
+import { defaultRecordCurrency, recordFieldTypeSettings } from "../lib/record-field-presentation"
+import { RecordCurrencySettings } from "./RecordCurrencySettings"
 
 const fieldTypes = {
-  text: "Text", description: "Long text", number: "Number", date: "Date", select: "Select",
-  boolean: "Checkbox", location: "Location", relation: "Relation", file: "File / URL", table: "Table",
+  text: "Text", description: "Long text", number: "Number", currency: "Currency", date: "Date", select: "Select",
+  boolean: "Checkbox", location: "Location", relation: "Relation", team_member: "Team member", file: "File / URL", table: "Table",
 }
 const relationTargets = {
   lead: "Lead", company: "Company", supplier: "Supplier", sales_order: "Sales order", deal: "Deal",
-  team_member: "Team member", campaign: "Campaign", catalog_item: "Catalog item", content: "Content",
+  campaign: "Campaign", catalog_item: "Catalog item", content: "Content",
   task: "Task", sale: "Sale", purchase: "Purchase", quotation: "Quotation", record: "Record", record_category: "Record category",
 }
 const selectClass = "h-9 w-full rounded-md border bg-background px-2 text-sm"
@@ -34,6 +36,7 @@ export function RecordsTableProperties({ activeCategory, categories, onAdd, onMa
   const [categoryId, setCategoryId] = useState("")
   const [label, setLabel] = useState("")
   const [type, setType] = useState("text")
+  const [currency, setCurrency] = useState(defaultRecordCurrency)
   const [options, setOptions] = useState("")
   const [relationTarget, setRelationTarget] = useState("lead")
   const [targetCategoryId, setTargetCategoryId] = useState("")
@@ -48,6 +51,7 @@ export function RecordsTableProperties({ activeCategory, categories, onAdd, onMa
       setCategoryId("")
       setLabel("")
       setType("text")
+      setCurrency(defaultRecordCurrency)
       setOptions("")
       setRelationTarget("lead")
       setTargetCategoryId("")
@@ -69,7 +73,7 @@ export function RecordsTableProperties({ activeCategory, categories, onAdd, onMa
     // Use a fresh storage key so an old, removed property cannot be revived under a new label.
     const id = uuidv4()
     const field: ValidatedTemplateField = {
-      id, name: `property_${id.replaceAll("-", "")}`, label: displayName, type,
+      id, name: `property_${id.replaceAll("-", "")}`, label: displayName, ...recordFieldTypeSettings(type, currency),
       ...(type === "select" && { options: [...new Set(options.split("\n").map(option => option.trim()).filter(Boolean))] }),
       ...(type === "relation" && { relationTarget, ...(relationTarget === "record" && targetCategoryId && { targetCategoryId }) }),
     }
@@ -130,6 +134,7 @@ export function RecordsTableProperties({ activeCategory, categories, onAdd, onMa
                   {Object.entries(fieldTypes).map(([value, name]) => <option key={value} value={value}>{name}</option>)}
                 </select>
               </label>
+              {type === "currency" && <RecordCurrencySettings value={currency} onChange={setCurrency} />}
               {type === "select" && <label className="block space-y-1 text-xs font-medium"><span>Options (one per line)</span>
                 <Textarea value={options} onChange={event => setOptions(event.target.value)} rows={3} placeholder={"Open\nDone"} />
               </label>}

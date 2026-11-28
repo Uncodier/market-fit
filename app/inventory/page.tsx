@@ -8,10 +8,11 @@ import { listLocations, getCommerceSettings, updateCommerceSettings } from "./ac
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { MobileFiltersDrawer, FilterContainer, FilterSection, FilterSeparator } from "@/app/components/ui/mobile-filters-drawer"
 import { Button } from "@/app/components/ui/button"
+import { ToolbarIconButton } from "@/app/components/ui/toolbar-icon-button"
 import { SearchInput } from "@/app/components/ui/search-input"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { Skeleton } from "@/app/components/ui/skeleton"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
+import { Select, SelectContent, SelectIconTrigger, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { Label } from "@/app/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/app/components/ui/card"
 import { toast } from "sonner"
@@ -93,10 +94,41 @@ export default function InventoryPage() {
         <div className="w-full pt-0">
           <div className="flex items-center justify-between w-full">
             <div className="flex items-center gap-4 w-full md:w-auto">
-              <MobileFiltersDrawer triggerText={t('common.search') || "Search"}>
+              <MobileFiltersDrawer triggerText={t('common.search') || "Search"}
+                actions={<ToolbarIconButton label={t("inventory.addLocation") || "Add Location"}
+                  onClick={() => window.dispatchEvent(new CustomEvent("inventory:open-location-dialog"))}>
+                  <PlusCircle className="h-4 w-4" aria-hidden />
+                </ToolbarIconButton>}
+                controls={<>
+                  {activeTab === "levels" && (
+                    <SortDropdown
+                      sortBy={sortBy}
+                      setSortBy={(value) => { setSortBy(value); setPage(1); }}
+                      options={[
+                        { value: "updated_at", label: "Recently updated" },
+                        { value: "oldest", label: "Least recently updated" },
+                      ]}
+                    />
+                  )}
+                  <PrinterSyncBadge module="inventory" />
+                  {activeTab === "levels" && (
+                    <Select value={selectedLocation} onValueChange={(v) => { setSelectedLocation(v); setPage(1); }}>
+                      <SelectIconTrigger label={t("common.location")} tooltipLabel={locations.find(location => location.id === selectedLocation)?.name || t("common.allLocations")}>
+                        <MapPin className="h-4 w-4" aria-hidden />
+                      </SelectIconTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Locations</SelectItem>
+                        {locations.map((loc: { id: string; name: string }) => (
+                          <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </>}
+              >
                 <FilterContainer>
                   {activeTab === "levels" && (
-                    <FilterSection mobileOnly>
+                    <FilterSection zone="search" mobileOnly>
                       <form onSubmit={handleSearch} className="w-full">
                         <SearchInput  placeholder="Search catalog..." value={q} onChange={(e) => setQ(e.target.value)} alwaysExpanded={true}    className="w-full h-10 md:h-9"  containerClassName="w-full" />
                       </form>
@@ -105,7 +137,7 @@ export default function InventoryPage() {
 
                   {activeTab === "levels" && q && <FilterSeparator className="max-md:hidden" />}
 
-                  <FilterSection title={t('common.status') || 'Status'} className={activeTab === "levels" && q ? "max-md:hidden" : ""}>
+                  <FilterSection zone="tabs" title={t('common.status') || 'Status'} className={activeTab === "levels" && q ? "max-md:hidden" : ""}>
                     <Tabs value={activeTab} onValueChange={setActiveTab}>
                       <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-none md:rounded-full flex flex-wrap md:flex-nowrap md:flex-row w-full md:max-w-full overflow-y-visible md:overflow-x-auto justify-start items-center gap-2 md:gap-0">
                         <TabsTrigger value="levels" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5"><DatabaseIcon className="h-4 w-4"/> Stock Levels</TabsTrigger>
@@ -115,7 +147,7 @@ export default function InventoryPage() {
                     </Tabs>
                   </FilterSection>
                   {activeTab === "levels" && (
-                    <FilterSection desktopOnly>
+                    <FilterSection zone="search" desktopOnly>
                       <form onSubmit={handleSearch} className="w-full md:w-64">
                         <SearchInput   
                           placeholder="Search catalog..." 
@@ -128,45 +160,6 @@ export default function InventoryPage() {
               </MobileFiltersDrawer>
             </div>
             
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="flex items-center gap-1"
-                onClick={() => window.dispatchEvent(new CustomEvent("inventory:open-location-dialog"))}
-                title={t("inventory.addLocation") || "Add Location"}
-              >
-                <PlusCircle className="h-4 w-4" />
-                <span className="hidden sm:inline">
-                  {t("inventory.addLocation") || "Add Location"}
-                </span>
-              </Button>
-              <div className="w-px h-6 bg-border mx-1 hidden sm:block" />
-              {activeTab === "levels" && (
-                <SortDropdown
-                  sortBy={sortBy}
-                  setSortBy={(value) => { setSortBy(value); setPage(1); }}
-                  options={[
-                    { value: "updated_at", label: "Recently updated" },
-                    { value: "oldest", label: "Least recently updated" },
-                  ]}
-                />
-              )}
-              <PrinterSyncBadge module="inventory" />
-              {activeTab === "levels" && (
-                <Select value={selectedLocation} onValueChange={(v) => { setSelectedLocation(v); setPage(1); }}>
-                  <SelectTrigger className="w-[160px] h-8 text-xs bg-muted/30 border-0 rounded-full">
-                    <SelectValue placeholder="All Locations" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Locations</SelectItem>
-                    {locations.map((loc: { id: string; name: string }) => (
-                      <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
           </div>
         </div>
       </StickyHeader>

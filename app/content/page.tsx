@@ -4,12 +4,12 @@ import { useState, useEffect } from "react"
 import useSWR from "swr"
 import { Button } from "@/app/components/ui/button"
 import { SearchInput } from "@/app/components/ui/search-input"
-import { Badge } from "@/app/components/ui/badge"
-import { Filter, FileText, Megaphone, ListOrdered, LayoutGrid, FileVideo, Globe, ChevronDown, Check } from "@/app/components/ui/icons"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
+import { FileText, Megaphone, LayoutGrid, FileVideo, Globe } from "@/app/components/ui/icons"
+import { SortDropdown } from "@/app/components/ui/sort-dropdown"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { MobileFiltersDrawer, FilterContainer, FilterSection, FilterSeparator } from "@/app/components/ui/mobile-filters-drawer"
+import { ToolbarFilterButton } from "@/app/components/ui/toolbar-filter-button"
 import { useSite } from "@/app/context/SiteContext"
 import { useLayout } from "@/app/context/LayoutContext"
 import { useIsMobile } from "@/app/hooks/use-mobile-view"
@@ -43,7 +43,7 @@ const PUBLISH_PLATFORMS = new Set(['facebook', 'linkedin', 'tiktok', 'twitter', 
 export default function ContentPage() {
   const { t } = useLocalization()
   const { currentSite, isLoading: isSiteLoading } = useSite()
-  const { isLayoutCollapsed } = useLayout()
+  const { sidebarWidth } = useLayout()
   const isMobile = useIsMobile()
   const router = useRouter()
   const { data: segmentsData = [] } = useSWR(
@@ -237,7 +237,7 @@ export default function ContentPage() {
       </div>
     )
   }
-  const sidebarLeft = isMobile ? '0px' : (isLayoutCollapsed ? '64px' : '256px')
+  const sidebarLeft = `${isMobile ? 0 : sidebarWidth}px`
 
   return (
     <div 
@@ -257,15 +257,30 @@ export default function ContentPage() {
               }}
             >
               <div className="flex items-center justify-between w-full">
-              <MobileFiltersDrawer triggerText={t('common.search') || "Search"}>
+              <MobileFiltersDrawer triggerText={t('common.search') || "Search"}
+                controls={<>
+                  <SortDropdown sortBy={sortBy} setSortBy={setSortBy}
+                    title={t('content.sortBy') === 'content.sortBy' ? 'Sort by' : t('content.sortBy')}
+                    options={[
+                      { value: "newest", label: t('content.sort.newest') === 'content.sort.newest' ? 'Newest' : t('content.sort.newest') },
+                      { value: "oldest", label: t('content.sort.oldest') === 'content.sort.oldest' ? 'Oldest' : t('content.sort.oldest') },
+                      { value: "rate_desc", label: t('content.sort.rateDesc') === 'content.sort.rateDesc' ? 'Highest Rated' : t('content.sort.rateDesc') },
+                      { value: "rate_asc", label: t('content.sort.rateAsc') === 'content.sort.rateAsc' ? 'Lowest Rated' : t('content.sort.rateAsc') },
+                    ]}
+                  />
+                  <ViewSelector
+                    currentView={viewType}
+                    onViewChange={(view) => setViewType(view)} />
+                </>}
+              >
                 <FilterContainer>
-                  <FilterSection mobileOnly>
+                  <FilterSection zone="search" mobileOnly>
                     <SearchInput  placeholder="Search content..." value={searchTerm} onChange={handleSearchChange} alwaysExpanded={true}    className="w-full h-10 md:h-9"  containerClassName="w-full" />
                   </FilterSection>
 
                   {searchTerm && <FilterSeparator className="max-md:hidden" />}
 
-                  <FilterSection title={t('common.status') || 'Status'} className={searchTerm ? "max-md:hidden" : ""}>
+                  <FilterSection zone="tabs" title={t('common.status') || 'Status'} className={searchTerm ? "max-md:hidden" : ""}>
                     <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-none md:rounded-full flex flex-wrap md:flex-nowrap md:flex-row w-full md:max-w-full overflow-y-visible md:overflow-x-auto justify-start items-center gap-2 md:gap-0">
                       <TabsTrigger value="all" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5" title={t('content.tabs.all')}>
                         <LayoutGrid size={13} className="shrink-0 md:!hidden" />
@@ -289,88 +304,18 @@ export default function ContentPage() {
                       </TabsTrigger>
                     </TabsList>
                   </FilterSection>
-                  <FilterSection desktopOnly>
+                  <FilterSection zone="search" desktopOnly>
                     <SearchInput  placeholder="Search content..." value={searchTerm} onChange={handleSearchChange}    className="w-full bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"  containerClassName="w-64" />
                   </FilterSection>
                     
                     <FilterSection className={searchTerm ? "max-md:hidden" : ""}>
-                    <Button 
-                      variant="secondary" 
-                      size={(filters.status.length > 0 || filters.type.length > 0 || filters.segments.length > 0) ? "default" : "sm"}
-                      className={cn(
-                        "w-full md:w-auto h-10 md:h-9 rounded-md md:rounded-full justify-center",
-                        (filters.status.length > 0 || filters.type.length > 0 || filters.segments.length > 0) ? "px-4" : "md:w-9 md:px-0 px-4"
-                      )}
-                      onClick={() => setIsFiltersDialogOpen(true)}
-                    >
-                      <div className="flex items-center gap-2">
-                        <Filter className="h-4 w-4" />
-                        <span className="md:hidden">Filters</span>
-                      </div>
-                      {(filters.status.length > 0 || filters.type.length > 0 || filters.segments.length > 0) && (
-                        <Badge variant="secondary" className="ml-2">
-                          {filters.status.length + filters.type.length + filters.segments.length}
-                        </Badge>
-                      )}
-                    </Button>
+                    <ToolbarFilterButton label={t("common.filters") || "Filters"} onClick={() => setIsFiltersDialogOpen(true)}
+                      count={filters.status.length + filters.type.length + filters.segments.length} />
 
                   </FilterSection>
                 </FilterContainer>
               </MobileFiltersDrawer>
-              <div className="ml-auto shrink-0 mt-2 md:mt-0 flex items-center gap-2">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="secondary" size="sm" className="w-full md:w-auto h-10 md:h-9 gap-2 rounded-md md:rounded-full px-4 justify-between md:justify-center" title={t('content.sortBy') === 'content.sortBy' ? 'Sort by' : t('content.sortBy')}>
-                      <div className="flex items-center gap-2">
-                        <ListOrdered className="h-4 w-4" />
-                        <span className="font-normal">
-                          {sortBy === "newest"
-                            ? (t('content.sort.newest') === 'content.sort.newest' ? 'Newest' : t('content.sort.newest'))
-                            : sortBy === "oldest"
-                              ? (t('content.sort.oldest') === 'content.sort.oldest' ? 'Oldest' : t('content.sort.oldest'))
-                              : sortBy === "rate_desc"
-                                ? (t('content.sort.rateDesc') === 'content.sort.rateDesc' ? 'Highest Rated' : t('content.sort.rateDesc'))
-                                : (t('content.sort.rateAsc') === 'content.sort.rateAsc' ? 'Lowest Rated' : t('content.sort.rateAsc'))}
-                        </span>
-                      </div>
-                      <ChevronDown className="h-3 w-3 opacity-50" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-40">
-                    <DropdownMenuItem 
-                      className="cursor-pointer"
-                      onClick={() => setSortBy("newest")}
-                    >
-                      <Check className={cn("mr-2 h-4 w-4", sortBy === "newest" ? "opacity-100" : "opacity-0")} />
-                      {t('content.sort.newest') === 'content.sort.newest' ? 'Newest' : t('content.sort.newest')}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      className="cursor-pointer"
-                      onClick={() => setSortBy("oldest")}
-                    >
-                      <Check className={cn("mr-2 h-4 w-4", sortBy === "oldest" ? "opacity-100" : "opacity-0")} />
-                      {t('content.sort.oldest') === 'content.sort.oldest' ? 'Oldest' : t('content.sort.oldest')}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      className="cursor-pointer"
-                      onClick={() => setSortBy("rate_desc")}
-                    >
-                      <Check className={cn("mr-2 h-4 w-4", sortBy === "rate_desc" ? "opacity-100" : "opacity-0")} />
-                      {t('content.sort.rateDesc') === 'content.sort.rateDesc' ? 'Highest Rated' : t('content.sort.rateDesc')}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      className="cursor-pointer"
-                      onClick={() => setSortBy("rate_asc")}
-                    >
-                      <Check className={cn("mr-2 h-4 w-4", sortBy === "rate_asc" ? "opacity-100" : "opacity-0")} />
-                      {t('content.sort.rateAsc') === 'content.sort.rateAsc' ? 'Lowest Rated' : t('content.sort.rateAsc')}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <ViewSelector 
-                  currentView={viewType} 
-                  onViewChange={(view) => setViewType(view)} />
-              </div>
+
             </div>
           </div>
         </StickyHeader>

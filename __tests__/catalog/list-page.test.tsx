@@ -9,6 +9,7 @@ import type { CatalogListParams, CatalogListResponse } from "@/app/catalog/types
 import type { DropResult } from "@hello-pangea/dnd";
 
 const mockMutate = jest.fn();
+let mockMobile = false;
 let mockSite: { id: string } | null = { id: "site" };
 let mockLoading = false;
 let mockValidating = false;
@@ -32,7 +33,7 @@ jest.mock("@/app/catalog/list-categories", () => ({ listCatalogPageCategories: j
 jest.mock("@/app/catalog/reorder-actions", () => ({ reorderCatalogDisplay: jest.fn() }));
 jest.mock("@/app/hooks/use-mobile-view", () => ({
   useMobileView: () => React.useState("table"),
-  useIsMobile: () => false,
+  useIsMobile: () => mockMobile,
 }));
 jest.mock("@/app/components/view-selector", () => ({
   ViewSelector: ({ onViewChange }: { onViewChange: (view: string) => void }) =>
@@ -76,9 +77,25 @@ function currentParams(): CatalogListParams {
   return calls[calls.length - 1][0] as CatalogListParams;
 }
 
+it.each([false, true])("places search before sorting and view in the right zone (mobile: %s)", mobile => {
+  mockMobile = mobile;
+  render(<CatalogPage />);
+
+  const tabs = screen.getByRole("tablist", { name: "Catalog filters" }).closest("[data-toolbar-zone='tabs']")!;
+  const tools = screen.getByRole("button", { name: "Import" }).closest("[data-toolbar-zone='tools']")!;
+  const search = screen.getByRole("button", { name: "Search in catalog..." }).closest("[data-toolbar-search]")!;
+  const view = search.closest("[data-toolbar-zone='view']")!;
+  expect(tabs.nextElementSibling).toBe(tools);
+  expect(tools.nextElementSibling).toBe(view);
+  expect(view.firstElementChild).toBe(search);
+  expect(view).toContainElement(screen.getByRole("combobox", { name: "Sort" }));
+  expect(view).toContainElement(screen.getByRole("button", { name: "Kanban" }));
+});
+
 beforeEach(() => {
   jest.clearAllMocks();
   jest.useFakeTimers();
+  mockMobile = false;
   mockSite = { id: "site" };
   mockLoading = false;
   mockValidating = false;
@@ -187,7 +204,7 @@ it("disables reorder for archived, kind-filtered and validating data", () => {
   fireEvent.mouseDown(screen.getByRole("tab", { name: "Active" }));
   fireEvent.mouseDown(screen.getByRole("tab", { name: "Products" }));
   expect(screen.getByTestId("table")).toHaveAttribute("data-drag", "false");
-  fireEvent.mouseDown(screen.getByRole("tab", { name: "All items" }));
+  fireEvent.mouseDown(screen.getByRole("tab", { name: "Active" }));
   mockValidating = true;
   rerender(<CatalogPage />);
   expect(screen.getByTestId("table")).toHaveAttribute("data-drag", "false");

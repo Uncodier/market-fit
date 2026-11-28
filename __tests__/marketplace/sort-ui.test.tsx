@@ -80,7 +80,7 @@ beforeEach(() => {
 
 it("shows relevance and bounded-window scope instead of a misleading sales sort during search", () => {
   render(<MarketplaceCatalog {...catalogProps} searchQuery="comfortable" selectedSort="best_selling" />)
-  expect(screen.queryByTitle("Sort by")).not.toBeInTheDocument()
+  expect(screen.queryByRole("button", { name: "Sort by" })).not.toBeInTheDocument()
   expect(screen.getByText(/Relevance · up to 200 candidates/)).toBeInTheDocument()
 })
 
@@ -94,7 +94,7 @@ it.each([
     return <MarketplaceSortControl selectedSort={value} setSelectedSort={(next) => { setValue(next); onChange(next) }} />
   }
   render(<Harness />)
-  const trigger = screen.getByTitle("Sort by")
+  const trigger = screen.getByRole("button", { name: "Sort by" })
   expect(trigger).toHaveAttribute("aria-haspopup", "menu")
   expect(trigger.querySelector("svg")).not.toBeNull()
   fireEvent.keyDown(trigger, { key: "ArrowDown" })
@@ -104,26 +104,28 @@ it.each([
   ])
   fireEvent.keyDown(screen.getByRole("menuitem", { name: label }), { key: "Enter" })
   await waitFor(() => expect(onChange).toHaveBeenCalledWith(sort))
-  expect(trigger).toHaveTextContent(label)
+  expect(trigger).not.toHaveTextContent(label)
+  fireEvent.focus(trigger)
+  expect(await screen.findByRole("tooltip")).toHaveTextContent(`Sort by: ${label}`)
 })
 
 it("places a single responsive icon sorting menu above the grid, outside sidebar filters", () => {
   const { container } = render(<MarketplaceCatalog {...catalogProps} selectedSort="best_selling" />)
   const sidebar = container.querySelector("aside")!
   expect(sidebar).toHaveClass("hidden", "md:block")
-  expect(within(sidebar).queryByTitle("Sort by")).not.toBeInTheDocument()
+  expect(within(sidebar).queryByRole("button", { name: "Sort by" })).not.toBeInTheDocument()
   const geo = within(sidebar).getByText("Celaya")
   const categories = within(sidebar).getByRole("heading", { name: "Categories" })
   expect(categories.compareDocumentPosition(geo) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   expect(within(sidebar).getByRole("button", { name: "Set your location" })).toHaveTextContent("Set")
 
-  const sorts = screen.getAllByTitle("Sort by")
+  const sorts = screen.getAllByRole("button", { name: "Sort by" })
   expect(sorts).toHaveLength(1)
-  expect(sorts.every((sort) => sort.textContent?.includes("Best selling"))).toBe(true)
   const gridSort = sorts[0]
-  expect(gridSort.parentElement).toHaveAttribute("aria-label", "Catalog sorting")
-  expect(gridSort.parentElement).toHaveClass("flex", "justify-end")
-  expect(gridSort.parentElement).not.toHaveClass("md:hidden", "hidden")
+  const sortContainer = gridSort.parentElement!.parentElement!
+  expect(sortContainer).toHaveAttribute("aria-label", "Catalog sorting")
+  expect(sortContainer).toHaveClass("flex", "justify-end")
+  expect(sortContainer).not.toHaveClass("md:hidden", "hidden")
   const mobileFilters = screen.getAllByRole("region", { name: "Product filters" }).find((section) => !sidebar.contains(section))!
   expect(mobileFilters.compareDocumentPosition(gridSort) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   const mobileCategory = screen.getAllByRole("button", { name: "Products" }).find((button) => !sidebar.contains(button))!
@@ -133,15 +135,16 @@ it("places a single responsive icon sorting menu above the grid, outside sidebar
   expect(useMarketplaceProducts).toHaveBeenCalledWith(initial, 2, "", "all", "all", false, "best_selling", location.effectiveBuyerGeo, {}, undefined, 30, undefined)
 })
 
-it("hides the sorting menu for Discounts and restores the persisted sort when leaving", () => {
+it("hides the sorting menu for Discounts and restores the persisted sort when leaving", async () => {
   const { rerender } = render(<MarketplaceCatalog {...catalogProps} selectedKind="discounts" effectiveKind="discounts" selectedSort="price_desc" />)
-  expect(screen.queryByTitle("Sort by")).not.toBeInTheDocument()
+  expect(screen.queryByRole("button", { name: "Sort by" })).not.toBeInTheDocument()
   expect(screen.getByTestId("discounts-feed")).toBeInTheDocument()
   expect(screen.queryByTestId("product-list")).not.toBeInTheDocument()
   expect(useMarketplaceProducts).toHaveBeenLastCalledWith(initial, 2, "", "all", "all", false, "featured", undefined, undefined, undefined, 30, undefined)
   expect(screen.queryByRole("region", { name: "Product filters" })).not.toBeInTheDocument()
   rerender(<MarketplaceCatalog {...catalogProps} selectedSort="price_desc" />)
-  expect(screen.getByTitle("Sort by")).toHaveTextContent("Price: high to low")
+  fireEvent.focus(screen.getByRole("button", { name: "Sort by" }))
+  expect(await screen.findByRole("tooltip")).toHaveTextContent("Sort by: Price: high to low")
   expect(screen.getByTestId("product-list")).toBeInTheDocument()
 })
 
@@ -165,8 +168,9 @@ it("initializes from the URL, persists mobile sort without losing other params, 
   jest.mocked(useRouter).mockReturnValue({ replace } as unknown as ReturnType<typeof useRouter>)
   const props = { initialItems: initial, initialCount: 30, initialTotalPages: 2 }
   const { rerender } = render(<MarketplaceClient {...props} />)
-  const sortMenu = screen.getByTitle("Sort by")
-  expect(sortMenu).toHaveTextContent("Newest")
+  const sortMenu = screen.getByRole("button", { name: "Sort by" })
+  fireEvent.focus(sortMenu)
+  expect(await screen.findByRole("tooltip")).toHaveTextContent("Sort by: Newest")
   fireEvent.keyDown(sortMenu, { key: "ArrowDown" })
   fireEvent.keyDown(await screen.findByRole("menuitem", { name: "Price: low to high" }), { key: "Enter" })
   await waitFor(() => expect(replace).toHaveBeenCalledTimes(1))
@@ -177,10 +181,11 @@ it("initializes from the URL, persists mobile sort without losing other params, 
 
   params.set("sort", "best_selling")
   rerender(<MarketplaceClient {...props} />)
-  expect(screen.getByTitle("Sort by")).toHaveTextContent("Best selling")
+  fireEvent.focus(screen.getByRole("button", { name: "Sort by" }))
+  expect(await screen.findByRole("tooltip")).toHaveTextContent("Sort by: Best selling")
   params.set("sort", "unknown")
   rerender(<MarketplaceClient {...props} />)
-  expect(screen.getByTitle("Sort by")).toHaveTextContent("Featured")
+  expect(await screen.findByRole("tooltip")).toHaveTextContent("Sort by: Featured")
 })
 
 it("passes persisted listing filters and SSR facets without substituting listing country for buyer geography", () => {

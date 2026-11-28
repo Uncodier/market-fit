@@ -28,6 +28,7 @@ export type LocalPromoMatch = {
   byConditions: boolean;
   imageUrl?: string | null;
   usageLimitPerUser?: number | null;
+  recordedShopOrder?: boolean;
 };
 
 /** True when the promotion can only be redeemed by an identifiable customer. */

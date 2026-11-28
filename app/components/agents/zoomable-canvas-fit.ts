@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback } from "react"
 import type { CanvasState } from "./zoomable-canvas-state"
 import type { ZoomableCanvasProps } from "./zoomable-canvas-types"
 import debounce from "lodash/debounce"
-export function useCanvasFit(s: CanvasState, {measureAsViewportFill, graphBounds, initialOffsetY = 0, children, recenterDependency, fitOnChildrenChange, viewportStore}: ZoomableCanvasProps, isLayoutCollapsed: boolean) {
+export function useCanvasFit(s: CanvasState, {measureAsViewportFill, graphBounds, initialOffsetY = 0, children, recenterDependency, fitOnChildrenChange, viewportStore}: ZoomableCanvasProps, sidebarWidth: number) {
 const { setIsZoomedIn, canvasRef, contentRef, contentDimensions, setContentDimensions, isInitialized, setIsInitialized, isUserInteracting, setIsUserInteracting, autoRecenterEnabled, setAutoRecenterEnabled, prevRecenterDepRef, prevLayoutCollapsedRef, scheduleViewportNotify, commitTransform } = s;
   const measureAsViewportFillRef = useRef(measureAsViewportFill);
   measureAsViewportFillRef.current = measureAsViewportFill;
@@ -236,11 +236,10 @@ const { setIsZoomedIn, canvasRef, contentRef, contentDimensions, setContentDimen
     window.addEventListener("resize", onResize);
     let timer: ReturnType<typeof setTimeout> | undefined;
     
-    const layoutCollapsedChanged = prevLayoutCollapsedRef.current !== isLayoutCollapsed;
-    prevLayoutCollapsedRef.current = isLayoutCollapsed;
+    const sidebarWidthChanged = prevLayoutCollapsedRef.current !== sidebarWidth;
+    prevLayoutCollapsedRef.current = sidebarWidth;
     
-    // Only recenter when sidebar actually collapsed/expanded, not on other dep changes
-    if (layoutCollapsedChanged && isInitialized && !isUserInteracting && autoRecenterEnabled) {
+    if (sidebarWidthChanged && isInitialized && !isUserInteracting && autoRecenterEnabled) {
       timer = setTimeout(() => {
         void applyContainTransform();
       }, 50);
@@ -250,7 +249,7 @@ const { setIsZoomedIn, canvasRef, contentRef, contentDimensions, setContentDimen
       window.removeEventListener("resize", onResize);
       if (timer) clearTimeout(timer);
     };
-  }, [isInitialized, isLayoutCollapsed, applyContainTransform, isUserInteracting, autoRecenterEnabled]);
+  }, [isInitialized, sidebarWidth, applyContainTransform, isUserInteracting, autoRecenterEnabled]);
 
   // Handle explicit recenter dependency
   useEffect(() => {

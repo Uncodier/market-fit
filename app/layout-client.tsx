@@ -165,18 +165,15 @@ function LayoutClientInner({
   const isArtifact = searchParams.get("artifact") === "true"
   
   const { t } = useLocalization()
-  const { isLayoutCollapsed, setIsLayoutCollapsed, robotsViewMode } = useLayout()
+  const { isLayoutCollapsed, sidebarMode, sidebarWidth, cycleSidebarMode, robotsViewMode } = useLayout()
   const isMobile = useMobileViewport()
   const [isCreateSaleOpen, setIsCreateSaleOpen] = useState(false)
+  const [revealSidebarForTour, setRevealSidebarForTour] = useState(false)
   const [mobileSidebarRoute, setMobileSidebarRoute] = useState<string | null>(null)
   const route = `${pathname}?${searchParams.toString()}`
   const isMobileSidebarOpen = isMobile === true && mobileSidebarRoute === route
   // Discard stale state so returning to the same route or viewport never reopens the menu.
   if (mobileSidebarRoute !== null && !isMobileSidebarOpen) setMobileSidebarRoute(null)
-
-  const handleCollapse = () => {
-    setIsLayoutCollapsed(!isLayoutCollapsed)
-  }
 
   // Clean up body pointer-events on navigation.
   useEffect(() => {
@@ -269,19 +266,22 @@ function LayoutClientInner({
             <Sidebar 
               desktopVisible={isMobile === false}
               isMobile={isMobile === true}
-              isCollapsed={isLayoutCollapsed} 
-              onCollapse={handleCollapse}
+              isCollapsed={isLayoutCollapsed}
+              sidebarMode={sidebarMode}
+              route={route}
+              revealForTour={revealSidebarForTour}
+              onCollapse={cycleSidebarMode}
               isMobileOpen={isMobileSidebarOpen}
               onMobileClose={() => setMobileSidebarRoute(null)}
               className="flex-none"
             />
             {/* TOUR EXPLICITAMENTE RENDERIZADO */}
-            <GuidedTour />
+            <GuidedTour onSidebarRevealChange={setRevealSidebarForTour} />
             <ScreenAccessRedirect />
             <WorkspaceStartupBoundary pathname={pathname} search={searchParams.toString()}>
             <div
-              className="flex-1 flex flex-col min-w-0 transition-[padding] duration-300 ease-in-out"
-              style={{ paddingLeft: isMobile ? 0 : isLayoutCollapsed ? 64 : 256 }}
+              className="flex-1 flex flex-col min-w-0 transition-[padding] duration-300 ease-in-out motion-reduce:transition-none"
+              style={{ paddingLeft: isMobile ? 0 : sidebarWidth }}
             >
               <TopBar 
                 title={currentPage.title || ""}
@@ -289,11 +289,12 @@ function LayoutClientInner({
                 helpWelcomeMessage={currentPage.helpWelcomeMessage || undefined}
                 helpTask={currentPage.helpTask || undefined}
                 isCollapsed={isLayoutCollapsed}
-                onCollapse={handleCollapse}
+                sidebarMode={sidebarMode}
+                onCollapse={cycleSidebarMode}
                 isMobileSidebarOpen={isMobileSidebarOpen}
                 onMobileSidebarOpen={() => setMobileSidebarRoute(route)}
-                className="fixed top-0 right-0 left-0"
-                style={{ paddingLeft: isMobile ? 0 : isLayoutCollapsed ? 64 : 256 }}
+                className="fixed top-0 right-0 left-0 transition-[padding] duration-300 ease-in-out motion-reduce:transition-none"
+                style={{ paddingLeft: isMobile ? 0 : sidebarWidth }}
                 breadcrumb={customBreadcrumb}
                 onCreateSale={pathname === "/sales" ? handleCreateSaleClick : undefined}
                 onCreateDeal={pathname === "/deals" ? handleCreateDealClick : undefined}

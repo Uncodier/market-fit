@@ -31,10 +31,7 @@ jest.mock("@/app/dashboard/ReportContent", () => ({ ReportContent: (props: { rep
   return <div data-testid="report-content">{props.report}:{props.section}</div>
 } }))
 jest.mock("@/app/components/ui/sticky-header", () => ({ StickyHeader: ({ children }: { children: React.ReactNode }) => <div data-testid="sticky-header">{children}</div> }))
-jest.mock("@/app/components/ui/mobile-filters-drawer", () => {
-  const Wrapper = ({ children }: { children: React.ReactNode }) => <div>{children}</div>
-  return { MobileFiltersDrawer: Wrapper, FilterContainer: Wrapper, FilterSection: Wrapper }
-})
+jest.mock("@/app/hooks/use-mobile-view", () => ({ useIsMobile: () => false }))
 jest.mock("@/app/components/ui/date-range-picker", () => ({ CalendarDateRangePicker: () => <button>Date range</button> }))
 jest.mock("@/app/components/ui/help-button", () => ({ HelpButton: () => null }))
 
@@ -88,11 +85,11 @@ describe("sticky report navigation", () => {
         expect(within(screen.getByRole("tabpanel")).queryByRole("heading", { level: 1 })).not.toBeInTheDocument()
         const exportButton = within(screen.getByTestId("sticky-header")).getByRole("button", { name: "Export current section (CSV)" })
         expect(screen.getAllByRole("button", { name: "Export current section (CSV)" })).toHaveLength(1)
-        expect(exportButton.parentElement).toHaveClass("flex", "items-center")
-        expect(exportButton.parentElement?.firstElementChild).toBe(exportButton)
-        expect(exportButton.nextElementSibling).toContainElement(screen.getByRole("button", { name: "Date range" }))
+        const controls = exportButton.closest("[data-toolbar-actions]")?.nextElementSibling
+        expect(controls).toHaveAttribute("data-toolbar-controls")
+        expect(controls).toContainElement(screen.getByRole("button", { name: "Date range" }))
         if (report !== "social" && report !== "traffic") {
-          expect(exportButton.nextElementSibling).toContainElement(screen.getByRole("combobox", { name: "Segment" }))
+          expect(controls).toContainElement(screen.getByRole("combobox", { name: "Segment" }))
         }
         expect(mockContent.mock.calls.every(([props]) => props.report === report && props.section === section.id)).toBe(true)
       }
@@ -187,10 +184,8 @@ describe("sticky report navigation", () => {
     const { navigate } = renderPage("tab=overview&section=economics")
     jest.mocked(usePathname).mockReturnValue("/leads")
     navigate("")
-    const breadcrumb = within(screen.getByRole("navigation", { name: "Breadcrumb" }))
-    expect(breadcrumb.getByText("Leads")).toBeInTheDocument()
-    expect(breadcrumb.queryByText("Business overview")).not.toBeInTheDocument()
-    expect(breadcrumb.queryByRole("link", { name: "Dashboard" })).not.toBeInTheDocument()
+    expect(screen.getByRole("heading", { level: 1, name: /Leads|Customers/ })).toBeInTheDocument()
+    expect(screen.queryByRole("navigation", { name: "Breadcrumb" })).not.toBeInTheDocument()
   })
 
   it("retains the standard segmented tab appearance instead of underline navigation", () => {

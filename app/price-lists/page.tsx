@@ -85,15 +85,19 @@ export default function PriceListsPage() {
       <StickyHeader>
         <div className="w-full pt-0">
           <div className="flex items-center justify-between gap-2 w-full">
-            <MobileFiltersDrawer triggerText={t('common.search') || "Search"}>
+            <MobileFiltersDrawer triggerText={t('common.search') || "Search"}
+              controls={<>
+                <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
+              </>}
+            >
               <FilterContainer>
-                <FilterSection mobileOnly>
+                <FilterSection zone="search" mobileOnly>
                   <SearchInput  placeholder={t("priceLists.search") || "Search price lists..."} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} alwaysExpanded={true}    className="w-full h-10 md:h-9"  containerClassName="w-full" />
                 </FilterSection>
 
                 
 
-                <FilterSection title={t('common.status') || 'Estado'} className={cn(searchQuery && "max-md:hidden")}>
+                <FilterSection zone="tabs" title={t('common.status') || 'Estado'} className={cn(searchQuery && "max-md:hidden")}>
                   <Tabs
                     value={statusFilter}
                     onValueChange={(val) => {
@@ -110,15 +114,13 @@ export default function PriceListsPage() {
                   </Tabs>
                 </FilterSection>
 
-                <FilterSection desktopOnly>
+                <FilterSection zone="search" desktopOnly>
                   <SearchInput  placeholder={t("priceLists.search") || "Search price lists..."} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}    className="w-full"  containerClassName="w-64" />
                 </FilterSection>
               </FilterContainer>
             </MobileFiltersDrawer>
             
-            <div className="flex items-center gap-2 w-auto justify-end shrink-0">
-              <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
-            </div>
+
           </div>
         </div>
       </StickyHeader>

@@ -4,8 +4,9 @@ import { useState } from "react"
 import useSWR from "swr"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { EmptyState } from "@/app/components/ui/empty-state"
-import { Target, Filter, LayoutGrid, PlayCircle, Clock, CheckCircle2, ListOrdered, Check, ChevronDown } from "@/app/components/ui/icons"
+import { Target, Filter, LayoutGrid, PlayCircle, Clock, CheckCircle2 } from "@/app/components/ui/icons"
 import { CalendarDateRangePicker } from "@/app/components/ui/date-range-picker"
+import { ToolbarIconButton } from "@/app/components/ui/toolbar-icon-button"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { MobileFiltersDrawer, FilterContainer, FilterSection, FilterSeparator } from "@/app/components/ui/mobile-filters-drawer"
 import { Button } from "@/app/components/ui/button"
@@ -154,16 +155,26 @@ export default function CampaignsPage() {
     <div className="flex-1 min-w-0 w-full p-0 h-auto overflow-visible bg-muted/30 min-h-[calc(100vh-var(--topbar-height,64px))]">
       <StickyHeader>
         <div className="flex items-center justify-between w-full">
-          <div className="flex items-center gap-4">
-            <MobileFiltersDrawer triggerText={t('common.search') || "Search"}>
+          <MobileFiltersDrawer triggerText={t('common.search') || "Search"}
+              controls={<>
+              <SortDropdown sortBy={sortBy} setSortBy={setSortBy} options={[
+                { value: "due_date", label: "Due date" },
+                { value: "oldest", label: "Oldest" },
+                { value: "newest", label: "Newest" },
+                { value: "budget", label: "Budget" },
+                { value: "roi", label: "ROI" }
+              ]} />
+              <ViewSelector currentView={viewType} onViewChange={setViewType} />
+            </>}
+            >
               <FilterContainer>
-                <FilterSection mobileOnly>
+                <FilterSection zone="search" mobileOnly>
                   <SearchInput data-command-k-input placeholder={t("campaigns.search.placeholder") || "Search campaigns..."} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} alwaysExpanded={true} className="w-full h-10 md:h-9" containerClassName="w-full" />
                 </FilterSection>
 
                 
 
-                <FilterSection title={t('common.status') || 'Estado'}>
+                <FilterSection zone="tabs" title={t('common.status') || 'Estado'}>
                   <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "all" | "active" | "pending" | "completed")}>
                     <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-none md:rounded-full flex flex-wrap md:flex-nowrap md:flex-row w-full md:max-w-full overflow-y-visible md:overflow-x-auto justify-start items-center gap-2 md:gap-0">
                       <TabsTrigger value="all" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5" title={t("campaigns.tabs.all") || "All Campaigns"}>
@@ -193,12 +204,9 @@ export default function CampaignsPage() {
                     <FilterSection className="flex-col md:flex-row items-stretch md:items-center gap-2 md:gap-3">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="secondary" size="sm" className="w-full md:w-auto md:w-9 h-10 md:h-9 gap-2 rounded-md md:rounded-full px-4 md:px-0 justify-between md:justify-center">
-                        <div className="flex items-center gap-2">
-                          <Filter className="h-4 w-4" />
-                          <span className="font-normal md:hidden">Filters</span>
-                        </div>
-                      </Button>
+                      <ToolbarIconButton variant="secondary" label={t("common.filters") || "Filters"} className="md:h-9 md:w-9">
+                        <Filter className="h-4 w-4" aria-hidden />
+                      </ToolbarIconButton>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-[200px]">
                       <DropdownMenuCheckboxItem
@@ -227,26 +235,16 @@ export default function CampaignsPage() {
                     </DropdownMenuContent>
                   </DropdownMenu>
 
-                  <CalendarDateRangePicker />
+                  <CalendarDateRangePicker iconOnly />
                 </FilterSection>
 
-                <FilterSection desktopOnly>
+                <FilterSection zone="search" desktopOnly>
                   <SearchInput data-command-k-input placeholder={t("campaigns.search.placeholder") || "Search campaigns..."} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full" containerClassName="w-full w-64" />
                 </FilterSection>
               </FilterContainer>
             </MobileFiltersDrawer>
-          </div>
 
-          <div className="flex items-center gap-2 shrink-0 ml-4">
-            <SortDropdown sortBy={sortBy} setSortBy={setSortBy} options={[
-              { value: "due_date", label: "Due date" },
-              { value: "oldest", label: "Oldest" },
-              { value: "newest", label: "Newest" },
-              { value: "budget", label: "Budget" },
-              { value: "roi", label: "ROI" }
-            ]} />
-            <ViewSelector currentView={viewType} onViewChange={setViewType} />
-          </div>
+
         </div>
       </StickyHeader>
 

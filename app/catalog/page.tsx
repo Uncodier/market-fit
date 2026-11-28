@@ -16,6 +16,7 @@ import { CatalogFilterTabs } from "./components/CatalogFilterTabs"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { MobileFiltersDrawer, FilterContainer, FilterSection } from "@/app/components/ui/mobile-filters-drawer"
 import { Button } from "@/app/components/ui/button"
+import { ToolbarIconButton } from "@/app/components/ui/toolbar-icon-button"
 import { SearchInput } from "@/app/components/ui/search-input"
 import { Plus, Archive, UploadCloud as Upload } from "@/app/components/ui/icons"
 import { Pagination } from "@/app/components/ui/pagination"
@@ -236,9 +237,23 @@ export default function CatalogPage() {
       <StickyHeader>
         <div className="w-full pt-0">
           <div className="flex items-center justify-between gap-4 md:gap-6 w-full">
-            <MobileFiltersDrawer triggerText={t('common.search') || "Search"}>
+              <MobileFiltersDrawer triggerText={t('common.search') || "Search"}
+                actions={<ToolbarIconButton label={t("layout.topbar.import") || "Import"}
+                  onClick={() => setIsImportOpen(true)} disabled={!currentSite?.id}>
+                  <Upload className="h-4 w-4" aria-hidden />
+                </ToolbarIconButton>}
+                controls={<>
+                  <SortDropdown sortBy={sortBy} setSortBy={setSortBy} options={[
+                    { value: 'display_order', label: 'Display order' },
+                    { value: 'newest', label: 'Newest' },
+                    { value: 'oldest', label: 'Oldest' },
+                    { value: 'updated_at', label: 'Updated' },
+                  ]} />
+                  <ViewSelector currentView={viewType} onViewChange={setViewType} />
+                </>}
+              >
                 <FilterContainer>
-                  <FilterSection mobileOnly>
+                  <FilterSection zone="search" mobileOnly>
                     <form onSubmit={handleSearch} className="w-full">
                       <SearchInput  placeholder={t('catalog.search') || "Search in catalog..."} value={searchQuery} onChange={handleSearchChange} alwaysExpanded={true}    className="w-full h-10 md:h-9"  containerClassName="w-full" />
                     </form>
@@ -246,7 +261,7 @@ export default function CatalogPage() {
                   
                   
 
-                  <FilterSection title={t('common.filters') || 'Filters'}>
+                  <FilterSection zone="tabs" title={t('common.filters') || 'Filters'}>
                     <CatalogFilterTabs
                       kind={kindFilter}
                       status={statusFilter}
@@ -257,52 +272,14 @@ export default function CatalogPage() {
                     />
                   </FilterSection>
 
-                  <FilterSection desktopOnly>
+                  <FilterSection zone="search" desktopOnly>
                     <form onSubmit={handleSearch} className="w-full md:w-auto">
                       <SearchInput  placeholder={t('catalog.search') || "Search in catalog..."} value={searchQuery} onChange={handleSearchChange}    className="w-full"  containerClassName="w-64" />
                     </form>
                   </FilterSection>
-                  <FilterSection mobileOnly>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="flex h-11 w-full items-center justify-start gap-2 rounded-md"
-                      onClick={() => setIsImportOpen(true)}
-                      disabled={!currentSite?.id}
-                      title="Import"
-                      aria-label="Import"
-                    >
-                      <Upload className="h-4 w-4" />
-                      <span>Import</span>
-                    </Button>
-                  </FilterSection>
                 </FilterContainer>
               </MobileFiltersDrawer>
               
-              <div className="ml-auto flex items-center gap-3 shrink-0">
-                <div className="hidden shrink-0 items-center md:flex">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="flex items-center gap-1"
-                    onClick={() => setIsImportOpen(true)}
-                    disabled={!currentSite?.id}
-                    title="Import"
-                    aria-label="Import"
-                  >
-                    <Upload className="h-4 w-4" />
-                    <span className="hidden sm:inline">Import</span>
-                  </Button>
-                  <div className="w-px h-6 bg-border mx-1" />
-                </div>
-                <SortDropdown sortBy={sortBy} setSortBy={setSortBy} options={[
-                  { value: 'display_order', label: 'Display order' },
-                  { value: 'newest', label: 'Newest' },
-                  { value: 'oldest', label: 'Oldest' },
-                  { value: 'updated_at', label: 'Updated' },
-                ]} />
-                <ViewSelector currentView={viewType} onViewChange={setViewType} />
-              </div>
             </div>
         </div>
       </StickyHeader>

@@ -12,7 +12,7 @@ import {
 import type { LocalPromotion } from "@/app/pos/local/types";
 import type { PosCartItem } from "@/app/pos/components/CartPanel";
 import { posCartLineSubtotal } from "@/app/pos/cart-totals";
-import { posPromoCartFingerprint } from "@/app/pos/recorded-order-promo";
+import { matchesRecordedPromoCart } from "@/app/pos/recorded-order-promo";
 
 export type AppliedPosPromo = LocalPromoMatch;
 
@@ -267,7 +267,7 @@ export function usePosPromo({
     recordedOrderPromo,
     recordedPromoFingerprint,
     recordedPromoNeedsReview: !!recordedOrderPromo &&
-      posPromoCartFingerprint(cart, orderContext) !== recordedPromoFingerprint,
+      !matchesRecordedPromoCart(cart, orderContext, recordedPromoFingerprint, !!recordedOrderPromo.recordedShopOrder),
     hydrateRecordedOrderPromo,
     /** Used when hydrating cart session */
     hydratePromoCode: setPromoCode,

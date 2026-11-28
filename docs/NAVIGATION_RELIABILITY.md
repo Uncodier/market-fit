@@ -82,7 +82,8 @@ token refreshes. A transient network error is not evidence that the user signed 
 
 The shared navigation helper and `NavigationLink` report pending navigation after
 approximately 300–500 ms. After 10 seconds of visible waiting, the notification
-offers **Reload page**, warning that unsaved changes may be discarded. It never
+offers **Reload page** outside POS, warning that unsaved changes may be discarded.
+In POS the notification is informational only. It never
 automatically reloads on a timer. Completion, a newer tracked navigation,
 back/forward, or layout cleanup dismisses recovery for the old destination.
 Background time does not trigger the slow-navigation warning on return.

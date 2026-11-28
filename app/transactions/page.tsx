@@ -12,11 +12,11 @@ import { listExpenses, deleteExpense } from "./actions"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { EmptyCard } from "@/app/components/ui/empty-card"
-import { LayoutGrid, CreditCard } from "@/app/components/ui/icons"
+import { Megaphone, MapPin, LayoutGrid, CreditCard } from "@/app/components/ui/icons"
 import { CreateExpenseDialog } from "./components/CreateExpenseDialog"
 import { ExpensesTable, ExpensesTableSkeleton, ExpenseRow } from "./components/ExpensesTable"
 import { toast } from "sonner"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
+import { Select, SelectContent, SelectItem, SelectIconTrigger } from "@/app/components/ui/select"
 import { createClient } from "@/lib/supabase/client"
 import { getActiveExpenseAccounts } from "@/app/accounting/chart"
 import { AccountingAccount } from "@/app/types"
@@ -220,9 +220,13 @@ export default function TransactionsPage() {
       <StickyHeader>
         <div className="w-full pt-0">
           <div className="flex items-center justify-between gap-2 w-full">
-            <MobileFiltersDrawer triggerText={t('common.search') || "Search"}>
+            <MobileFiltersDrawer triggerText={t('common.search') || "Search"}
+              controls={<>
+                <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
+              </>}
+            >
               <FilterContainer>
-                <FilterSection title={t('common.category') || 'Categoría'}>
+                <FilterSection zone="tabs" title={t('common.category') || 'Categoría'}>
                   <Tabs value={categoryFilter} onValueChange={(val) => { setCategoryFilter(val); setPage(1); }}>
                     <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-none md:rounded-full flex flex-wrap md:flex-nowrap md:flex-row w-full md:max-w-full overflow-y-visible md:overflow-x-auto justify-start items-center gap-2 md:gap-0">
                       <TabsTrigger value="all" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5">
@@ -245,9 +249,9 @@ export default function TransactionsPage() {
                 {locations.length > 1 && (
                   <FilterSection title={t('common.location') || 'Location'}> 
                       <Select value={locationFilter} onValueChange={(val) => { setLocationFilter(val); setPage(1); }}>
-                      <SelectTrigger className="w-full md:w-[180px] h-10 md:h-8 text-sm md:text-xs bg-background md:bg-muted/30 border md:border-0 rounded-md md:rounded-full">
-                        <SelectValue placeholder={t("expenses.filters.allLocations") || "All Locations"} />
-                      </SelectTrigger>
+                      <SelectIconTrigger label={t("common.location")} tooltipLabel={locations.find(location => location.id === locationFilter)?.name || t("expenses.filters.allLocations")}>
+                        <MapPin className="h-4 w-4" aria-hidden />
+                      </SelectIconTrigger>
                       <SelectContent>
                         <SelectItem value="all">{t("expenses.filters.allLocations") || "All Locations"}</SelectItem>
                         {locations.map((loc) => (
@@ -260,9 +264,9 @@ export default function TransactionsPage() {
 
                 <FilterSection className="flex-row items-center gap-2">
                   <Select value={campaignFilter} onValueChange={(val) => { setCampaignFilter(val); setPage(1); }}>
-                    <SelectTrigger className="w-full md:w-[200px] h-10 md:h-9">
-                      <SelectValue placeholder={t("expenses.filters.allCampaigns") || "All Campaigns"} />
-                    </SelectTrigger>
+                    <SelectIconTrigger label={t("dashboard.filters.campaign")} tooltipLabel={campaigns.find(campaign => campaign.id === campaignFilter)?.title || t("expenses.filters.allCampaigns")}>
+                      <Megaphone className="h-4 w-4" aria-hidden />
+                    </SelectIconTrigger>
                     <SelectContent>
                       <SelectItem value="all">{t("expenses.filters.allCampaigns") || "All Campaigns"}</SelectItem>
                       {campaigns.map((c) => (
@@ -274,9 +278,7 @@ export default function TransactionsPage() {
               </FilterContainer>
             </MobileFiltersDrawer>
               
-              <div className="flex items-center gap-2 w-auto justify-end shrink-0 ml-4">
-                <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
-              </div>
+
             </div>
           </div>
         </StickyHeader>

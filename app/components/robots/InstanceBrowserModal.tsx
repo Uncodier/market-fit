@@ -5,11 +5,10 @@ import { Dialog, DialogBody, DialogContent, DialogDescription, DialogHeader, Dia
 import { SearchInput } from "@/app/components/ui/search-input"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Button } from "@/app/components/ui/button"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
-import { Archive, Check, ChevronDown, ClipboardList, FileText, LayoutGrid, ListOrdered, NetworkTree, Workflow } from "@/app/components/ui/icons"
+import { SortDropdown } from "@/app/components/ui/sort-dropdown"
+import { Archive, ClipboardList, FileText, LayoutGrid, NetworkTree, Workflow } from "@/app/components/ui/icons"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { useSite } from "@/app/context/SiteContext"
-import { cn } from "@/lib/utils"
 import { InstanceBrowserTable } from "./instance-browser-table"
 import { useInstanceBrowserData } from "./use-instance-browser-data"
 import {
@@ -128,28 +127,8 @@ export function InstanceBrowserModal({
                 alwaysExpanded={true}
               />
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="h-9 gap-2 rounded-full px-4 shrink-0"
-                  title={t("robots.browser.sort.by") || "Sort by"}
-                >
-                  <ListOrdered className="h-4 w-4" />
-                  <span className="hidden sm:inline font-normal">{sortLabel(sortBy)}</span>
-                  <ChevronDown className="h-3 w-3 opacity-50" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-44">
-                {SORT_OPTIONS.map((option) => (
-                  <DropdownMenuItem key={option} className="cursor-pointer" onClick={() => setSortBy(option)}>
-                    <Check className={cn("mr-2 h-4 w-4", sortBy === option ? "opacity-100" : "opacity-0")} />
-                    {sortLabel(option)}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <SortDropdown sortBy={sortBy} setSortBy={setSortBy} title={t("robots.browser.sort.by") || "Sort by"}
+              menuClassName="w-44" options={SORT_OPTIONS.map(value => ({ value, label: sortLabel(value) }))} />
         </div>
         </div>
 

@@ -14,11 +14,12 @@ interface TaskPageHeaderProps {
   leftContent: ReactNode
   rightContent: ReactNode
   viewContent: ReactNode
+  mobileSearch?: ReactNode
 }
 
 export function TaskPageHeader({
   isMobile, isSidebarCollapsed, toggleSidebar, sidebarLeft,
-  leftContent, rightContent, viewContent,
+  leftContent, rightContent, viewContent, mobileSearch,
 }: TaskPageHeaderProps) {
   const { t } = useLocalization()
 
@@ -26,8 +27,9 @@ export function TaskPageHeader({
     return (
       <StickyHeader>
         <div className="flex min-w-0 w-full items-center justify-between gap-2">
-          <MobileFiltersDrawer layout="compact">
+          <MobileFiltersDrawer layout="compact" controls={viewContent}>
             <FilterContainer>
+              {mobileSearch && <FilterSection zone="search" desktopOnly>{mobileSearch}</FilterSection>}
               <FilterSection title={t("common.search") || "Search"}>
                 {leftContent}
               </FilterSection>
@@ -36,7 +38,6 @@ export function TaskPageHeader({
               </FilterSection>
             </FilterContainer>
           </MobileFiltersDrawer>
-          <div className="ml-auto shrink-0">{viewContent}</div>
         </div>
       </StickyHeader>
     )

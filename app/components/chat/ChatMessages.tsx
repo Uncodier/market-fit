@@ -54,7 +54,7 @@ export function ChatMessages({
   const hasLead = isLead || Boolean(leadData && (leadData.id || leadData.lead_id))
   const hasAssignee = Boolean(hasLead && leadData?.assignee)
   const { isDarkMode } = useTheme()
-  const { isLayoutCollapsed } = useLayout()
+  const { sidebarWidth } = useLayout()
   const { user } = useAuthContext()
   const { currentSite } = useSite()
 
@@ -107,7 +107,6 @@ export function ChatMessages({
     conversationId && conversationId !== "" && !conversationId.startsWith("new-")
 
   if (!hasSelectedConversation) {
-    const sidebarWidth = isLayoutCollapsed ? 64 : 256
     const chatListWidth = isChatListCollapsed ? 0 : 319
     const leftOffset = sidebarWidth + chatListWidth
 

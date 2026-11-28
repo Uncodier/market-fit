@@ -60,7 +60,6 @@ describe("Records mobile toolbar", () => {
     const consoleError = jest.spyOn(console, "error")
     try {
       render(<RecordsToolbar {...toolbarProps()} />)
-      if (mobile) fireEvent.click(screen.getByRole("button", { name: "Search" }))
 
       const input = screen.getByPlaceholderText("Search records...")
       expect(input).not.toHaveAttribute("collapsedSizeClassName")
@@ -76,7 +75,7 @@ describe("Records mobile toolbar", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument()
     expect(screen.queryByText("Choose dates")).not.toBeInTheDocument()
-    expect(screen.queryByTitle("Sort by")).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Sort by" })).not.toBeInTheDocument()
 
     for (const view of ["table", "kanban", "calendar", "graph"]) {
       fireEvent.click(screen.getByRole("radio", { name: `Toggle ${view} view` }))
@@ -84,11 +83,15 @@ describe("Records mobile toolbar", () => {
     }
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole("button", { name: "Search" }))
-    const panel = screen.getByRole("dialog", { name: "Search" })
-    const search = within(panel).getByPlaceholderText("Search records...")
+    const searchButton = screen.getByRole("button", { name: "Search records..." })
+    expect(searchButton.closest("[data-toolbar-search]")).toBeInTheDocument()
+    fireEvent.click(searchButton)
+    const search = screen.getByPlaceholderText("Search records...")
     fireEvent.change(search, { target: { value: "Proposal" } })
     expect(props.onSearchChange).toHaveBeenCalledWith("Proposal")
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }))
+    const panel = screen.getByRole("dialog", { name: "Filters" })
+    expect(within(panel).queryByPlaceholderText("Search records...")).not.toBeInTheDocument()
     expect(within(panel).getByRole("combobox", { name: "Group by" })).toBeInTheDocument()
 
     fireEvent.click(within(panel).getByText("Choose dates"))
@@ -97,26 +100,29 @@ describe("Records mobile toolbar", () => {
     fireEvent.click(within(panel).getByRole("button", { name: "Clear date range" }))
     expect(props.onDateChange).toHaveBeenLastCalledWith(null)
 
-    fireEvent.keyDown(within(panel).getByTitle("Sort by"), { key: "Enter" })
+    fireEvent.keyDown(within(panel).getByRole("button", { name: "Sort by" }), { key: "Enter" })
     fireEvent.click(await screen.findByRole("menuitem", { name: "Oldest" }))
     expect(props.onSortChange).toHaveBeenCalledWith("oldest")
-    expect(screen.getByRole("dialog", { name: "Search" })).toBeInTheDocument()
+    expect(screen.getByRole("dialog", { name: "Filters" })).toBeInTheDocument()
 
     expect(within(panel).queryByRole("radio", { name: "Toggle graph view" })).not.toBeInTheDocument()
   })
 
-  it("places desktop search and grouping on the left and dates, sort and views on the right", async () => {
+  it("starts the right-hand controls with search on desktop", async () => {
     jest.mocked(useIsMobile).mockReturnValue(false)
     const props = toolbarProps()
     const { rerender } = render(<RecordsToolbar {...props} />)
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
     const searchButton = screen.getByRole("button", { name: "Search records..." })
     const group = screen.getByRole("combobox", { name: "Group by" })
-    const sort = screen.getByTitle("Sort by")
-    const left = group.parentElement!
-    const right = sort.parentElement!
-    expect(left).toContainElement(searchButton)
-    expect(left.nextElementSibling).toBe(right)
+    const sort = screen.getByRole("button", { name: "Sort by" })
+    const searchSlot = searchButton.closest("[data-toolbar-search]")!
+    const right = sort.closest("[data-toolbar-controls]") as HTMLElement
+    expect(right).toContainElement(group)
+    expect(group).not.toHaveTextContent("Status")
+    fireEvent.focus(group)
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("Group by: Status")
+    expect(right.firstElementChild).toBe(searchSlot)
     expect(right).toHaveClass("ml-auto", "flex-wrap", "justify-end")
     expect(within(right).getByRole("button", { name: "Choose dates" })).toBeInTheDocument()
     expect(within(right).queryByRole("button", { name: "Clear date range" })).not.toBeInTheDocument()

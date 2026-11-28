@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils"
 import { useNavigationHistory } from "@/app/hooks/use-breadcrumb-history"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { REPORTS, isReportId } from "@/app/dashboard/report-sections"
+import { WORKSPACE_SIDEBAR_ACTION, type WorkspaceSidebarMode } from "./workspace-sidebar-mode"
 
 interface TopBarTitleProps extends React.HTMLAttributes<HTMLDivElement> {
   title: string
@@ -27,6 +28,7 @@ interface TopBarTitleProps extends React.HTMLAttributes<HTMLDivElement> {
   helpTask?: string
   afterTitle?: React.ReactNode
   isCollapsed: boolean
+  sidebarMode?: WorkspaceSidebarMode
   onCollapse: () => void
   hideSidebarToggle?: boolean
   breadcrumb?: React.ReactNode
@@ -39,6 +41,7 @@ export function TopBarTitle({
   helpTask,
   afterTitle,
   isCollapsed,
+  sidebarMode,
   onCollapse,
   hideSidebarToggle,
   className,
@@ -52,7 +55,7 @@ export function TopBarTitle({
   const reportTitle = pathname === "/dashboard" && reportParam !== "onboarding"
     ? REPORTS[isReportId(reportParam) ? reportParam : "performance"].title
     : null
-  const [customTitle, setCustomTitle] = useState<{ path: string; title: string } | null>(null)
+  const [customTitle, setCustomTitle] = useState<{ path: string; title: string; parentTitle?: string } | null>(null)
   
   const [peopleListName, setPeopleListName] = useState<string | null>(null)
   useEffect(() => {
@@ -138,9 +141,9 @@ export function TopBarTitle({
   // Scope loaded entity titles to the route that emitted them.
   useEffect(() => {
     const handleBreadcrumbUpdate = (event: Event) => {
-      const detail = (event as CustomEvent<{ title?: string; path?: string }>).detail
+      const detail = (event as CustomEvent<{ title?: string; path?: string; parentTitle?: string }>).detail
       if (typeof detail?.title === 'string') {
-        setCustomTitle({ path: detail.path || pathname, title: detail.title })
+        setCustomTitle({ path: detail.path || pathname, title: detail.title, parentTitle: detail.parentTitle })
       }
     };
     
@@ -154,6 +157,7 @@ export function TopBarTitle({
   // Convert history items to breadcrumb format
   const fullPath = `${pathname}?${searchParams.toString()}`
   const isScreenRoot = !hasId(fullPath)
+  const recordsCategory = pathname === "/records" && customTitle?.path === pathname && customTitle.parentTitle ? customTitle : null
   const showIconOnlyOnMobile = isScreenRoot && ['/robots', '/skills', '/context'].includes(pathname)
   const normalizedHistory = enforceInvariants(historyItems)
   const currentItem = normalizedHistory[normalizedHistory.length - 1]
@@ -183,28 +187,33 @@ export function TopBarTitle({
     }
   }) : null;
  
+  const sidebarAction = WORKSPACE_SIDEBAR_ACTION[sidebarMode ?? (isCollapsed ? "compact" : "expanded")]
+
   return (
     <div {...props} className={cn("flex items-center gap-4 min-w-0", className)}>
       {!hideSidebarToggle && (
         <Button
+          type="button"
           variant="ghost"
-          className="!hidden md:!flex h-8 w-8 p-0 items-center justify-center font-inter"
+          className="!hidden md:!flex h-8 w-8 shrink-0 p-0 items-center justify-center font-inter"
           onClick={onCollapse}
-          // The responsive hidden class handles mobile display, but Safari sometimes needs explicit rules
+          aria-controls="workspace-sidebar"
+          aria-label={sidebarAction}
+          title={sidebarAction}
         >
           {isCollapsed ? (
-            <PanelLeftOpen className="h-4 w-4" />
+            <PanelLeftOpen className="h-4 w-4" aria-hidden={true} />
           ) : (
-            <PanelLeftClose className="h-4 w-4" />
+            <PanelLeftClose className="h-4 w-4" aria-hidden={true} />
           )}
-          <span className="sr-only">
-            {isCollapsed ? "Expandir menú" : "Colapsar menú"}
-          </span>
         </Button>
       )}
       
       {listTitle ? (
         <SavedListBreadcrumb root={getDefaultTitle()} name={listTitle} onReturn={() => window.dispatchEvent(new Event('people:return-to-search'))} />
+      ) : recordsCategory ? (
+        <SavedListBreadcrumb root={recordsCategory.parentTitle || getDefaultTitle()} name={recordsCategory.title}
+          onReturn={() => window.dispatchEvent(new Event("records:return-to-all"))} />
       ) : reportTitle ? (
         <nav className="flex items-center min-w-0" aria-label="Breadcrumb">
           <ol className="flex items-center min-w-0">

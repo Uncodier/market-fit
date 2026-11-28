@@ -22,11 +22,11 @@ export function DocumentToolbar({ tabs, value, onChange, search, onSearch, actio
   const { t } = useProcurementI18n()
   const content = <div className={`flex min-h-[72px] w-full flex-wrap items-center justify-between gap-3 py-3 ${transparent ? 'bg-transparent' : 'bg-background'}`}>
     <div className="flex min-w-0 flex-1 items-center gap-4 overflow-x-auto">
+      {workspace ? <SearchInput placeholder={t('procurement.partners.commerce.search')} value={search} onChange={event => onSearch(event.target.value)} />
+        : <AccountSearch placeholder={t('procurement.partners.commerce.search')} value={search} onChange={event => onSearch(event.target.value)} />}
       <Tabs value={value} onValueChange={onChange}><TabsList className="h-8 rounded-full bg-muted/30 p-0.5">
         {tabs.map(tab => <TabsTrigger key={tab.value} value={tab.value} className="rounded-full text-xs">{tab.label}</TabsTrigger>)}
       </TabsList></Tabs>
-      {workspace ? <SearchInput placeholder={t('procurement.partners.commerce.search')} value={search} onChange={event => onSearch(event.target.value)} />
-        : <AccountSearch placeholder={t('procurement.partners.commerce.search')} value={search} onChange={event => onSearch(event.target.value)} />}
     </div><div data-secondary-actions data-toolbar-icon-actions className="ml-auto flex shrink-0 items-center gap-1">{actions}</div>
   </div>
   return workspace ? <StickyHeader>{content}</StickyHeader> : <div>{content}</div>

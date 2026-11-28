@@ -8,6 +8,9 @@ import type { OpenRecordFromView } from "../lib/record-navigation"
 import type { SaveRecordProperty } from "../lib/record-properties"
 import { ArrowUpRight } from "@/app/components/ui/icons"
 import { RecordPropertiesButton } from "./RecordPropertyEditor"
+import { useRecordCardMembers, type RecordCardMembers } from "../hooks/useRecordCardMembers"
+import { RecordMemberStack } from "./RecordMemberStack"
+import { useSite } from "@/app/context/SiteContext"
 
 export type CalendarViewMode = "year" | "month" | "week" | "day"
 
@@ -28,17 +31,18 @@ export function getWeekDates(date: Date) {
 function RecordStatusDot({ status }: { status: string }) {
   return (
     <div className={cn(
-      "w-2 h-2 rounded-full",
-      status === 'published' && "bg-green-500",
+      "w-2 h-2 shrink-0 rounded-full",
+      (status === 'published' || status === 'active') && "bg-green-500",
       status === 'draft' && "bg-yellow-500",
       status === 'archived' && "bg-gray-500",
-      !['published', 'draft', 'archived'].includes(status || '') && "bg-blue-500"
+      !['published', 'active', 'draft', 'archived'].includes(status || '') && "bg-blue-500"
     )} />
   )
 }
 
-function RecordCalendarItem({ record, onClick, onSaveProperty, showDay, showTime }: {
+function RecordCalendarItem({ record, members, onClick, onSaveProperty, showDay, showTime }: {
   record: RecordItem
+  members: RecordCardMembers
   onClick: (record: RecordItem) => void
   onSaveProperty?: SaveRecordProperty
   showDay?: boolean
@@ -60,27 +64,28 @@ function RecordCalendarItem({ record, onClick, onSaveProperty, showDay, showTime
       <Badge
         variant="outline"
         className={cn(
-          "flex items-center gap-2 text-xs w-full pr-2 pl-2",
-          status === 'published' && "bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20",
+          "flex min-w-0 items-center gap-1.5 text-xs w-full px-1.5",
+          (status === 'published' || status === 'active') && "bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20",
           status === 'draft' && "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-500/20",
           status === 'archived' && "bg-gray-500/10 text-gray-700 dark:text-gray-400 border-gray-500/20",
-          !['published', 'draft', 'archived'].includes(status) && "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20"
+          !['published', 'active', 'draft', 'archived'].includes(status) && "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20"
         )}
       >
-        <span className="flex-1 truncate">{record.title}</span>
+        <span className="min-w-0 flex-1 truncate text-left" title={record.title}>{record.title}</span>
+        <RecordMemberStack record={record} members={members} compact />
         {record.category?.name && (
-          <span className="text-[10px] text-muted-foreground bg-background/50 px-1 py-0.5 rounded ml-1 truncate max-w-[60px]">
+          <span className="hidden xl:inline text-[10px] text-muted-foreground bg-background/50 px-1 py-0.5 rounded truncate max-w-[60px]">
             {record.category.name}
           </span>
         )}
         {(showDay || showTime) && (
-          <span className="text-muted-foreground mr-1 ml-1 text-[10px]">
+          <span className="shrink-0 text-muted-foreground text-[10px]">
             {showDay && dayStr}
             {showTime && timeStr}
           </span>
         )}
         <RecordStatusDot status={status} />
-        <ArrowUpRight aria-hidden className="size-3 shrink-0 [@media(hover:hover)]:opacity-0 group-hover/record:opacity-100 group-focus-within/record:opacity-100" />
+        <ArrowUpRight aria-hidden className="hidden 2xl:block size-3 shrink-0 [@media(hover:hover)]:opacity-0 group-hover/record:opacity-100 group-focus-within/record:opacity-100" />
       </Badge>
       </button>
       {onSaveProperty && <RecordPropertiesButton record={record} onSave={onSaveProperty} includeMetadata compact />}
@@ -97,6 +102,8 @@ export function RecordsCalendarViews({ records, selectedDate, viewMode, onRecord
   time: ReturnType<typeof useCurrentTime>
 }) {
   const { t } = useLocalization()
+  const { currentSite } = useSite()
+  const members = useRecordCardMembers(records, currentSite?.id)
   const { currentTime, isToday, getCurrentTimePosition } = time
 
   // Group records by date
@@ -211,6 +218,7 @@ export function RecordsCalendarViews({ records, selectedDate, viewMode, onRecord
               <div className="space-y-1">
                 {dayRecords.map((record) => (
                   <RecordCalendarItem
+                    members={members}
                     key={record.id}
                     record={record}
                     onSaveProperty={onSaveProperty}
@@ -282,6 +290,7 @@ export function RecordsCalendarViews({ records, selectedDate, viewMode, onRecord
               <div className="p-2 space-y-2">
                 {dayRecords.map(record => (
                   <RecordCalendarItem
+                    members={members}
                     key={record.id}
                     record={record}
                     onSaveProperty={onSaveProperty}
@@ -378,6 +387,7 @@ export function RecordsCalendarViews({ records, selectedDate, viewMode, onRecord
               >
                 {recordsByHour[hour]?.map((record) => (
                   <RecordCalendarItem
+                    members={members}
                     key={record.id}
                     record={record}
                     onSaveProperty={onSaveProperty}
@@ -444,6 +454,7 @@ export function RecordsCalendarViews({ records, selectedDate, viewMode, onRecord
                     <div className="flex-1 space-y-2">
                       {visibleRecords.map((record) => (
                         <RecordCalendarItem
+                          members={members}
                           key={record.id}
                           record={record}
                           onSaveProperty={onSaveProperty}

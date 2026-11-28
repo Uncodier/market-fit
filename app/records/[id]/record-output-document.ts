@@ -1,5 +1,6 @@
 import { fieldPreviewKey } from "../lib/entity-preview-request"
 import { recordFieldLabel, recordScalarFieldValue } from "../lib/field-values"
+import { formatRecordCurrency } from "../lib/record-field-presentation"
 import type { InsightField } from "./components/insights-types"
 import type { RecordInsights } from "./components/record-insight-context"
 import type { RecordOutputDocument } from "./record-output"
@@ -72,7 +73,8 @@ export function buildRecordOutput(draft: RecordOutputDraft, insights: RecordInsi
       const value = field.type === "relation"
         ? (typeof relation === "string" ? insights.allRelationLabels[fieldPreviewKey(field, relation)] || relation : relation)
         : recordScalarFieldValue(field.type, draft.formData[field.name])
-      const text = displayValue(value)
+      const text = (field.type === "number" && "currency" in field ? formatRecordCurrency(value, field.currency) : undefined)
+        ?? displayValue(value)
       return text ? [{ label: recordFieldLabel(field), value: text }] : []
     }),
     ...(includeInsights && { insights: insightLines(insights, draft.fields) }),

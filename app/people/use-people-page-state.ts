@@ -20,11 +20,11 @@ export function usePeoplePageState(peopleTab: "search" | "saved", setPeopleTab: 
   const [sortBy, setSortBy] = useState(defaultSort)
 
   const { t } = useLocalization()
-  const { isLayoutCollapsed } = useLayout()
+  const { sidebarWidth } = useLayout()
   const isMobile = useIsMobile()
   const { currentSite } = useSite()
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
-  const sidebarLeft = isMobile || isArtifact ? "0px" : isLayoutCollapsed ? "64px" : "256px"
+  const sidebarLeft = `${isMobile || isArtifact ? 0 : sidebarWidth}px`
   // Mobile two-step: step 1 = filters, step 2 = results
   const [showResultsOnMobile, setShowResultsOnMobile] = useState(false)
   // pagination
@@ -95,7 +95,7 @@ export function usePeoplePageState(peopleTab: "search" | "saved", setPeopleTab: 
     sortBy,
     setSortBy,
     t,
-    isLayoutCollapsed,
+    sidebarWidth,
     isMobile,
     currentSite,
     isSidebarCollapsed,

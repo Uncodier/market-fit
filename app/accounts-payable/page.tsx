@@ -85,14 +85,16 @@ export default function AccountsPayablePage() {
       <StickyHeader>
         <div className="w-full pt-0 flex items-center justify-between">
           <div className="flex items-center justify-between gap-2 w-full">
-            <MobileFiltersDrawer triggerText={t("common.search")}>
+            <MobileFiltersDrawer triggerText={t("common.search")}
+              controls={<SortDropdown sortBy={sortBy} setSortBy={setSortBy} />}
+            >
               <FilterContainer>
-                <FilterSection mobileOnly>
+                <FilterSection zone="search" mobileOnly>
                   <SearchInput placeholder={t("operations.payables.search")} value={searchQuery}
                     onChange={event => setSearchQuery(event.target.value)} alwaysExpanded
                     className="w-full h-10 md:h-9" containerClassName="w-full" />
                 </FilterSection>
-                <FilterSection title={t("common.status")} className={cn(searchQuery && "max-md:hidden")}>
+                <FilterSection zone="tabs" title={t("common.status")} className={cn(searchQuery && "max-md:hidden")}>
                   <Tabs value={statusFilter} onValueChange={value => setStatusFilter(value as PayableFilter)}>
                     <TabsList aria-label={t("operations.payables.statusAria")} className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-none md:rounded-full flex flex-wrap md:flex-nowrap md:flex-row w-full md:max-w-full overflow-y-visible md:overflow-x-auto justify-start items-center gap-2 md:gap-0">
                       {FILTERS.map(filter => (
@@ -103,10 +105,7 @@ export default function AccountsPayablePage() {
                     </TabsList>
                   </Tabs>
                 </FilterSection>
-                <FilterSection className={cn("hidden md:flex items-center gap-2", searchQuery && "max-md:hidden")}>
-                  <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
-                </FilterSection>
-                <FilterSection desktopOnly>
+                <FilterSection zone="search" desktopOnly>
                   <SearchInput placeholder={t("operations.payables.search")} value={searchQuery}
                     onChange={event => setSearchQuery(event.target.value)} className="w-full" containerClassName="w-64" />
                 </FilterSection>

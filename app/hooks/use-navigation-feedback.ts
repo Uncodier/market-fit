@@ -3,6 +3,7 @@
 import { useEffect } from "react"
 import { usePathname, useSearchParams } from "next/navigation"
 import { toast } from "sonner"
+import { isPosDocument } from "@/lib/navigation/document-reload-policy"
 import {
   cancelNavigationWatchdog,
   getNavigationFeedback,
@@ -31,11 +32,14 @@ export function useNavigationFeedback(): void {
           id: TOAST_ID, duration: Infinity, action: undefined, description: undefined,
         })
       } else {
+        const posOpen = isPosDocument(window.location.pathname)
         toast.warning("Navigation is taking longer than expected", {
           id: TOAST_ID,
           duration: Infinity,
-          description: "You can keep waiting. Reloading may discard unsaved changes.",
-          action: {
+          description: posOpen
+            ? "You can keep waiting. Page reload is unavailable while POS is open."
+            : "You can keep waiting. Reloading may discard unsaved changes.",
+          action: posOpen ? undefined : {
             label: "Reload page",
             onClick: () => recoverPendingNavigation(feedback.id),
           },

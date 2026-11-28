@@ -5,9 +5,9 @@ import { useLayout } from "@/app/context/LayoutContext"
 import { useIsMobile } from "@/app/hooks/use-mobile-view"
 
 export function ImprentaSkeleton() {
-  const { isLayoutCollapsed } = useLayout()
+  const { sidebarWidth: desktopSidebarWidth } = useLayout()
   const isMobile = useIsMobile()
-  const sidebarWidth = isMobile ? 0 : isLayoutCollapsed ? 64 : 256
+  const sidebarWidth = isMobile ? 0 : desktopSidebarWidth
   /** ImprentaPanel uses width calc(100% + sidebarWidth) and negative marginLeft; flex-center is offset from the visible viewport. */
   const viewportRecenterPx = sidebarWidth / 2
 

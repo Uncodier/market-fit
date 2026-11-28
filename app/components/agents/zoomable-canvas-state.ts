@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import type { ZoomableCanvasProps, ZoomableViewportInfo } from "./zoomable-canvas-types"
-export function useCanvasState({recenterDependency, onViewportTransformChange, viewportStore, enableWheelPan}: ZoomableCanvasProps, isLayoutCollapsed: boolean) {
+export function useCanvasState({recenterDependency, onViewportTransformChange, viewportStore, enableWheelPan}: ZoomableCanvasProps, sidebarWidth: number) {
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -21,7 +21,7 @@ export function useCanvasState({recenterDependency, onViewportTransformChange, v
   const [touchStartDistance, setTouchStartDistance] = useState<number | null>(null);
   const [touchStartScale, setTouchStartScale] = useState<number>(1);
   const prevRecenterDepRef = useRef(recenterDependency);
-  const prevLayoutCollapsedRef = useRef(isLayoutCollapsed);
+  const prevLayoutCollapsedRef = useRef(sidebarWidth);
   const singleFingerPanRef = useRef(false);
 
   const onViewportTransformChangeRef = useRef(onViewportTransformChange);

@@ -1,6 +1,8 @@
 import type { ReactNode } from "react"
 import { fireEvent, render, screen } from "@testing-library/react"
 import { LeadsToolbar } from "@/app/leads/components/LeadsToolbar"
+import { LeadsTransferActions } from "@/app/leads/components/LeadsTransferActions"
+import { ListToolbar } from "@/app/components/ui/list-toolbar"
 import { SortDropdown } from "@/app/components/ui/sort-dropdown"
 
 jest.mock("@/app/context/LocalizationContext", () => ({
@@ -23,80 +25,71 @@ function renderToolbar(sortBy = "newest") {
   const onViewChange = jest.fn()
   const onExportLeads = jest.fn()
   const result = render(
-    <LeadsToolbar
-      segments={[]}
-      onImportLeads={jest.fn()}
-      onExportLeads={onExportLeads}
-      sortBy={sortBy}
-      onSortChange={onSortChange}
-      currentView="kanban"
-      onViewChange={onViewChange}
+    <ListToolbar
+      actions={<LeadsTransferActions segments={[]} onImportLeads={jest.fn()} onExportLeads={onExportLeads} />}
+      controls={<LeadsToolbar sortBy={sortBy} onSortChange={onSortChange} currentView="kanban" onViewChange={onViewChange} />}
     />,
   )
   return { ...result, onSortChange, onViewChange, onExportLeads }
 }
 
 describe("Leads toolbar mobile layout", () => {
-  it("keeps sorting and view controls in one non-wrapping row", () => {
+  it("groups sorting and view controls on the right, after the actions", () => {
     renderToolbar()
 
-    const sort = screen.getByTitle("Sort by")
-    const sortContainer = sort.parentElement!
-    const row = sortContainer.parentElement!
+    const sort = screen.getByRole("button", { name: "Sort by" })
+    const row = sort.closest("[data-toolbar-controls]")!
     const view = screen.getByRole("radio", { name: "Toggle kanban view" })
 
-    expect(row).toHaveClass("flex", "min-w-0", "flex-1", "items-center", "gap-2", "md:flex-none")
-    expect(row).not.toHaveClass("flex-wrap", "flex-col", "basis-full")
-    expect(row.parentElement).not.toHaveClass("flex-wrap", "flex-col")
-    expect(sortContainer).toHaveClass("min-w-0", "flex-1", "md:flex-none")
-    expect(view.parentElement?.parentElement).toHaveClass("shrink-0")
+    expect(row).toHaveClass("ml-auto", "justify-end")
+    expect(row.previousElementSibling).toHaveAttribute("data-toolbar-actions")
     expect(row).toContainElement(view)
-    expect(row).not.toContainElement(screen.getByTitle("Import"))
-    expect(row).not.toContainElement(screen.getByTitle("Export"))
+    expect(row).not.toContainElement(screen.getByRole("button", { name: "Import" }))
+    expect(row).not.toContainElement(screen.getByRole("button", { name: "Export" }))
   })
 
-  it("only displays toolbar import and export actions on desktop", () => {
+  it("uses ghost icons with tooltips for import and export", async () => {
     renderToolbar()
 
-    const importAction = screen.getByTitle("Import")
-    const exportAction = screen.getByTitle("Export")
-    const transferActions = importAction.closest(".md\\:flex.hidden")
-    expect(transferActions).toHaveClass("hidden", "md:flex", "shrink-0")
+    const importAction = screen.getByRole("button", { name: "Import" })
+    const exportAction = screen.getByRole("button", { name: "Export" })
+    const transferActions = importAction.closest("[data-toolbar-actions]")
+    expect(importAction).not.toHaveClass("bg-secondary")
+    expect(exportAction).not.toHaveClass("bg-secondary")
     expect(transferActions).toContainElement(exportAction)
+    fireEvent.focus(exportAction)
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("Export")
   })
 
-  it("allows long sort labels to shrink without shrinking the icons or view buttons", () => {
+  it("shows the current sort in a tooltip without widening the icon button", async () => {
     renderToolbar("nearest_due_date")
 
-    const label = screen.getByText("Nearest due date")
-    expect(label).toHaveClass("truncate")
-    expect(label.parentElement).toHaveClass("min-w-0")
-    expect(screen.getByTitle("Sort by")).toHaveClass("min-w-0", "px-3", "md:px-4")
-    for (const icon of screen.getByTitle("Sort by").querySelectorAll("svg")) {
-      expect(icon.parentElement).toHaveClass("shrink-0")
-    }
+    const sort = screen.getByRole("button", { name: "Sort by" })
+    expect(sort).not.toHaveTextContent("Nearest due date")
+    expect(sort).toHaveClass("h-10", "w-10", "md:h-9", "md:w-9")
+    fireEvent.focus(sort)
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("Sort by: Nearest due date")
   })
 
   it("preserves sorting, view selection, and export callbacks", () => {
     const { onSortChange, onViewChange, onExportLeads } = renderToolbar()
 
-    fireEvent.keyDown(screen.getByTitle("Sort by"), { key: "ArrowDown" })
+    fireEvent.keyDown(screen.getByRole("button", { name: "Sort by" }), { key: "ArrowDown" })
     fireEvent.click(screen.getByRole("menuitem", { name: "Oldest" }))
     expect(onSortChange).toHaveBeenCalledWith("oldest")
 
     fireEvent.click(screen.getByRole("radio", { name: "Toggle table view" }))
     expect(onViewChange).toHaveBeenCalledWith("table")
 
-    fireEvent.click(screen.getByTitle("Export"))
+    fireEvent.click(screen.getByRole("button", { name: "Export" }))
     expect(onExportLeads).toHaveBeenCalledTimes(1)
   })
 
-  it("preserves the shared dropdown's default width and accepts scoped overrides", () => {
-    const { rerender } = render(<SortDropdown sortBy="newest" setSortBy={jest.fn()} />)
-    expect(screen.getByTitle("Sort by")).toHaveClass("w-full", "md:w-auto", "px-4")
-
-    rerender(<SortDropdown sortBy="newest" setSortBy={jest.fn()} className="w-auto px-3" />)
-    expect(screen.getByTitle("Sort by")).toHaveClass("w-auto", "md:w-auto", "px-3")
-    expect(screen.getByTitle("Sort by")).not.toHaveClass("w-full", "px-4")
+  it("keeps the shared sort menu icon-only even without options", async () => {
+    render(<SortDropdown sortBy="newest" setSortBy={jest.fn()} options={[]} />)
+    const sort = screen.getByRole("button", { name: "Sort by" })
+    expect(sort.querySelectorAll("svg")).toHaveLength(1)
+    fireEvent.focus(sort)
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("Sort by")
   })
 })

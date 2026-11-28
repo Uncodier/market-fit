@@ -42,21 +42,19 @@ export function ProcurementToolbar({ search, onSearch, placeholder, status, onSt
   const { t } = useProcurementI18n()
   const searchLabel = placeholder ?? t('procurement.common.search')
   return <div className="flex w-full min-w-0 items-center justify-between gap-3 py-3">
-    <div className="min-w-0 flex-1"><MobileFiltersDrawer triggerText={t('procurement.common.filters')}><FilterContainer>
-      {onSearch && <FilterSection mobileOnly><SearchInput aria-label={searchLabel} placeholder={searchLabel} value={search ?? ''}
+    <MobileFiltersDrawer triggerText={t('procurement.common.filters')}
+      actions={actions && <div data-secondary-actions className="flex items-center gap-1">{actions}</div>}
+      controls={viewSelector && <div data-view-selector>{viewSelector}</div>}><FilterContainer>
+      {onSearch && <FilterSection zone="search" mobileOnly><SearchInput aria-label={searchLabel} placeholder={searchLabel} value={search ?? ''}
         onChange={event => onSearch(event.target.value)} alwaysExpanded containerClassName="w-full" /></FilterSection>}
-      {statuses && onStatus && <FilterSection title={t('procurement.common.status')}><Tabs value={status} onValueChange={onStatus}>
+      {statuses && onStatus && <FilterSection zone="tabs" title={t('procurement.common.status')}><Tabs value={status} onValueChange={onStatus}>
         <TabsList className="flex h-auto flex-wrap justify-start gap-1 rounded-full bg-muted/30 p-1 md:h-8 md:flex-nowrap">
           {statuses.map(item => <TabsTrigger key={item.value} value={item.value} className="whitespace-nowrap rounded-full px-3 py-1 text-xs">{item.label}</TabsTrigger>)}
         </TabsList></Tabs></FilterSection>}
       {children}
-      {onSearch && <FilterSection desktopOnly><SearchInput aria-label={searchLabel} placeholder={searchLabel} value={search ?? ''}
+      {onSearch && <FilterSection zone="search" desktopOnly><SearchInput aria-label={searchLabel} placeholder={searchLabel} value={search ?? ''}
         onChange={event => onSearch(event.target.value)} containerClassName="w-56 lg:w-64" /></FilterSection>}
-    </FilterContainer></MobileFiltersDrawer></div>
-    <div data-toolbar-actions data-toolbar-icon-actions className="ml-auto flex shrink-0 items-center gap-2">
-      {actions && <div data-secondary-actions className="flex items-center gap-1">{actions}</div>}
-      {viewSelector && <div data-view-selector className="flex items-center border-l pl-2">{viewSelector}</div>}
-    </div>
+    </FilterContainer></MobileFiltersDrawer>
   </div>
 }
 

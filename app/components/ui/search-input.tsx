@@ -4,6 +4,7 @@ import React, { forwardRef, useCallback, useEffect, useRef, useState } from "rea
 import { Input } from "./input"
 import { Search, X } from "./icons"
 import { Button } from "./button"
+import { ToolbarIconButton } from "./toolbar-icon-button"
 import { cn } from "@/lib/utils"
 
 export interface SearchInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange'> {
@@ -101,7 +102,7 @@ const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
       }
     }
 
-    const expandedWidthClass = containerClassName || "w-64"
+    const expandedWidthClass = containerClassName || "w-44 sm:w-64"
     const expandedHeightClass = expandedHeightClassName ?? (className?.includes("h-9") ? "h-9" : "h-11")
 
 
@@ -124,10 +125,9 @@ const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
               : "opacity-100 scale-100 translate-x-0 delay-150"
           )}
         >
-          <Button
+          <ToolbarIconButton
             type="button"
             variant="secondary"
-            size="icon"
             className="h-10 w-10 rounded-full"
             onClick={() => {
               updateExpanded(true)
@@ -137,11 +137,11 @@ const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
                 }
               }, 50)
             }}
-            title={placeholder}
+            label={props["aria-label"] || placeholder || "Search"}
             tabIndex={isExpanded ? -1 : undefined}
           >
-            <Search className="h-4 w-4" />
-          </Button>
+            <Search className="h-4 w-4" aria-hidden />
+          </ToolbarIconButton>
         </div>
 
         {/* Expanded State: Input */}

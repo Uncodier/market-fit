@@ -9,9 +9,9 @@ import { listLocations } from "@/app/inventory/actions"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { MobileFiltersDrawer, FilterContainer, FilterSection } from "@/app/components/ui/mobile-filters-drawer"
 import { SearchInput } from "@/app/components/ui/search-input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
+import { Select, SelectContent, SelectIconTrigger, SelectItem } from "@/app/components/ui/select"
 import { EmptyCard } from "@/app/components/ui/empty-card"
-import { Repeat } from "@/app/components/ui/icons"
+import { Filter, MapPin, Repeat } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
 import { SortDropdown } from "@/app/components/ui/sort-dropdown"
 import { listTransferOrders } from "../order-actions"
@@ -56,11 +56,31 @@ function TransferOrdersWorkspace({ demo, siteId, initialSort }: { demo: boolean;
     (!query || [order.id, order.from_location_name, order.to_location_name, order.notes, order.receiving_user_name].some(value => value?.toLowerCase().includes(query)))
   ).sort((a, b) => (new Date(a.created_at).getTime() - new Date(b.created_at).getTime()) * (sort === "oldest" ? 1 : -1))
   const currentPage = Math.min(page, Math.max(1, Math.ceil(rows.length / pageSize)))
-  return <div className="flex-1 flex flex-col bg-muted/30 min-h-screen"><StickyHeader><div className="flex items-center justify-between w-full gap-3 py-3"><MobileFiltersDrawer triggerText="Search & Filters"><FilterContainer>
-    <FilterSection title="Status"><Select value={status} onValueChange={value => { setStatus(value); setPage(1) }}><SelectTrigger aria-label="Filter by status"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All statuses</SelectItem>{transferStatuses.map(value => <SelectItem key={value} value={value}>{transferLabel(value)}</SelectItem>)}</SelectContent></Select></FilterSection>
-    <FilterSection title="Location"><Select value={location} onValueChange={value => { setLocation(value); setPage(1) }}><SelectTrigger aria-label="Filter by location"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All Locations</SelectItem>{locations.map(location => <SelectItem key={location.id} value={location.id}>{location.name}</SelectItem>)}</SelectContent></Select></FilterSection>
-    <FilterSection><SearchInput placeholder="Search transfers..." value={search} alwaysExpanded onChange={event => { setSearch(event.target.value); setPage(1) }} /></FilterSection>
-  </FilterContainer></MobileFiltersDrawer><SortDropdown sortBy={sort} setSortBy={setSort} options={[{ value: "newest", label: "Newest first" }, { value: "oldest", label: "Oldest first" }]} /></div></StickyHeader>
+  return <div className="flex-1 flex flex-col bg-muted/30 min-h-screen"><StickyHeader><div className="flex items-center justify-between w-full gap-3 py-3">
+    <MobileFiltersDrawer triggerText="Search & Filters"
+      controls={<SortDropdown sortBy={sort} setSortBy={setSort} options={[{ value: "newest", label: "Newest first" }, { value: "oldest", label: "Oldest first" }]} />}>
+    <FilterContainer>
+    <FilterSection title="Status">
+      <Select value={status} onValueChange={value => { setStatus(value); setPage(1) }}>
+        <SelectIconTrigger label="Filter by status" tooltipLabel={`Filter by status: ${status === "all" ? "All statuses" : transferLabel(status)}`}>
+          <Filter className="h-4 w-4" aria-hidden />
+        </SelectIconTrigger>
+        <SelectContent>
+          <SelectItem value="all">All statuses</SelectItem>
+          {transferStatuses.map(value => <SelectItem key={value} value={value}>{transferLabel(value)}</SelectItem>)}
+        </SelectContent>
+      </Select>
+    </FilterSection>
+    <FilterSection title="Location">
+      <Select value={location} onValueChange={value => { setLocation(value); setPage(1) }}>
+        <SelectIconTrigger label="Filter by location" tooltipLabel={locations.find(option => option.id === location)?.name || "All Locations"}>
+          <MapPin className="h-4 w-4" aria-hidden />
+        </SelectIconTrigger>
+        <SelectContent><SelectItem value="all">All Locations</SelectItem>{locations.map(option => <SelectItem key={option.id} value={option.id}>{option.name}</SelectItem>)}</SelectContent>
+      </Select>
+    </FilterSection>
+    <FilterSection zone="search"><SearchInput placeholder="Search transfers..." value={search} onChange={event => { setSearch(event.target.value); setPage(1) }} /></FilterSection>
+  </FilterContainer></MobileFiltersDrawer></div></StickyHeader>
     <div className="px-4 lg:px-8 py-6 space-y-4"><div className="flex flex-wrap justify-between gap-2"><p className="text-xs text-muted-foreground">Transfer documents track requests, dispatch and receipt. Stock entries are available in the Inventory Ledger.</p><Link href={`/inventory/movements${demo ? "?demo=1" : ""}`} className="text-xs hover:underline">View Inventory Ledger</Link></div>
       {!demo && <Link href="/inventory/transfers?demo=1" className="text-xs text-muted-foreground underline">View read-only demo preview</Link>}
       {!demo && orders.data && orders.data.length >= 1000 && <p className="text-xs text-muted-foreground">Showing the latest 1,000 transfer orders. Filters apply to loaded documents only.</p>}

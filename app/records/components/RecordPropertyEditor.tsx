@@ -7,6 +7,7 @@ import type { RecordItem } from "../actions"
 import { recordFieldDate, recordFieldLabel, serializeRecordFieldDate } from "../lib/field-values"
 import { descriptionProperty, readRecordProperty, recordPropertyUpdate, type RecordProperty, type SaveRecordProperty } from "../lib/record-properties"
 import { RecordPropertyInput } from "./RecordPropertyInput"
+import { formatRecordCurrency } from "../lib/record-field-presentation"
 
 interface EditorProps {
   record: RecordItem
@@ -122,6 +123,9 @@ function propertyText(record: RecordItem, property: RecordProperty, relationLabe
   if (value == null || value === "") return "Empty"
   if (type === "relation") return relationLabel || "Linked record"
   if (type === "date") return serializeRecordFieldDate(recordFieldDate(value)) || "Invalid date"
+  if (type === "number" && property.key === "field" && typeof value === "number") {
+    return formatRecordCurrency(value, property.field.currency) ?? String(value)
+  }
   if (typeof value === "boolean") return value ? "Yes" : "No"
   if (Array.isArray(value)) return `${value.length} ${value.length === 1 ? "row" : "rows"}`
   if (typeof value === "string" || typeof value === "number") return String(value)

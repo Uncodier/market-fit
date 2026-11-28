@@ -28,12 +28,12 @@ const tooltipKbdClass =
 
 export function ZoomableCanvas(props: ZoomableCanvasProps) {
  const {children, className, height = "calc(100vh - 135px)", minHeight = "600px", screenSpaceBehind, screenSpaceFront, onSort, extraControls} = props;
- const { isLayoutCollapsed } = useLayout();
+ const { sidebarWidth, sidebarMode } = useLayout();
  const { isDarkMode } = useTheme();
- const state = useCanvasState(props, isLayoutCollapsed);
+ const state = useCanvasState(props, sidebarWidth);
  const { scale, position, isDragging, isInitialized, wrapperRef, canvasRef, contentRef } = state;
  const { bgCanvasRef } = useCanvasBackground(state, props, isDarkMode);
- const { resetView } = useCanvasFit(state, {...props, fitOnChildrenChange: props.fitOnChildrenChange ?? true}, isLayoutCollapsed);
+ const { resetView } = useCanvasFit(state, {...props, fitOnChildrenChange: props.fitOnChildrenChange ?? true}, sidebarWidth);
  const { zoomIn, zoomOut, handleMouseDown, handleMouseMove, handleMouseUp, handleMouseLeave } = useCanvasMouse(state);
  const { handleTouchStart, handleTouchMove, handleTouchEnd } = useCanvasTouch(state);
   // Keyboard shortcuts: +/- zoom, 1 fit, Shift+L sort layout. Skip when typing.
@@ -179,7 +179,7 @@ export function ZoomableCanvas(props: ZoomableCanvasProps) {
         <div
           className="fixed bottom-8 flex items-center gap-1.5 bg-background/95 backdrop-blur-sm p-1.5 rounded-lg shadow-md border dark:border-white/5 border-black/5 z-50"
           style={{
-            left: `${isLayoutCollapsed ? 92 : 268}px`,
+            left: `${sidebarWidth + (sidebarMode === "expanded" ? 12 : 28)}px`,
             transition: 'left 0.2s ease-out' // Smooth transition when position changes
           }}
         >

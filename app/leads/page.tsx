@@ -8,6 +8,7 @@ import { MessageSquare, Filter, LayoutGrid, PlusCircle, Star, TrendingDown, Ban,
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/ui/tabs"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { MobileFiltersDrawer, FilterContainer, FilterSection } from "@/app/components/ui/mobile-filters-drawer"
+import { ToolbarFilterButton } from "@/app/components/ui/toolbar-filter-button"
 import { KanbanView } from "@/app/components/kanban-view"
 import { LeadFilterModal } from "@/app/components/ui/lead-filter-modal"
 import { AttributionModal } from "./components/AttributionModal"
@@ -84,10 +85,12 @@ export default function LeadsPage() {
               />
             ) : (
               <div className="flex w-full min-w-0 items-center justify-between gap-2 md:flex-wrap md:py-2">
-                <div className="min-w-0 md:flex md:flex-[1_1_28rem]">
-                <MobileFiltersDrawer triggerText={t('common.search') || "Search"}>
+                <MobileFiltersDrawer triggerText={t('common.search') || "Search"}
+                  actions={<LeadsTransferActions segments={segments} onImportLeads={handleImportLeads} onExportLeads={handleExportLeads} />}
+                  controls={<LeadsToolbar sortBy={sortBy} onSortChange={handleSortChange} currentView={viewType} onViewChange={setViewType} />}
+                >
                   <FilterContainer>
-                    <FilterSection mobileOnly>
+                    <FilterSection zone="search" mobileOnly>
                       <SearchInput  
                         placeholder="Search leads..."
                         value={searchQuery}
@@ -101,7 +104,7 @@ export default function LeadsPage() {
 
                     
 
-                    <FilterSection title={t('common.status') || 'Status'} className={cn("md:min-w-0", searchQuery && "max-md:hidden")}>
+                    <FilterSection zone="tabs" title={t('common.status') || 'Status'} className={cn("md:min-w-0", searchQuery && "max-md:hidden")}>
                       <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-none md:rounded-full flex flex-wrap md:flex-nowrap md:flex-row w-full md:max-w-full overflow-y-visible md:overflow-x-auto justify-start items-center gap-2 md:gap-0">
                         <TabsTrigger value="all" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5" title={t('leads.tabs.all') || 'All Companies'}>
                           <LayoutGrid size={13} className="mr-2 md:mr-0" />
@@ -139,25 +142,8 @@ export default function LeadsPage() {
                     </FilterSection>
                     
                     <FilterSection className={cn("flex flex-col md:flex-row items-stretch md:items-center gap-2 mt-2 md:mt-0 md:shrink-0", searchQuery && "max-md:hidden")}>
-                      <Button 
-                        variant="secondary" 
-                        size={(filters.status.length > 0 || filters.segments.length > 0 || filters.origin.length > 0) ? "default" : "sm"}
-                        className={cn(
-                          "w-full md:w-auto h-10 md:h-9 rounded-md md:rounded-full justify-center",
-                          (filters.status.length > 0 || filters.segments.length > 0 || filters.origin.length > 0) ? "px-4" : "md:w-9 md:px-0 px-4"
-                        )}
-                        onClick={handleOpenFilterModal}
-                      >
-                        <div className="flex items-center gap-2">
-                          <Filter className="h-4 w-4" />
-                          <span className="font-normal md:hidden">Filters</span>
-                        </div>
-                        {(filters.status.length > 0 || filters.segments.length > 0 || filters.origin.length > 0) && (
-                          <Badge variant="secondary" className="ml-2">
-                            {filters.status.length + filters.segments.length + filters.origin.length}
-                          </Badge>
-                        )}
-                      </Button>
+                      <ToolbarFilterButton label={t("common.filters") || "Filters"} onClick={handleOpenFilterModal}
+                        count={filters.status.length + filters.segments.length + filters.origin.length} />
 
                       {(filters.status.length > 0 || filters.segments.length > 0 || filters.origin.length > 0) && (
                         <Button variant="ghost" size="sm" onClick={handleClearFilters} className="w-full md:w-auto h-10 md:h-9 rounded-md md:rounded-full">
@@ -167,7 +153,7 @@ export default function LeadsPage() {
                       )}
                     </FilterSection>
 
-                    <FilterSection desktopOnly className="md:shrink-0">
+                    <FilterSection zone="search" desktopOnly className="md:shrink-0">
                       <SearchInput  
                         placeholder="Search leads..."
                         value={searchQuery}
@@ -175,28 +161,8 @@ export default function LeadsPage() {
                         className="bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"
                       />
                     </FilterSection>
-                    <FilterSection mobileOnly>
-                      <LeadsTransferActions
-                        mobile
-                        segments={segments}
-                        onImportLeads={handleImportLeads}
-                        onExportLeads={handleExportLeads}
-                      />
-                    </FilterSection>
                   </FilterContainer>
                 </MobileFiltersDrawer>
-                </div>
-            
-
-                <LeadsToolbar
-                  segments={segments}
-                  onImportLeads={handleImportLeads}
-                  onExportLeads={handleExportLeads}
-                  sortBy={sortBy}
-                  onSortChange={handleSortChange}
-                  currentView={viewType}
-                  onViewChange={setViewType}
-                />
               </div>
             )}
           </div>

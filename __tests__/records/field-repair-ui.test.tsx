@@ -22,6 +22,7 @@ jest.mock("@/app/records/[id]/components/use-relation-options", () => ({
   useRelationOptions: (...args: unknown[]) => mockRelationOptions(...args as []),
 }))
 jest.mock("@/app/context/SiteContext", () => ({ useSite: () => ({ currentSite: { id: "site-a" } }) }))
+jest.mock("@/app/context/LocalizationContext", () => ({ useLocalization: () => ({ t: (key: string) => key }) }))
 jest.mock("@/app/hooks/use-user-data", () => ({ useUserData: () => ({ userData: {} }) }))
 jest.mock("@/app/records/[id]/components/AIFieldPreview", () => ({ AIFieldPreview: () => null }))
 jest.mock("@/app/records/[id]/components/TableWidget", () => ({ TableWidget: () => null }))
@@ -63,6 +64,14 @@ const baseProps = { status: "draft", record: { site_id: "site-a" } as RecordItem
 
 describe("RecordDynamicForm field repairs", () => {
   beforeEach(() => jest.clearAllMocks())
+
+  it("keeps Published, Active and a custom saved status visible in the detail editor", () => {
+    render(<RecordDynamicForm {...baseProps} status="in review" fields={[]} onChange={jest.fn()} />)
+    const status = screen.getByRole("combobox", { name: "Select value" })
+    expect(status).toHaveValue("in review")
+    expect(within(status).getByRole("option", { name: "Active" })).toBeInTheDocument()
+    expect(within(status).getByRole("option", { name: "Published" })).toBeInTheDocument()
+  })
 
   it("does not load relation options under a different active site", () => {
     render(<RecordDynamicForm {...baseProps} record={{ site_id: "other-site" } as RecordItem}
@@ -166,6 +175,21 @@ it("only offers date fields for the category default and clears the setting when
 })
 
 describe("CategoryTemplateEditor field repairs", () => {
+  it("converts an existing number to Currency without changing its ID, storage key or bounds", async () => {
+    const onSave = jest.fn().mockResolvedValue(undefined)
+    render(<CategoryTemplateEditor isOpen onClose={jest.fn()} onSave={onSave} category={{ id: "cat", name: "Category",
+      template_fields: [field("amount", "number", { min: 0, max: 100 })] } as RecordCategory} />)
+    fireEvent.click(screen.getByText("amount"))
+    const type = screen.getAllByRole("combobox").find(select => [...(select as HTMLSelectElement).options].some(option => option.value === "currency"))!
+    fireEvent.change(type, { target: { value: "currency" } })
+    fireEvent.change(screen.getByLabelText("Currency", { exact: true }), { target: { value: "eur" } })
+    fireEvent.change(screen.getByLabelText("Currency format"), { target: { value: "code" } })
+    fireEvent.click(screen.getByText("Save Template"))
+    await waitFor(() => expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ template_fields: [
+      { id: "amount", name: "amount", type: "number", min: 0, max: 100, currency: { code: "EUR", display: "code" } },
+    ] })))
+  })
+
   it("clears incompatible bounds when a new field changes from number to text", async () => {
     const onSave = jest.fn().mockResolvedValue(undefined)
     render(<CategoryTemplateEditor isOpen onClose={jest.fn()} onSave={onSave} category={{ id: "cat", name: "Category", template_fields: [] } as unknown as RecordCategory} />)

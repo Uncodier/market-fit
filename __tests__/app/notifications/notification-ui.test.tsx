@@ -150,13 +150,13 @@ describe('notification inbox toolbar', () => {
     jest.mocked(useNotifications).mockReturnValue(context)
   })
 
-  it('preserves the bulk label and explicit icons inside the automatic toolbar', async () => {
+  it('preserves accessible bulk labels while rendering icons only', async () => {
     render(<NotificationsPage />)
     const read = screen.getByRole('button', { name: 'Mark all as read' })
-    expect(read).toHaveTextContent('Mark all as read')
+    expect(within(read).getByText('Mark all as read')).toHaveClass('sr-only')
     expect(read.querySelector('svg')).not.toBeNull()
     expect(screen.getByRole('button', { name: 'Delete all' }).querySelector('svg')).not.toBeNull()
-    expect(screen.getByRole('searchbox', { name: 'Search notifications' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Search notifications' })).toBeVisible()
     await act(async () => fireEvent.click(read))
     expect(context.markAllNotificationsAsRead).toHaveBeenCalledTimes(1)
   })
@@ -178,24 +178,27 @@ describe('notification inbox toolbar', () => {
     fireEvent.mouseDown(screen.getByRole('tab', { name: /Unread/ }), { button: 0, ctrlKey: false })
     expect(context.updateFilters).toHaveBeenCalledWith({ is_read: false })
     expect(screen.queryByRole('heading', { name: 'Already reviewed' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Search notifications' }))
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'weekly' } })
     expect(context.updateSearchQuery).toHaveBeenCalledWith('weekly')
   })
 
-  it('groups search with the segment bar and keeps bulk actions separate', () => {
+  it('places tabs before bulk tools and keeps search in the view zone', () => {
     render(<NotificationsPage />)
     const segments = screen.getByRole('tablist', { name: 'Filter notifications' })
-    const filterGroup = segments.parentElement!.parentElement!
-    expect(filterGroup).toContainElement(screen.getByRole('searchbox', { name: 'Search notifications' }))
-    expect(filterGroup).not.toContainElement(screen.getByRole('button', { name: 'Mark all as read' }))
-    expect(filterGroup).not.toContainElement(screen.getByRole('button', { name: 'Delete all' }))
+    const tabs = segments.closest('[data-toolbar-tabs]')!
+    const tools = tabs.nextElementSibling!
+    expect(tools).toContainElement(screen.getByRole('button', { name: 'Mark all as read' }))
+    expect(tools).toContainElement(screen.getByRole('button', { name: 'Delete all' }))
+    expect(tools.nextElementSibling).toHaveAttribute('data-toolbar-zone', 'view')
+    expect(tools.nextElementSibling).toContainElement(screen.getByRole('button', { name: 'Search notifications' }))
   })
 
   it('uses the shared expandable search with its keyboard shortcut', async () => {
     render(<NotificationsPage />)
-    const input = screen.getByRole('searchbox', { name: 'Search notifications' })
+    const input = screen.getByPlaceholderText('Search notifications')
     expect(input).toHaveAttribute('data-command-k-input', 'true')
-    expect(screen.getByTitle('Search notifications')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Search notifications' })).toBeInTheDocument()
     expect(screen.getByText('K', { selector: 'kbd' })).toBeInTheDocument()
     fireEvent.keyDown(window, { key: 'k', metaKey: true })
     await waitFor(() => expect(input).toHaveFocus())

@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
+import { usePathname } from "next/navigation"
 import { toast } from "sonner"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { shouldCheckVersion } from "./version-check-policy"
@@ -45,20 +46,15 @@ async function fetchServerBuildId(controller: AbortController): Promise<string |
 }
 
 export function useVersionCheck(): void {
-  const hasNotifiedRef = useRef(false)
+  const [hasUpdate, setHasUpdate] = useState(false)
+  const posOpen = isPosDocument(usePathname())
   const { t } = useLocalization()
   const tRef = useRef(t)
   useEffect(() => { tRef.current = t }, [t])
 
   useEffect(() => {
-    if (process.env.NODE_ENV === "development") return
-    if (!CLIENT_BUILD_ID) return
-
+    if (!hasUpdate) return
     let disposed = false
-    let checking = false
-    let activeRequest: AbortController | null = null
-    let lastLocalCheck: number | null = null
-
     const requestUpdate = (event: { preventDefault: () => void }) => {
       // Keep the update available after deferral.
       event.preventDefault()
@@ -83,8 +79,32 @@ export function useVersionCheck(): void {
       window.location.reload()
     }
 
+    toast.info(tRef.current("version.newAvailable"), {
+      id: TOAST_ID,
+      description: posOpen
+        ? "Finish and sync your POS work, resolve any queued or unconfirmed payments, then leave POS before updating."
+        : "Keep working; this notice will not reload the page automatically. Save your work and finish syncing before updating.",
+      duration: Infinity,
+      action: posOpen ? undefined : {
+        label: tRef.current("version.reload"),
+        onClick: requestUpdate,
+      },
+    })
+    return () => { disposed = true }
+  }, [hasUpdate, posOpen])
+
+  useEffect(() => {
+    if (process.env.NODE_ENV === "development") return
+    if (!CLIENT_BUILD_ID) return
+
+    let disposed = false
+    let checking = false
+    let foundUpdate = false
+    let activeRequest: AbortController | null = null
+    let lastLocalCheck: number | null = null
+
     const notifyIfStale = async () => {
-      if (disposed || checking || hasNotifiedRef.current) return
+      if (disposed || checking || foundUpdate) return
       
       const now = Date.now()
       let lastCheck = lastLocalCheck
@@ -109,16 +129,8 @@ export function useVersionCheck(): void {
       checking = false
       if (disposed || !serverBuildId || serverBuildId === CLIENT_BUILD_ID) return
 
-      hasNotifiedRef.current = true
-      toast.info(tRef.current("version.newAvailable"), {
-        id: TOAST_ID,
-        description: "Keep working; this notice will not reload the page automatically. Save your work and finish syncing before updating. Updates are deferred while POS is open.",
-        duration: Infinity,
-        action: {
-          label: tRef.current("version.reload"),
-          onClick: requestUpdate,
-        },
-      })
+      foundUpdate = true
+      setHasUpdate(true)
     }
 
     void notifyIfStale()
@@ -142,7 +154,6 @@ export function useVersionCheck(): void {
       document.removeEventListener("visibilitychange", onVisibilityChange)
       toast.dismiss(TOAST_ID)
       toast.dismiss("app-version-update-deferred")
-      hasNotifiedRef.current = false
     }
   }, [])
 }

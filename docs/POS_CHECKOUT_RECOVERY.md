@@ -2,6 +2,14 @@
 
 ## Operational behavior
 
+### Shop orders with a recorded promotion
+
+Cashiers can send or pay an existing Shop order after adding items or increasing
+quantities. The original discount amount stays on that order; added units do not
+redeem the coupon again. The balance includes new lines, current tax and shipping,
+and deducts prior payments. Changing the original lines, their configuration or
+prices, the customer, or the recorded fulfillment context is not an additive edit.
+
 ### Device-stamped automatic resend
 
 New checkout queue rows retain `posOperationIdentity` (version 1, a browser-profile

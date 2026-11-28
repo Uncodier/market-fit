@@ -21,7 +21,7 @@ export function PeopleResultsView({ workspace }: { workspace: PeopleWorkspace })
   const {
     isArtifact,
     t,
-    isLayoutCollapsed,
+    sidebarWidth,
     isSidebarCollapsed,
     setIsSidebarCollapsed,
     showResultsOnMobile,
@@ -80,7 +80,7 @@ export function PeopleResultsView({ workspace }: { workspace: PeopleWorkspace })
     window.addEventListener('people:return-to-search', closeList)
     return () => window.removeEventListener('people:return-to-search', closeList)
   }, [openList, isArtifact, closeList])
-  const resultsLeft = (isArtifact ? 0 : (isLayoutCollapsed ? 64 : 256)) + (isSidebarCollapsed ? 0 : 319)
+  const resultsLeft = (isArtifact ? 0 : sidebarWidth) + (isSidebarCollapsed ? 0 : 319)
   const sidebarToggle = <SidebarToggle
     isCollapsed={isSidebarCollapsed}
     onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}

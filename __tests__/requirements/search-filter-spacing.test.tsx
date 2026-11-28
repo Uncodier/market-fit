@@ -9,7 +9,7 @@ jest.mock("@/app/context/LocalizationContext", () => ({
 }))
 
 const pageSource = readFileSync(path.join(process.cwd(), "app/requirements/page.tsx"), "utf8")
-const desktopSectionClassName = pageSource.match(/<FilterSection desktopOnly className="([^"]+)"/)?.[1]
+const desktopSectionClassName = pageSource.match(/<FilterSection zone="search" desktopOnly className="([^"]+)"/)?.[1]
 
 describe("Requirements search and filter spacing", () => {
   it("overrides the shared zero desktop gap for both collapsed and expanded search", () => {
@@ -26,9 +26,9 @@ describe("Requirements search and filter spacing", () => {
     const section = filters.parentElement
     expect(section).toHaveClass("flex-row", "items-center", "md:gap-2", "max-md:hidden")
     expect(section).not.toHaveClass("md:gap-0")
-    expect(section?.firstElementChild).toHaveClass("w-9", "h-9")
+    expect(section?.firstElementChild).toHaveClass("w-10", "h-10")
 
-    fireEvent.click(screen.getByTitle("Search requirements..."))
+    fireEvent.click(screen.getByRole("button", { name: "Search requirements..." }))
 
     expect(section?.firstElementChild).toHaveClass("w-64")
     expect(section).toHaveClass("md:gap-2")

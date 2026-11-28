@@ -1,4 +1,5 @@
 import { act, renderHook } from "@testing-library/react"
+import { usePathname } from "next/navigation"
 import { toast, type Action } from "sonner"
 import { useLocalization } from "@/app/context/LocalizationContext"
 
@@ -23,8 +24,9 @@ describe("explicit, non-destructive version updates", () => {
     jest.mocked(useLocalization).mockReturnValue({ t: (key: string) => `translated:${key}` } as ReturnType<typeof useLocalization>)
     localStorage.clear()
     Object.defineProperty(window, "location", { configurable: true, value: {
-      pathname: "/pos", hostname: "app.makinari.com", reload,
+      pathname: "/projects", hostname: "app.makinari.com", reload,
     } })
+    jest.mocked(usePathname).mockReturnValue("/projects")
     Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" })
     Object.defineProperty(navigator, "onLine", { configurable: true, value: true })
     jest.mocked(fetch).mockResolvedValue({ ok: true, status: 200, json: async () => ({ version: "new-build" }) } as Response)
@@ -77,18 +79,42 @@ describe("explicit, non-destructive version updates", () => {
     hook.unmount()
   })
 
-  it.each(["/pos", "/pos/", "/pos/check-in", "/pos/register"])("defers %s without inferring safety from persisted state", async (pathname) => {
+  it.each(["/pos", "/pos/", "/pos/check-in", "/pos/register"])("shows the version notice without a reload action on %s", async (pathname) => {
     window.location.pathname = pathname
+    jest.mocked(usePathname).mockReturnValue(pathname)
     const hook = await mount()
-    click()
-    expect(toast.warning).toHaveBeenCalledWith("Update deferred while POS is open", expect.anything())
+    expect(toast.info).toHaveBeenCalledWith("translated:version.newAvailable", expect.objectContaining({
+      action: undefined,
+      description: expect.stringContaining("leave POS before updating"),
+    }))
     expect(confirm).not.toHaveBeenCalled()
     expect(reload).not.toHaveBeenCalled()
     hook.unmount()
   })
 
-  it("checks the live route, not the route where the notification appeared", async () => {
+  it("removes an existing action on entry to POS and restores it on exit without checking again", async () => {
+    const hook = await mount()
+    const action = updateAction()
+    window.location.pathname = "/pos"
+    jest.mocked(usePathname).mockReturnValue("/pos")
+    hook.rerender()
+    expect(toast.info).toHaveBeenLastCalledWith("translated:version.newAvailable", expect.objectContaining({
+      id: "app-version-update", action: undefined,
+    }))
     window.location.pathname = "/projects"
+    jest.mocked(usePathname).mockReturnValue("/projects")
+    hook.rerender()
+    const restoredAction = jest.mocked(toast.info).mock.lastCall?.[1]?.action as Action
+    expect(restoredAction.label).toBe("translated:version.reload")
+    click(action)
+    expect(reload).not.toHaveBeenCalled()
+    click(restoredAction)
+    expect(reload).toHaveBeenCalledTimes(1)
+    expect(fetch).toHaveBeenCalledTimes(1)
+    hook.unmount()
+  })
+
+  it("checks the live route before a route change is rendered", async () => {
     const hook = await mount()
     window.location.pathname = "/pos"
     click()
@@ -102,6 +128,7 @@ describe("explicit, non-destructive version updates", () => {
 
   it("reloads on an explicit click without confirmation and does not mistake another route prefix for POS", async () => {
     window.location.pathname = "/positions"
+    jest.mocked(usePathname).mockReturnValue("/positions")
     confirm.mockReturnValue(false)
     const hook = await mount()
     expect(reload).not.toHaveBeenCalled()

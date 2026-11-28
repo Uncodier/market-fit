@@ -40,7 +40,7 @@ export function TenderListing({ rows, closedIds, header, children, emptyHref = '
       <div className="md:hidden mb-6">{facets}</div>
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <p className="text-sm text-muted-foreground" role="status">{t('procurement.portal.listing.count', { visible: formatNumber(visible.length), total: formatNumber(rows.length) })}</p>
-        <SortDropdown sortBy={sort} setSortBy={setSort} options={sorts} title={t('procurement.portal.listing.sort')} className="!w-auto !rounded-full" />
+        <SortDropdown sortBy={sort} setSortBy={setSort} options={sorts} title={t('procurement.portal.listing.sort')} />
       </div>
       <p className="md:hidden text-xs text-muted-foreground mb-4">{t('procurement.portal.listing.mobileScope')}</p>
       {errorContent || (!rows.length ? <EmptyTenders href={emptyHref} /> : !visible.length ? <EmptyCard icon={<ClipboardList size={24} />} title={t('procurement.portal.listing.noMatches')}

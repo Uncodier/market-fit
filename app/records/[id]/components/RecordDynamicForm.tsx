@@ -26,9 +26,12 @@ import { useSite } from "@/app/context/SiteContext"
 import { RecordItem } from "../../actions"
 import { useRelationOptions } from "./use-relation-options"
 import { useUserData } from "@/app/hooks/use-user-data"
+import { useLocalization } from "@/app/context/LocalizationContext"
+import { recordStatusLabel, recordStatusOptions } from "../../lib/record-status"
 import { RecordMemberAvatar } from "../../components/RecordMemberAvatar"
 import { relationFieldTargetKey } from "../../lib/relation-target"
 import { recordFieldDate, recordFieldLabel, recordScalarFieldValue, serializeRecordFieldDate } from "../../lib/field-values"
+import { formatRecordCurrency } from "../../lib/record-field-presentation"
 import styles from "./record-dynamic-form.module.css"
 
 const inlineControlClass = "w-full bg-transparent border-0 hover:bg-muted/50 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:bg-muted/30 shadow-none px-2 h-8 rounded-md"
@@ -48,6 +51,7 @@ interface RecordDynamicFormProps {
 
 export function RecordDynamicForm({ fields, formData, relationsData, status, record, onChange, onStatusChange }: RecordDynamicFormProps) {
   const { currentSite } = useSite()
+  const { t } = useLocalization()
   const selectedRelationIds = useMemo(
     () => Object.values(relationsData).filter((value): value is string => typeof value === "string"),
     [relationsData],
@@ -111,21 +115,26 @@ export function RecordDynamicForm({ fields, formData, relationsData, status, rec
           </div>
         )
       
-      case "number":
+      case "number": {
+        const formattedAmount = formatRecordCurrency(value, field.currency)
         return (
-          <Input 
-            type="number"
-            aria-label={recordFieldLabel(field)}
-            value={value ?? ""}
-            required={field.required}
-            min={field.min}
-            max={field.max}
-            step="any"
-            onChange={(e) => onChange(field.name, e.target.value ? Number(e.target.value) : null, "field")}
-            placeholder="0"
-            className={cn(inlineControlClass, styles.numberInput, "tabular-nums")}
-          />
+          <div className="w-full">
+            <Input
+              type="number"
+              aria-label={recordFieldLabel(field)}
+              value={value ?? ""}
+              required={field.required}
+              min={field.min}
+              max={field.max}
+              step="any"
+              onChange={(e) => onChange(field.name, e.target.value ? Number(e.target.value) : null, "field")}
+              placeholder={formatRecordCurrency(0, field.currency) ?? "0"}
+              className={cn(inlineControlClass, styles.numberInput, "tabular-nums")}
+            />
+            {formattedAmount && <p className="px-2 text-xs tabular-nums text-muted-foreground">{formattedAmount}</p>}
+          </div>
         )
+      }
 
       case "location":
         return (
@@ -300,9 +309,9 @@ export function RecordDynamicForm({ fields, formData, relationsData, status, rec
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="archived">Archived</SelectItem>
+                {recordStatusOptions(status).map(option => (
+                  <SelectItem key={option} value={option}>{recordStatusLabel(option, t)}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

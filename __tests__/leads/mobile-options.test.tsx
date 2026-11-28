@@ -45,46 +45,28 @@ describe("Leads mobile options", () => {
     jest.mocked(useIsMobile).mockReturnValue(true)
   })
 
-  it("keeps transfer actions out of the mobile toolbar and inside the options panel", () => {
+  it("keeps search and transfer actions in the mobile toolbar, separate from filters", () => {
     render(<LeadsPage />)
-
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
-    const desktopActions = screen.getByTitle("Import").parentElement!
-    expect(desktopActions).toHaveClass("hidden", "md:flex")
-    expect(desktopActions).toContainElement(screen.getByTitle("Export"))
-
-    fireEvent.click(screen.getByRole("button", { name: "Search" }))
-
-    const panel = screen.getByRole("dialog", { name: "Search" })
-    const importAction = within(panel).getByRole("button", { name: "Import" })
-    const exportAction = within(panel).getByRole("button", { name: "Export" })
-    expect(importAction).toHaveClass("w-full", "h-11")
-    expect(exportAction).toHaveClass("w-full", "h-11")
-    expect(importAction.parentElement?.parentElement).toHaveClass("md:hidden")
-    const mobileSearch = within(panel).getAllByPlaceholderText("Search leads...").find(input =>
-      input.closest(".md\\:hidden"),
-    )
-    expect(mobileSearch).toBeInTheDocument()
-    expect(within(panel).getByRole("button", { name: "Filters" })).toBeInTheDocument()
-
+    const importAction = screen.getByRole("button", { name: "Import" })
+    const exportAction = screen.getByRole("button", { name: "Export" })
+    expect(importAction.closest("[data-toolbar-actions]")).toContainElement(exportAction)
+    expect(screen.getByRole("button", { name: "Search leads..." }).closest("[data-toolbar-search]")).toBeInTheDocument()
     fireEvent.click(exportAction)
     expect(mockExportLeads).toHaveBeenCalledTimes(1)
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }))
+    const panel = screen.getByRole("dialog", { name: "Filters" })
+    expect(within(panel).queryByRole("button", { name: "Import" })).not.toBeInTheDocument()
+    expect(within(panel).queryByPlaceholderText("Search leads...")).not.toBeInTheDocument()
   })
 
-  it("opens the real import dialog from the panel without starting an import", () => {
+  it("opens the real import dialog from the toolbar without starting an import", () => {
     render(<LeadsPage />)
-    fireEvent.click(screen.getByRole("button", { name: "Search" }))
-    const panel = screen.getByRole("dialog", { name: "Search" })
-
-    fireEvent.click(within(panel).getByRole("button", { name: "Import" }))
-
+    fireEvent.click(screen.getByRole("button", { name: "Import" }))
     const dialog = screen.getByRole("dialog", { name: "Import Leads" })
     expect(within(dialog).getByText(/Import leads from CSV, JSON, or Excel files/)).toBeInTheDocument()
     expect(mockImportLeads).not.toHaveBeenCalled()
-
     fireEvent.click(within(dialog).getByRole("button", { name: "Close" }))
-    expect(screen.queryByRole("dialog", { name: "Import Leads" })).not.toBeInTheDocument()
-    expect(screen.getByRole("dialog", { name: "Search" })).toBeInTheDocument()
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
   })
 
   it("preserves desktop transfer actions without an options drawer", () => {
@@ -92,8 +74,8 @@ describe("Leads mobile options", () => {
     render(<LeadsPage />)
 
     expect(screen.queryByRole("button", { name: "Search" })).not.toBeInTheDocument()
-    const desktopExport = screen.getAllByTitle("Export").find(button => button.parentElement?.classList.contains("md:flex"))!
-    expect(desktopExport.parentElement).toHaveClass("hidden", "md:flex")
+    const desktopExport = screen.getByRole("button", { name: "Export" })
+    expect(desktopExport.closest("[data-toolbar-actions]")).toBeInTheDocument()
     fireEvent.click(desktopExport)
     expect(mockExportLeads).toHaveBeenCalledTimes(1)
   })

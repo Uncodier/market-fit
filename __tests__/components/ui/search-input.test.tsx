@@ -27,7 +27,7 @@ describe("SearchInput animation state", () => {
     const input = screen.getByPlaceholderText("Search catalog...")
     const container = input.parentElement?.parentElement?.parentElement
 
-    fireEvent.click(screen.getByTitle("Search catalog..."))
+    fireEvent.click(screen.getByRole("button", { name: "Search catalog..." }))
 
     expect(onExpandedChange).toHaveBeenLastCalledWith(true)
     expect(container).toHaveClass("w-full", "h-11")
@@ -50,9 +50,9 @@ describe("SearchInput animation state", () => {
     )
 
     const button = screen.getByRole("button", { name: "Search leads..." })
-    const collapsed = button.closest("[data-automatic-toolbar-tooltip]")?.parentElement
+    const collapsed = button.closest("[data-toolbar-tooltip-trigger]")?.parentElement
 
-    expect(button).toHaveClass("!h-10", "!w-10")
+    expect(button).toHaveClass("h-10", "w-10")
     expect(collapsed).toHaveClass("h-10", "w-10", "top-1/2", "-translate-y-1/2")
     expect(collapsed?.parentElement).toHaveClass("h-10", "w-10", "shrink-0")
   })
@@ -78,7 +78,7 @@ describe("SearchInput animation state", () => {
     const clear = screen.getByRole("button", { name: "Clear search" })
     expect(clear).toHaveAttribute("data-toolbar-icon-action", "off")
     expect(clear).toHaveClass("h-7", "w-7")
-    expect(clear).not.toHaveClass("!h-10", "!w-10")
+    expect(clear).not.toHaveClass("h-10", "w-10")
     expect(clear.parentElement).not.toHaveAttribute("data-automatic-toolbar-tooltip")
 
     fireEvent.click(clear)

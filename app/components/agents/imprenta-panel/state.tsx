@@ -23,11 +23,11 @@ type ImprentaPanelStateOptions = { activeInstanceId?: string }
 export function useImprentaPanelState({ activeInstanceId }: ImprentaPanelStateOptions) {
   const { currentSite } = useSite()
 
-  const { isLayoutCollapsed } = useLayout()
+  const { sidebarWidth: desktopSidebarWidth } = useLayout()
 
   const isMobile = useIsMobile()
 
-  const sidebarWidth = isMobile ? 0 : isLayoutCollapsed ? 64 : 256;
+  const sidebarWidth = isMobile ? 0 : desktopSidebarWidth;
 
   const supabase = createClient()
   const [nodes, setNodes] = useState<InstanceNode[]>([])
@@ -148,7 +148,6 @@ export function useImprentaPanelState({ activeInstanceId }: ImprentaPanelStateOp
     ...editor,
     currentSite,
     activeInstanceId,
-    isLayoutCollapsed,
     isMobile,
     sidebarWidth,
     supabase,

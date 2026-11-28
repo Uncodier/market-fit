@@ -10,9 +10,9 @@ import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { MobileFiltersDrawer, FilterContainer, FilterSection, FilterSeparator } from "@/app/components/ui/mobile-filters-drawer"
 import { SearchInput } from "@/app/components/ui/search-input"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
+import { Select, SelectContent, SelectIconTrigger, SelectItem } from "@/app/components/ui/select"
 import { EmptyCard } from "@/app/components/ui/empty-card"
-import { Repeat } from "@/app/components/ui/icons"
+import { MapPin, Repeat } from "@/app/components/ui/icons"
 import { Button } from "@/app/components/ui/button"
 import { SortDropdown } from "@/app/components/ui/sort-dropdown"
 import { listInventoryMovements } from "../actions"
@@ -72,26 +72,31 @@ function MovementsWorkspace({ demo, initialSort, siteId, actorId }: { demo: bool
   ).sort((a, b) => (new Date(a.created_at).getTime() - new Date(b.created_at).getTime()) * (sort === "oldest" ? 1 : -1))
   const currentPage = Math.min(page, Math.max(1, Math.ceil(rows.length / pageSize)))
   const locationSelect = <Select value={location} onValueChange={value => { setLocation(value); setPage(1) }}>
-    <SelectTrigger aria-label="Filter by location" className="w-full md:w-[170px] h-10 md:h-8 text-sm md:text-xs bg-background md:bg-muted/30 border md:border-0 rounded-md md:rounded-full"><SelectValue placeholder="All Locations" /></SelectTrigger>
+    <SelectIconTrigger label="Filter by location" tooltipLabel={locations.find(option => option.id === location)?.name || "All Locations"}>
+      <MapPin className="h-4 w-4" aria-hidden />
+    </SelectIconTrigger>
     <SelectContent><SelectItem value="all">All Locations</SelectItem>{locations.map(value => <SelectItem key={value.id} value={value.id}>{value.name}</SelectItem>)}</SelectContent>
   </Select>
 
   return <div className="flex-1 flex flex-col min-h-[calc(100vh-var(--topbar-height,64px))] bg-muted/30">
     <StickyHeader><div className="w-full pt-0"><div className="flex items-center justify-between gap-2 w-full">
-      <MobileFiltersDrawer triggerText="Search & Filters">
+      <MobileFiltersDrawer triggerText="Search & Filters"
+        controls={<>          <SortDropdown sortBy={sort} setSortBy={setSort} options={[{ value: "newest", label: "Newest first" }, { value: "oldest", label: "Oldest first" }]} />
+        </>}
+      >
         <FilterContainer>
-          <FilterSection mobileOnly><SearchInput placeholder="Search movements..." value={search} onChange={event => { setSearch(event.target.value); setPage(1) }} alwaysExpanded containerClassName="w-full" /></FilterSection>
-          <FilterSection title="Type"><Tabs value={kind} onValueChange={value => { setKind(value); setPage(1) }}>
+          <FilterSection zone="search" mobileOnly><SearchInput placeholder="Search movements..." value={search} onChange={event => { setSearch(event.target.value); setPage(1) }} alwaysExpanded containerClassName="w-full" /></FilterSection>
+          <FilterSection zone="tabs" title="Type"><Tabs value={kind} onValueChange={value => { setKind(value); setPage(1) }}>
             <TabsList className="bg-transparent p-0 h-auto flex-wrap justify-start gap-2 md:bg-muted/30 md:rounded-full md:p-1">
               {[["all", "All"], ["transfer", "Legacy transfers"], ["dispatch", "Dispatches"], ["receive", "Transfer receipts"], ["return", "Returns"], ["writeoff", "Write-offs"], ["receipt", "Purchase receipts"], ["adjustment", "Adjustments"]].map(([value, label]) => <TabsTrigger key={value} value={value} className="w-auto rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:text-foreground whitespace-nowrap">{label}</TabsTrigger>)}
             </TabsList>
           </Tabs></FilterSection>
           <FilterSeparator />
           <FilterSection title="Location">{locationSelect}</FilterSection>
-          <FilterSection desktopOnly><SearchInput placeholder="Search movements..." value={search} onChange={event => { setSearch(event.target.value); setPage(1) }} containerClassName="w-full md:w-[240px]" /></FilterSection>
+          <FilterSection zone="search" desktopOnly><SearchInput placeholder="Search movements..." value={search} onChange={event => { setSearch(event.target.value); setPage(1) }} containerClassName="w-full md:w-[240px]" /></FilterSection>
         </FilterContainer>
       </MobileFiltersDrawer>
-      <div className="shrink-0 ml-4"><SortDropdown sortBy={sort} setSortBy={setSort} options={[{ value: "newest", label: "Newest first" }, { value: "oldest", label: "Oldest first" }]} /></div>
+
     </div></div></StickyHeader>
     <div className="px-6 py-4 space-y-4">
       <Link href={`/inventory/transfers${demo ? "?demo=1" : ""}`} className="text-sm hover:underline">View transfer documents</Link>

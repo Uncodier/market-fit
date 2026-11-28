@@ -2,7 +2,6 @@
 
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
-import { Archive, DatabaseIcon, Boxes } from "@/app/components/ui/icons"
 
 type CatalogKind = 'all' | 'product' | 'service' | 'variant'
 type CatalogStatus = 'active' | 'archived'
@@ -29,9 +28,9 @@ export function CatalogFilterTabs({ kind, status, onChange }: CatalogFilterTabsP
     <Tabs value={status === 'archived' ? 'archived' : kind} onValueChange={handleChange} className="w-full md:w-auto min-w-0">
       <TabsList aria-label="Catalog filters" className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-none md:rounded-full flex flex-wrap md:flex-nowrap md:flex-row w-full md:max-w-full overflow-y-visible md:overflow-x-auto justify-start items-center gap-2 md:gap-0">
         <TabsTrigger value="all" className={triggerClassName}>{t('status.active') || 'Active'}</TabsTrigger>
-        <TabsTrigger value="product" className={triggerClassName}><Archive className="shrink-0 h-4 w-4 md:hidden" />{t('catalog.kind.product') || 'Products'}</TabsTrigger>
-        <TabsTrigger value="service" className={triggerClassName}><DatabaseIcon className="shrink-0 h-4 w-4 md:hidden" />{t('catalog.kind.service') || 'Services'}</TabsTrigger>
-        <TabsTrigger value="variant" className={triggerClassName}><Boxes className="shrink-0 h-4 w-4 md:hidden" />{t('catalog.kind.variant') || 'Variants'}</TabsTrigger>
+        <TabsTrigger value="product" className={triggerClassName}>{t('catalog.kind.product') || 'Products'}</TabsTrigger>
+        <TabsTrigger value="service" className={triggerClassName}>{t('catalog.kind.service') || 'Services'}</TabsTrigger>
+        <TabsTrigger value="variant" className={triggerClassName}>{t('catalog.kind.variant') || 'Variants'}</TabsTrigger>
         <TabsTrigger value="archived" className={triggerClassName}>{t('status.archived') || 'Archived'}</TabsTrigger>
       </TabsList>
     </Tabs>

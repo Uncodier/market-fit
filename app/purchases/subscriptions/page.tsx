@@ -82,12 +82,14 @@ export default function PurchasesSubscriptionsPage() {
       {isDemo && <ProcurementDemoNotice />}
       <StickyHeader>
         <div className="w-full pt-0 flex items-center justify-between">
-          <MobileFiltersDrawer triggerText={t("common.search") || "Search"}>
+          <MobileFiltersDrawer triggerText={t("common.search") || "Search"}
+            controls={<SortDropdown sortBy={sort} setSortBy={changeSort} />}
+          >
             <FilterContainer>
-              <FilterSection mobileOnly>
+              <FilterSection zone="search" mobileOnly>
                 <SearchInput placeholder={t("subscriptions.search") || "Search subscriptions..."} value={search} onChange={(event) => changeSearch(event.target.value)} alwaysExpanded className="w-full h-10 md:h-9" containerClassName="w-full" />
               </FilterSection>
-              <FilterSection title={t("common.status") || "Status"}>
+              <FilterSection zone="tabs" title={t("common.status") || "Status"}>
                 <Tabs value={status} onValueChange={changeStatus}>
                   <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-none md:rounded-full flex flex-wrap md:flex-nowrap w-full overflow-y-visible md:overflow-x-auto justify-start gap-2 md:gap-0">
                     {["all", "active", "paused", "cancelled", "expired"].map((value) => (
@@ -98,8 +100,7 @@ export default function PurchasesSubscriptionsPage() {
                   </TabsList>
                 </Tabs>
               </FilterSection>
-              <FilterSection><SortDropdown sortBy={sort} setSortBy={changeSort} /></FilterSection>
-              <FilterSection desktopOnly>
+              <FilterSection zone="search" desktopOnly>
                 <SearchInput placeholder={t("subscriptions.search") || "Search subscriptions..."} value={search} onChange={(event) => changeSearch(event.target.value)} className="w-full" containerClassName="w-64" />
               </FilterSection>
             </FilterContainer>

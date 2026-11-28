@@ -59,7 +59,7 @@ export const ChatInput = memo(function ChatInput({
   onChannelCommitted,
 }: ChatInputProps) {
   const { t } = useLocalization()
-  const { isLayoutCollapsed } = useLayout()
+  const { sidebarWidth } = useLayout()
   const internalRef = useRef<HTMLTextAreaElement>(null)
   
   // Track window width for responsive left offset
@@ -180,9 +180,6 @@ export const ChatInput = memo(function ChatInput({
   const getLeftOffset = () => {
     if (typeof window === 'undefined') return '0px';
     if (windowWidth < 768) return '0px'; // Mobile full width
-    
-    // We know layout sidebar is either 64px or 256px
-    const sidebarWidth = isLayoutCollapsed ? 64 : 256;
     
     // Chat list width
     const chatListWidth = isChatListCollapsed ? 0 : 319;

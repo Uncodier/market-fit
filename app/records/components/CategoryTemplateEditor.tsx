@@ -19,6 +19,8 @@ import { isEmojiIcon } from "./category-icon"
 import { recordFieldLabel } from "../lib/field-values"
 import { DeleteRecordCategory } from "./DeleteRecordCategory"
 import { primaryDateField } from "../lib/primary-date"
+import { recordFieldPresentation, recordFieldTypeSettings } from "../lib/record-field-presentation"
+import { RecordCurrencySettings } from "./RecordCurrencySettings"
 
 interface CategoryTemplateEditorProps {
   isOpen: boolean
@@ -85,6 +87,8 @@ export function CategoryTemplateEditor({ isOpen, onClose, category, initialField
       }
       if (!["text", "description"].includes(next.type)) delete next.aiPreview
     }
+    if (next.currency === undefined) delete next.currency
+    if (next.relationTarget === undefined) delete next.relationTarget
     if (next.relationTarget !== "record") delete next.targetCategoryId
     newFields[index] = next
     setFields(newFields)
@@ -235,7 +239,7 @@ export function CategoryTemplateEditor({ isOpen, onClose, category, initialField
                                 {recordFieldLabel(field) || "Unnamed Field"}
                               </SectionCardTitle>
                               <p className="text-sm text-muted-foreground mt-1 truncate">
-                                {field.type}
+                                {recordFieldPresentation(field).replaceAll("_", " ")}
                               </p>
                             </div>
                           </div>
@@ -309,8 +313,8 @@ export function CategoryTemplateEditor({ isOpen, onClose, category, initialField
                             <div className="space-y-2">
                               <Label>Field Type</Label>
                               <Select 
-                                value={field.type} 
-                                onValueChange={(val) => updateField(index, { type: val })}
+                                value={recordFieldPresentation(field)}
+                                onValueChange={(val) => updateField(index, { relationTarget: val === "relation" ? "lead" : undefined, currency: undefined, ...recordFieldTypeSettings(val) })}
                               >
                                 <SelectTrigger aria-label={`Field type for ${field.name || "new field"}`}>
                                   <SelectValue />
@@ -319,11 +323,13 @@ export function CategoryTemplateEditor({ isOpen, onClose, category, initialField
                                   <SelectItem value="text">Text (Single line)</SelectItem>
                                   <SelectItem value="description">Description (Rich Text)</SelectItem>
                                   <SelectItem value="number">Number</SelectItem>
+                                  <SelectItem value="currency">Currency</SelectItem>
                                   <SelectItem value="date">Date</SelectItem>
                                   <SelectItem value="select">Select (Dropdown)</SelectItem>
                                   <SelectItem value="boolean">Boolean (Yes / No)</SelectItem>
                                   <SelectItem value="location">Location</SelectItem>
                                   <SelectItem value="relation">Relation (Link entity)</SelectItem>
+                                  <SelectItem value="team_member">Team member</SelectItem>
                                   <SelectItem value="file">File / Image</SelectItem>
                                   <SelectItem value="table">Table Widget</SelectItem>
                                 </SelectContent>
@@ -358,8 +364,9 @@ export function CategoryTemplateEditor({ isOpen, onClose, category, initialField
                             </div>
                           )}
 
-                          {/* Relation specific options */}
-                          {field.type === 'relation' && (
+                          {field.type === "number" && field.currency && <RecordCurrencySettings value={field.currency}
+                            onChange={currency => updateField(index, { currency })} />}
+                          {field.type === 'relation' && field.relationTarget !== "team_member" && (
                             <div className="space-y-2 pt-4 border-t mt-4">
                               <Label>Relation Target</Label>
                               <Select 
@@ -378,7 +385,6 @@ export function CategoryTemplateEditor({ isOpen, onClose, category, initialField
                                   {field.relationTarget === "person" && (
                                     <SelectItem value="person" disabled>Contact / Person (Legacy)</SelectItem>
                                   )}
-                                  <SelectItem value="team_member">Team Member</SelectItem>
                                   <SelectItem value="campaign">Campaign</SelectItem>
                                   <SelectItem value="catalog_item">Catalog Item</SelectItem>
                                   <SelectItem value="content">Content</SelectItem>

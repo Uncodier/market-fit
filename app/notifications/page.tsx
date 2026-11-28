@@ -6,6 +6,8 @@ import { useLocalization } from "@/app/context/LocalizationContext"
 import { Button } from "@/app/components/ui/button"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { SearchInput } from "@/app/components/ui/search-input"
+import { ListToolbar } from "@/app/components/ui/list-toolbar"
+import { ToolbarIconButton } from "@/app/components/ui/toolbar-icon-button"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Bell, Check, Trash2, Loader2 } from "@/app/components/ui/icons"
 import { EmptyState } from "@/app/components/ui/empty-state"
@@ -60,8 +62,9 @@ export default function NotificationsPage() {
   return (
     <div className="flex min-w-0 flex-1 flex-col bg-muted/30 min-h-[calc(100vh-var(--topbar-height,64px))]">
       <StickyHeader>
-        <div className="flex min-w-0 w-full flex-wrap items-center justify-between gap-2 py-3 md:flex-nowrap md:gap-4 md:py-0" data-toolbar-icon-actions="off">
-          <div className="flex min-w-0 flex-wrap items-center gap-2 md:gap-4">
+        <ListToolbar className="py-3 md:py-0"
+          search={<SearchInput type="search" placeholder={t('notifications.searchPlaceholder')} aria-label="Search notifications" containerClassName="w-48 lg:w-64" className="w-full" value={searchQuery} onSearch={updateSearchQuery} />}
+          tabs={
             <Tabs value={activeTab} onValueChange={handleTabChange}>
               <TabsList aria-label="Filter notifications">
                 <TabsTrigger value="all">{t('notifications.tabs.all')}</TabsTrigger>
@@ -71,18 +74,14 @@ export default function NotificationsPage() {
                 </TabsTrigger>
               </TabsList>
             </Tabs>
-            <SearchInput type="search" placeholder={t('notifications.searchPlaceholder')} aria-label="Search notifications" containerClassName="w-48 lg:w-64" className="w-full" value={searchQuery} onSearch={updateSearchQuery} />
-          </div>
-          <div className="ml-auto flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2 md:flex-nowrap">
-            <Button variant="secondary" size="sm" className="h-9 min-w-0 gap-2" onClick={() => void runBulkAction("read")} disabled={!ready || !!pending || unreadCount === 0}>
+          } actions={<>
+            <ToolbarIconButton label={t('notifications.markAllRead')} onClick={() => void runBulkAction("read")} disabled={!ready || !!pending || unreadCount === 0}>
               {pending === "read" ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden={true} /> : <Check className="h-4 w-4" aria-hidden={true} />}
-              <span>{t('notifications.markAllRead')}</span>
-            </Button>
-            <Button variant="ghost" size="icon" aria-label={t('notifications.deleteAll')} title={t('notifications.deleteAll')} className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive" onClick={() => setConfirmDelete(true)} disabled={!ready || !!pending || notifications.length === 0}>
+            </ToolbarIconButton>
+            <ToolbarIconButton label={t('notifications.deleteAll')} className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive" onClick={() => setConfirmDelete(true)} disabled={!ready || !!pending || notifications.length === 0}>
               <Trash2 className="h-4 w-4" aria-hidden={true} />
-            </Button>
-          </div>
-        </div>
+            </ToolbarIconButton>
+          </>} />
       </StickyHeader>
 
       <div className="w-full min-w-0 flex-1 p-4 md:p-6 lg:p-8">

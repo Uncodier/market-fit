@@ -57,13 +57,14 @@ test("updates shared pagination, sort, cart and mobile search labels immediately
   </LocalizationProvider>)
 
   expect(screen.getByRole("button", { name: "Previous page" })).toBeEnabled()
-  expect(screen.getByTitle("Sort by")).toHaveTextContent("Newest")
+  expect(screen.getByRole("button", { name: "Sort by" })).not.toHaveTextContent("Newest")
   expect(screen.getByRole("link", { name: "Open cart, 2 items" })).toHaveAttribute("href", "/cart/checkout")
   fireEvent.click(screen.getByRole("button", { name: "es" }))
   expect(screen.queryByRole("button", { name: "Previous page" })).not.toBeInTheDocument()
   expect(screen.getByRole("button", { name: "Ir a la página anterior" })).toBeEnabled()
   expect(screen.getByText("Más páginas")).toBeInTheDocument()
-  expect(screen.getByTitle("Ordenar por")).toHaveTextContent("Más recientes")
+  fireEvent.focus(screen.getByRole("button", { name: "Ordenar por" }))
+  expect(screen.getByRole("tooltip")).toHaveTextContent("Ordenar por: Más recientes")
   fireEvent.click(screen.getByRole("button", { name: "Ir a la página siguiente" }))
   expect(onPageChange).toHaveBeenCalledWith(6)
   fireEvent.click(screen.getByRole("button", { name: "Cerrar búsqueda" }))
@@ -71,9 +72,9 @@ test("updates shared pagination, sort, cart and mobile search labels immediately
   expect(document.documentElement.lang).toBe("es")
 })
 
-test("keeps SortDropdown's unrelated default title contract", () => {
+test("provides a default accessible sort label", () => {
   render(<SortDropdown sortBy="newest" setSortBy={jest.fn()} />)
-  expect(screen.getByTitle("Sort by")).toHaveTextContent("Newest")
+  expect(screen.getByRole("button", { name: "Sort by" })).not.toHaveTextContent("Newest")
 })
 
 test("provides all supported native language choices from the shared locale list", () => {

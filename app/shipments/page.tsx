@@ -10,8 +10,8 @@ import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { MobileFiltersDrawer, FilterContainer, FilterSection } from "@/app/components/ui/mobile-filters-drawer"
 import { SearchInput } from "@/app/components/ui/search-input"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
-import { Send, LayoutGrid, Clock, Package, Truck, CheckCircle2 } from "@/app/components/ui/icons"
+import { Select, SelectContent, SelectItem, SelectIconTrigger } from "@/app/components/ui/select"
+import { MapPin, Send, LayoutGrid, Clock, Package, Truck, CheckCircle2 } from "@/app/components/ui/icons"
 import { toast } from "sonner"
 import { ViewSelector } from "@/app/components/view-selector"
 import { useMobileView } from "@/app/hooks/use-mobile-view"
@@ -120,9 +120,14 @@ export default function ShipmentsPage() {
         <StickyHeader>
           <div className="w-full pt-0">
               <div className="flex items-center justify-between gap-2 w-full">
-              <MobileFiltersDrawer triggerText={t('common.search') || "Search"}>
+              <MobileFiltersDrawer triggerText={t('common.search') || "Search"}
+                controls={<>
+                  <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
+                  <ViewSelector currentView={viewType} onViewChange={setViewType} />
+                </>}
+              >
                 <FilterContainer>
-                  <FilterSection mobileOnly>
+                  <FilterSection zone="search" mobileOnly>
                     <form onSubmit={handleSearch} className="w-full">
                       <SearchInput  placeholder={t("shipments.search") || "Search tracking or customer..."} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} alwaysExpanded={true}    className="w-full h-10 md:h-9"  containerClassName="w-full" />
                     </form>
@@ -130,7 +135,7 @@ export default function ShipmentsPage() {
                   
                   
                   
-                  <FilterSection title={t('common.status') || 'Status'} className={cn(searchQuery && "max-md:hidden")}>
+                  <FilterSection zone="tabs" title={t('common.status') || 'Status'} className={cn(searchQuery && "max-md:hidden")}>
                     <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-none md:rounded-full flex flex-wrap md:flex-nowrap md:flex-row w-full md:max-w-full overflow-y-visible md:overflow-x-auto justify-start items-center gap-2 md:gap-0">
                       <TabsTrigger value="all" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5">
                         <LayoutGrid size={13} className="shrink-0 md:!hidden" />
@@ -164,9 +169,9 @@ export default function ShipmentsPage() {
                       <Select value={locationFilter}
                         onValueChange={(val) => { setLocationFilter(val); setPage(1); }}
                       >
-                        <SelectTrigger className="w-[160px] h-8 text-xs bg-muted/30 border-0 rounded-full">
-                          <SelectValue placeholder={t('common.allLocations') || "All Locations"} />
-                        </SelectTrigger>
+                        <SelectIconTrigger label={t("common.location")} tooltipLabel={locations.find(location => location.id === locationFilter)?.name || t("common.allLocations")}>
+                          <MapPin className="h-4 w-4" aria-hidden />
+                        </SelectIconTrigger>
                         <SelectContent>
                           <SelectItem value="all">{t('common.allLocations') || "All Locations"}</SelectItem>
                           {locations.map((loc) => (
@@ -177,7 +182,7 @@ export default function ShipmentsPage() {
                     </FilterSection>
                   )}
 
-                  <FilterSection desktopOnly>
+                  <FilterSection zone="search" desktopOnly>
                     <form onSubmit={handleSearch} className="w-full md:w-auto">
                       <SearchInput  
                         placeholder={t("shipments.search") || "Search tracking or customer..."}
@@ -187,10 +192,7 @@ export default function ShipmentsPage() {
                   </FilterSection>
                 </FilterContainer>
               </MobileFiltersDrawer>
-              <div className="flex items-center gap-2 w-auto justify-end shrink-0">
-                <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
-                <ViewSelector currentView={viewType} onViewChange={setViewType} />
-              </div>
+
             </div>
           </div>
         </StickyHeader>

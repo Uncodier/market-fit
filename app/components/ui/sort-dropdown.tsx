@@ -1,14 +1,14 @@
 "use client"
 
-import { Button } from "@/app/components/ui/button"
+import { ToolbarIconButton } from "@/app/components/ui/toolbar-icon-button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/app/components/ui/dropdown-menu"
-import { ListOrdered, Check, ChevronDown } from "@/app/components/ui/icons"
+import { ListOrdered, Check } from "@/app/components/ui/icons"
 import { cn } from "@/lib/utils"
 
 export function SortDropdown<SortValue extends string>({
   sortBy, 
   setSortBy,
-  className,
+  menuClassName,
   title = "Sort by",
   options = [
     { value: "newest" as SortValue, label: "Newest" },
@@ -18,7 +18,7 @@ export function SortDropdown<SortValue extends string>({
 }: { 
   sortBy: SortValue,
   setSortBy: (value: SortValue) => void,
-  className?: string,
+  menuClassName?: string,
   title?: string,
   options?: { value: SortValue, label: string }[]
 }) {
@@ -27,17 +27,12 @@ export function SortDropdown<SortValue extends string>({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button data-toolbar-icon-action="off" variant="secondary" size="sm" className={cn("w-full md:w-auto h-10 md:h-9 gap-2 rounded-md md:rounded-full px-4 justify-between md:justify-center", className)} title={title}>
-          <div className="flex min-w-0 items-center gap-2">
-            <ListOrdered className="h-4 w-4 shrink-0" />
-            <span className="truncate font-normal">
-              {currentOption.label}
-            </span>
-          </div>
-          <ChevronDown className="h-3 w-3 shrink-0 opacity-50" />
-        </Button>
+        <ToolbarIconButton variant="secondary" className="md:h-9 md:w-9"
+          label={title} tooltipLabel={currentOption ? `${title}: ${currentOption.label}` : title}>
+          <ListOrdered className="h-4 w-4" aria-hidden />
+        </ToolbarIconButton>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-40">
+      <DropdownMenuContent align="end" className={cn("w-40", menuClassName)}>
         {options.map((option) => (
           <DropdownMenuItem key={option.value} className="cursor-pointer" onClick={() => setSortBy(option.value)}>
             <Check className={cn("mr-2 h-4 w-4", sortBy === option.value ? "opacity-100" : "opacity-0")} />

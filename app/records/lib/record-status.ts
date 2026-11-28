@@ -1,6 +1,10 @@
 import type { RecordItem } from "../actions"
 
-const DEFAULT_STATUSES = ["draft", "published", "archived"]
+export const RECORD_STATUS_OPTIONS: readonly string[] = ["draft", "published", "active", "archived"]
+
+export function recordStatusOptions(current?: string) {
+  return current && !RECORD_STATUS_OPTIONS.includes(current) ? [current, ...RECORD_STATUS_OPTIONS] : RECORD_STATUS_OPTIONS
+}
 
 export function recordStatusGroup(status: string | null | undefined) {
   return status?.trim() || "draft"
@@ -8,8 +12,8 @@ export function recordStatusGroup(status: string | null | undefined) {
 
 export function recordStatusGroups(records: RecordItem[]) {
   const statuses = new Set(records.map(record => recordStatusGroup(record.status)))
-  return [...DEFAULT_STATUSES.filter(status => status !== "archived"),
-    ...Array.from(statuses).filter(status => !DEFAULT_STATUSES.includes(status)).sort(), "archived"]
+  return [...RECORD_STATUS_OPTIONS.filter(status => status !== "archived"),
+    ...Array.from(statuses).filter(status => !RECORD_STATUS_OPTIONS.includes(status)).sort(), "archived"]
 }
 
 export function recordStatusLabel(status: string, translate: (key: string) => string) {

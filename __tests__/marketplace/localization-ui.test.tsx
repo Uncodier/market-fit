@@ -54,7 +54,7 @@ it.each(["es", "fr", "de", "ja"] as const)("renders translated filters, country 
   const country = new Intl.DisplayNames([locale], { type: "region" }).of("US")!
   fireEvent.click(screen.getByRole("radio", { name: country }))
   expect(onChange).toHaveBeenCalledWith({ regionCountry: "united states", nearMe: undefined })
-  fireEvent.keyDown(screen.getByTitle(messages["marketplace.sort.by"]), { key: "ArrowDown" })
+  fireEvent.keyDown(screen.getByRole("button", { name: messages["marketplace.sort.by"] }), { key: "ArrowDown" })
   expect((await screen.findAllByRole("menuitem")).map((item) => item.textContent)).toEqual(
     ["featured", "best_selling", "newest", "price_asc", "price_desc"].map((sort) => messages[`marketplace.sort.${sort}`]),
   )

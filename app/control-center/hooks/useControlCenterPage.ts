@@ -27,7 +27,7 @@ export function useControlCenterPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { currentSite } = useSite()
-  const { isLayoutCollapsed } = useLayout()
+  const { sidebarWidth } = useLayout()
   const isMobile = useIsMobile()
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useAutoCollapseSidebar()
   const [selectedItem, setSelectedItem] = useState<string>("all")
@@ -86,12 +86,7 @@ export function useControlCenterPage() {
   useCommandK()
 
   // Calculate sidebar left position based on layout state
-  const [sidebarLeft, setSidebarLeft] = useState('256px')
-
-  // Update sidebar position when layout state changes
-  useEffect(() => {
-    setSidebarLeft(isMobile ? '0px' : (isLayoutCollapsed ? '64px' : '256px'))
-  }, [isLayoutCollapsed, isMobile])
+  const sidebarLeft = `${isMobile ? 0 : sidebarWidth}px`
 
   // Update breadcrumb when component mounts
   useEffect(() => {
@@ -411,5 +406,5 @@ export function useControlCenterPage() {
     return filters.stage.length + filters.status.length + filters.leadId.length + filters.assigneeId.length
   }
 
-  return { t, categories, leads, users, taskTypes, totalCounts, taskCounts, isLoading, isLayoutCollapsed, isMobile, isSidebarCollapsed, setIsSidebarCollapsed, selectedItem, setSelectedItem, searchQuery, setSearchQuery, viewType, setViewType, currentPage, itemsPerPage, isFilterModalOpen, setIsFilterModalOpen, filters, setFilters, statusFilter, setStatusFilter, sortBy, setSortBy, selectedTasks, setSelectedTasks, isBulkActionLoading, kanbanPagination, sidebarLeft, handleUpdateTaskStatus, handleTaskClick, toggleTaskSelection, handleBulkDelete, handleBulkStatusChange, handleLoadMoreKanban, filteredTasks, handlePageChange, handleItemsPerPageChange, getTotalActiveFilters }
+  return { t, categories, leads, users, taskTypes, totalCounts, taskCounts, isLoading, isMobile, isSidebarCollapsed, setIsSidebarCollapsed, selectedItem, setSelectedItem, searchQuery, setSearchQuery, viewType, setViewType, currentPage, itemsPerPage, isFilterModalOpen, setIsFilterModalOpen, filters, setFilters, statusFilter, setStatusFilter, sortBy, setSortBy, selectedTasks, setSelectedTasks, isBulkActionLoading, kanbanPagination, sidebarLeft, handleUpdateTaskStatus, handleTaskClick, toggleTaskSelection, handleBulkDelete, handleBulkStatusChange, handleLoadMoreKanban, filteredTasks, handlePageChange, handleItemsPerPageChange, getTotalActiveFilters }
 }

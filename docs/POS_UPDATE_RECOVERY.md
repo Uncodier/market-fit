@@ -26,8 +26,9 @@ not gain remote access or erase stored POS work.
 
 - Deployment detection is advisory. Timers, focus and visibility do not apply an
   update or reload the document.
-- The update action is deferred while any `/pos` route is open. Finish and sync
-  work, reconcile unconfirmed payments, and leave POS before updating.
+- While any `/pos` route is open, the deployment notice is informational and
+  does not show a reload button. Finish and sync work, reconcile unconfirmed
+  payments, and leave POS before updating. The action returns after leaving POS.
 - Outside POS, the action requires an online browser and reloads directly on an
   explicit update-button click, without an additional confirmation dialog. The
   notice reminds users to save and sync first. It does not clear cookies, site
@@ -35,7 +36,8 @@ not gain remote access or erase stored POS work.
 - This is deferred, consent-only document replacement, not hot-swapping running
   application code. Old deployed Server Actions can still require a planned update.
 
-The same live-route protection applies to navigation recovery and `safeReload`,
+Slow-navigation notices also omit the reload button in POS. The same live-route
+protection applies to navigation recovery and `safeReload`,
 including its force option and asynchronous global creation/data-refresh callbacks.
 Missing session-storage flags cannot bypass it. Outside POS, these recovery paths
 also defer while the browser reports offline; reconnecting does not itself reload.

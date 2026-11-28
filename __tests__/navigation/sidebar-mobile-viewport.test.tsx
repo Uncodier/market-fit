@@ -4,6 +4,8 @@ import { fireEvent, render, screen } from "@testing-library/react"
 import { usePathname, useSearchParams } from "next/navigation"
 import { Sidebar } from "@/app/components/navigation/Sidebar"
 import LayoutClient from "@/app/layout-client"
+import { LayoutProvider } from "@/app/context/LayoutContext"
+import { WORKSPACE_SIDEBAR_MODE_KEY } from "@/app/components/navigation/workspace-sidebar-mode"
 import { DynamicShortcuts } from '@/app/components/navigation/DynamicShortcuts'
 import { NotificationBadge } from '@/app/components/navigation/NotificationBadge'
 import { OnboardingProgressWidget } from '@/app/components/navigation/OnboardingProgressWidget'
@@ -20,9 +22,6 @@ jest.mock("@/app/context/LocalizationContext", () => ({
 
 let mockMobile = true
 jest.mock("@/app/hooks/use-mobile-view", () => ({ useMobileViewport: () => mockMobile }))
-jest.mock("@/app/context/LayoutContext", () => ({
-  useLayout: () => ({ isLayoutCollapsed: true, setIsLayoutCollapsed: jest.fn() }),
-}))
 jest.mock("@/app/workspace-preview/WorkspaceStartupBoundary", () => ({
   useWorkspaceStartup: () => null,
   WorkspaceStartupBoundary: ({ children }: React.PropsWithChildren) => children,
@@ -34,13 +33,15 @@ jest.mock("@/app/notifications/context/NotificationsContext", () => ({
 jest.mock("@/app/components/onboarding/GuidedTour", () => ({ GuidedTour: () => null }))
 jest.mock("@/app/components/navigation/ScreenAccessRedirect", () => ({ ScreenAccessRedirect: () => null }))
 jest.mock("@/app/components/navigation/MobileWorkspaceNavigation", () => ({ MobileWorkspaceNavigation: () => null }))
-jest.mock("@/app/components/navigation/TopBarTitle", () => ({ TopBarTitle: () => null }))
 jest.mock("@/app/components/navigation/PosTopBarActions", () => ({ PosTopBarActions: () => null }))
 jest.mock("@/app/components/navigation/PosTopBarSync", () => ({ PosTopBarSync: () => null }))
 jest.mock("@/app/hooks/use-prevent-refresh", () => ({ usePageRefreshPrevention: jest.fn() }))
 jest.mock("@/app/hooks/use-wake-session-refresh", () => ({ useWakeSessionRefresh: jest.fn() }))
 jest.mock("@/app/hooks/use-navigation-feedback", () => ({ useNavigationFeedback: jest.fn() }))
 jest.mock("@/app/hooks/use-artifact-router-patch", () => ({ useArtifactRouterPatch: jest.fn() }))
+jest.mock("@/app/hooks/use-breadcrumb-history", () => ({
+  useNavigationHistory: () => ({ items: [], navigateTo: jest.fn(), hasHistory: false }),
+}))
 
 jest.mock("@/app/hooks/use-auth", () => ({
   useAuth: () => ({ user: null }),
@@ -77,22 +78,33 @@ function renderMobileSidebar(isCollapsed = false) {
       isMobileOpen
       className={layoutSidebarClassName}
     />,
+    { wrapper: LayoutProvider },
   )
   const sidebar = result.container.querySelector("[data-collapsed]") as HTMLElement
   return { ...result, sidebar }
 }
 
+function workspace() {
+  return <LayoutProvider><LayoutClient><div>Workspace content</div></LayoutClient></LayoutProvider>
+}
+
+function movePointer(clientX: number, pointerType = "mouse", buttons = 0) {
+  const event = new MouseEvent("pointermove", { clientX, buttons })
+  Object.defineProperty(event, "pointerType", { value: pointerType })
+  fireEvent(window, event)
+}
+
 describe("mobile sidebar viewport", () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    localStorage.removeItem(WORKSPACE_SIDEBAR_MODE_KEY)
     mockMobile = true
     jest.mocked(usePathname).mockReturnValue("/robots")
     jest.mocked(useSearchParams).mockReturnValue(new URLSearchParams() as ReturnType<typeof useSearchParams>)
   })
 
   it("opens the existing sidebar from the top-bar menu beside the Makinari mark", () => {
-    const ui = <LayoutClient><div>Workspace content</div></LayoutClient>
-    const view = render(ui)
+    const view = render(workspace())
     const trigger = screen.getByRole("button", { name: "common.openMenu" })
     expect(trigger.querySelector(".topbar-menu-icon > svg")).toBeInTheDocument()
     const mark = screen.getByRole("img", { name: "Makinari" })
@@ -120,19 +132,19 @@ describe("mobile sidebar viewport", () => {
 
     fireEvent.click(trigger)
     jest.mocked(useSearchParams).mockReturnValue(new URLSearchParams("mode=workflow") as ReturnType<typeof useSearchParams>)
-    view.rerender(<LayoutClient><div>Workspace content</div></LayoutClient>)
+    view.rerender(workspace())
     expect(trigger).toHaveAttribute("aria-expanded", "false")
 
     fireEvent.click(trigger)
     mockMobile = false
-    view.rerender(<LayoutClient><div>Workspace content</div></LayoutClient>)
+    view.rerender(workspace())
     expect(trigger).toHaveAttribute("aria-expanded", "false")
     expect(sidebar).toHaveClass("md:!flex")
   })
 
   it("keeps mobile shortcut tracking mounted without starting hidden badge or widget readers", () => {
     const props = { isCollapsed: false, onCollapse: jest.fn(), desktopVisible: false, isMobile: true }
-    const view = render(<Sidebar {...props} />)
+    const view = render(<Sidebar {...props} />, { wrapper: LayoutProvider })
     expect(jest.mocked(DynamicShortcuts).mock.calls[0]?.[0]).toMatchObject({ isMobile: true })
     for (const reader of [NotificationBadge, OnboardingProgressWidget, StartupTrialWidget]) expect(reader).not.toHaveBeenCalled()
     view.rerender(<Sidebar {...props} isMobileOpen />)
@@ -188,5 +200,101 @@ describe("mobile sidebar viewport", () => {
     expect(sidebar).toHaveAttribute("data-collapsed", "false")
     expect(footer).toHaveClass("pb-[env(safe-area-inset-bottom,0px)]", "md:pb-0")
     expect(screen.getByTestId("site-selector").parentElement).toHaveClass("flex-none")
+  })
+})
+
+describe("desktop sidebar auto-hide", () => {
+  beforeEach(() => {
+    mockMobile = false
+    localStorage.clear()
+    jest.mocked(usePathname).mockReturnValue("/robots")
+    jest.mocked(useSearchParams).mockReturnValue(new URLSearchParams() as ReturnType<typeof useSearchParams>)
+  })
+
+  it("reveals the compact blur overlay at the edge without reserving space", () => {
+    localStorage.setItem("sidebarCollapsed", "false")
+    render(workspace())
+    const sidebar = document.getElementById("workspace-sidebar")!
+    const content = screen.getByText("Workspace content").closest("main")!.parentElement
+    expect(sidebar).toHaveAttribute("data-sidebar-mode", "hidden")
+    expect(sidebar).toHaveAttribute("inert")
+    expect(sidebar).toHaveClass("-translate-x-full", "pointer-events-none")
+    expect(content).toHaveStyle({ paddingLeft: "0px" })
+    movePointer(12)
+    movePointer(2, "touch")
+    movePointer(2, "mouse", 1)
+    expect(sidebar).toHaveAttribute("inert")
+
+    movePointer(2)
+    expect(sidebar).not.toHaveAttribute("inert")
+    expect(sidebar).toHaveClass("md:w-16", "backdrop-blur-[5px]")
+    movePointer(42)
+    expect(sidebar).not.toHaveAttribute("inert")
+    expect(content).toHaveStyle({ paddingLeft: "0px" })
+    expect(localStorage.getItem(WORKSPACE_SIDEBAR_MODE_KEY)).toBe("hidden")
+
+    movePointer(65)
+    expect(sidebar).toHaveAttribute("inert")
+    movePointer(2)
+    fireEvent(window, new MouseEvent("pointerout"))
+    expect(sidebar).toHaveAttribute("inert")
+  })
+
+  it("pins from the hover preview, expands, and returns to hidden", () => {
+    render(workspace())
+    const sidebar = document.getElementById("workspace-sidebar")!
+    const topBar = screen.getByRole("button", { name: "Pin compact sidebar" }).closest("[data-topbar]")!
+    movePointer(2)
+    fireEvent.click(screen.getAllByRole("button", { name: "Pin compact sidebar" }).find(button => sidebar.contains(button))!)
+    expect(sidebar).toHaveAttribute("data-sidebar-mode", "compact")
+    expect(topBar).toHaveStyle({ paddingLeft: "64px" })
+    movePointer(90)
+    expect(sidebar).not.toHaveAttribute("inert")
+    fireEvent.click(screen.getByRole("button", { name: "Expand sidebar" }))
+    expect(sidebar).toHaveAttribute("data-sidebar-mode", "expanded")
+    expect(topBar).toHaveStyle({ paddingLeft: "256px" })
+    fireEvent.click(screen.getByRole("button", { name: "Auto-hide sidebar" }))
+    expect(sidebar).toHaveAttribute("inert")
+    expect(topBar).toHaveStyle({ paddingLeft: "0px" })
+  })
+
+  it("hides the hover preview after clicking a navigation item without pinning it", () => {
+    const view = render(workspace())
+    const sidebar = document.getElementById("workspace-sidebar")!
+    movePointer(2)
+    movePointer(32)
+    fireEvent.click(screen.getByRole("link", { name: /layout\.sidebar\.workflows/ }))
+    expect(sidebar).toHaveAttribute("inert")
+
+    jest.mocked(useSearchParams).mockReturnValue(new URLSearchParams("mode=workflow") as ReturnType<typeof useSearchParams>)
+    view.rerender(workspace())
+    expect(sidebar).toHaveAttribute("inert")
+    expect(localStorage.getItem(WORKSPACE_SIDEBAR_MODE_KEY)).toBe("hidden")
+    movePointer(2)
+    expect(sidebar).not.toHaveAttribute("inert")
+  })
+
+  it("dismisses the preview on a route change and waits for the pointer to re-enter the edge", () => {
+    const view = render(workspace())
+    const sidebar = document.getElementById("workspace-sidebar")!
+    movePointer(2)
+    jest.mocked(usePathname).mockReturnValue("/notifications")
+    view.rerender(workspace())
+    expect(sidebar).toHaveAttribute("inert")
+    movePointer(3)
+    expect(sidebar).toHaveAttribute("inert")
+    movePointer(22)
+    movePointer(2)
+    expect(sidebar).not.toHaveAttribute("inert")
+  })
+
+  it("restores a pinned preference and lets the top-bar control pin without hover", () => {
+    const view = render(workspace())
+    fireEvent.click(screen.getByRole("button", { name: "Pin compact sidebar" }))
+    fireEvent.click(screen.getByRole("button", { name: "Expand sidebar" }))
+    expect(localStorage.getItem(WORKSPACE_SIDEBAR_MODE_KEY)).toBe("expanded")
+    view.unmount()
+    render(workspace())
+    expect(document.getElementById("workspace-sidebar")).toHaveAttribute("data-sidebar-mode", "expanded")
   })
 })

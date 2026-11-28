@@ -46,11 +46,11 @@ export function StickyHeader({
   }
   
   // Prefer the layout context when available, otherwise use the prop.
-  const isCollapsed = layoutContext?.isLayoutCollapsed ?? propIsLayoutCollapsed;
+  const sidebarWidth = layoutContext?.sidebarWidth ?? ((layoutContext?.isLayoutCollapsed ?? propIsLayoutCollapsed) ? 64 : 256);
   
   // Desktop needs fixed positioning on routes whose parents prevent sticky positioning.
   const useFixedPosition = !isMobile && (pathname?.startsWith('/robots') || pathname?.startsWith('/chat') || pathname?.startsWith('/people'));
-  const sidebarLeft = isMobile ? 0 : (isCollapsed ? 64 : 256);
+  const sidebarLeft = isMobile ? 0 : sidebarWidth;
   
   return (
     <div

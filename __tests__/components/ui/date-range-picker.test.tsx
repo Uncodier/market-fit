@@ -40,6 +40,22 @@ describe("CalendarDateRangePicker", () => {
   });
   afterEach(() => jest.useRealTimers());
 
+  it("shows the active range in a tooltip without putting dates in the toolbar button", () => {
+    const onRangeChange = jest.fn();
+    render(<CalendarDateRangePicker iconOnly onRangeChange={onRangeChange}
+      initialStartDate={new Date(2026, 7, 20)} initialEndDate={new Date(2026, 8, 19)} />);
+
+    const trigger = screen.getByRole("button", { name: "Select date range" });
+    expect(trigger.querySelectorAll("svg")).toHaveLength(1);
+    expect(trigger).not.toHaveTextContent(/Aug 20/i);
+    fireEvent.focus(trigger);
+    expect(screen.getByRole("tooltip")).toHaveTextContent(/Aug 20/i);
+
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getByText("Today"));
+    expect(onRangeChange).toHaveBeenCalledWith(startOfDay(new Date()), endOfDay(new Date()), "today");
+  });
+
   it("reports a selected preset to its parent", () => {
     const onRangeChange = jest.fn();
     render(

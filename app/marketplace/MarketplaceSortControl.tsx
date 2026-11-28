@@ -19,5 +19,5 @@ export function MarketplaceSortControl({ selectedSort, setSelectedSort }: {
   const { t } = useLocalization()
   return <SortDropdown sortBy={selectedSort} setSortBy={setSelectedSort}
     options={SORT_OPTIONS.map(({ value, key }) => ({ value, label: t(key) }))}
-    title={t("marketplace.sort.by")} className="!w-auto !rounded-full" />
+    title={t("marketplace.sort.by")} />
 }

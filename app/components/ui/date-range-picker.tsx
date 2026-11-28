@@ -4,6 +4,8 @@ import * as React from "react"
 import { endOfDay, startOfDay } from "date-fns"
 import { cn } from "@/lib/utils"
 import { DatePicker } from "@/app/components/ui/date-picker"
+import { CalendarIcon } from "@/app/components/ui/icons"
+import { ToolbarIconButton } from "@/app/components/ui/toolbar-icon-button"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { getDateFnsLocale } from "@/app/lib/date-fns-locale"
 import { formatDateRange, getDateRangeError } from "./date-picker-range"
@@ -18,10 +20,11 @@ export interface DateRangePickerProps {
   /** Maximum inclusive calendar days, supplied by the report's server policy. */
   maxRangeDays?: number
   disabled?: boolean
+  iconOnly?: boolean
 }
 
 export function CalendarDateRangePicker({
-  className, onRangeChange, initialStartDate, initialEndDate, rangePreset, maxRangeDays, disabled = false,
+  className, onRangeChange, initialStartDate, initialEndDate, rangePreset, maxRangeDays, disabled = false, iconOnly = false,
 }: DateRangePickerProps) {
   const { t, locale } = useLocalization()
   const dateLocale = getDateFnsLocale(locale)
@@ -59,9 +62,10 @@ export function CalendarDateRangePicker({
     setRange(next)
     onRangeChange?.(next.start, next.end, preset)
   }
+  const label = t("datePicker.selectDateRange")
   const rangeDisplay = range.start && range.end
     ? formatDateRange(range.start, range.end, dateLocale)
-    : t("datePicker.selectDateRange")
+    : label
 
   return (
     <div className={cn("flex flex-col items-start", className)}>
@@ -71,6 +75,12 @@ export function CalendarDateRangePicker({
         setDate={() => {}} setEndDate={() => {}}
         className="w-full" mode="range" onRangeSelect={handleRangeSelect}
         rangeDisplay={rangeDisplay} maxRangeDays={maxRangeDays} disabled={disabled}
+        trigger={iconOnly ? (
+          <ToolbarIconButton label={label} tooltipLabel={rangeDisplay} variant="secondary" disabled={disabled}
+            className={cn("md:h-9 md:w-9", range.start && range.end && "ring-1 ring-inset ring-primary")}>
+            <CalendarIcon className="h-4 w-4" aria-hidden />
+          </ToolbarIconButton>
+        ) : undefined}
       />
       {error && <p role="alert" className="mt-1 text-xs text-destructive">{error}</p>}
     </div>

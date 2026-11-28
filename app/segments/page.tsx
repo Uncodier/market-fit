@@ -178,6 +178,11 @@ export default function SegmentsPage() {
         <StickyHeader>
           <div className="w-full pt-0">
             <div className="flex items-center gap-4">
+              <SearchInput
+                data-command-k-input
+                placeholder={t("segments.searchPlaceholder") || "Search segments..."}
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}  className="w-full h-10 md:h-9"  containerClassName="w-full" />
               <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-none md:rounded-full flex flex-wrap md:flex-nowrap md:flex-row w-full md:max-w-full overflow-y-visible md:overflow-x-auto justify-start items-center gap-2 md:gap-0">
                 <TabsTrigger value="all" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5" title={t("segments.tabs.all") || "All Segments"}>
                   <LayoutGrid size={13} className="shrink-0 md:!hidden" />
@@ -194,11 +199,6 @@ export default function SegmentsPage() {
               </TabsList>
                   <div className="flex items-center gap-2 ml-auto">
                     <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
-                    <SearchInput  
-                      data-command-k-input
-                      placeholder={t("segments.searchPlaceholder") || "Search segments..."}
-                      value={searchTerm}
-                      onChange={(event) => setSearchTerm(event.target.value)}  className="w-full h-10 md:h-9"  containerClassName="w-full" />
                   </div>
             </div>
           </div>

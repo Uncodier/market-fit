@@ -43,7 +43,7 @@ export default function RecordsPage() {
   const { t } = useLocalization()
   const router = useRouter()
   const { currentSite } = useSite()
-  const { isLayoutCollapsed } = useLayout()
+  const { sidebarWidth, sidebarMode } = useLayout()
   const isMobile = useIsMobile()
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useAutoCollapseSidebar()
 
@@ -70,21 +70,7 @@ export default function RecordsPage() {
   const [editingFieldId, setEditingFieldId] = useState<string>()
 
   // Layout calculations
-  const sidebarLeft = isMobile ? '0px' : (isLayoutCollapsed ? '64px' : '256px')
-
-  // Breadcrumb
-  useEffect(() => {
-    document.title = `${t("records.title") || "Records"} | Market Fit`
-    const event = new CustomEvent('breadcrumb:update', {
-      detail: {
-        title: t("records.title") || "Records",
-        path: "/records",
-        section: 'Operations'
-      }
-    })
-    window.dispatchEvent(event)
-    return () => { document.title = "Market Fit" }
-  }, [])
+  const sidebarLeft = `${isMobile ? 0 : sidebarWidth}px`
 
   // Filter records
   const filteredRecords = records.filter(r => matchesRecordListFilter(r, {
@@ -104,6 +90,25 @@ export default function RecordsPage() {
   })
   const visiblePage = recordListPage(currentPage, filteredRecords.length, itemsPerPage)
   const activeCategory = categories.find(category => category.id === selectedCategory)
+  const recordsTitle = t("records.title") || "Records"
+  const categoryTitle = activeCategory?.name
+  useEffect(() => {
+    const publish = (category?: string) => window.dispatchEvent(new CustomEvent("breadcrumb:update", {
+      detail: { title: category || recordsTitle, path: "/records", section: "Operations", parentTitle: category ? recordsTitle : undefined },
+    }))
+    document.title = `${categoryTitle || recordsTitle} | Market Fit`
+    publish(categoryTitle)
+    return () => { document.title = "Market Fit"; publish() }
+  }, [categoryTitle, recordsTitle])
+  useEffect(() => {
+    const resetCategory = () => {
+      setSelectedCategory("all")
+      setSelectedRelation(null)
+      setCurrentPage(1)
+    }
+    window.addEventListener("records:return-to-all", resetCategory)
+    return () => window.removeEventListener("records:return-to-all", resetCategory)
+  }, [])
   const viewTableCategory = (category: RecordCategory) => {
     setSelectedCategory(category.id)
     setSelectedRelation(null)
@@ -248,7 +253,7 @@ export default function RecordsPage() {
             }
           </RecordsPageHeader>
 
-        <div className={cn("flex-1 min-h-0 min-w-0 bg-muted/30 transition-colors duration-300 ease-in-out", viewType === "graph" ? "overflow-hidden" : "overflow-y-auto")}>
+        <div className={cn("flex-1 min-h-0 min-w-0 bg-card transition-colors duration-300 ease-in-out", viewType === "graph" ? "overflow-hidden" : "overflow-y-auto")}>
           <div className="min-h-full flex flex-col">
             {isLoading ? (
               <div className={cn("min-h-full min-w-0", viewType === "graph" ? "" : viewType === "kanban" ? "py-4 md:py-8" : "p-4 md:p-8")}>
@@ -324,7 +329,7 @@ export default function RecordsPage() {
                     toolsOffsetLeft={
                       isMobile
                         ? 16
-                        : (isLayoutCollapsed ? 92 : 268) + (!isSidebarCollapsed ? 319 : 0)
+                        : sidebarWidth + (sidebarMode === "expanded" ? 12 : 28) + (!isSidebarCollapsed ? 319 : 0)
                     }
                   />
                 ) : (

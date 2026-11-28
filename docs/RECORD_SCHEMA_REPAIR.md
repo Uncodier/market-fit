@@ -143,6 +143,37 @@ database lock contention. Diagram writes still use their own revision guard.
 false conflict and verifies the first conditional write after indexing, using
 an isolated PostgreSQL instance. The migration has not been applied remotely.
 
+## Field presentation types
+
+The table keeps Title first, category properties in template order, and Notes,
+Status, and Created At last (before the add-property control). The category
+editor and table's add-property menu offer Team member and Currency directly.
+Team member is stored as a relation with `relationTarget: "team_member"` and
+uses the existing membership and avatar behavior. Currency is stored as a
+number field with `currency: { code, display }` in the category template.
+Changing Number to Currency or back does not change the record value or its
+storage key. Currency formatting uses the display locale and does not convert
+or round the stored amount.
+
+Kanban and Calendar resolve team member names once per view in bounded batches.
+Kanban shows a stack in the card footer and uses the member's avatar on grouped
+columns without repeating that member in every card. Calendar uses one avatar
+plus an overflow count. The category browser shows record counts and a clear
+action alongside the active member filter, and supports searching longer lists.
+
+Record editors and Kanban use the same built-in status options: Draft,
+Published, Active, and Archived. Published and Active are distinct persisted
+values. Existing custom statuses remain visible and are not rewritten.
+
+## Category emoji picker
+
+The picker loads the bundled catalog on demand. It includes all 3,944
+fully-qualified Emoji 17.0 sequences plus 9 components from [UTS #51 test data](https://www.unicode.org/Public/17.0.0/emoji/emoji-test.txt).
+Search uses names and English and Spanish annotations from [CLDR 48](https://github.com/unicode-org/cldr/tree/release-48/common),
+including derived annotations. The upstream data license is in
+[`licenses/UNICODE-3.0.txt`](../licenses/UNICODE-3.0.txt). Rendering depends on
+the device's emoji font; the selected Unicode sequence is stored unchanged.
+
 ## Validation commands
 
 The dedicated [Records E2E suite](../specs/tests/records.md) covers real browser

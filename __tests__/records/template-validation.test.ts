@@ -1,6 +1,26 @@
 import { validateScalarValue, validateTemplateFields, validateTemplateFieldUpdate } from "@/app/records/lib/template-validation"
+import { formatRecordCurrency, recordFieldPresentation } from "@/app/records/lib/record-field-presentation"
 
 const field = { id: "stable", name: "Storage Key", type: "number", required: true, min: 0, max: 5 }
+
+it("adds and removes currency formatting without changing the storage key or numeric contract", () => {
+  const money = { ...field, currency: { code: "MXN", display: "code" as const } }
+  expect(recordFieldPresentation(money)).toBe("currency")
+  expect(validateTemplateFieldUpdate([field], [money]).valid).toBe(true)
+  expect(validateTemplateFieldUpdate([money], [field]).valid).toBe(true)
+  expect(validateScalarValue(money, 0, true).valid).toBe(true)
+  expect(validateScalarValue(money, "1.25", true).valid).toBe(false)
+  expect(validateScalarValue(money, 6, true).valid).toBe(false)
+  expect(formatRecordCurrency(1.25, money.currency)).toContain("MXN")
+  expect(formatRecordCurrency(null, money.currency)).toBeUndefined()
+})
+
+it("rejects malformed currency metadata and currency metadata on non-numeric fields", () => {
+  for (const currency of [{ code: "MX", display: "code" }, { code: "USD", display: "custom" }, { code: "USD", display: "code", extra: true }]) {
+    expect(validateTemplateFields([{ ...field, currency }]).valid).toBe(false)
+  }
+  expect(validateTemplateFields([{ id: "x", name: "Title", type: "text", currency: { code: "USD", display: "symbol" } }]).valid).toBe(false)
+})
 
 describe("record template validation", () => {
   it("preserves legacy human-readable keys and optional display labels", () => {

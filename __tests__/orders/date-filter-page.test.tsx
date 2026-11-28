@@ -117,7 +117,7 @@ describe("Orders persisted date filter wiring", () => {
     expect(mockListOrders).toHaveBeenCalledTimes(1)
   })
 
-  it("requests today's bounds on reload, updates both pickers, and resets pagination at midnight", async () => {
+  it("requests today's bounds on reload, updates the desktop picker, and resets pagination at midnight", async () => {
     cacheOrdersDateRange("site-1", {
       startDate: new Date(2026, 8, 29), endDate: endOfDay(new Date(2026, 8, 29)), preset: "today",
     })
@@ -126,7 +126,7 @@ describe("Orders persisted date filter wiring", () => {
     expect(mockListOrders.mock.calls[0][0]).toMatchObject({
       startDate: startOfDay(new Date()).toISOString(), endDate: endOfDay(new Date()).toISOString(), page: 1,
     })
-    expect(screen.getAllByTestId("preset").map((element) => element.textContent)).toEqual(["today", "today"])
+    expect(screen.getAllByTestId("preset").map((element) => element.textContent)).toEqual(["today"])
     fireEvent.click(await screen.findByRole("button", { name: "Page 1" }))
     await waitFor(() => expect(mockListOrders.mock.calls.at(-1)?.[0].page).toBe(2))
     mockListOrders.mockClear()
@@ -139,18 +139,18 @@ describe("Orders persisted date filter wiring", () => {
     }
   })
 
-  it("persists preset changes from both picker placements and clears the entire selection", async () => {
+  it("persists preset changes and clears the entire selection", async () => {
     renderPage()
     fireEvent.click(screen.getAllByRole("button", { name: "Today" })[0])
     expect(JSON.parse(window.localStorage.getItem(storageKey)!)).toMatchObject({ preset: "today" })
-    fireEvent.click(screen.getAllByRole("button", { name: "Custom" })[1])
+    fireEvent.click(screen.getByRole("button", { name: "Custom" }))
     const saved = JSON.parse(window.localStorage.getItem(storageKey)!)
     expect(saved.preset).toBe("custom")
     await act(async () => { jest.advanceTimersByTime(1000) })
     expect(JSON.parse(window.localStorage.getItem(storageKey)!)).toEqual(saved)
     fireEvent.click(screen.getAllByRole("button", { name: "Clear date range" })[0])
     expect(window.localStorage.getItem(storageKey)).toBe("null")
-    expect(screen.getAllByTestId("preset").map((element) => element.textContent)).toEqual(["none", "none"])
+    expect(screen.getAllByTestId("preset").map((element) => element.textContent)).toEqual(["none"])
     await waitFor(() => expect(mockListOrders.mock.calls.at(-1)?.[0]).toMatchObject({
       startDate: undefined, endDate: undefined,
     }))

@@ -5,6 +5,7 @@ import { ChevronDown, Loader, Tag, Trash2, Folder } from "@/app/components/ui/ic
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { MobileFiltersDrawer } from "@/app/components/ui/mobile-filters-drawer"
 import type { RecordCategory } from "../actions"
+import { RECORD_STATUS_OPTIONS, recordStatusLabel } from "../lib/record-status"
 
 interface Props {
   selectedRecords: Set<string>
@@ -42,9 +43,9 @@ export function RecordsBulkToolbar({ selectedRecords, setSelectedRecords, isBulk
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start">
-                        {["draft", "published", "archived"].map(status => (
+                        {RECORD_STATUS_OPTIONS.map(status => (
                           <DropdownMenuItem key={status} onClick={() => handleBulkStatusChange(status)} className="capitalize">
-                            {t(`status.${status}`) || status}
+                            {recordStatusLabel(status, t)}
                           </DropdownMenuItem>
                         ))}
                       </DropdownMenuContent>

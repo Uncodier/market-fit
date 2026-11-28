@@ -11,8 +11,7 @@ import { usePermissions } from "@/app/context/PermissionContext"
 import { listLocations } from "@/app/inventory/actions"
 import { useOrdersRealtime } from "@/app/orders/hooks/useOrdersRealtime"
 import { navigateToOrder } from "@/lib/navigation/navigation-helpers"
-import { Button } from "@/app/components/ui/button"
-import { CalendarDateRangePicker } from "@/app/components/ui/date-range-picker"
+import { ToolbarDateRangePicker } from "@/app/components/ui/toolbar-date-range-picker"
 import {
   FilterContainer,
   FilterSection,
@@ -26,17 +25,16 @@ import {
   Select,
   SelectContent,
   SelectItem,
-  SelectTrigger,
-  SelectValue,
+  SelectIconTrigger,
 } from "@/app/components/ui/select"
 import {
+  MapPin,
   Ban,
   CheckCircle2,
   ListTodo,
   PlayCircle,
   RotateCcw,
   Sparkles,
-  X,
 } from "@/app/components/ui/icons"
 import { listOrderLines } from "./actions"
 import {
@@ -234,9 +232,34 @@ export default function OrderLinesPage() {
               <MobileFiltersDrawer
                 triggerText={t("common.search")}
                 results={searchQuery ? renderTable() : null}
+
+                controls={<>
+                  <DateRangeControl
+                    placement="desktop"
+                    dateRange={dateRange}
+                    clearLabel={clearDateRangeLabel}
+                    onChange={(startDate, endDate) => {
+                      setDateRange({ startDate, endDate })
+                      setPage(1)
+                    }}
+                    onClear={() => {
+                      setDateRange(null)
+                      setPage(1)
+                    }}
+                  />
+                  <SortDropdown
+                    title={t("content.sortBy") || "Sort by"}
+                    sortBy={sortBy}
+                    setSortBy={setSortBy}
+                    options={[
+                      { value: "newest", label: t("orderLines.sort.newest") },
+                      { value: "oldest", label: t("orderLines.sort.oldest") },
+                    ]}
+                  />
+                </>}
               >
                 <FilterContainer>
-                  <FilterSection mobileOnly>
+                  <FilterSection zone="search" mobileOnly>
                     <SearchInput
                       placeholder={t("orderLines.search")}
                       value={searchQuery}
@@ -250,7 +273,7 @@ export default function OrderLinesPage() {
                     />
                   </FilterSection>
 
-                  <FilterSection title={t("common.status")} className="min-w-0">
+                  <FilterSection zone="tabs" title={t("common.status")} className="min-w-0">
                     <TabsList className="flex h-auto w-full flex-wrap items-center justify-start gap-2 overflow-y-visible rounded-none bg-transparent p-0 md:h-8 md:max-w-full md:flex-nowrap md:flex-row md:gap-0 md:overflow-x-auto md:rounded-full md:bg-muted/30 md:p-0.5">
                       {statusTabs.map(({ value, label, title, Icon }) => (
                         <TabsTrigger
@@ -275,11 +298,9 @@ export default function OrderLinesPage() {
                           setPage(1)
                         }}
                       >
-                        <SelectTrigger className="h-10 w-full rounded-md border bg-background text-sm md:h-8 md:w-[160px] md:rounded-full md:border-0 md:bg-muted/30 md:text-xs">
-                          <SelectValue
-                            placeholder={t("common.allLocations")}
-                          />
-                        </SelectTrigger>
+                        <SelectIconTrigger label={t("common.location")} tooltipLabel={locations.find(location => location.id === locationFilter)?.name || t("common.allLocations")}>
+                          <MapPin className="h-4 w-4" aria-hidden />
+                        </SelectIconTrigger>
                         <SelectContent>
                           <SelectItem value="all">
                             {t("common.allLocations")}
@@ -313,7 +334,7 @@ export default function OrderLinesPage() {
                     />
                   </FilterSection>
 
-                  <FilterSection desktopOnly>
+                  <FilterSection zone="search" desktopOnly>
                     <SearchInput
                       placeholder={t("orderLines.search")}
                       value={searchQuery}
@@ -328,29 +349,7 @@ export default function OrderLinesPage() {
                 </FilterContainer>
               </MobileFiltersDrawer>
 
-              <div className="ml-auto flex shrink-0 items-center gap-3">
-                <DateRangeControl
-                  placement="desktop"
-                  dateRange={dateRange}
-                  clearLabel={clearDateRangeLabel}
-                  onChange={(startDate, endDate) => {
-                    setDateRange({ startDate, endDate })
-                    setPage(1)
-                  }}
-                  onClear={() => {
-                    setDateRange(null)
-                    setPage(1)
-                  }}
-                />
-                <SortDropdown
-                  sortBy={sortBy}
-                  setSortBy={setSortBy}
-                  options={[
-                    { value: "newest", label: t("orderLines.sort.newest") },
-                    { value: "oldest", label: t("orderLines.sort.oldest") },
-                  ]}
-                />
-              </div>
+
             </div>
           </div>
         </StickyHeader>
@@ -377,30 +376,13 @@ function DateRangeControl({
   onClear: () => void
 }) {
   return (
-    <div className={placement === "mobile" ? "relative w-full" : "relative hidden items-center md:flex"}>
-      <CalendarDateRangePicker
-        className={placement === "mobile" ? "w-full [&_button]:pr-10" : "[&_button]:pr-10"}
-        onRangeChange={onChange}
-        initialStartDate={dateRange?.startDate}
-        initialEndDate={dateRange?.endDate}
-      />
-      {dateRange ? (
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="absolute right-1 top-1/2 z-10 h-7 w-7 -translate-y-1/2"
-          onClick={(event) => {
-            event.preventDefault()
-            event.stopPropagation()
-            onClear()
-          }}
-          aria-label={clearLabel}
-          title={clearLabel}
-        >
-          <X className="h-4 w-4" />
-        </Button>
-      ) : null}
-    </div>
+    <ToolbarDateRangePicker
+      className={placement === "desktop" ? "hidden md:flex" : undefined}
+      clearLabel={clearLabel}
+      onClear={dateRange ? onClear : undefined}
+      onRangeChange={onChange}
+      initialStartDate={dateRange?.startDate}
+      initialEndDate={dateRange?.endDate}
+    />
   )
 }

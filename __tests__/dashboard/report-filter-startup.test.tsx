@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { usePathname, useSearchParams } from 'next/navigation'
 import DashboardPage from '@/app/dashboard/page'
 import CostsPage from '@/app/costs/page'
@@ -66,7 +66,7 @@ it('opens the all-segment Dashboard with its date policy and report but no segme
   expect(mockReads.mock.calls).toEqual([['segments', 'id, name', 'site_id', mockSite]])
   fireEvent.keyDown(segment, { key: 'Enter' })
   expect(screen.getByTestId('report')).toHaveTextContent('s1:New customers')
-  expect(screen.getByRole('combobox', { name: 'Segment' })).toHaveTextContent('New customers')
+  expect(screen.getByRole('combobox', { name: 'Segment' })).toHaveAccessibleDescription('Segment: New customers')
 })
 
 it('opens Costs without either options list; choosing a campaign does not read segments', async () => {
@@ -84,7 +84,7 @@ it('keeps an explicit cost deep link scoped and loads the selected label without
   route('/costs', 'segmentId=s1')
   const view = render(<CostsPage />)
   expect(screen.getByTestId('report')).toHaveTextContent('all:s1')
-  expect(await screen.findByText('New customers')).toBeVisible()
+  await waitFor(() => expect(screen.getByRole('combobox', { name: 'Segment' })).toHaveAccessibleDescription('Segment: New customers'))
   expect(mockReads.mock.calls).toEqual([['segments', 'id, name', 'site_id', mockSite]])
   mockSite = '22222222-2222-4222-8222-222222222222'
   view.rerender(<CostsPage />)

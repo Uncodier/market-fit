@@ -11,6 +11,8 @@ import { StickyHeader } from '@/app/components/ui/sticky-header'
 import { Skeleton } from '@/app/components/ui/skeleton'
 import { SyncJournalEntriesDialog } from '@/app/accounting/components/SyncJournalEntriesDialog'
 import { CalendarDateRangePicker } from '@/app/components/ui/date-range-picker'
+import { ListToolbar } from '@/app/components/ui/list-toolbar'
+import { ToolbarIconButton } from '@/app/components/ui/toolbar-icon-button'
 import { TrendingUp, Building, ListOrdered, Download, RotateCw } from '@/app/components/ui/icons'
 import { reportCurrency } from '../report-currency'
 import { downloadFinanceReport, financeReportCsv } from '../report-export'
@@ -67,8 +69,7 @@ function SiteFinanceReports({ siteId, defaultCurrency }: { siteId?: string; defa
     <Tabs value={tab} onValueChange={value => setTab(value as FinanceReportTab)}
       className="flex-1 flex flex-col min-h-[calc(100vh-var(--topbar-height,64px))] bg-muted/30">
       <StickyHeader>
-        <div className="flex flex-col md:flex-row md:items-center justify-between w-full gap-4">
-          <div className="w-full md:w-auto">
+        <ListToolbar tabs={
             <TabsList className="h-9 p-1 bg-muted/50 rounded-lg flex w-full sm:w-auto">
               <TabsTrigger value="pnl" className="text-xs gap-1.5" title={t('accounting.pnl') || 'Profit & Loss'}>
                 <TrendingUp className="w-3.5 h-3.5" />{t('accounting.pnl') || 'Profit & Loss'}
@@ -80,21 +81,20 @@ function SiteFinanceReports({ siteId, defaultCurrency }: { siteId?: string; defa
                 <ListOrdered className="w-3.5 h-3.5" />{t('accounting.tb') || 'Trial Balance'}
               </TabsTrigger>
             </TabsList>
-          </div>
-          <div className="ml-auto flex flex-wrap items-center gap-2">
-            <Button data-toolbar-icon-actions variant="ghost" size="sm" onClick={report.refresh} disabled={!siteId || !currency}>
-              <RotateCw className="h-4 w-4" />Refresh
-            </Button>
-            <Button variant="ghost" size="sm" className="flex items-center gap-1" onClick={exportReport}
-              aria-label="Export report" disabled={!report.data}>
-              <Download className="h-4 w-4" /><span className="hidden sm:inline">Export</span>
-            </Button>
+        } actions={<>
+            <ToolbarIconButton label="Refresh" onClick={report.refresh} disabled={!siteId || !currency}>
+              <RotateCw className="h-4 w-4" aria-hidden />
+            </ToolbarIconButton>
+            <ToolbarIconButton label="Export report" onClick={exportReport} disabled={!report.data}>
+              <Download className="h-4 w-4" aria-hidden />
+            </ToolbarIconButton>
+        </>} controls={
             <CalendarDateRangePicker
+              iconOnly
               onRangeChange={(start, end) => { setFrom(format(start, 'yyyy-MM-dd')); setTo(format(end, 'yyyy-MM-dd')) }}
               initialStartDate={parse(from, 'yyyy-MM-dd', new Date())}
               initialEndDate={parse(to, 'yyyy-MM-dd', new Date())} />
-          </div>
-        </div>
+        } />
       </StickyHeader>
       <TabsContent value={tab} className="flex-1 m-0 p-4 md:p-6 md:px-8 overflow-auto max-w-[1400px] mx-auto w-full space-y-6">
         <p className="text-sm text-muted-foreground">

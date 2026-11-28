@@ -79,7 +79,7 @@ function ChatPageContent() {
   
   const [isChatListCollapsed, setIsChatListCollapsed] = useAutoCollapseSidebar()
   
-  const { isLayoutCollapsed } = useLayout()
+  const { sidebarWidth } = useLayout()
   
   // Initialize the useCommandK hook
   useCommandK()
@@ -319,7 +319,7 @@ function ChatPageContent() {
         "flex flex-col bg-background transition-all duration-300 ease-in-out min-w-0 min-h-0 fixed left-0 md:left-[var(--chat-panel-offset)] right-0 top-[var(--topbar-height,64px)] bottom-0",
         !hasSelectedConversation ? "hidden md:flex" : "flex"
       )}
-      style={{ '--chat-panel-offset': `${(isLayoutCollapsed ? 64 : 256) + (isChatListCollapsed ? 0 : 319)}px` } as React.CSSProperties}
+      style={{ '--chat-panel-offset': `${sidebarWidth + (isChatListCollapsed ? 0 : 319)}px` } as React.CSSProperties}
       >
         <div className="w-full z-[50]">
           <ChatHeader

@@ -76,7 +76,8 @@ beforeEach(() => {
 
 it("exports the default performance section from the frontend snapshot without fetching", () => {
   render(<ReportExportButton />);
-  expect(exportButton()).toHaveAttribute("title", "Export current section (CSV)");
+  fireEvent.focus(exportButton());
+  expect(screen.getByRole("tooltip")).toHaveTextContent(/\(CSV\)/);
   expect(exportButton()).toBeEnabled();
   fireEvent.click(exportButton());
   expect(mockDownload).toHaveBeenCalledTimes(1);
@@ -84,11 +85,11 @@ it("exports the default performance section from the frontend snapshot without f
   expect(toast.success).toHaveBeenCalledWith("Report exported successfully");
 });
 
-it("uses the compact ghost toolbar style with a responsive label like Leads", () => {
+it("uses the compact ghost toolbar style without a visible label", () => {
   render(<ReportExportButton />);
-  expect(exportButton()).toHaveClass("gap-1", "px-3", "py-2", "hover:bg-accent");
+  expect(exportButton()).toHaveClass("h-10", "w-10", "hover:bg-accent");
   expect(exportButton()).not.toHaveClass("btn-primary", "sm:!min-w-[155px]", "md:!min-w-[200px]");
-  expect(screen.getByText("Export")).toHaveClass("hidden", "sm:inline");
+  expect(screen.getByText("Export current section (CSV)")).toHaveClass("sr-only");
 });
 
 it.each(Object.entries(REPORTS).flatMap(([report, definition]) =>

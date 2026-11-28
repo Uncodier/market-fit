@@ -44,6 +44,7 @@ function AgentDirectory({ siteId, userId, url }: { siteId?: string; userId?: str
       <div className="flex-1 w-full min-w-0 space-y-4" style={{ backgroundColor: "rgba(0, 0, 0, 0.02)" }}>
         <StickyHeader>
           <div className="flex flex-wrap items-center gap-4 w-full">
+            {mainTab === "agents" && <SearchInput data-command-k-input placeholder="Search team..." value={query} onChange={e => setQuery(e.target.value)} />}
             <Tabs value={mainTab} onValueChange={value => setMainTab(value as Tab)}>
               <TabsList className="h-9">
                 <TabsTrigger value="agents" className="text-xs">Agents</TabsTrigger>
@@ -52,7 +53,6 @@ function AgentDirectory({ siteId, userId, url }: { siteId?: string; userId?: str
               </TabsList>
             </Tabs>
             {mainTab === "agents" && <>
-              <SearchInput data-command-k-input placeholder="Search team..." value={query} onChange={e => setQuery(e.target.value)} />
               <div className="ml-auto flex items-center gap-3">
                 <ToggleGroup type="single" value={view} onValueChange={v => { if (v === "hierarchy" || v === "grid") setView(v) }}>
                   <ToggleGroupItem value="hierarchy" aria-label="Toggle hierarchy view" className="px-2"><TableRows className="h-4 w-4" /></ToggleGroupItem>

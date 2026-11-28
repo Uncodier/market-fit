@@ -28,7 +28,7 @@ function workspace(overrides: Partial<PeopleWorkspace> = {}) {
   return {
     isArtifact: false,
     t: () => '',
-    isLayoutCollapsed: false,
+    sidebarWidth: 256,
     isSidebarCollapsed: false,
     setIsSidebarCollapsed: jest.fn(),
     peopleTab: 'saved',
@@ -89,12 +89,14 @@ it('does not expose stale counts or page controls while a saved list is loading'
 })
 
 it.each([
-  { isLayoutCollapsed: false, isSidebarCollapsed: false, isArtifact: false, left: '575px' },
-  { isLayoutCollapsed: true, isSidebarCollapsed: false, isArtifact: false, left: '383px' },
-  { isLayoutCollapsed: false, isSidebarCollapsed: true, isArtifact: false, left: '256px' },
-  { isLayoutCollapsed: true, isSidebarCollapsed: true, isArtifact: false, left: '64px' },
-  { isLayoutCollapsed: false, isSidebarCollapsed: false, isArtifact: true, left: '319px' },
-  { isLayoutCollapsed: false, isSidebarCollapsed: true, isArtifact: true, left: '0px' },
+  { sidebarWidth: 256, isSidebarCollapsed: false, isArtifact: false, left: '575px' },
+  { sidebarWidth: 64, isSidebarCollapsed: false, isArtifact: false, left: '383px' },
+  { sidebarWidth: 0, isSidebarCollapsed: false, isArtifact: false, left: '319px' },
+  { sidebarWidth: 256, isSidebarCollapsed: true, isArtifact: false, left: '256px' },
+  { sidebarWidth: 64, isSidebarCollapsed: true, isArtifact: false, left: '64px' },
+  { sidebarWidth: 0, isSidebarCollapsed: true, isArtifact: false, left: '0px' },
+  { sidebarWidth: 256, isSidebarCollapsed: false, isArtifact: true, left: '319px' },
+  { sidebarWidth: 256, isSidebarCollapsed: true, isArtifact: true, left: '0px' },
 ])('shares the result frame for pregenerated lists with desktop left offset $left', ({ left, ...layout }) => {
   const state = workspace(layout)
   const { rerender } = render(<PeopleResultsView workspace={state} />)

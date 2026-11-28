@@ -1,9 +1,7 @@
 "use client"
 
-import { useScopedPreviewState } from "../hooks/useScopedPreviewState"
-import { fetchPreviewBatches } from "../lib/entity-preview-request"
 import { useSite } from "@/app/context/SiteContext"
-import React, { useMemo, useEffect } from "react"
+import React, { useMemo } from "react"
 import { Card, CardContent } from "@/app/components/ui/card"
 import { Badge } from "@/app/components/ui/badge"
 import { Button } from "@/app/components/ui/button"
@@ -11,7 +9,7 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd"
 import { cn } from "@/lib/utils"
 import { format, formatDistanceToNow } from "date-fns"
 import { Clock, CheckCircle2, FileText, Ban, Calendar, Folder, Users } from "@/app/components/ui/icons"
-import { RecordItem, resolveRelationsForSidebar } from "../actions"
+import type { RecordItem } from "../actions"
 import { toast } from "sonner"
 import { useLocalization } from "@/app/context/LocalizationContext"
 import { Checkbox } from "@/app/components/ui/checkbox"
@@ -21,6 +19,9 @@ import type { OpenRecordFromView } from "../lib/record-navigation"
 import { OpenRecordButton, RecordPropertiesButton } from "./RecordPropertyEditor"
 import type { SaveRecordProperty } from "../lib/record-properties"
 import { recordStatusGroup, recordStatusGroups, recordStatusLabel } from "../lib/record-status"
+import { useRecordCardMembers } from "../hooks/useRecordCardMembers"
+import { RecordMemberStack } from "./RecordMemberStack"
+import { RecordMemberAvatar } from "./RecordMemberAvatar"
 
 export { RecordsKanbanSkeleton } from "./RecordsKanbanSkeleton"
 
@@ -86,7 +87,8 @@ export function RecordsKanban({
     return 0
   }, [sortBy])
 
-  const [resolvedNames, setResolvedNames] = useScopedPreviewState<Record<string, string>>(currentSite?.id, {})
+  const members = useRecordCardMembers(localRecords, currentSite?.id)
+  const { labels, profiles } = members
 
   const kanbanColumns = React.useMemo(() => {
     if (groupBy === "status") {
@@ -128,37 +130,16 @@ export function RecordsKanban({
         if (!memberMap.has(memberId)) {
           memberMap.set(memberId, {
             id: memberId,
-            name: memberId === "unassigned" ? "Unassigned" : (resolvedNames[memberId] || "Loading..."),
-            icon: <Users className="h-4 w-4" />
+            name: memberId === "unassigned" ? "Unassigned" : (labels[memberId] || "Team member"),
+            icon: memberId === "unassigned" ? <Users className="h-4 w-4" />
+              : <RecordMemberAvatar name={labels[memberId]} src={profiles[memberId]?.avatar_url} decorative />,
           })
         }
       })
       return Array.from(memberMap.values())
     }
     return getRecordStatuses(localRecords, t)
-  }, [groupBy, localRecords, categories, resolvedNames, t])
-
-  useEffect(() => {
-    let active = true
-    setResolvedNames({})
-    if (currentSite?.id && groupBy === "team_member") {
-      const idsToResolve = new Set<string>()
-      localRecords.forEach(record => {
-        if (record.category?.template_fields) {
-          const teamMemberField = record.category.template_fields.find((f: any) => f.relationTarget === 'team_member')
-          if (teamMemberField && record.relations?.[teamMemberField.name]) {
-            idsToResolve.add(record.relations[teamMemberField.name])
-          }
-        }
-      })
-      if (idsToResolve.size > 0) {
-        fetchPreviewBatches([{ target: 'team_member', ids: Array.from(idsToResolve) }], currentSite.id, resolveRelationsForSidebar)
-          .then(names => { if (active) setResolvedNames(names) })
-          .catch(console.error)
-      }
-    }
-    return () => { active = false }
-  }, [currentSite?.id, groupBy, localRecords])
+  }, [groupBy, localRecords, categories, labels, profiles, t])
 
   const recordsByStatus = kanbanColumns.reduce((acc, col) => {
     const statusRecords = localRecords
@@ -429,6 +410,7 @@ export function RecordsKanban({
                                       record={record} 
                                       limit={3} 
                                       className="mt-0" 
+                                      hideTeamMembers
                                       ignoreFields={coverFieldName ? [coverFieldName] : undefined}
                                     />
                                   </div>
@@ -443,6 +425,7 @@ export function RecordsKanban({
                                     </Badge>
 
                                     <div className="flex shrink-0 items-center gap-2 whitespace-nowrap">
+                                      <RecordMemberStack record={record} members={members} omit={groupBy === "team_member" ? status.id : undefined} />
                                       <div className="flex items-center text-[10px] text-muted-foreground">
                                         <Clock className="h-3 w-3 mr-1" />
                                         <span>

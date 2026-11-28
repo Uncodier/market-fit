@@ -16,7 +16,7 @@ export function RecordsPageHeader({
   isSidebarCollapsed, toggleSidebar, children,
 }: RecordsPageHeaderProps) {
   return (
-    <StickyHeader>
+    <StickyHeader className="bg-card backdrop-blur-none supports-[backdrop-filter]:bg-card">
       <div className="flex w-full min-w-0 items-center gap-2 md:gap-3 md:py-3">
         {!isMobile && <SidebarToggle isCollapsed={isSidebarCollapsed} onToggle={toggleSidebar} />}
         {children}

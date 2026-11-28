@@ -1,5 +1,5 @@
-import { fireEvent, render, screen } from "@testing-library/react"
-import type { RecordItem } from "@/app/records/actions"
+import { fireEvent, render, screen, within } from "@testing-library/react"
+import { resolveRelationsForSidebar, type RecordItem } from "@/app/records/actions"
 import { RecordsKanban } from "@/app/records/components/RecordsKanban"
 import { groupTableRecords } from "@/app/records/lib/table-record-order"
 
@@ -33,4 +33,27 @@ it("renders records with active and other stored statuses, preserving column ord
   const { groupedRecords, groupKeys } = groupTableRecords(records, "status")
   expect(groupKeys).toEqual(["draft", "published", "active", "constructor", "in review"])
   expect(groupedRecords.active).toEqual([records[0]])
+})
+
+it("groups member avatars on the card and avoids repeating its Kanban column owner", async () => {
+  jest.mocked(resolveRelationsForSidebar).mockResolvedValue({ "team_member:alex": "Alex", "team_member:pat": "Pat" })
+  const item = record("assigned", "draft")
+  item.category = { id: "reports", site_id: "site", name: "Reports", description: null, icon: null,
+    created_at: item.created_at, updated_at: item.updated_at, template_fields: ["owner", "reviewer", "backup"].map(name => ({
+      id: name, name, type: "relation", relationTarget: "team_member",
+    })) }
+  item.relations = { owner: "alex", reviewer: "pat", backup: "pat" }
+  const props = { records: [item], sortBy: "newest" as const, onRecordClick: jest.fn(), onUpdateRecordStatus: jest.fn(),
+    kanbanPagination: {}, totalCounts: {}, onLoadMore: jest.fn(), selectedRecords: new Set<string>(), onToggleRecordSelection: jest.fn() }
+  const view = render(<RecordsKanban {...props} />)
+  expect(screen.getByRole("heading", { name: "Activo" })).toBeInTheDocument()
+  const stack = screen.getByRole("group", { name: "Assigned team members" })
+  expect(await within(stack).findByRole("img", { name: "Alex" })).toBeInTheDocument()
+  expect(within(stack).getAllByRole("img", { name: "Pat" })).toHaveLength(1)
+  expect(resolveRelationsForSidebar).toHaveBeenLastCalledWith([{ target: "team_member", ids: ["alex", "pat"] }], "site")
+  view.rerender(<RecordsKanban {...props} groupBy="team_member" />)
+  expect(screen.getByRole("heading", { name: "Alex" })).toBeInTheDocument()
+  const groupedStack = screen.getByRole("group", { name: "Assigned team members" })
+  expect(within(groupedStack).queryByRole("img", { name: "Alex" })).not.toBeInTheDocument()
+  expect(within(groupedStack).getByRole("img", { name: "Pat" })).toBeInTheDocument()
 })

@@ -68,9 +68,10 @@ export default function PromotionsPage() {
       <StickyHeader>
         <div className="w-full pt-0">
           <div className="flex items-center justify-between gap-2 w-full">
-            <MobileFiltersDrawer triggerText={t('common.search') || "Search"}>
+            <MobileFiltersDrawer triggerText={t('common.search') || "Search"}
+              controls={<SortDropdown sortBy={sortBy} setSortBy={setSortBy} />}>
               <FilterContainer>
-                <FilterSection mobileOnly>
+                <FilterSection zone="search" mobileOnly>
                   <form onSubmit={handleSearch} className="w-full">
                     <SearchInput placeholder={t("promotions.search") || "Search name or code..."} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} alwaysExpanded={true} className="w-full h-10 md:h-9" containerClassName="w-full" />
                   </form>
@@ -78,7 +79,7 @@ export default function PromotionsPage() {
 
                 
 
-                <FilterSection title={t('common.status') || 'Estado'}>
+                <FilterSection zone="tabs" title={t('common.status') || 'Estado'}>
                   <Tabs
                     value={statusFilter}
                     onValueChange={(val) => { setStatusFilter(val); setPage(1); }}
@@ -94,8 +95,7 @@ export default function PromotionsPage() {
                   </Tabs>
                 </FilterSection>
                 
-                <FilterSection desktopOnly className="flex-row items-center gap-2">
-                  <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
+                <FilterSection zone="search" desktopOnly>
                   <form onSubmit={handleSearch} className="w-auto">
                     <SearchInput placeholder={t("promotions.search") || "Search name or code..."} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full" containerClassName="w-64" />
                   </form>

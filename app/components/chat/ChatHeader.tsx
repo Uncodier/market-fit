@@ -63,7 +63,7 @@ export function ChatHeader({
   const { currentSite } = useSite()
   const { t } = useLocalization()
   const customerSupportConversation = useNewCustomerSupportConversation()
-  const { isLayoutCollapsed } = useLayout()
+  const { sidebarWidth } = useLayout()
   const [windowWidth, setWindowWidth] = useState(
     typeof window !== "undefined" ? window.innerWidth : 1024
   )
@@ -149,14 +149,13 @@ export function ChatHeader({
     if (typeof window === "undefined" || windowWidth < 768) {
       return { left: "0px", paddingLeft: "1rem", width: "100%" }
     }
-    const sidebarWidth = isLayoutCollapsed ? 64 : 256
     const chatListWidth = isChatListCollapsed ? 0 : 319
     return {
       left: `${sidebarWidth + chatListWidth}px`,
       paddingLeft: "1rem",
       width: `calc(100% - ${sidebarWidth + chatListWidth}px)`,
     }
-  }, [isLayoutCollapsed, isChatListCollapsed, windowWidth])
+  }, [sidebarWidth, isChatListCollapsed, windowWidth])
 
   return (
     <div

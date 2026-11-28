@@ -323,7 +323,8 @@ export async function persistCheckoutRecords(
       ...commonSaleData,
       amount_due: Math.max(0, orderTotal - totalPaid),
       status: saleInitialStatus,
-      ...(selfService ? { source: existingSale.source || "shop" } : {}),
+      ...(selfService || (recordedPromotionId && existingSale.source === "shop")
+        ? { source: existingSale.source || "shop" } : {}),
     }
     // Editing fulfillment must not silently reassign an existing sale's scope.
     delete saleData.location_id

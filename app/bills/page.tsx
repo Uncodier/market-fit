@@ -13,8 +13,8 @@ import { MobileFiltersDrawer, FilterContainer, FilterSection, FilterSeparator } 
 import { SearchInput } from "@/app/components/ui/search-input"
 import { Tabs, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { EmptyCard } from "@/app/components/ui/empty-card"
-import { FileText, LayoutGrid } from "@/app/components/ui/icons"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
+import { MapPin, FileText, LayoutGrid } from "@/app/components/ui/icons"
+import { Select, SelectContent, SelectItem, SelectIconTrigger } from "@/app/components/ui/select"
 import { toast } from "sonner"
 import { CreatePurchaseDialog } from "./components/CreatePurchaseDialog"
 import { BillsTable, BillsTableSkeleton } from "./components/BillsTable"
@@ -93,9 +93,13 @@ export default function BillsPage() {
       <StickyHeader>
         <div className="w-full pt-0">
           <div className="flex items-center justify-between gap-2 w-full">
-            <MobileFiltersDrawer triggerText={t('common.search') || "Search"}>
+            <MobileFiltersDrawer triggerText={t('common.search') || "Search"}
+              controls={<>
+                <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
+              </>}
+            >
               <FilterContainer>
-                <FilterSection mobileOnly>
+                <FilterSection zone="search" mobileOnly>
                   <form onSubmit={handleSearch} className="w-full">
                     <SearchInput  placeholder={t('bills.search') || "Search bills..."} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} alwaysExpanded={true}    className="w-full h-10 md:h-9"  containerClassName="w-full" />
                   </form>
@@ -103,7 +107,7 @@ export default function BillsPage() {
 
                 
 
-                <FilterSection title={t('common.status') || 'Estado'}>
+                <FilterSection zone="tabs" title={t('common.status') || 'Estado'}>
                   <Tabs value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1) }}>
                     <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-none md:rounded-full flex flex-wrap md:flex-nowrap md:flex-row w-full md:max-w-full overflow-y-visible md:overflow-x-auto justify-start items-center gap-2 md:gap-0">
                       <TabsTrigger value="all" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5">
@@ -128,9 +132,9 @@ export default function BillsPage() {
                       <Select value={locationFilter}
                       onValueChange={(val) => { setLocationFilter(val); setPage(1); }}
                     >
-                      <SelectTrigger className="w-full md:w-[160px] h-10 md:h-8 text-sm md:text-xs bg-background md:bg-muted/30 border md:border-0 rounded-md md:rounded-full">
-                        <SelectValue placeholder={t('common.allLocations') || 'All Locations'} />
-                      </SelectTrigger>
+                      <SelectIconTrigger label={t("common.location")} tooltipLabel={locations.find(location => location.id === locationFilter)?.name || t("common.allLocations")}>
+                        <MapPin className="h-4 w-4" aria-hidden />
+                      </SelectIconTrigger>
                       <SelectContent>
                         <SelectItem value="all">{t('common.allLocations') || 'All Locations'}</SelectItem>
                         {locations.map((loc) => (
@@ -141,7 +145,7 @@ export default function BillsPage() {
                   </FilterSection>
                 )}
 
-                <FilterSection desktopOnly>
+                <FilterSection zone="search" desktopOnly>
                   <form onSubmit={handleSearch} className="w-full md:w-auto">
                     <SearchInput  placeholder={t('bills.search') || "Search bills..."} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}    className="w-full bg-background border-border focus:border-muted-foreground/20 focus:ring-muted-foreground/20"  containerClassName="w-full md:w-[240px]" />
                   </form>
@@ -149,9 +153,7 @@ export default function BillsPage() {
               </FilterContainer>
             </MobileFiltersDrawer>
 
-            <div className="flex items-center gap-2 w-auto justify-end shrink-0 ml-4">
-              <SortDropdown sortBy={sortBy} setSortBy={setSortBy} />
-            </div>
+
           </div>
         </div>
       </StickyHeader>

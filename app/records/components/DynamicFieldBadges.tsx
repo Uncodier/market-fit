@@ -13,12 +13,13 @@ interface DynamicFieldBadgesProps {
   className?: string
   limit?: number
   ignoreFields?: string[]
+  hideTeamMembers?: boolean
 }
 
 const NO_TEMPLATE_FIELDS: NonNullable<RecordItem["category"]>["template_fields"] = []
 const NO_IGNORED_FIELDS: string[] = []
 
-export function DynamicFieldBadges({ record, className, limit = 5, ignoreFields = NO_IGNORED_FIELDS }: DynamicFieldBadgesProps) {
+export function DynamicFieldBadges({ record, className, limit = 5, ignoreFields = NO_IGNORED_FIELDS, hideTeamMembers }: DynamicFieldBadgesProps) {
   const [resolvedRelations, setResolvedRelations] = useScopedPreviewState<Record<string, string>>(record.site_id, {})
   const [isResolving, setIsResolving] = useState(false)
   const { userData } = useUserData(Object.keys(resolvedRelations)
@@ -31,11 +32,12 @@ export function DynamicFieldBadges({ record, className, limit = 5, ignoreFields 
     return templateFields.filter(f => {
       if (ignoreFields.includes(f.name)) return false
       const type = f.type
+      if (hideTeamMembers && type === 'relation' && f.relationTarget === 'team_member') return false
       const hasValue = (record.data && record.data[f.name]) || (record.relations && record.relations[f.name])
       const isDisplayableType = type === 'location' || type === 'file' || type === 'relation' || f.aiPreview?.enabled
       return isDisplayableType && hasValue
     }).slice(0, limit)
-  }, [templateFields, record, limit, ignoreFields])
+  }, [templateFields, record, limit, ignoreFields, hideTeamMembers])
 
   useEffect(() => {
     let active = true

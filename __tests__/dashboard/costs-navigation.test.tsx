@@ -16,10 +16,6 @@ jest.mock("swr", () => ({
   SWRConfig: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }))
 jest.mock("@/app/components/ui/sticky-header", () => ({ StickyHeader: ({ children }: { children: React.ReactNode }) => <div data-testid="sticky-header">{children}</div> }))
-jest.mock("@/app/components/ui/mobile-filters-drawer", () => {
-  const Wrapper = ({ children }: { children: React.ReactNode }) => <div>{children}</div>
-  return { MobileFiltersDrawer: Wrapper, FilterContainer: Wrapper, FilterSection: Wrapper }
-})
 jest.mock("@/app/components/ui/date-range-picker", () => ({ CalendarDateRangePicker: () => <button>Date range</button> }))
 jest.mock("@/app/components/dashboard/cost-reports", () => ({
   CostReports: ({ section, embedded, campaignId }: { section: string; embedded: boolean; campaignId: string }) => (
@@ -48,8 +44,9 @@ it.each([undefined, "summary", "categories", "audience"])("opens Costs/%s in exa
   expect(container.querySelector("[data-report-viewport]")).toHaveClass("max-w-[1600px]", "mx-auto")
   const exportButton = within(screen.getByTestId("sticky-header")).getByRole("button", { name: "Export current section (CSV)" })
   expect(screen.getAllByRole("button", { name: "Export current section (CSV)" })).toHaveLength(1)
-  expect(exportButton.parentElement).toHaveClass("flex", "md:flex-row", "md:items-center")
-  expect(exportButton.nextElementSibling).toBe(screen.getByRole("button", { name: "Date range" }))
+  const controls = exportButton.closest("[data-toolbar-actions]")?.nextElementSibling
+  expect(controls).toHaveAttribute("data-toolbar-controls")
+  expect(controls).toContainElement(screen.getByRole("button", { name: "Date range" }))
 })
 
 it("preserves cost filter parameters when switching sections and responds to history changes", () => {

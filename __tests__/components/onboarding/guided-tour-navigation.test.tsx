@@ -141,6 +141,19 @@ describe("guided tour navigation", () => {
     expect(replace).not.toHaveBeenCalled()
   })
 
+  it("reveals an auto-hidden sidebar target only while the tour needs it", async () => {
+    setRoute("/dashboard?showTour=true&step=1")
+    const onSidebarRevealChange = jest.fn()
+    render(<>
+      <div id="workspace-sidebar"><div id="tour-apps-nav" /></div>
+      <GuidedTour onSidebarRevealChange={onSidebarRevealChange} />
+    </>)
+    await act(async () => { await jest.advanceTimersByTimeAsync(250) })
+    expect(onSidebarRevealChange).toHaveBeenLastCalledWith(true)
+    await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Skip" })) })
+    expect(onSidebarRevealChange).toHaveBeenLastCalledWith(false)
+  })
+
   it("preserves the manual tour:start event outside onboarding", () => {
     setRoute("/leads")
     mountWithTarget()

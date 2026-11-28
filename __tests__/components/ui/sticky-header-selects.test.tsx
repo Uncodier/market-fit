@@ -97,20 +97,18 @@ describe("sticky header select styling", () => {
     expect(header).toHaveClass("min-h-[71px]")
     expect(header).not.toHaveClass("min-h-[64px]")
     const exportButton = screen.getByRole("button", { name: "Export current section (CSV)" })
-    const exportAction = exportButton.closest("[data-automatic-toolbar-tooltip]") ?? exportButton
+    const actions = exportButton.closest("[data-toolbar-actions]")!
+    const filters = actions.nextElementSibling as HTMLElement
+    expect(actions).toHaveClass("mx-auto", "justify-center")
+    expect(filters).toHaveAttribute("data-toolbar-controls")
     expect(exportButton.closest("[data-toolbar-font]")).toBe(header)
     expect(screen.getAllByRole("button", { name: "Export current section (CSV)" })).toHaveLength(1)
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
     if (mobile) {
-      expect(exportAction.parentElement).toHaveClass("ml-auto", "flex", "shrink-0", "justify-end")
-      expect(exportAction.parentElement?.firstElementChild).toBe(exportAction)
       fireEvent.click(screen.getByRole("button", { name: "Filters" }))
       expect(within(screen.getByRole("dialog")).queryByRole("button", { name: "Export current section (CSV)" })).not.toBeInTheDocument()
       expect(exportButton.closest("[data-toolbar-font]")).toBe(header)
     } else {
-      expect(exportAction.parentElement).toHaveClass("flex", "items-center")
-      expect(exportAction.parentElement?.firstElementChild).toBe(exportAction)
-      const filters = exportAction.nextElementSibling as HTMLElement
       const dateButton = within(filters).getByRole("button")
       expect(dateButton).toBeInTheDocument()
       if (report !== "social" && report !== "traffic") {

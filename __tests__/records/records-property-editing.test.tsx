@@ -52,8 +52,10 @@ beforeEach(() => {
 
 it("shows category fields in order, renders member avatars, and edits a cell without opening the record", async () => {
   const { onOpen, onSave } = renderTable(category)
+  expect(screen.getByRole("table").closest(".bg-card")).not.toBeNull()
+  expect(screen.getByRole("columnheader", { name: "Title" }).closest("thead")).toHaveClass("bg-card")
   expect(screen.getAllByRole("columnheader").map(header => header.textContent)).toEqual([
-    "Title", "Notes", "Status", "Created At", "Amount", "Paid", "Owner", "Priority", "",
+    "Title", "Amount", "Paid", "Owner", "Priority", "Notes", "Status", "Created At", "",
   ])
   expect(screen.getByText("0")).toBeInTheDocument()
   expect(screen.getByText("No")).toBeInTheDocument()
@@ -83,6 +85,7 @@ it("keeps inline editing and category navigation in All records without row prop
   fireEvent.click(screen.getByRole("button", { name: "Orders" }))
   expect(onView).toHaveBeenCalledWith(category)
   fireEvent.click(screen.getByRole("button", { name: "Edit Status for Order A" }))
+  expect(screen.getByRole("option", { name: "Active" })).toBeInTheDocument()
   fireEvent.click(screen.getByRole("option", { name: "Published" }))
   expect(await screen.findByRole("alert")).toHaveTextContent("Record changed")
   expect(screen.queryByRole("combobox", { name: "Status" })).not.toBeInTheDocument()
@@ -163,10 +166,10 @@ it("uses the saved template's new order for headers and cells even when the row 
   const reordered = { ...category, template_fields: [...category.template_fields].reverse() }
   renderTable(reordered)
   expect(screen.getAllByRole("columnheader").map(header => header.textContent)).toEqual([
-    "Title", "Notes", "Status", "Created At", "Priority", "Owner", "Paid", "Amount", "",
+    "Title", "Priority", "Owner", "Paid", "Amount", "Notes", "Status", "Created At", "",
   ])
   const row = screen.getByRole("button", { name: "Edit Title for Order A" }).closest("tr")!
-  expect(within(row).getAllByRole("cell").slice(4, 8).map(cell => within(cell).getByRole("button").getAttribute("aria-label")))
+  expect(within(row).getAllByRole("cell").slice(1, 5).map(cell => within(cell).getByRole("button").getAttribute("aria-label")))
     .toEqual(["Edit Priority for Order A", "Edit Owner for Order A", "Edit Paid for Order A", "Edit Amount for Order A"])
   await screen.findByRole("img", { name: "Alex" })
 })
@@ -203,6 +206,23 @@ it("uses the selected category for a property added from All records", async () 
   expect(onAdd).toHaveBeenCalledWith(category, expect.objectContaining({ label: "Reference", type: "text" }))
 })
 
+it.each(["currency", "team_member"])("adds %s directly from the property type menu", async type => {
+  const { onAdd } = renderTable(category, undefined, [])
+  fireEvent.click(screen.getByRole("button", { name: "Add property" }))
+  const dialog = within(screen.getByRole("dialog", { name: "Add property" }))
+  fireEvent.change(dialog.getByLabelText("Property name"), { target: { value: "New property" } })
+  fireEvent.change(dialog.getByLabelText("Property type"), { target: { value: type } })
+  if (type === "currency") {
+    fireEvent.change(dialog.getByLabelText("Currency", { exact: true }), { target: { value: "mxn" } })
+    fireEvent.change(dialog.getByLabelText("Currency format"), { target: { value: "code" } })
+  }
+  expect(dialog.queryByLabelText("Relation target")).not.toBeInTheDocument()
+  fireEvent.click(dialog.getByRole("button", { name: "Add" }))
+  await waitFor(() => expect(onAdd).toHaveBeenCalledWith(category, expect.objectContaining(type === "currency"
+    ? { type: "number", currency: { code: "MXN", display: "code" } }
+    : { type: "relation", relationTarget: "team_member" })))
+})
+
 it("stores relation edits separately without discarding other links", () => {
   expect(recordPropertyUpdate(record, { key: "field", label: "Owner", field: category.template_fields[2] }, null))
     .toEqual({ relations: { owner: null, historical: "other-id" } })
@@ -215,6 +235,8 @@ it("exposes separate open and edit actions in the calendar", async () => {
   render(<RecordsCalendarViews records={[record]} selectedDate={date} viewMode="month"
     onRecordClick={onOpen} onSaveProperty={onSave}
     time={{ currentDate: date, currentTime: date, isToday: () => false, isSameDay: () => false, getCurrentTimePosition: () => 0 }} />)
+  expect(within(screen.getByTitle("Open record")).getByRole("group", { name: "Assigned team members" }))
+    .toContainElement(await screen.findByRole("img", { name: "Alex" }))
   const edit = screen.getByRole("button", { name: "Edit properties for Order A" })
   expect(edit).toHaveClass("[@media(hover:hover)]:opacity-0", "group-hover/record:opacity-100", "focus-visible:opacity-100")
   fireEvent.click(edit)

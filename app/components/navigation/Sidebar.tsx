@@ -1,7 +1,8 @@
 "use client"
 
 import { cn } from "@/lib/utils"
-import { User, Bell, LayoutGrid } from "@/app/components/ui/icons"
+import { User, Bell, LayoutGrid, PanelLeftOpen } from "@/app/components/ui/icons"
+import { Button } from "@/app/components/ui/button"
 import { useEffect, useState, useRef, Suspense } from "react"
 import dynamic from "next/dynamic"
 import { usePathname, useRouter } from "next/navigation"
@@ -20,6 +21,8 @@ import { SIDEBAR_AUTOMATION_AREA_ORDER } from "@/app/config/navigation-areas"
 import { OnboardingProgressWidget } from "./OnboardingProgressWidget"
 import { SidebarBillingWidget } from "./SidebarBillingWidget"
 import { StartupTrialWidget } from "./StartupTrialWidget"
+import { useSidebarEdgeReveal } from "./use-sidebar-edge-reveal"
+import { WORKSPACE_SIDEBAR_ACTION, type WorkspaceSidebarMode } from "./workspace-sidebar-mode"
 
 const NavigationPage = dynamic(() => import("@/app/navigation/page"), {
   ssr: false,
@@ -29,6 +32,9 @@ interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
   desktopVisible?: boolean
   isMobile?: boolean
   isCollapsed: boolean
+  sidebarMode?: WorkspaceSidebarMode
+  route?: string
+  revealForTour?: boolean
   onCollapse: () => void
   isMobileOpen?: boolean
   onMobileClose?: () => void
@@ -41,6 +47,9 @@ export function Sidebar({
   desktopVisible = true,
   isMobile = false,
   isCollapsed,
+  sidebarMode,
+  route,
+  revealForTour = false,
   onCollapse,
   isMobileOpen = false,
   onMobileClose,
@@ -52,6 +61,9 @@ export function Sidebar({
 
   const renderCollapsed = isMobileOpen ? false : isCollapsed
   const renderMobile = isMobile || isMobileOpen
+  const autoHide = sidebarMode === "hidden" && !renderMobile
+  const { revealed: edgeRevealed, dismiss: dismissEdgeReveal } = useSidebarEdgeReveal(autoHide && desktopVisible, route ?? pathname)
+  const sidebarHidden = autoHide && !edgeRevealed && !revealForTour
 
   const [forceShowSettingsChildren, setForceShowSettingsChildren] = useState(false)
   const prevPathSettingsRef = useRef(pathname)
@@ -200,17 +212,39 @@ export function Sidebar({
       <div
         id="workspace-sidebar"
         data-collapsed={renderCollapsed}
+        data-sidebar-mode={renderMobile ? undefined : sidebarMode}
+        inert={sidebarHidden || undefined}
+        aria-hidden={sidebarHidden || undefined}
+        onClickCapture={(event) => {
+          if (edgeRevealed && event.target instanceof Element && event.target.closest("a[href]")) {
+            dismissEdgeReveal()
+          }
+        }}
         className={cn(
           "flex flex-col h-[100dvh] overflow-y-auto overflow-x-hidden overscroll-y-contain md:overflow-hidden",
           isCollapsed ? "md:w-16" : "md:w-64",
-          "bg-background/80 text-foreground transition-[width] duration-300 ease-in-out border-r dark:border-white/5 border-black/5 backdrop-blur-[5px] font-inter",
+          "bg-background/80 text-foreground transition-[width,transform] duration-300 ease-in-out motion-reduce:transition-none border-r dark:border-white/5 border-black/5 backdrop-blur-[5px] font-inter",
           "sidebar-light-bg",
           "fixed left-0 top-0",
           isMobileOpen ? "w-80 max-md:max-w-[calc(100%-2.75rem)] max-md:z-[230] md:z-[210]" : "!hidden md:!flex z-[210]",
+          sidebarHidden && "-translate-x-full pointer-events-none",
           className
         )}
       >
         <SidebarBrand isCollapsed={renderCollapsed} />
+        {autoHide && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="mx-auto my-1 shrink-0"
+            aria-label={WORKSPACE_SIDEBAR_ACTION.hidden}
+            title={WORKSPACE_SIDEBAR_ACTION.hidden}
+            onClick={onCollapse}
+          >
+            <PanelLeftOpen className="h-4 w-4" aria-hidden={true} />
+          </Button>
+        )}
 
         <div
           className={cn(

@@ -3,7 +3,9 @@
 import { Button } from "@/app/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Badge } from "@/app/components/ui/badge"
-import { Filter, ChevronDown, Image, FileVideo, FileText, LayoutGrid, TableRows, ListOrdered, Check } from "@/app/components/ui/icons"
+import { Filter, Image, FileVideo, FileText, LayoutGrid, TableRows, Check } from "@/app/components/ui/icons"
+import { SortDropdown } from "@/app/components/ui/sort-dropdown"
+import { ToolbarIconButton } from "@/app/components/ui/toolbar-icon-button"
 import { SearchInput } from "@/app/components/ui/search-input"
 import React, { useState, Suspense } from "react"
 import useSWR from "swr"
@@ -208,15 +210,18 @@ function AssetsContent() {
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "all" | "images" | "videos" | "documents")} className="flex-1 flex flex-col w-full h-full min-h-0">
         <StickyHeader>
           <div className="flex w-full min-w-0 items-center gap-4 py-3">
-            <MobileFiltersDrawer triggerText={t('common.search') || "Search"}>
+            <MobileFiltersDrawer triggerText={t('common.search') || "Search"}
+              controls={<SortDropdown sortBy={sortBy} setSortBy={setSortBy} title={t("sortBy") || "Sort by"}
+                    options={[{ value: "newest", label: "Newest" }, { value: "oldest", label: "Oldest" }]} />}
+            >
               <FilterContainer className="md:flex-wrap">
-                <FilterSection mobileOnly>
+                <FilterSection zone="search" mobileOnly>
                   <SearchInput  data-command-k-input placeholder={t('assets.searchPlaceholder')} value={searchTerm} onChange={(e) => handleSearch(e.target.value)} alwaysExpanded={true}    className="w-full h-10 md:h-9"  containerClassName="w-full" />
                 </FilterSection>
 
                 {searchTerm && <FilterSeparator className="max-md:hidden" />}
 
-                <FilterSection title={t('catalog.kind.label')} className={cn("min-w-0 max-w-full", searchTerm && "max-md:hidden")}>
+                <FilterSection zone="tabs" title={t('catalog.kind.label')} className={cn("min-w-0 max-w-full", searchTerm && "max-md:hidden")}>
                   <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-none md:rounded-full flex flex-wrap md:flex-nowrap md:flex-row w-full md:max-w-full overflow-y-visible md:overflow-x-auto justify-start items-center gap-2 md:gap-0">
                     <TabsTrigger value="all" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5" title={agentId ? t('assets.tabs.compatible') : t('assets.tabs.all')}>
                       <LayoutGrid size={13} className="shrink-0 md:!hidden" />
@@ -240,13 +245,9 @@ function AssetsContent() {
                 <FilterSection className={cn("flex flex-col md:flex-row items-stretch md:items-center gap-2", searchTerm && "max-md:hidden")}>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="secondary" size="sm" aria-label={t('assets.filters')} className="w-full md:w-9 h-10 md:h-9 gap-2 rounded-md md:rounded-full px-4 md:px-0 justify-between md:justify-center">
-                        <div className="flex items-center gap-2">
-                          <Filter className="h-4 w-4" />
-                          <span className="font-normal md:hidden">{t('assets.filters')}</span>
-                        </div>
-                        <ChevronDown className="h-3 w-3 opacity-50 md:!hidden" />
-                      </Button>
+                      <ToolbarIconButton variant="secondary" label={t('assets.filters')} className="md:h-9 md:w-9">
+                        <Filter className="h-4 w-4" aria-hidden />
+                      </ToolbarIconButton>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-44">
                       <DropdownMenuItem className="cursor-pointer" onClick={() => setActiveTab("all")}>
@@ -268,32 +269,9 @@ function AssetsContent() {
                     </DropdownMenuContent>
                   </DropdownMenu>
 
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="secondary" size="sm" className="w-full md:w-auto h-10 md:h-9 gap-2 rounded-md md:rounded-full px-4 justify-between md:justify-center" title="Sort by">
-                        <div className="flex items-center gap-2">
-                          <ListOrdered className="h-4 w-4" />
-                          <span className="font-normal">
-                            {sortBy === "newest" ? "Newest" : "Oldest"}
-                          </span>
-                        </div>
-                        <ChevronDown className="h-3 w-3 opacity-50" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-40">
-                      <DropdownMenuItem className="cursor-pointer" onClick={() => setSortBy("newest")}>
-                        <Check className={cn("mr-2 h-4 w-4", sortBy === "newest" ? "opacity-100" : "opacity-0")} />
-                        Newest
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className="cursor-pointer" onClick={() => setSortBy("oldest")}>
-                        <Check className={cn("mr-2 h-4 w-4", sortBy === "oldest" ? "opacity-100" : "opacity-0")} />
-                        Oldest
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
                 </FilterSection>
 
-                <FilterSection desktopOnly>
+                <FilterSection zone="search" desktopOnly>
                   <SearchInput  data-command-k-input placeholder={t('assets.searchPlaceholder')} value={searchTerm} onChange={(e) => handleSearch(e.target.value)}    className="w-full"  containerClassName="w-64" />
                 </FilterSection>
               </FilterContainer>

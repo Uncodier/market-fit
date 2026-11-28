@@ -8,6 +8,7 @@ import { SearchInput } from '@/app/components/ui/search-input'
 import { MobileFiltersDrawer, FilterContainer, FilterSection } from '@/app/components/ui/mobile-filters-drawer'
 import { Tabs, TabsList, TabsTrigger } from '@/app/components/ui/tabs'
 import { SortDropdown } from '@/app/components/ui/sort-dropdown'
+import { ToolbarIconButton } from '@/app/components/ui/toolbar-icon-button'
 import { ViewSelector, type ViewType } from '@/app/components/view-selector'
 import { RotateCw } from '@/app/components/ui/icons'
 import { Skeleton } from '@/app/components/ui/skeleton'
@@ -46,28 +47,29 @@ export function ProcurementOrdersToolbar({ navigation, search, onSearch, status,
   return <Tabs value={status} onValueChange={onStatus} className="contents">
     <StickyHeader style={{ top: 0 }}>
       <div className="flex items-center justify-between w-full gap-3">
-        <MobileFiltersDrawer triggerText={t('common.search')}>
+        <MobileFiltersDrawer triggerText={t('common.search')}
+          actions={<ToolbarIconButton label={t('procurement.partners.actions.refresh')}
+            tooltipLabel={t('procurement.partners.orders.refresh')} disabled={loading} onClick={onRefresh}>
+            <RotateCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} aria-hidden />
+          </ToolbarIconButton>}
+          controls={<>
+            <SortDropdown sortBy={sort} setSortBy={onSort} title={t('content.sortBy')} options={[
+              { value: 'newest', label: t('newest') }, { value: 'oldest', label: t('oldest') },
+            ]} />
+            <ViewSelector currentView={view} onViewChange={onView} />
+          </>}
+        >
           <FilterContainer>
-            {navigation && <FilterSection>{navigation}</FilterSection>}
-            <FilterSection mobileOnly>{searchInput(true)}</FilterSection>
-            <FilterSection title={t('procurement.partners.orders.acceptance')}>
+            {navigation && <FilterSection zone="tabs">{navigation}</FilterSection>}
+            <FilterSection zone="search" mobileOnly>{searchInput(true)}</FilterSection>
+            <FilterSection zone="tabs" title={t('procurement.partners.orders.acceptance')}>
               <TabsList className="h-auto md:h-8 p-0.5 bg-muted/30 rounded-full flex flex-wrap md:flex-nowrap justify-start">
                 {statuses.map(item => <TabsTrigger key={item.value} value={item.value} className="rounded-full text-xs whitespace-nowrap">{item.label}</TabsTrigger>)}
               </TabsList>
             </FilterSection>
-            <FilterSection desktopOnly>{searchInput()}</FilterSection>
+            <FilterSection zone="search" desktopOnly>{searchInput()}</FilterSection>
           </FilterContainer>
         </MobileFiltersDrawer>
-        <div data-secondary-actions className="ml-auto flex items-center gap-3 shrink-0">
-          <Button variant="ghost" size="icon" aria-label={t('procurement.partners.actions.refresh')}
-            title={t('procurement.partners.orders.refresh')} disabled={loading} onClick={onRefresh}>
-            <RotateCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          </Button>
-          <SortDropdown sortBy={sort} setSortBy={onSort} title={t('content.sortBy')} options={[
-            { value: 'newest', label: t('newest') }, { value: 'oldest', label: t('oldest') },
-          ]} />
-          <ViewSelector currentView={view} onViewChange={onView} />
-        </div>
       </div>
     </StickyHeader>
   </Tabs>

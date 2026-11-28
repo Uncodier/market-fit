@@ -431,7 +431,9 @@ export function usePosCart({
     completeShortage: inventoryCart.completeShortage,
     validateInventory: () => {
       if (recordedPromoNeedsReview) {
-        toast.error("This order has a recorded promotion. Reload the original order before payment, or update it in Orders.");
+        toast.error(recordedOrderPromo?.recordedShopOrder
+          ? "You can add items to this Shop order. To keep its promotion, restore the original items, prices, customer and fulfillment details."
+          : "This order has a recorded promotion. Reload the original order before payment, or update it in Orders.");
         return false;
       }
       return inventoryCart.validateInventory();

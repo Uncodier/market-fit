@@ -47,7 +47,7 @@ describe("AI Workspace shortcut", () => {
     jest.mocked(usePathname).mockReturnValue("/robots")
     jest.mocked(useLayout).mockReturnValue({
       robotsViewMode: "workflow", setRobotsViewMode,
-      isLayoutCollapsed: false, setIsLayoutCollapsed: jest.fn(),
+      isLayoutCollapsed: false, sidebarMode: "expanded", sidebarWidth: 256, cycleSidebarMode: jest.fn(),
     })
     jest.mocked(useSearchParams).mockReturnValue(
       new URLSearchParams("mode=workflow&artifact=true") as ReturnType<typeof useSearchParams>,
@@ -73,7 +73,7 @@ describe("AI Workspace shortcut", () => {
     try {
       jest.mocked(useLayout).mockReturnValue({
         robotsViewMode: "agent", setRobotsViewMode,
-        isLayoutCollapsed: false, setIsLayoutCollapsed: jest.fn(),
+        isLayoutCollapsed: false, sidebarMode: "expanded", sidebarWidth: 256, cycleSidebarMode: jest.fn(),
       })
       const { rerender } = render(<RobotsNavItems isCollapsed={false} />)
       const workspace = screen.getByRole("link", { name: /AI Workspace/ })
@@ -85,7 +85,7 @@ describe("AI Workspace shortcut", () => {
 
       jest.mocked(useLayout).mockReturnValue({
         robotsViewMode: "imprenta", setRobotsViewMode,
-        isLayoutCollapsed: false, setIsLayoutCollapsed: jest.fn(),
+        isLayoutCollapsed: false, sidebarMode: "expanded", sidebarWidth: 256, cycleSidebarMode: jest.fn(),
       })
       rerender(<RobotsNavItems isCollapsed={false} />)
       expect(hint).toHaveClass("bg-muted", "text-muted-foreground")
@@ -99,11 +99,11 @@ describe("AI Workspace shortcut", () => {
   it("keeps the selected item's collapsed tooltip on the normal popover colors", async () => {
     jest.mocked(useLayout).mockReturnValue({
       robotsViewMode: "agent", setRobotsViewMode,
-      isLayoutCollapsed: true, setIsLayoutCollapsed: jest.fn(),
+      isLayoutCollapsed: true, sidebarMode: "compact", sidebarWidth: 64, cycleSidebarMode: jest.fn(),
     })
     render(<RobotsNavItems isCollapsed />)
     const workspace = document.getElementById("tour-agents-nav") as HTMLElement
-    fireEvent.focus(workspace.firstElementChild as HTMLElement)
+    fireEvent.focus(workspace.querySelector("[data-toolbar-tooltip-trigger]")!)
     const tooltip = await screen.findByRole("tooltip")
     const hint = within(tooltip).getByLabelText("Command+I")
     expect(hint).toHaveClass("bg-muted", "text-muted-foreground")

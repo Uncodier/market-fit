@@ -1,4 +1,5 @@
 import { getRelationTargetConfig } from "./relation-target"
+import { isRecordCurrency, type RecordCurrency } from "./record-field-presentation"
 
 export type Validation = { valid: true } | { valid: false; error: string }
 export type ValidatedTemplateField = {
@@ -14,6 +15,7 @@ export type ValidatedTemplateField = {
   options?: string[]
   relationTarget?: string
   targetCategoryId?: string
+  currency?: RecordCurrency
   [key: string]: unknown
 }
 export type TemplateValidation =
@@ -48,6 +50,9 @@ export function validateTemplateFields(fields: unknown): TemplateValidation {
     names.add(name)
     const fail = (reason: string): TemplateValidation => ({ valid: false, error: `${name}: ${reason}` })
     if (typeof field.type !== "string" || !types.has(field.type)) return fail("unsupported field type")
+    if (field.currency !== undefined && (field.type !== "number" || !isRecordCurrency(field.currency))) {
+      return fail("currency requires a number field, a valid three-letter currency code, and a display format")
+    }
     if (field.label !== undefined && (typeof field.label !== "string" || !field.label.trim() || field.label.length > 240)) return fail("invalid display label")
     if (field.required !== undefined && typeof field.required !== "boolean") return fail("required must be a boolean")
     for (const bound of ["min", "max", "minLength", "maxLength"] as const) {

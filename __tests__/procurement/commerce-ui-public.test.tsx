@@ -57,7 +57,7 @@ it('filters only actual publications and explains the current-page scope', async
   expect(screen.getByText('No publications match these filters.')).toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: 'Show all publications on this page' }))
   expect(screen.getByRole('link', { name: 'View tender: Maintenance services' })).toBeInTheDocument()
-  expect(screen.getByTitle('Sort this page')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Sort this page' })).toBeInTheDocument()
 })
 
 it('composes actual public commerce shell and search without cart hooks', () => {

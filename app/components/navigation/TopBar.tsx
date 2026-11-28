@@ -14,6 +14,7 @@ import { PosTopBarActions } from "./PosTopBarActions"
 import { PosTopBarSync } from "./PosTopBarSync"
 import { WorkspaceDetailNavigation } from "./WorkspaceDetailNavigation"
 import { isDetailViewRoute } from "@/lib/navigation/detail-view-navigation"
+import type { WorkspaceSidebarMode } from "./workspace-sidebar-mode"
 
 const TopBarActions = dynamic(
   () => import("./TopBarActions").then((mod) => mod.TopBarActions),
@@ -26,6 +27,7 @@ interface TopBarProps extends React.HTMLAttributes<HTMLDivElement> {
   helpWelcomeMessage?: string
   helpTask?: string
   isCollapsed: boolean
+  sidebarMode?: WorkspaceSidebarMode
   onCollapse: () => void
   hideSidebarToggle?: boolean
   isMobileSidebarOpen?: boolean
@@ -49,6 +51,7 @@ export function TopBar({
   helpWelcomeMessage,
   helpTask,
   isCollapsed,
+  sidebarMode,
   onCollapse,
   hideSidebarToggle,
   isMobileSidebarOpen,
@@ -165,7 +168,8 @@ export function TopBar({
       data-topbar
       data-toolbar-font
       className={cn(
-        "flex flex-col border-b dark:border-white/5 border-black/5 bg-background/95 backdrop-blur-sm sticky top-0 z-[200]",
+        "flex flex-col border-b dark:border-white/5 border-black/5 sticky top-0 z-[200]",
+        pathname === "/records" ? "bg-card" : "bg-background/95 backdrop-blur-sm",
         // Robots uses instance tabs on desktop instead of an extra breadcrumb row.
         showBreadcrumbRow ? "h-[64px] md:h-[calc(64px+41px)]" : "h-[64px]",
         className
@@ -201,6 +205,7 @@ export function TopBar({
                 <div id="record-breadcrumb-actions" className="hidden md:block" />
               ) : !startup && isDetailViewRoute(pathname) ? <WorkspaceDetailNavigation pathname={pathname} /> : null}
               isCollapsed={isCollapsed}
+              sidebarMode={sidebarMode}
               onCollapse={onCollapse}
               hideSidebarToggle={hideSidebarToggle}
               breadcrumb={breadcrumb}

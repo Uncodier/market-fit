@@ -1,5 +1,5 @@
 "use client"
-import { Button } from "@/app/components/ui/button"
+import { ToolbarIconButton } from "@/app/components/ui/toolbar-icon-button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { StickyHeader } from "@/app/components/ui/sticky-header"
 import { SearchInput } from "@/app/components/ui/search-input"
@@ -39,9 +39,9 @@ export function AssetsLoadingPage() {
                     placeholder={t('assets.searchPlaceholder')}
                     
                     disabled  className="w-full h-10 md:h-9"  containerClassName="w-full" />
-                <Button variant="secondary" size="sm" disabled aria-label="Sort assets">
-                  <ListOrdered className="mr-2 h-4 w-4" />Newest
-                </Button>
+                <ToolbarIconButton variant="secondary" className="md:h-9 md:w-9" disabled label={t("sortBy") || "Sort by"}>
+                  <ListOrdered className="h-4 w-4" aria-hidden />
+                </ToolbarIconButton>
               </div>
               <div className="ml-auto">
                 {/* Any other buttons would go here */}

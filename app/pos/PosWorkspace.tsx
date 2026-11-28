@@ -326,13 +326,13 @@ export default function PosWorkspace() {
                     isSearchExpanded && "md:gap-0",
                   )}
                 >
-                  <FilterSection mobileOnly>
+                  <FilterSection zone="search" mobileOnly>
                     <SearchInput  placeholder={t("pos.searchCatalog") || "Search catalog..."} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} type="text" alwaysExpanded={true}    className="w-full h-10 md:h-9"  containerClassName="w-full" />
                   </FilterSection>
 
                   
 
-                  <FilterSection
+                  <FilterSection zone="tabs"
                     title={t('catalog.kind.label') === 'catalog.kind.label' ? 'Category' : t('catalog.kind.label')}
                     className={cn(
                       "min-w-0 overflow-hidden md:transition-[flex-grow,flex-basis,opacity,transform] md:duration-300 md:ease-[cubic-bezier(0.22,1,0.36,1)] md:will-change-[flex-grow,opacity,transform] motion-reduce:transition-none",
@@ -352,7 +352,7 @@ export default function PosWorkspace() {
                     />
                   </FilterSection>
 
-                  <FilterSection
+                  <FilterSection zone="search"
                     desktopOnly
                     className={cn(
                       "min-w-0 md:transition-[flex-grow,flex-basis] md:duration-300 md:ease-[cubic-bezier(0.22,1,0.36,1)] md:will-change-[flex-grow] motion-reduce:transition-none",

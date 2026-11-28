@@ -18,7 +18,7 @@ const storedLine = { id: "line", site_id: "site", sale_order_id: "order", catalo
 const order = { id: "order", site_id: "site", sale_id: "sale", status: "pending", currency: "USD",
   origin_location_id: "store", fulfillment_method: "pickup",
   subtotal: 100, tax_total: 2, shipping_cost: 0, total: 82, discount_total: 20,
-  promotion_id: "shop-only", promotions: { code: "SAVE20" }, sale_order_items: [storedLine], items: [] }
+  sales: { source: "shop" }, promotion_id: "shop-only", promotions: { code: "SAVE20" }, sale_order_items: [storedLine], items: [] }
 const params = { siteId: "site", source: "pos", effectiveExistingOrderId: "order", promotionId: "shop-only",
   promotionCode: "SAVE20", processedLines: [line], orderSubtotal: 100, orderTaxTotal: 2,
   orderShippingCost: 0, orderCurrency: "USD", finalOriginLocationId: "store", fulfillment: "pickup" as const }
@@ -143,6 +143,11 @@ it("matches modifier identities and rejects price swaps that keep the same subto
     client_line_key: "line:mod:extras:milk", parent_client_line_key: "line", modifier_group_id: "extras" }
   const input = { ...params, orderSubtotal: 110, processedLines: [line, modifier] }
   expect(await loadRecordedCheckoutPromotion(database(saved), input)).toMatchObject({ promotionId: "shop-only", discount: 20 })
+  const extraHost = { ...line, catalog_item_id: "tea", client_line_key: "new" }
+  expect(await loadRecordedCheckoutPromotion(database(saved), { ...input, processedLines: [extraHost, line, modifier],
+    orderSubtotal: 210 })).toMatchObject({ discount: 20 })
+  expect(await loadRecordedCheckoutPromotion(database(saved), { ...input, processedLines: [extraHost, line],
+    orderSubtotal: 200 })).toBeNull()
   expect(await loadRecordedCheckoutPromotion(database(saved), { ...input, processedLines: [
     { ...line, unit_price: 90 }, { ...modifier, unit_price: 20 },
   ] })).toBeNull()
@@ -157,6 +162,25 @@ it("settles an unchanged online coupon order in POS without re-redeeming it or c
     resolvedPromotionId: undefined, sale: { amount: 82, amount_due: 0 },
     order: { total: 82, discount_total: 20, promotion_id: "shop-only" } })
   expect(resolvePromotionDiscount).not.toHaveBeenCalled()
+})
+
+it.each(["send", "pay"] as const)("preserves the Shop discount on %s with extra lines and units", async intent => {
+  const client = database()
+  const result = await persistCheckoutRecords({ ...params, source: "pos", supabase: client, supabaseAdmin: client,
+    processedLines: [{ ...line, quantity: 2, subtotal: 200 },
+      { ...line, client_line_key: "new", catalog_item_id: "tea", unit_price: 15, subtotal: 15 }],
+    orderSubtotal: 215, orderTaxTotal: 4, isAdmin: false, quoteForAccept: null, intent,
+    payments: intent === "pay" ? [{ method: "cash", amount: 189 }] : [] })
+  expect(result).toMatchObject({ orderTotal: 199, isFullyPaid: intent === "pay",
+    sale: { amount_due: intent === "pay" ? 0 : 189, source: "shop" },
+    order: { discount_total: 20, promotion_id: "shop-only" }, resolvedPromotionId: undefined })
+  expect(resolvePromotionDiscount).not.toHaveBeenCalled()
+})
+
+it("does not extend a non-Shop redemption to additional units", async () => {
+  const client = database({ ...order, sales: { source: "pos" } })
+  expect(await loadRecordedCheckoutPromotion(client, { ...params, orderSubtotal: 200,
+    processedLines: [{ ...line, quantity: 2, subtotal: 200 }] })).toBeNull()
 })
 
 it("retains the recorded promotion through partial POS payment", async () => {
@@ -190,7 +214,7 @@ it("still enforces current promotion rules for edited carts", async () => {
   const client = database()
   jest.mocked(resolvePromotionDiscount).mockResolvedValue({ error: "This promotion is not available in POS" })
   await expect(persistCheckoutRecords({ ...params, source: "pos", supabase: client, supabaseAdmin: client,
-    processedLines: [{ ...line, quantity: 2 }], isAdmin: false, quoteForAccept: null, fulfillment: "pickup" }))
+    processedLines: [{ ...line, quantity: 2, unit_price: 50 }], isAdmin: false, quoteForAccept: null, fulfillment: "pickup" }))
     .rejects.toThrow("not available in POS")
   expect(client.writes).toEqual([])
 })

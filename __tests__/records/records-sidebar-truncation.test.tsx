@@ -5,6 +5,7 @@ import { resolveRelationsForSidebar, type RecordCategory, type RecordItem } from
 import { SIDEBAR_ROW_HEIGHT } from "@/app/components/navigation/sidebar-metrics"
 
 jest.mock("@/app/records/actions", () => ({ resolveRelationsForSidebar: jest.fn() }))
+jest.mock("@/app/hooks/use-user-data", () => ({ useUserData: () => ({ userData: {} }) }))
 jest.mock("@/app/context/LocalizationContext", () => ({
   useLocalization: () => ({ t: () => "" }),
 }))
@@ -71,6 +72,10 @@ it("constrains the scroll content and pills while retaining full labels and sele
   expect(viewport?.parentElement).toHaveClass("[&_[data-radix-scroll-area-viewport]>div]:!block")
   fireEvent.click(label)
   expect(onSelectCategory).toHaveBeenCalledWith(category.id, { fieldName: "sales_man", targetId: "member" })
+  expect(label.closest("button")).toHaveAttribute("aria-pressed", "true")
+  expect(label.closest("button")).toHaveAttribute("aria-description", "1 record")
+  fireEvent.click(screen.getByRole("button", { name: "Clear member filter" }))
+  expect(onSelectCategory).toHaveBeenLastCalledWith(category.id, null)
 })
 
 it("keeps both disclosures operable without selecting a row and supports fields without labels", async () => {
@@ -98,4 +103,18 @@ it("keeps both disclosures operable without selecting a row and supports fields 
   expect(collectionToggle).toHaveAttribute("aria-expanded", "false")
   expect(relationToggle).not.toBeInTheDocument()
   expect(onSelectCategory).not.toHaveBeenCalled()
+})
+
+it("opens the active category's member filter and searches names without changing the filter", async () => {
+  const names = ["Zara", "Bianca", "Chandra", "Dara", "Erin", "Alex"]
+  jest.mocked(resolveRelationsForSidebar).mockResolvedValue(Object.fromEntries(names.map((name, i) => [`team_member:${i}`, name])))
+  const onSelectCategory = jest.fn()
+  render(<RecordsSidebar categories={[category]} records={names.map((_, i) => ({ ...records[0], id: String(i), relations: { sales_man: String(i) } }))}
+    selectedCategory={category.id} selectedRelation={null} onSelectCategory={onSelectCategory} isCollapsed={false} />)
+  const search = await screen.findByRole("textbox", { name: "Search Sales representative" })
+  fireEvent.change(search, { target: { value: "bianc" } })
+  expect(screen.queryByRole("button", { name: "Alex" })).not.toBeInTheDocument()
+  expect(onSelectCategory).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole("button", { name: "Bianca" }))
+  expect(onSelectCategory).toHaveBeenCalledWith(category.id, { fieldName: "sales_man", targetId: "1" })
 })

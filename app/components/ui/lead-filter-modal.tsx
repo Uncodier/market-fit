@@ -11,6 +11,7 @@ import {
 import { Button } from "@/app/components/ui/button"
 import { Label } from "@/app/components/ui/label"
 import { Switch } from "@/app/components/ui/switch"
+import { LeadSegmentFilterOption } from "@/app/components/ui/lead-segment-filter-option"
 import { Badge } from "@/app/components/ui/badge"
 import { 
   Tag, 
@@ -361,20 +362,12 @@ export function LeadFilterModal({
               <div className="px-3 py-[10px] border-t">
                 <div className="grid grid-cols-1 gap-2">
                   {segments.map(segment => (
-                    <div key={segment.id} className="flex items-center space-x-2">
-                      <Switch 
-                        id={`segment-${segment.id}`}
-                        checked={localFilters.segments.includes(segment.id)}
-                        onCheckedChange={() => handleSegmentChange(segment.id)}
-                      />
-                      <Label 
-                        htmlFor={`segment-${segment.id}`}
-                        className="flex items-center gap-1.5 cursor-pointer"
-                      >
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                        <span>{segment.name}</span>
-                      </Label>
-                    </div>
+                    <LeadSegmentFilterOption
+                      key={segment.id}
+                      segment={segment}
+                      checked={localFilters.segments.includes(segment.id)}
+                      onToggle={handleSegmentChange}
+                    />
                   ))}
                 </div>
               </div>

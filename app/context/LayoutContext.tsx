@@ -1,12 +1,18 @@
 "use client"
 
-import { createContext, useContext, ReactNode, useState, useEffect, useRef } from 'react'
+import { createContext, useContext, ReactNode, useState, useEffect } from 'react'
+import {
+  nextWorkspaceSidebarMode, readWorkspaceSidebarMode, WORKSPACE_SIDEBAR_MODE_KEY,
+  WORKSPACE_SIDEBAR_WIDTH, type WorkspaceSidebarMode,
+} from '@/app/components/navigation/workspace-sidebar-mode'
 
 export type RobotsViewMode = "agent" | "imprenta" | "workflow"
 
 interface LayoutContextType {
   isLayoutCollapsed: boolean
-  setIsLayoutCollapsed: (collapsed: boolean) => void
+  sidebarMode: WorkspaceSidebarMode
+  sidebarWidth: number
+  cycleSidebarMode: () => void
   /** Agents vs Imprenta vs Workflow canvas */
   robotsViewMode: RobotsViewMode
   setRobotsViewMode: (mode: RobotsViewMode) => void
@@ -16,7 +22,6 @@ const LayoutContext = createContext<LayoutContextType | undefined>(undefined)
 
 interface LayoutProviderProps {
   children: ReactNode
-  isLayoutCollapsed?: boolean
 }
 
 export function useLayout() {
@@ -42,93 +47,39 @@ function readInitialRobotsViewMode(): RobotsViewMode {
   return "agent"
 }
 
-export function LayoutProvider({ children, isLayoutCollapsed: initialIsCollapsed = true }: LayoutProviderProps) {
-  const [isLayoutCollapsed, setIsLayoutCollapsed] = useState(initialIsCollapsed)
+export function LayoutProvider({ children }: LayoutProviderProps) {
+  const [savedSidebarMode, setSidebarMode] = useState<WorkspaceSidebarMode | null>(null)
+  const sidebarMode = savedSidebarMode ?? "hidden"
   const [robotsViewMode, setRobotsViewMode] = useState<RobotsViewMode>(readInitialRobotsViewMode)
-  const hasAutoCollapsedRef = useRef(false)
-  const userManuallyExpandedRef = useRef(false)
-  const previousWidthRef = useRef<number | null>(null)
 
-  // Sincronizar con localStorage al montar
   useEffect(() => {
-    const saved = localStorage.getItem('sidebarCollapsed')
-    if (saved !== null) {
-      try {
-        const parsedValue = JSON.parse(saved)
-        setIsLayoutCollapsed(parsedValue)
-      } catch (error) {
-        console.error("Error parsing sidebar collapsed state:", error)
-      }
+    let storedMode: WorkspaceSidebarMode = "hidden"
+    try {
+      storedMode = readWorkspaceSidebarMode(localStorage.getItem(WORKSPACE_SIDEBAR_MODE_KEY))
+    } catch {
+      // Fall back to auto-hide when browser storage is unavailable.
     }
+    // Keep the server and hydration render hidden, then restore the browser preference.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSidebarMode((current) => current ?? storedMode)
   }, [])
 
-  // Guardar cambios en localStorage
   useEffect(() => {
-    localStorage.setItem('sidebarCollapsed', JSON.stringify(isLayoutCollapsed))
-  }, [isLayoutCollapsed])
-
-  // Auto-collapse when screen width is less than 1400px (once per threshold crossing)
-  useEffect(() => {
-    const handleResize = () => {
-      const currentWidth = window.innerWidth
-      const threshold = 1400
-      const previousWidth = previousWidthRef.current
-
-      // Initialize previous width on first run
-      if (previousWidth === null) {
-        previousWidthRef.current = currentWidth
-        return
-      }
-
-      // Check if we're crossing the threshold from above to below
-      const crossingBelow = previousWidth >= threshold && currentWidth < threshold
-      
-      // Check if we're crossing the threshold from below to above
-      const crossingAbove = previousWidth < threshold && currentWidth >= threshold
-
-      // If crossing from above to below, auto-collapse (only once per crossing)
-      if (crossingBelow && !hasAutoCollapsedRef.current && !userManuallyExpandedRef.current) {
-        setIsLayoutCollapsed(true)
-        hasAutoCollapsedRef.current = true
-      }
-
-      // If crossing from below to above, reset the auto-collapse flag
-      if (crossingAbove) {
-        hasAutoCollapsedRef.current = false
-        userManuallyExpandedRef.current = false
-      }
-
-      previousWidthRef.current = currentWidth
+    if (savedSidebarMode === null) return
+    try {
+      localStorage.setItem(WORKSPACE_SIDEBAR_MODE_KEY, savedSidebarMode)
+    } catch {
+      // The in-memory preference still works when browser storage is unavailable.
     }
-
-    // Check initial width on mount
-    if (typeof window !== 'undefined') {
-      const initialWidth = window.innerWidth
-      previousWidthRef.current = initialWidth
-      
-      if (initialWidth < 1400 && !isLayoutCollapsed) {
-        setIsLayoutCollapsed(true)
-        hasAutoCollapsedRef.current = true
-      }
-    }
-
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
-
-  // Track manual user expansion after auto-collapse
-  useEffect(() => {
-    // If user manually expands after auto-collapse, mark it
-    if (hasAutoCollapsedRef.current && !isLayoutCollapsed) {
-      userManuallyExpandedRef.current = true
-    }
-  }, [isLayoutCollapsed])
+  }, [savedSidebarMode])
 
   return (
     <LayoutContext.Provider
       value={{
-        isLayoutCollapsed,
-        setIsLayoutCollapsed,
+        isLayoutCollapsed: sidebarMode !== "expanded",
+        sidebarMode,
+        sidebarWidth: WORKSPACE_SIDEBAR_WIDTH[sidebarMode],
+        cycleSidebarMode: () => setSidebarMode((current) => nextWorkspaceSidebarMode(current ?? "hidden")),
         robotsViewMode,
         setRobotsViewMode,
       }}

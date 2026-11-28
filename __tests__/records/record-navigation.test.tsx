@@ -8,10 +8,14 @@ import { getTableRecordOrder } from "@/app/records/lib/table-record-order"
 let mockViewKey: string | null
 let mockSiteId: string
 
+jest.mock("@/app/records/actions", () => ({ resolveRelationsForSidebar: jest.fn() }))
+jest.mock("@/app/hooks/use-user-data", () => ({ useUserData: () => ({ userData: {} }) }))
+
 jest.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(mockViewKey ? { recordView: mockViewKey } : {}),
 }))
 jest.mock("@/app/context/SiteContext", () => ({
+  useSite: () => ({ currentSite: { id: mockSiteId } }),
   useOptionalSite: () => ({ currentSite: { id: mockSiteId }, isLoading: false }),
 }))
 jest.mock("@/app/context/LocalizationContext", () => ({

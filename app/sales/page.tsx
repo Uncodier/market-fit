@@ -27,6 +27,7 @@ import { SalesTable, SalesTableSkeleton } from "./components/SalesTable"
 import { useCommandK } from "@/app/hooks/use-command-k"
 import { CalendarDateRangePicker } from "@/app/components/ui/date-range-picker"
 import { SortDropdown } from "@/app/components/ui/sort-dropdown"
+import { ToolbarIconButton } from "@/app/components/ui/toolbar-icon-button"
 import { SalesLocationFilter } from "./components/SalesLocationFilter"
 import { cn } from "@/lib/utils"
 
@@ -317,15 +318,30 @@ function WorkspaceSales({ siteId, actorId }: { siteId: string; actorId: string }
           <StickyHeader>
             <div className="w-full pt-0">
               <div className="flex items-center justify-between w-full">
-                <MobileFiltersDrawer triggerText={t('common.search') || "Search"}>
+                <MobileFiltersDrawer triggerText={t('common.search') || "Search"}
+                  actions={<ToolbarIconButton label={t("layout.topbar.export") || "Export"} onClick={handleExportSales}>
+                    <Download className="h-4 w-4" aria-hidden />
+                  </ToolbarIconButton>}
+                  controls={<>
+                    <CalendarDateRangePicker iconOnly className="hidden md:flex" onRangeChange={handleDateRangeChange}
+                      initialStartDate={dateRange.startDate} initialEndDate={dateRange.endDate} />
+                    <SortDropdown sortBy={sortBy} setSortBy={setSortBy} options={[
+                      { value: "newest", label: "Newest" },
+                      { value: "oldest", label: "Oldest" },
+                      { value: "value_desc", label: "Highest Value" },
+                      { value: "value_asc", label: "Lowest Value" },
+                    ]} />
+                    <ViewSelector currentView={viewType} onViewChange={setViewType} />
+                  </>}
+                >
                   <FilterContainer>
-                    <FilterSection mobileOnly>
+                    <FilterSection zone="search" mobileOnly>
                       <SearchInput placeholder={t('sales.search.placeholder') || "Search sales..."} value={searchQuery} onChange={handleSearchChange} alwaysExpanded={true} className="w-full h-10 md:h-9" containerClassName="w-full" />
                     </FilterSection>
 
                     
 
-                    <FilterSection title={t('common.status') || 'Status'} className={cn(searchQuery && "max-md:hidden")}>
+                    <FilterSection zone="tabs" title={t('common.status') || 'Status'} className={cn(searchQuery && "max-md:hidden")}>
                       <TabsList className="h-auto md:h-8 p-0 md:p-0.5 bg-transparent md:bg-muted/30 rounded-none md:rounded-full flex flex-wrap md:flex-nowrap md:flex-row w-full md:max-w-full overflow-y-visible md:overflow-x-auto justify-start items-center gap-2 md:gap-0">
                         <TabsTrigger value="all" className="w-auto justify-center rounded-full text-sm md:text-xs py-1.5 px-3 md:py-1 md:px-3 text-foreground/80 md:text-foreground border border-border/50 md:border-transparent data-[state=active]:bg-foreground data-[state=active]:text-background md:data-[state=active]:bg-background md:data-[state=active]:text-foreground data-[state=active]:shadow-sm md:data-[state=active]:border-transparent whitespace-nowrap flex items-center gap-1.5" title={t('sales.tabs.all') || "All Sales"}>
                           <span className="tab-label">{t('sales.tabs.all') || 'All Sales'}</span>
@@ -351,40 +367,19 @@ function WorkspaceSales({ siteId, actorId }: { siteId: string; actorId: string }
                     </FilterSection>
 
                     <FilterSection mobileOnly className={cn(searchQuery && "hidden")} title={t('common.dateRange') || 'Date Range'}> 
-                    <CalendarDateRangePicker 
+                    <CalendarDateRangePicker
+                        iconOnly
                         onRangeChange={handleDateRangeChange} 
                         initialStartDate={dateRange.startDate}
                         initialEndDate={dateRange.endDate} />
                     </FilterSection>
 
-                    <FilterSection desktopOnly>
+                    <FilterSection zone="search" desktopOnly>
                       <SearchInput  data-command-k-input placeholder={t('sales.search.placeholder') || "Search sales..."} value={searchQuery} onChange={handleSearchChange}    className="w-full"  containerClassName="w-64" />
                     </FilterSection>
                   </FilterContainer>
                 </MobileFiltersDrawer>
                 
-              <div className="ml-auto flex flex-wrap justify-end items-center gap-2 shrink-0">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="flex items-center gap-1"
-                  title={t("layout.topbar.export")}
-                  onClick={handleExportSales}
-                >
-                  <Download className="h-4 w-4" />
-                  <span className="hidden sm:inline">
-                    {t("layout.topbar.export") || "Export"}
-                  </span>
-                </Button>
-                <div className="w-px h-6 bg-border mx-1 hidden sm:block" />
-                <SortDropdown sortBy={sortBy} setSortBy={setSortBy} options={[
-                  { value: "newest", label: "Newest" },
-                  { value: "oldest", label: "Oldest" },
-                  { value: "value_desc", label: "Highest Value" },
-                  { value: "value_asc", label: "Lowest Value" }
-                ]} />
-                <ViewSelector currentView={viewType} onViewChange={setViewType} />
-              </div>
             </div>
             </div>
           </StickyHeader>

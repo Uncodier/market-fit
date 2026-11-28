@@ -6,7 +6,7 @@ import { Card } from "@/app/components/ui/card"
 import { cn } from "@/lib/utils"
 
 interface ControlCenterSkeletonProps {
-  isLayoutCollapsed?: boolean
+  sidebarLeft?: string
   isSidebarCollapsed?: boolean
 }
 
@@ -104,7 +104,7 @@ function DesktopKanbanSkeleton({ isSidebarCollapsed }: { isSidebarCollapsed: boo
 }
 
 export function ControlCenterSkeleton({ 
-  isLayoutCollapsed = false, 
+  sidebarLeft = "0px",
   isSidebarCollapsed = false 
 }: ControlCenterSkeletonProps = {}) {
   return (
@@ -115,7 +115,7 @@ export function ControlCenterSkeleton({
           isSidebarCollapsed ? "w-0 opacity-0" : "w-[319px] opacity-100"
         )}
         style={{ 
-          left: isLayoutCollapsed ? '64px' : '256px',
+          left: sidebarLeft,
           top: '64px'
         }}
       >
