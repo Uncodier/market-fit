@@ -89,6 +89,22 @@ function expectNoBlindRetry() {
   expect(drainPosOutbox).not.toHaveBeenCalled();
 }
 
+it("takes the cashier from a failed cash receipt to its review without retrying or offering cancellation", async () => {
+  const row = checkoutRow({ recoveryState: "review_required" });
+  if (row.payload.kind !== "checkout") throw new Error("Expected checkout fixture");
+  Object.assign(row.payload.data, { originLocationId: "store", promotionId: "discount", expectedOrderVersion: "snapshot",
+    payments: [{ paymentId: "original-receipt", method: "cash", amount: 273 }] });
+  storedRows = [row];
+  const onReviewOrder = jest.fn();
+  render(<PosSyncIssues {...props} onReviewOrder={onReviewOrder} />);
+  const action = await screen.findByRole("button", { name: "Review received cash" });
+  expect(screen.queryByRole("button", { name: "Cancel operation" })).not.toBeInTheDocument();
+  fireEvent.click(action);
+  expect(onReviewOrder).toHaveBeenCalledWith("existing-order", "attempt-a");
+  expect(fetchPosCheckoutStatus).not.toHaveBeenCalled();
+  expectNoBlindRetry();
+});
+
 it("does not downgrade exact recorded receipts after an in-flight status response", async () => {
   storedRows = [checkoutRow({ recoveryState: "payment_recorded", recoveryMessage: "Exact receipts recorded" })];
   jest.mocked(fetchPosCheckoutStatus).mockResolvedValueOnce({ data: { state: "processing", message: "Still processing" } });

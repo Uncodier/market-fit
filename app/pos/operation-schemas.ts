@@ -34,6 +34,7 @@ const payment = z.object({
 /** POS-only input; public, staff override and account-owner fields are not accepted. */
 export const posOperationCheckoutSchema = z.object({
   siteId: id, source: z.literal("pos"), clientMutationId: identity,
+  recoverReceivedCash: z.boolean().optional(),
   posOperationIdentity: posOperationIdentitySchema.optional(),
   userId: id.optional(), sellerUserId: id.optional(), buyerUserId: id.optional(),
   lines: z.array(line).min(1).max(200),

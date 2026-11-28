@@ -5,7 +5,8 @@ import { PosCheckoutRecoveryError, type PosCheckoutRecovery } from "./checkout-r
 import { posOperationIdentitySchema } from "./operation-schemas";
 
 type Client = { rpc: (name: string, args: Record<string, unknown>) => PromiseLike<{ data: unknown; error: unknown }> };
-export type PosCheckoutClaim = { siteId: string; mutationId: string; ownerToken: string };
+export type PosCheckoutClaim = { siteId: string; mutationId: string; ownerToken: string;
+  receivedCash?: { actorId: string; fingerprint: string; baseline: string } };
 
 function canonical(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonical);
@@ -17,12 +18,15 @@ function canonical(value: unknown): unknown {
 
 export function posCheckoutFingerprint(params: CheckoutCartParams): string {
   if (params.posOperationIdentity !== undefined) posOperationIdentitySchema.parse(params.posOperationIdentity);
-  return createHash("sha256").update(JSON.stringify(canonical(params))).digest("hex");
+  const original = { ...params };
+  delete original.recoverReceivedCash;
+  return createHash("sha256").update(JSON.stringify(canonical(original))).digest("hex");
 }
 
 export async function claimPosCheckout(client: Client, params: CheckoutCartParams, actorId: string): Promise<
   { claim: PosCheckoutClaim; recovery?: never } | { claim?: never; recovery: PosCheckoutRecovery }
 > {
+  if (params.recoverReceivedCash) throw new Error("Manual recovery cannot start a new checkout.");
   const ownerToken = randomUUID();
   const { data, error } = await client.rpc("pos_checkout_claim", {
     p_site_id: params.siteId, p_mutation_id: params.clientMutationId, p_actor_id: actorId,

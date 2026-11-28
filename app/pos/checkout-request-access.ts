@@ -6,6 +6,8 @@ type Access = Awaited<ReturnType<typeof requirePosSiteAccess>>;
 type Scope = { active: boolean; access: Map<string, Promise<Access>> };
 const scopes = new AsyncLocalStorage<Scope>();
 
+export function inPosOperationScope(): boolean { return scopes.getStore()?.active === true; }
+
 /** Server-created scope only: no credentials or authorization flags are accepted. */
 export async function withPosCheckoutAccessScope<T>(work: () => Promise<T>): Promise<T> {
   const scope: Scope = { active: true, access: new Map() };

@@ -65,6 +65,8 @@ export interface CheckoutCartParams {
   paymentMethod?: string
   scheduledFor?: string
   clientMutationId?: string
+  /** Manual dispatch control, never part of the original checkout identity. */
+  recoverReceivedCash?: boolean
   /** Persisted once by the POS outbox; absent on legacy operations. */
   posOperationIdentity?: PosOperationIdentity
   quotationId?: string

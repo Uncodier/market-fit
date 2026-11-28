@@ -10,6 +10,7 @@ import { checkoutStageTimer } from "@/app/pos/checkout-server-timing"
 import { claimPosCheckout, transitionPosCheckout, posCheckoutFingerprint, type PosCheckoutClaim } from "@/app/pos/checkout-attempt-server"
 import { PosCheckoutRecoveryError } from "@/app/pos/checkout-recovery-types"
 import { inspectPosPayment } from "@/app/pos/payment-recovery-server"
+import { assertReceivedCashDispatch, receivedCashReview } from "@/app/pos/received-cash-recovery-server"
 import {
   assertQuotationCheckoutable,
   claimQuotationCheckout,
@@ -61,6 +62,7 @@ export async function checkoutCart(params: CheckoutCartParams) {
   let publicAttemptUncertain = false
 
   try {
+    if (params?.recoverReceivedCash) assertReceivedCashDispatch(params)
     const boundary = await authorizeCheckoutBoundary(params)
     params = boundary.params
     publicCheckout = boundary.publicCheckout
@@ -123,18 +125,31 @@ export async function checkoutCart(params: CheckoutCartParams) {
     if (params.source === "pos" && params.clientMutationId) {
       if (!authenticatedUserId) throw new Error("Authentication is required for POS checkout.")
       if (params.payments?.length && params.payments.every((p) => !!p.paymentId)) {
+        const fingerprint = posCheckoutFingerprint(params)
         const evidence = await inspectPosPayment(supabaseAdmin, {
           siteId: params.siteId, clientMutationId: params.clientMutationId,
           existingOrderId: params.existingOrderId, registerSessionId: params.registerSessionId,
           payments: params.payments.map((p) => ({ ...p, paymentId: p.paymentId! })),
-          fingerprint: posCheckoutFingerprint(params),
+          fingerprint,
+          ...(params.recoverReceivedCash ? { requireAdmittedAttempt: true } : {}),
         }, authenticatedUserId)
         if (evidence.state === "completed" && evidence.result) return { ...evidence.result, idempotent: true }
-        if (evidence.state !== "not_found") throw new PosCheckoutRecoveryError(evidence)
+        if (params.recoverReceivedCash) {
+          if (evidence.state !== "review_required" || evidence.saleId || evidence.orderId !== params.existingOrderId) {
+            throw evidence.state === "payment_recorded" || evidence.state === "processing"
+              ? new PosCheckoutRecoveryError(evidence) : receivedCashReview()
+          }
+          // Only the atomic recovery commit can activate this fresh owner token.
+          posClaim = { siteId: params.siteId, mutationId: params.clientMutationId, ownerToken: randomUUID(),
+            receivedCash: { actorId: authenticatedUserId, fingerprint, baseline: params.expectedOrderVersion! } }
+        } else if (evidence.state !== "not_found") throw new PosCheckoutRecoveryError(evidence)
       }
-      const admission = await claimPosCheckout(supabaseAdmin, params, authenticatedUserId)
-      if (admission.recovery) return { ...admission.recovery.result!, idempotent: true }
-      posClaim = admission.claim
+      if (!posClaim) {
+        if (params.recoverReceivedCash) throw receivedCashReview()
+        const admission = await claimPosCheckout(supabaseAdmin, params, authenticatedUserId)
+        if (admission.recovery) return { ...admission.recovery.result!, idempotent: true }
+        posClaim = admission.claim
+      }
     }
     await assertRegisterCheckout(supabase, params, authenticatedUserId)
     if (params.source === "pos" && params.existingOrderId && params.expectedOrderVersion !== undefined) {
@@ -308,7 +323,7 @@ export async function checkoutCart(params: CheckoutCartParams) {
     publicMutationHasSideEffects = Boolean(publicMutationClaim) && !selfService
     // Reservations/line preparation may write too. Persist the boundary first;
     // any failure afterward is ambiguous, never a safe-to-recollect rejection.
-    if (posClaim) {
+    if (posClaim && !posClaim.receivedCash) {
       await transitionPosCheckout(supabaseAdmin, posClaim, "writes_started")
       posWritesStarted = true
     }
@@ -426,7 +441,9 @@ export async function checkoutCart(params: CheckoutCartParams) {
   } catch (error: unknown) {
     if (posClaim && checkoutAdminClient) {
       try {
-        await transitionPosCheckout(checkoutAdminClient, posClaim, posWritesStarted ? "review_required" : "rejected")
+        // With a recovery token this succeeds only if the atomic commit actually
+        // took ownership. A failed preparation/commit leaves the original row alone.
+        await transitionPosCheckout(checkoutAdminClient, posClaim, posWritesStarted || posClaim.receivedCash ? "review_required" : "rejected")
       } catch {
         // A missing outcome keeps durable admission unresolved; never replay it blindly.
       }
@@ -446,6 +463,10 @@ export async function checkoutCart(params: CheckoutCartParams) {
       )
     }
     if (error instanceof PosCheckoutRecoveryError) return { error: error.message, recovery: error.recovery }
+    if (params?.recoverReceivedCash) {
+      const { recovery } = receivedCashReview()
+      return { error: recovery.message, recovery }
+    }
     const message = error && typeof error === "object" && "message" in error && typeof error.message === "string"
       ? error.message : "Unable to complete checkout."
     return { error: message,

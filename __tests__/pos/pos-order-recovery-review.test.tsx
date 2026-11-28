@@ -3,6 +3,8 @@ import { PosOrderReviewDialog } from "@/app/pos/components/PosOrderReviewDialog"
 import { fetchPosOrder as getPosOrder } from "@/app/pos/operation-client";
 import { listOutbox, updateOutboxRow, enqueueCheckout } from "@/app/pos/local/outbox";
 import { reconcilePosCheckout } from "@/app/pos/local/checkout-recovery";
+import { recoverReceivedCash } from "@/app/pos/local/recover-received-cash";
+import { posOrderVersion } from "@/app/pos/order-version";
 import { checkoutCart } from "@/app/commerce/checkout";
 import type { PosOrderSnapshot } from "@/app/pos/order-snapshot";
 import type { PosOutboxRow } from "@/app/pos/local/types";
@@ -11,6 +13,11 @@ import type { PosCheckoutRecovery } from "@/app/pos/checkout-recovery-types";
 jest.mock("@/app/pos/operation-client", () => ({ fetchPosOrder: jest.fn() }));
 jest.mock("@/app/pos/local/outbox", () => ({ listOutbox: jest.fn(), updateOutboxRow: jest.fn(), enqueueCheckout: jest.fn() }));
 jest.mock("@/app/pos/local/checkout-recovery", () => ({ reconcilePosCheckout: jest.fn() }));
+const mockBulkGet = jest.fn();
+jest.mock("@/app/pos/local/db", () => ({ getPosDb: () => ({ catalogItems: { bulkGet: mockBulkGet } }) }));
+jest.mock("@/app/pos/local/recover-received-cash", () => ({
+  ...jest.requireActual("@/app/pos/local/recover-received-cash"), recoverReceivedCash: jest.fn(),
+}));
 jest.mock("@/app/commerce/checkout", () => ({ checkoutCart: jest.fn() }));
 jest.mock("@/app/context/DisplayCurrencyContext", () => ({
   useDisplayCurrency: () => ({ formatPrice: (amount: number, currency: string) => `${currency} ${amount.toFixed(2)}` }),
@@ -51,11 +58,143 @@ function expectNoMoneyMutation() {
 }
 beforeEach(() => {
   jest.clearAllMocks();
+  mockBulkGet.mockReset().mockResolvedValue([]);
   rows = [{ ...baseRow }];
   jest.mocked(listOutbox).mockReset().mockImplementation(async (siteId) => rows.filter((row) => row.siteId === siteId));
   jest.mocked(getPosOrder).mockReset().mockResolvedValue({ data: order });
   jest.mocked(reconcilePosCheckout).mockReset().mockResolvedValue({ state: "review_required", message: "Needs review" });
   props.onReloadOrder.mockReset().mockResolvedValue(true);
+  jest.mocked(recoverReceivedCash).mockReset();
+});
+
+function eligibleCash() {
+  if (baseRow.payload.kind !== "checkout") throw new Error("Missing checkout fixture");
+  const promoOrder = { ...order, origin_location_id: "store", promotion_id: "promo", discount_total: 10,
+    sales: { ...order.sales!, source: "shop" } };
+  rows = [{ ...baseRow, payload: { kind: "checkout", data: { ...baseRow.payload.data, promotionId: "promo",
+    registerSessionId: "register", originLocationId: "store", expectedOrderVersion: posOrderVersion(promoOrder),
+    lines: [{ catalogItemId: "coffee", quantity: 3 }],
+    payments: [{ paymentId: "original-receipt", method: "cash", amount: 140 }] } } }];
+  jest.mocked(getPosOrder).mockResolvedValue({ data: promoOrder });
+  return promoOrder;
+}
+const cashButton = () => screen.getByRole("button", { name: "Sync received cash" });
+const cashConsent = () => screen.getByRole("checkbox", { name: /already received exactly MXN 140.00 in cash/ });
+function expectNoReplacementOrCancel() {
+  for (const name of ["Register payment", "Reload order for new confirmation", "Cancel operation"]) {
+    expect(screen.queryByRole("button", { name })).not.toBeInTheDocument();
+  }
+}
+
+it("compares registered and queued details, requires exact cash consent and refreshes the original attempt once", async () => {
+  eligibleCash();
+  const work = deferred<void>();
+  jest.mocked(recoverReceivedCash).mockReturnValue(work.promise);
+  const onRegisterPayment = jest.fn();
+  render(<PosOrderReviewDialog {...props} onRegisterPayment={onRegisterPayment} />);
+  await screen.findByRole("heading", { name: "Registered order items" });
+  expect(screen.getByText("2 × MXN 50.00")).toBeInTheDocument();
+  expect(screen.getByText("3 × Coffee")).toBeInTheDocument();
+  expect(screen.getByText("Queued payment total:").parentElement).toHaveTextContent("MXN 140.00");
+  expect(screen.getByText("Balance due").parentElement).toHaveTextContent("MXN 100.00");
+  expect(cashButton()).toBeDisabled();
+  expectNoReplacementOrCancel();
+  fireEvent.click(cashButton());
+  expect(recoverReceivedCash).not.toHaveBeenCalled();
+  fireEvent.click(cashConsent());
+  fireEvent.click(cashButton());
+  await waitFor(() => expect(recoverReceivedCash).toHaveBeenCalledWith("site-a", "original-row"));
+  const retrying = screen.getByRole("button", { name: "Syncing received cash…" });
+  expect(retrying).toBeDisabled();
+  fireEvent.click(retrying);
+  expectNoReplacementOrCancel();
+  rows = [{ ...rows[0], status: "synced" }];
+  await act(async () => { work.resolve(); });
+  expect(screen.getByText("Checkout completion confirmed")).toBeInTheDocument();
+  expectNoReplacementOrCancel();
+  expect(screen.queryByRole("button", { name: "Check payment status" })).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Continue selling" })).toBeEnabled();
+  expect(screen.queryByRole("button", { name: "Sync received cash" })).not.toBeInTheDocument();
+  expect(recoverReceivedCash).toHaveBeenCalledTimes(1);
+  expect(reconcilePosCheckout).not.toHaveBeenCalled();
+  expect(onRegisterPayment).not.toHaveBeenCalled();
+  expect(props.onReloadOrder).not.toHaveBeenCalled();
+  expectNoMoneyMutation();
+});
+
+it.each(["amount", "items", "eligibility"])("rechecks %s and discards stale consent before retrying", async (change) => {
+  eligibleCash();
+  render(<PosOrderReviewDialog {...props} />);
+  await screen.findByText("original-mutation");
+  fireEvent.click(cashConsent());
+  const row = rows[0];
+  if (row.payload.kind !== "checkout") throw new Error("Missing checkout fixture");
+  if (change === "eligibility") rows = [{ ...row, recoveryState: "payment_recorded" }];
+  else rows = [{ ...row, payload: { kind: "checkout", data: { ...row.payload.data, ...(change === "amount"
+    ? { payments: [{ paymentId: "original-receipt", amount: 145, method: "cash" }] }
+    : { lines: [{ catalogItemId: "tea", quantity: 3 }] }) } } }];
+  fireEvent.click(cashButton());
+  expect(await screen.findByRole("alert")).toHaveTextContent("Payment details changed");
+  if (change !== "eligibility") expect(cashButton()).toBeDisabled();
+  else expect(screen.queryByRole("button", { name: "Sync received cash" })).not.toBeInTheDocument();
+  expect(recoverReceivedCash).not.toHaveBeenCalled();
+});
+
+it("names added items using only the same site's catalog and keeps unknown identifiers visible", async () => {
+  eligibleCash();
+  const row = rows[0];
+  if (row.payload.kind !== "checkout") throw new Error("Missing checkout fixture");
+  rows = [{ ...row, payload: { kind: "checkout", data: { ...row.payload.data, lines: [
+    ...row.payload.data.lines, { catalogItemId: "item-new", quantity: 2, modifiers: [{ catalogItemId: "mod-x", quantity: 1 }] },
+  ] } } }];
+  mockBulkGet.mockResolvedValue([
+    { site_id: "site-a", id: "item-new", name: "Lemon cake" },
+    { site_id: "site-b", id: "mod-x", name: "Private item" },
+  ]);
+  render(<PosOrderReviewDialog {...props} />);
+  expect(await screen.findByText("2 × Lemon cake")).toBeInTheDocument();
+  expect(mockBulkGet).toHaveBeenCalledWith(["item-new", "mod-x"]);
+  expect(screen.getByText("2 × mod-x")).toBeInTheDocument();
+  expect(screen.queryByText(/Private item/)).not.toBeInTheDocument();
+});
+
+it("refreshes evidence on failure without assuming the payment failed or exposing private details", async () => {
+  eligibleCash();
+  jest.mocked(recoverReceivedCash).mockRejectedValueOnce(new Error("private transport details"));
+  render(<PosOrderReviewDialog {...props} />);
+  await screen.findByText("original-mutation");
+  fireEvent.click(cashConsent());
+  fireEvent.click(cashButton());
+  expect(await screen.findByRole("alert")).toHaveTextContent("Do not collect cash again");
+  await waitFor(() => expect(getPosOrder).toHaveBeenCalledTimes(3));
+  expect(screen.queryByText(/private transport/)).not.toBeInTheDocument();
+  expect(cashConsent()).not.toBeChecked();
+  expect(cashButton()).toBeDisabled();
+});
+
+it("requires fresh consent after refreshing the order", async () => {
+  eligibleCash();
+  render(<PosOrderReviewDialog {...props} />);
+  await screen.findByText("original-mutation");
+  fireEvent.click(cashConsent());
+  fireEvent.click(screen.getByRole("button", { name: "Refresh order" }));
+  await waitFor(() => expect(cashConsent()).toBeEnabled());
+  expect(cashButton()).toBeDisabled();
+  expect(recoverReceivedCash).not.toHaveBeenCalled();
+});
+
+it("does not start recovery after the review closes during the fresh order read", async () => {
+  const original = eligibleCash();
+  render(<PosOrderReviewDialog {...props} />);
+  await screen.findByText("original-mutation");
+  const read = deferred<{ data: PosOrderSnapshot }>();
+  jest.mocked(getPosOrder).mockReturnValueOnce(read.promise);
+  fireEvent.click(cashConsent());
+  fireEvent.click(cashButton());
+  await waitFor(() => expect(getPosOrder).toHaveBeenCalledTimes(2));
+  fireEvent.click(screen.getByRole("button", { name: "Continue selling" }));
+  await act(async () => { read.resolve({ data: original }); });
+  expect(recoverReceivedCash).not.toHaveBeenCalled();
 });
 
 it("checks the original attempt from inside review without replay and displays refreshed evidence", async () => {
@@ -199,7 +338,8 @@ it.each(["pending", "syncing", "synced"] as const)("does not reconcile %s rows o
   render(<PosOrderReviewDialog {...props} />);
   await screen.findByText("original-mutation");
   expect(screen.queryByRole("button", { name: "Check payment status" })).not.toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Reload order for new confirmation" })).toBeDisabled();
+  if (status === "synced") expectNoReplacementOrCancel();
+  else expect(screen.getByRole("button", { name: "Reload order for new confirmation" })).toBeDisabled();
   fireEvent.click(screen.getByRole("button", { name: "Continue selling" }));
   expect(reconcilePosCheckout).not.toHaveBeenCalled();
   expectNoMoneyMutation();
@@ -247,5 +387,6 @@ it.each(["payment_recorded", "review_required"] as const)("prevents replacement 
   await screen.findByText("original-mutation");
   expect(screen.getByRole("button", { name: "Register payment" })).toBeDisabled();
   expect(screen.getByRole("button", { name: "Cancel operation" })).toBeEnabled();
+  expect(screen.queryByRole("button", { name: "Sync received cash" })).not.toBeInTheDocument();
   expect(onRegisterPayment).not.toHaveBeenCalled();
 });

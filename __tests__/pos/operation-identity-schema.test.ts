@@ -22,6 +22,18 @@ it("accepts legacy payloads without injecting identity", () => {
   expect(posOperationSchema.parse(operation)).toEqual(operation);
 });
 
+it("only accepts a boolean dispatch control and preserves the original fingerprint", async () => {
+  const original = { ...checkoutInput, posOperationIdentity: identity };
+  const dispatch = { ...original, recoverReceivedCash: true };
+  expect(posOperationSchema.parse({ operation: 'checkout', input: dispatch })).toEqual({ operation: 'checkout', input: dispatch });
+  expect(posOperationSchema.safeParse({ operation: 'checkout', input: { ...original, recoverReceivedCash: 'true' } }).success).toBe(false);
+  expect(posCheckoutFingerprint(dispatch)).toBe(posCheckoutFingerprint(original));
+  expect(posCheckoutFingerprint({ ...dispatch, notes: 'altered' })).not.toBe(posCheckoutFingerprint(original));
+  const rpc = jest.fn();
+  await expect(claimPosCheckout({ rpc }, dispatch, userId)).rejects.toThrow('cannot start');
+  expect(rpc).not.toHaveBeenCalled();
+});
+
 it.each([
   null, {}, { ...identity, version: 2 }, { ...identity, version: "1" },
   { ...identity, deviceId: "device" }, { ...identity, deviceId: null },

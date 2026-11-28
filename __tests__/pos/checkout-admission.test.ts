@@ -109,6 +109,35 @@ describe("POS durable checkout admission and evidence ordering", () => {
     expect(transitionPosCheckout).toHaveBeenCalledWith(expect.anything(), claim, "rejected");
     expect(processCheckoutLines).not.toHaveBeenCalled();
   });
+  const manual = { ...payload, originLocationId: "location", promotionId: "promo", recoverReceivedCash: true };
+  it("runs manual recovery only with the original evidence and never does an ordinary claim", async () => {
+    jest.mocked(inspectPosPayment).mockResolvedValue({ state: "review_required", orderId: "order", saleId: null, message: "Review" });
+    await expect(withPosCheckoutAccessScope(() => checkoutCart(manual))).resolves.toMatchObject({ success: true });
+    expect(assertRegisterCheckout).toHaveBeenCalled(); expect(assertPosOrderCurrent).toHaveBeenCalled();
+    expect(inspectPosPayment).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ requireAdmittedAttempt: true }), "cashier");
+    expect(persistCheckoutRecords).toHaveBeenCalledWith(expect.objectContaining({ posClaim: expect.objectContaining({
+      receivedCash: { actorId: "cashier", fingerprint: "fingerprint", baseline: "baseline" },
+    }) }));
+    expect(claimPosCheckout).not.toHaveBeenCalled();
+    expect(transitionPosCheckout).toHaveBeenCalledTimes(1);
+    expect(transitionPosCheckout).toHaveBeenCalledWith(expect.anything(), expect.anything(), "completed", completed);
+  });
+  it("does not run candidate preparation for a direct call, a missing attempt, or a potentially writing original payload", async () => {
+    await expect(checkoutCart(manual)).resolves.toMatchObject({ recovery: { state: "review_required" } });
+    for (const patch of [{}, { customerEmail: "buyer@example.test", customerName: "Buyer" }, { existingReservationId: "reservation" },
+      { lines: [{ quantity: 1, catalogItemId: "sku", reservationStart: "date" }] }, { quotationId: "quote" }, { payments: [] }]) {
+      await expect(withPosCheckoutAccessScope(() => checkoutCart({ ...manual, ...patch }))).resolves.toMatchObject({ recovery: { state: "review_required" } });
+    }
+    expect(inspectPosPayment).toHaveBeenCalledTimes(1);
+    expect(claimPosCheckout).not.toHaveBeenCalled(); expect(prepareCheckoutEnvironment).not.toHaveBeenCalled();
+  });
+  it("preserves review rather than allowing recollection when recovery preparation fails", async () => {
+    jest.mocked(inspectPosPayment).mockResolvedValue({ state: "review_required", orderId: "order", message: "Review" });
+    jest.mocked(assertRegisterCheckout).mockRejectedValueOnce(new Error("Shift closed"));
+    await expect(withPosCheckoutAccessScope(() => checkoutCart(manual))).resolves.toMatchObject({ recovery: { state: "review_required" } });
+    expect(transitionPosCheckout).not.toHaveBeenCalledWith(expect.anything(), expect.anything(), "rejected");
+    expect(persistCheckoutRecords).not.toHaveBeenCalled(); expect(finalizeCheckout).not.toHaveBeenCalled();
+  });
   it("checks durable fingerprint admission for device-stamped unpaid operations instead of the legacy shortcut", async () => {
     const identified = { ...payload, payments: [], posOperationIdentity: {
       version: 1 as const, deviceId: "22222222-2222-4222-8222-222222222222", createdAt: "2026-10-28T12:00:00.000Z",

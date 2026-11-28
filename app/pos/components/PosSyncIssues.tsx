@@ -14,6 +14,7 @@ import { Button } from "@/app/components/ui/button";
 import { listOutbox } from "@/app/pos/local/outbox";
 import { drainPosOutbox, subscribePosSync } from "@/app/pos/local/sync-engine";
 import { reconcilePosCheckout } from "../local/checkout-recovery";
+import { isReceivedCashReviewCandidate } from "../local/received-cash-review";
 import type { PosOutboxRow } from "@/app/pos/local/types";
 import { CheckCircle2, Loader2, AlertTriangle, Clock } from "@/app/components/ui/icons";
 import { cn } from "@/lib/utils";
@@ -162,6 +163,7 @@ function PosSyncIssuesSession({ siteId, open, onOpenChange, t, onReviewOrder }: 
               const recovery = row.recoveryState ? recoveryDetails[row.recoveryState] : null;
               const existingOrderId = checkout?.existingOrderId ?? (row.payload.kind === "update_order_notes" ? row.payload.data.orderId : null);
               const reviewOrderId = row.recoveryOrderId || row.resultOrderId || existingOrderId;
+              const reviewCash = !!onReviewOrder && isReceivedCashReviewCandidate(row);
               const paymentTotal = (checkout?.payments ?? []).reduce((sum, payment) => sum + payment.amount, 0);
               const paymentMethods = [...new Set(checkout?.payments?.map((payment) => payment.method) ?? [])];
 
@@ -224,7 +226,8 @@ function PosSyncIssuesSession({ siteId, open, onOpenChange, t, onReviewOrder }: 
                   )}
                   {checkout && row.status !== "synced" && (
                     <p className="text-xs text-muted-foreground">
-                      Retry sync does not collect a failed payment again. Review order to register a payment after a verified rejection, or cancel this attempt below. Cancellation does not refund money or delete the order.
+                      {reviewCash ? "If you already received this cash, review the queued items and amount before syncing the original payment. Do not collect again."
+                        : "Retry sync does not collect a failed payment again. Review order to register a payment after a verified rejection, or cancel this attempt below. Cancellation does not refund money or delete the order."}
                     </p>
                   )}
                   {actionError?.rowId === row.id && <p role="alert" className="text-xs text-destructive">{actionError.message}</p>}
@@ -236,14 +239,14 @@ function PosSyncIssuesSession({ siteId, open, onOpenChange, t, onReviewOrder }: 
                       </Button>
                     )}
                     {onReviewOrder && (checkout || reviewOrderId) && (
-                      <Button variant="outline" size="sm" onClick={() => {
+                      <Button variant={reviewCash ? "default" : "outline"} size="sm" onClick={() => {
                         if (!sessionRef.current.active || !open || row.siteId !== siteId) return;
                         onOpenChange(false);
                         onReviewOrder(reviewOrderId || undefined, checkout ? row.id : undefined);
-                      }}>Review order</Button>
+                      }}>{reviewCash ? "Review received cash" : "Review order"}</Button>
                     )}
                   </div>
-                  {checkout && row.status !== "synced" && siteId && <CancelCheckoutOperation
+                  {checkout && !reviewCash && row.status !== "synced" && siteId && <CancelCheckoutOperation
                     siteId={siteId} rowId={row.id} onResolved={() => setRefreshTrigger((v) => v + 1)} />}
                   <div className="text-xs opacity-60">
                     {new Date(row.createdAt).toLocaleString()}

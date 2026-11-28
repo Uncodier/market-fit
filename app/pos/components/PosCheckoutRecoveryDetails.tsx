@@ -1,4 +1,6 @@
 import type { PosOutboxRow } from "../local/types";
+import type { PosOrderSnapshot } from "../order-snapshot";
+import { QueuedOrderItems } from "./QueuedOrderItems";
 
 export const recoveryDetails = {
   rejected: {
@@ -21,7 +23,9 @@ export function checkoutReviewOrderId(row: PosOutboxRow): string | undefined {
     .find((id): id is string => Boolean(id && !id.startsWith("local_")));
 }
 
-export function PosCheckoutRecoveryDetails({ row }: { row: PosOutboxRow }) {
+export function PosCheckoutRecoveryDetails({ row, order, currency }: {
+  row: PosOutboxRow; order?: PosOrderSnapshot | null; currency?: string | null;
+}) {
   if (row.payload.kind !== "checkout") return null;
   const checkout = row.payload.data;
   const recovery = row.status === "synced" ? {
@@ -45,20 +49,13 @@ export function PosCheckoutRecoveryDetails({ row }: { row: PosOutboxRow }) {
         ["Queue status", row.status], ["Existing order ID", checkout.existingOrderId],
         ["Recovery order ID", row.recoveryOrderId], ["Result order ID", row.resultOrderId],
         ["Recovery sale ID", row.recoverySaleId], ["Queued items", String(checkout.lines.length)],
-        ["Queued payment total", paymentTotal.toFixed(2)],
+        ["Queued payment total", [currency, paymentTotal.toFixed(2)].filter(Boolean).join(" ")],
         ["Payment method", methods.join(", ") || checkout.paymentMethod || "None"],
       ].map(([name, value]) => <div key={name}>
         <dt className="inline font-medium">{name}: </dt><dd className="inline">{value || "Not available"}</dd>
       </div>)}
     </dl>
-    {checkout.lines.length > 0 && <div>
-      <h4 className="font-medium">Queued order items</h4>
-      <ul className="space-y-1 break-words">
-        {checkout.lines.map((line, index) => <li key={`${line.catalogItemId}:${index}`}>
-          {line.quantity} × {line.catalogItemId}
-        </li>)}
-      </ul>
-    </div>}
+    {checkout.lines.length > 0 && <QueuedOrderItems siteId={row.siteId} lines={checkout.lines} order={order} />}
     {row.lastError && <p className="text-destructive">{row.lastError}</p>}
   </section>;
 }

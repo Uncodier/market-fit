@@ -88,6 +88,12 @@ function serializedItems(
 export async function persistCheckoutRecords(
   params: PersistCheckoutRecordsParams
 ) {
+  // Recovery must never reach the ordinary insert/separate-update branches,
+  // even if a future caller drops part of the admitted context.
+  if (params.posClaim?.receivedCash && (params.source !== "pos" || !params.effectiveExistingOrderId ||
+    params.payments?.length !== 1 || params.payments[0].method !== "cash" || !params.payments[0].paymentId)) {
+    throw new Error("An existing-order cash receipt is required for recovery.")
+  }
   const queryClient = params.isAdmin ? params.supabaseAdmin : params.supabase
   let orderTotal = roundMoney(
     params.orderSubtotal +
@@ -106,6 +112,7 @@ export async function persistCheckoutRecords(
       recordedPromotionId = recorded.promotionId
       recordedPromotionBaseline = recorded.version
     } else {
+      if (params.posClaim?.receivedCash) throw new Error("The original recorded Shop promotion is required for cash recovery.")
       normalizedPromotionCode = params.promotionCode?.trim()
         ? params.promotionCode.trim().toUpperCase()
         : undefined
@@ -361,7 +368,14 @@ export async function persistCheckoutRecords(
         : {}),
     }
     if (params.source === "pos" && params.posClaim && params.payments?.length) {
-      const { data: committed, error } = await params.supabaseAdmin.rpc("pos_checkout_commit_order", {
+      const recovery = params.posClaim.receivedCash
+      if (recovery && (!recordedPromotionId || selfService || existingSale.source !== "shop" ||
+        params.payments.length !== 1 || params.payments[0].amount !== orderTotal)) {
+        throw new Error("Cash does not match the verified unpaid Shop checkout.")
+      }
+      const { data: committed, error } = await params.supabaseAdmin.rpc(recovery ? "pos_checkout_recover_cash" : "pos_checkout_commit_order", {
+        ...(recovery ? { p_actor_id: recovery.actorId, p_fingerprint: recovery.fingerprint,
+          p_baseline: JSON.parse(recovery.baseline), p_payment_id: params.payments[0].paymentId } : {}),
         p_site_id: params.siteId, p_mutation_id: params.posClaim.mutationId,
         p_owner_token: params.posClaim.ownerToken, p_order_id: params.effectiveExistingOrderId,
         p_sale_patch: saleData, p_order_patch: orderData,

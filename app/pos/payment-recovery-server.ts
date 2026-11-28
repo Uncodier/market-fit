@@ -5,6 +5,7 @@ export type PaymentRecoveryRequest = {
   siteId: string; clientMutationId: string; existingOrderId?: string;
   registerSessionId?: string;
   fingerprint?: string;
+  requireAdmittedAttempt?: boolean;
   payments: { paymentId: string; method: string; amount: number; tendered?: number; change?: number }[];
 };
 type Attempt = { actor_id: string; fingerprint: string; state: string; result: PosCheckoutRecovery["result"]; order_id: string; sale_id: string };
@@ -24,6 +25,9 @@ export async function inspectPosPayment(client: Client, request: PaymentRecovery
     .eq("site_id", request.siteId).eq("client_mutation_id", request.clientMutationId).maybeSingle();
   if (attemptRead.error) throw new Error("Unable to read checkout status. No operation was changed.");
   const attempt = attemptRead.data as Attempt | null;
+  if (request.requireAdmittedAttempt && (!attempt || attempt.order_id !== request.existingOrderId)) return {
+    state: "review_required", message: "An original admitted checkout is required for cash recovery.",
+  };
   if (attempt && attempt.actor_id !== actorId) throw new Error("This checkout belongs to another cashier.");
   if (attempt && request.fingerprint && attempt.fingerprint !== request.fingerprint) throw new Error("This checkout identity cannot be changed. Check its original payment status.");
   const linked = { orderId: attempt?.order_id, saleId: attempt?.sale_id };

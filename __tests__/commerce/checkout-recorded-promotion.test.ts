@@ -23,9 +23,9 @@ const params = { siteId: "site", source: "pos", effectiveExistingOrderId: "order
   promotionCode: "SAVE20", processedLines: [line], orderSubtotal: 100, orderTaxTotal: 2,
   orderShippingCost: 0, orderCurrency: "USD", finalOriginLocationId: "store", fulfillment: "pickup" as const }
 
-function database(savedOrder: unknown = order, error: unknown = null) {
-  const sale = { id: "sale", status: "pending", source: "shop", amount: 82, amount_due: 72,
-    payments: [{ amount: 10, method: "cash" }] }
+function database(savedOrder: unknown = order, error: unknown = null, sale = {
+  id: "sale", status: "pending", source: "shop", amount: 82, amount_due: 72, payments: [{ amount: 10, method: "cash" }],
+}) {
   const writes: { table: string; payload: Record<string, unknown> }[] = []
   const filters: { table: string; key: string; value: unknown }[] = []
   const from = jest.fn((table: string) => {
@@ -206,6 +206,30 @@ it("binds the admitted payment RPC to the stored coupon and customer snapshot", 
       origin_location_id: "store", fulfillment_method: "pickup" }),
     p_expected_sale: expect.objectContaining({ lead_id: null, amount: 82, amount_due: 72 }),
     p_order_patch: expect.objectContaining({ total: 82, discount_total: 20 }),
+  }))
+  expect(client.writes).toEqual([])
+})
+
+it("binds manual recovery to the full calculated balance, original fingerprint and baseline", async () => {
+  const client = database(order, null, { id: "sale", status: "pending", source: "shop", amount: 82, amount_due: 82, payments: [] })
+  const rpc = jest.fn(async (_name: string, input: Record<string, unknown>) => ({
+    data: { sale: input.p_sale_patch, order: input.p_order_patch }, error: null,
+  }))
+  const args = { ...params, source: "pos" as const, isAdmin: false, quoteForAccept: null, intent: "pay" as const,
+    supabase: client, supabaseAdmin: { ...client, rpc }, registerSessionId: "register", registerActorId: "actor",
+    posClaim: { siteId: "site", mutationId: "original", ownerToken: "fresh", receivedCash: {
+      actorId: "actor", fingerprint: "fingerprint", baseline: '{"id":"order"}',
+    } } }
+  const pay = (amount: number) => persistCheckoutRecords({ ...args, payments: [{ method: "cash", paymentId: "receipt", amount }] })
+  for (const amount of [81.99, 82.01]) await expect(pay(amount)).rejects.toThrow("Cash does not match")
+  expect(rpc).not.toHaveBeenCalled()
+  await expect(pay(82)).resolves.toMatchObject({ orderTotal: 82 })
+  expect(rpc).toHaveBeenCalledWith("pos_checkout_recover_cash", expect.objectContaining({
+    p_baseline: { id: "order" }, p_actor_id: "actor", p_fingerprint: "fingerprint", p_payment_id: "receipt",
+    p_mutation_id: "original", p_owner_token: "fresh", p_order_id: "order", p_site_id: "site",
+    p_sale_patch: expect.objectContaining({ amount: 82, amount_due: 0, source: "shop", payments: [expect.objectContaining({
+      amount: 82, method: "cash", payment_id: "receipt", register_session_id: "register", recorded_by: "actor",
+    })] }),
   }))
   expect(client.writes).toEqual([])
 })

@@ -187,6 +187,24 @@ attempts are refused: absence of receipts does not prove absence of side effects
 Those cases still require financial/fulfillment investigation; this change does
 not introduce a force-cancel or replay partial checkout finalization.
 
+**Sync received cash** is a separate, explicit recovery action for a failed cash
+payment on an existing, unpaid Shop order with a recorded promotion. On the
+original device, open the sync issue and choose **Review order**. Compare the
+server order with the queued items, amount and currency. Confirm only if the
+cash on hand matches the original queued sale; do not collect again. The POS
+sends that same checkout, with its original mutation, register and receipt IDs.
+It never substitutes today's cart, creates a replacement receipt or marks the
+issue synchronized from the cashier's confirmation alone.
+
+The server verifies the original cashier, payload fingerprint, unpaid baseline
+and open register. The atomic commit refuses changed financial data, mismatched
+cash totals and any evidence of prior receipt or partial checkout. No automatic
+worker can opt into this recovery. Deploy the app together with the forward
+migration `20261128020000_pos_received_cash_recovery.sql` (database first).
+It adds a server-only function and does not repair historical rows on install.
+Closed registers, missing original queues and unresolved evidence still require
+manager reconciliation; never clear browser storage as a recovery step.
+
 **Register payment** in review requires a server-rejected/cancelled attempt and a
 current open unpaid server order with complete lines. After explicit consent to
 replace the current cart, it rechecks payment evidence, reloads the order, and
